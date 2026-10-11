@@ -283,12 +283,19 @@ A mosaic of small pictures around the lyrics: each appears when its word is firs
 ```python
 from muvid.lyricvid import pictures as pl
 
-pics = [pl.Picture("バス", "pictures/bus.jpg", credit="Bus — A. Author — CC BY-SA 4.0 — via Wikimedia Commons"), ...]
-times = pl.word_times("glyphs.json")                      # every sung start of every word
+pics = [
+    pl.Picture(
+        "バス",
+        "pictures/bus.jpg",
+        credit="Bus — A. Author — CC BY-SA 4.0 — via Wikimedia Commons",
+    ),
+    ...,
+]
+times = pl.word_times("glyphs.json")  # every sung start of every word
 block = pl.text_block("lyrics.mp4", background="#14161f")  # where the lyrics are drawn
 tiles = pl.plan_tiles(pics, times, pl.mosaic_cells(len(pics), block))
 pl.render("lyrics.mp4", tiles, "lyrics_pictures.mp4", border="#8a8a99")
-end_card_lines = pl.credits(tiles)                         # raises if a shown picture has no credit
+end_card_lines = pl.credits(tiles)  # raises if a shown picture has no credit
 ```
 
 - Find the pictures with `illustration` (licence-gated); put its composed credit line in `Picture.credit`. `credits(tiles)` lists only the pictures actually shown.

@@ -102,26 +102,61 @@ def word_times(timed_text: Mapping | str | Path) -> dict[str, list[float]]:
 
 def _probe_duration(video) -> float:
     out = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(video)],
-        capture_output=True, text=True, check=True,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     return float(out)
 
 
 def _probe_rate(video) -> str:
     out = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate",
-         "-of", "csv=p=0", str(video)],
-        capture_output=True, text=True, check=True,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=r_frame_rate",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     return out.strip().split(",")[0] or "25"
 
 
 def _probe_size(video) -> tuple[int, int]:
     out = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
-         "-of", "csv=p=0", str(video)],
-        capture_output=True, text=True, check=True,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=p=0",
+            str(video),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     w, h = out.strip().split(",")[:2]
     return int(w), int(h)
@@ -129,11 +164,18 @@ def _probe_size(video) -> tuple[int, int]:
 
 def _rgb(colour: str) -> tuple[int, int, int]:
     c = colour.lstrip("#")
-    return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(c[i : i + 2], 16) for i in (0, 2, 4))
 
 
-def text_block(video, *, background: str, threshold: int = 40, fps: float = 1.0,
-               downscale: int = 4, margin: int = 40) -> Box:
+def text_block(
+    video,
+    *,
+    background: str,
+    threshold: int = 40,
+    fps: float = 1.0,
+    downscale: int = 4,
+    margin: int = 40,
+) -> Box:
     """Where the lyrics are drawn: the box around every non-background pixel of ``video``.
 
     Frames are sampled at ``fps`` and shrunk by ``downscale`` for speed; a pixel
@@ -143,23 +185,55 @@ def text_block(video, *, background: str, threshold: int = 40, fps: float = 1.0,
     W, H = _probe_size(video)
     w, h = W // downscale, H // downscale
     raw = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(video), "-vf", f"fps={fps},scale={w}:{h}",
-         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-        capture_output=True, check=True,
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(video),
+            "-vf",
+            f"fps={fps},scale={w}:{h}",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-",
+        ],
+        capture_output=True,
+        check=True,
     ).stdout
     frames = np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3).astype(np.int16)
-    ink = (np.abs(frames - np.array(_rgb(background), np.int16)).sum(-1) > threshold).any(0)
+    ink = (
+        np.abs(frames - np.array(_rgb(background), np.int16)).sum(-1) > threshold
+    ).any(0)
     ys, xs = np.nonzero(ink)
     if not len(ys):
-        raise ValueError(f"no text found in {video}: every sampled pixel is the background {background}")
-    x0, x1 = max(0, xs.min() * downscale - margin), min(W, (xs.max() + 1) * downscale + margin)
-    y0, y1 = max(0, ys.min() * downscale - margin), min(H, (ys.max() + 1) * downscale + margin)
+        raise ValueError(
+            f"no text found in {video}: every sampled pixel is the background {background}"
+        )
+    x0, x1 = (
+        max(0, xs.min() * downscale - margin),
+        min(W, (xs.max() + 1) * downscale + margin),
+    )
+    y0, y1 = (
+        max(0, ys.min() * downscale - margin),
+        min(H, (ys.max() + 1) * downscale + margin),
+    )
     return int(x0), int(y0), int(x1 - x0), int(y1 - y0)
 
 
-def mosaic_cells(n: int, block: Box, *, size: tuple[int, int] = (1920, 1080), gap: int = 24,
-                 aspect: float = 4 / 3, top: float = 0.04, bottom: float = 0.95,
-                 min_band: int = 120, width: float = 0.94) -> list[Box]:
+def mosaic_cells(
+    n: int,
+    block: Box,
+    *,
+    size: tuple[int, int] = (1920, 1080),
+    gap: int = 24,
+    aspect: float = 4 / 3,
+    top: float = 0.04,
+    bottom: float = 0.95,
+    min_band: int = 120,
+    width: float = 0.94,
+) -> list[Box]:
     """``n`` cells in one row above and one row below the text block, centre-out.
 
     Bands thinner than ``min_band`` pixels are skipped. The first cells returned
@@ -169,9 +243,15 @@ def mosaic_cells(n: int, block: Box, *, size: tuple[int, int] = (1920, 1080), ga
         return []
     W, H = size
     _, by, _, bh = block
-    bands = [b for b in ((int(top * H), by), (by + bh, int(bottom * H))) if b[1] - b[0] >= min_band]
+    bands = [
+        b
+        for b in ((int(top * H), by), (by + bh, int(bottom * H)))
+        if b[1] - b[0] >= min_band
+    ]
     if not bands:
-        raise ValueError(f"no room for pictures: the text block {block} leaves no band of {min_band}px")
+        raise ValueError(
+            f"no room for pictures: the text block {block} leaves no band of {min_band}px"
+        )
     cols = math.ceil(n / len(bands))
     cells = []
     for i, (y0, y1) in enumerate(bands):
@@ -186,8 +266,14 @@ def mosaic_cells(n: int, block: Box, *, size: tuple[int, int] = (1920, 1080), ga
     return cells[:n]
 
 
-def plan_tiles(pictures: Iterable[Picture], times: Mapping[str, Sequence[float]], cells: Sequence[Box], *,
-               lead: float = 0.15, bounce: Bounce | None = Bounce()) -> list[Tile]:
+def plan_tiles(
+    pictures: Iterable[Picture],
+    times: Mapping[str, Sequence[float]],
+    cells: Sequence[Box],
+    *,
+    lead: float = 0.15,
+    bounce: Bounce | None = Bounce(),
+) -> list[Tile]:
     """Place each sung picture in a cell, in order of its word's first sung time.
 
     A picture whose word is never sung is left out (see :func:`unsung_pictures`).
@@ -208,7 +294,9 @@ def plan_tiles(pictures: Iterable[Picture], times: Mapping[str, Sequence[float]]
     return tiles
 
 
-def unsung_pictures(pictures: Iterable[Picture], times: Mapping[str, Sequence[float]]) -> list[str]:
+def unsung_pictures(
+    pictures: Iterable[Picture], times: Mapping[str, Sequence[float]]
+) -> list[str]:
     """The words that have a picture but are never sung (so the picture is never shown)."""
     return [p.word for p in pictures if not times.get(p.word)]
 
@@ -218,7 +306,9 @@ def bounce_expr(beats: Sequence[float], bounce: Bounce) -> str:
     if not beats or bounce.scale == 0:
         return "1"
     d = bounce.duration
-    humps = "+".join(f"between(t,{b:.3f},{b + d:.3f})*sin(PI*(t-{b:.3f})/{d:.3f})" for b in beats)
+    humps = "+".join(
+        f"between(t,{b:.3f},{b + d:.3f})*sin(PI*(t-{b:.3f})/{d:.3f})" for b in beats
+    )
     return f"(1+{bounce.scale:.3f}*min(1,{humps}))"
 
 
@@ -239,8 +329,17 @@ def credits(tiles: Iterable[Tile]) -> list[str]:
     return out
 
 
-def render(video, tiles: Sequence[Tile], out, *, bounce: Bounce | None = Bounce(), fade_in: float = 0.35,
-           border: str | None = None, border_px: int = 3, crf: int = 18) -> Path:
+def render(
+    video,
+    tiles: Sequence[Tile],
+    out,
+    *,
+    bounce: Bounce | None = Bounce(),
+    fade_in: float = 0.35,
+    border: str | None = None,
+    border_px: int = 3,
+    crf: int = 18,
+) -> Path:
     """Composite ``tiles`` onto ``video`` in one ffmpeg pass; audio is copied.
 
     Each picture is fitted inside its tile box (never cropped), framed by a
@@ -254,7 +353,16 @@ def render(video, tiles: Sequence[Tile], out, *, bounce: Bounce | None = Bounce(
     args = ["ffmpeg", "-v", "error", "-y", "-i", str(video)]
     chains, prev = [], "0:v"
     for i, t in enumerate(tiles, 1):
-        args += ["-loop", "1", "-framerate", rate, "-t", f"{dur:.3f}", "-i", t.picture.path]
+        args += [
+            "-loop",
+            "1",
+            "-framerate",
+            rate,
+            "-t",
+            f"{dur:.3f}",
+            "-i",
+            t.picture.path,
+        ]
         _, _, w, h = t.box
         inner_w, inner_h = (w - 2 * border_px, h - 2 * border_px) if border else (w, h)
         chain = f"[{i}:v]scale={inner_w}:{inner_h}:force_original_aspect_ratio=decrease"
@@ -266,11 +374,29 @@ def render(video, tiles: Sequence[Tile], out, *, bounce: Bounce | None = Bounce(
             chain += f",scale=w='trunc(iw*{s}/2)*2':h='trunc(ih*{s}/2)*2':eval=frame"
         cx, cy = t.centre
         chains.append(f"{chain}[p{i}]")
-        chains.append(f"[{prev}][p{i}]overlay=x='{cx:.1f}-w/2':y='{cy:.1f}-h/2':eval=frame"
-                      f":enable='gte(t,{t.appear:.3f})'[v{i}]")
+        chains.append(
+            f"[{prev}][p{i}]overlay=x='{cx:.1f}-w/2':y='{cy:.1f}-h/2':eval=frame"
+            f":enable='gte(t,{t.appear:.3f})'[v{i}]"
+        )
         prev = f"v{i}"
-    args += ["-filter_complex", ";".join(chains), "-map", f"[{prev}]", "-map", "0:a?",
-             "-c:v", "libx264", "-crf", str(crf), "-pix_fmt", "yuv420p", "-c:a", "copy",
-             "-t", f"{dur:.3f}", str(out)]
+    args += [
+        "-filter_complex",
+        ";".join(chains),
+        "-map",
+        f"[{prev}]",
+        "-map",
+        "0:a?",
+        "-c:v",
+        "libx264",
+        "-crf",
+        str(crf),
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "copy",
+        "-t",
+        f"{dur:.3f}",
+        str(out),
+    ]
     subprocess.run(args, check=True)
     return out
