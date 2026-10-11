@@ -276,6 +276,26 @@ python -m muvid.lyricvid render song.mp3 out.mp4 --timed-text glyphs.json --trea
   and `word_gap` ~0.9 em read well on a phone. Use a CJK font
   (`typography.family`, e.g. "Hiragino Sans" on macOS, "Noto Sans CJK JP" on Linux).
 
+## Pictures of the sung words — `muvid.lyricvid.pictures`
+
+A mosaic of small pictures around the lyrics: each appears when its word is first sung and **bounces** (a quick enlarge and back) every time the word is sung again. It composites onto the finished lyric render in one ffmpeg pass, and no tile, even at the peak of a bounce, enters the text block.
+
+```python
+from muvid.lyricvid import pictures as pl
+
+pics = [pl.Picture("バス", "pictures/bus.jpg", credit="Bus — A. Author — CC BY-SA 4.0 — via Wikimedia Commons"), ...]
+times = pl.word_times("glyphs.json")                      # every sung start of every word
+block = pl.text_block("lyrics.mp4", background="#14161f")  # where the lyrics are drawn
+tiles = pl.plan_tiles(pics, times, pl.mosaic_cells(len(pics), block))
+pl.render("lyrics.mp4", tiles, "lyrics_pictures.mp4", border="#8a8a99")
+end_card_lines = pl.credits(tiles)                         # raises if a shown picture has no credit
+```
+
+- Find the pictures with `illustration` (licence-gated); put its composed credit line in `Picture.credit`. `credits(tiles)` lists only the pictures actually shown.
+- A picture whose word is never sung is left out: `unsung_pictures(pics, times)` names them, so check it.
+- `Bounce(scale=0.18, duration=0.32, lead=0.04)` is the default; `bounce=None` in both `plan_tiles` and `render` turns it off. With a bounce, each picture is shrunk inside its cell so the peak still fits.
+- Pictures are fitted, never cropped, so a CC BY-SA picture is shown unmodified.
+
 ## Caption tracks — translation and romaji for YouTube
 
 A learner wants toggleable captions under the video: a translation, a
