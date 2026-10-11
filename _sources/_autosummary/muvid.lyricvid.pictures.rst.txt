@@ -1,0 +1,27 @@
+muvid.lyricvid.pictures
+=======================
+
+.. automodule:: muvid.lyricvid.pictures
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      bounce_expr
+      credits
+      mosaic_cells
+      plan_tiles
+      render
+      text_block
+      unsung_pictures
+      word_times
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Bounce
+      Picture
+      Tile
+   

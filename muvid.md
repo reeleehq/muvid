@@ -1,4 +1,4 @@
-> built 2026-10-10 15:32 UTC from 18238b0 (main) · muvid 0.0.82. Details: build_info.json
+> built 2026-10-11 12:40 UTC from f9b658a (main) · muvid 0.0.83. Details: build_info.json
 
 # index.html.md
 
@@ -9653,6 +9653,7 @@ render before paying for it.
 | [`director`](_autosummary/muvid.lyricvid.director.html.md#module-muvid.lyricvid.director)       | The creative director — a song in, one or more [`TreatmentSpec`](_autosummary/muvid.lyricvid.html.md#muvid.lyricvid.TreatmentSpec)s out.                                                                      |
 | [`glyph_align`](_autosummary/muvid.lyricvid.glyph_align.html.md#module-muvid.lyricvid.glyph_align) | Per-glyph timing: when was each written character sung? (muvid#142)                                                                                                                      |
 | [`manifest`](_autosummary/muvid.lyricvid.manifest.html.md#module-muvid.lyricvid.manifest)       | The lyric-video subgenre's manifest — muvid's own first plugin.                                                                                                                          |
+| [`pictures`](_autosummary/muvid.lyricvid.pictures.html.md#module-muvid.lyricvid.pictures)       | Pictures for a lyric video: a mosaic that builds up as its words are sung (muvid#151).                                                                                                   |
 | [`pipeline`](_autosummary/muvid.lyricvid.pipeline.html.md#module-muvid.lyricvid.pipeline)       | The lyric-video pipeline — the one path from a song to a finished video.                                                                                                                 |
 | [`render_ass`](_autosummary/muvid.lyricvid.render_ass.html.md#module-muvid.lyricvid.render_ass)   | The default lyric-video renderer: a [`Scene`](_autosummary/muvid.lyricvid.scene.html.md#muvid.lyricvid.scene.Scene) as ASS.                                                            |
 | [`render_web`](_autosummary/muvid.lyricvid.render_web.html.md#module-muvid.lyricvid.render_web)   | The web backend: a [`Scene`](_autosummary/muvid.lyricvid.scene.html.md#muvid.lyricvid.scene.Scene) as a deterministic HTML page, screenshotted frame by frame and muxed with the song. |
@@ -9676,6 +9677,157 @@ should pay for pysubs2, numpy or Playwright to do it. The renderer is named as
 a string and imported only when a render actually runs.
 
 A third-party plugin should look exactly like this file.
+
+
+# _autosummary/muvid.lyricvid.pictures.html.md
+
+# muvid.lyricvid.pictures
+
+Pictures for a lyric video: a mosaic that builds up as its words are sung (muvid#151).
+
+A learner’s lyric video wants a picture of what is being sung. This layer places
+small pictures around the lyrics. Each one appears when its word is first sung,
+so a mosaic builds up through the song, and it **bounces** (a quick enlarge and
+back) every time the word is sung again. The lyrics stay readable because no
+tile, even at the top of its bounce, enters the text block.
+
+Four steps, each its own function so a caller can replace one:
+
+1. [`text_block()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.text_block) finds where the lyrics are drawn: the union of
+   non-background pixels over frames of the finished lyric render.
+2. [`mosaic_cells()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.mosaic_cells) lays out cells in the bands above and below it.
+3. [`plan_tiles()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.plan_tiles) times each picture from the sung word times
+   ([`word_times()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.word_times)): it appears just before the first time its word is
+   sung, and bounces on every sung occurrence.
+4. [`render()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.render) composites the tiles onto the lyric render in one ffmpeg
+   pass. Pictures are fitted inside their cell, never cropped, so a CC BY-SA
+   picture is shown unmodified; the bounce is a per-frame `scale`.
+
+Rights travel with each [`Picture`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.Picture) (its `credit`), and [`credits()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.credits)
+lists the credit of every tile actually shown, in order of appearance, so the
+end card cannot forget one.
+
+Needs `ffmpeg`/`ffprobe` on PATH and nothing beyond muvid’s core
+dependencies (numpy).
+
+### Functions
+
+| [`bounce_expr`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.bounce_expr)(beats, bounce)                    | An ffmpeg expression of `t`: 1 at rest, `1 + scale` at the peak of each pop.      |
+|------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [`credits`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.credits)(tiles)                                | The credit line of every shown picture, in order of appearance, without repeats.  |
+| [`mosaic_cells`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.mosaic_cells)(n, block, \*[, size, gap, ...])  | `n` cells in one row above and one row below the text block, centre-out.          |
+| [`plan_tiles`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.plan_tiles)(pictures, times, cells, \*[, ...]) | Place each sung picture in a cell, in order of its word's first sung time.        |
+| [`render`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.render)(video, tiles, out, \*[, bounce, ...])  | Composite `tiles` onto `video` in one ffmpeg pass; audio is copied.               |
+| [`text_block`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.text_block)(video, \*, background[, ...])      | Where the lyrics are drawn: the box around every non-background pixel of `video`. |
+| [`unsung_pictures`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.unsung_pictures)(pictures, times)              | The words that have a picture but are never sung (so the picture is never shown). |
+| [`word_times`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.word_times)(timed_text)                        | Every sung start of every word, from a `TimedText.to_dict()` (or its JSON file).  |
+
+### Classes
+
+| [`Bounce`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.Bounce)([scale, duration, lead])     | A quick enlarge and back, timed to a sung word.                         |
+|--------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| [`Picture`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.Picture)(word, path[, credit])       | A picture for one sung word, with the credit line its licence requires. |
+| [`Tile`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.Tile)(picture, box, appear[, beats]) | A picture placed in a cell, with when it appears and when it bounces.   |
+
+### *class* muvid.lyricvid.pictures.Bounce(scale=0.18, duration=0.32, lead=0.04)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A quick enlarge and back, timed to a sung word.
+
+`scale` is the extra size at the peak (0.18 is 18 % larger), `duration`
+the length of the whole pop in seconds, and `lead` how long before the
+sung onset it starts, so the peak lands on the syllable.
+
+### *class* muvid.lyricvid.pictures.Picture(word, path, credit=None)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A picture for one sung word, with the credit line its licence requires.
+
+### *class* muvid.lyricvid.pictures.Tile(picture, box, appear, beats=<factory>)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A picture placed in a cell, with when it appears and when it bounces.
+
+### muvid.lyricvid.pictures.bounce_expr(beats, bounce)
+
+An ffmpeg expression of `t`: 1 at rest, `1 + scale` at the peak of each pop.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
+### muvid.lyricvid.pictures.credits(tiles)
+
+The credit line of every shown picture, in order of appearance, without repeats.
+
+Raises when a shown picture has no credit: a dropped attribution is a licence
+failure nobody downstream can see.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.lyricvid.pictures.mosaic_cells(n, block, , size=(1920, 1080), gap=24, aspect=1.3333333333333333, top=0.04, bottom=0.95, min_band=120, width=0.94)
+
+`n` cells in one row above and one row below the text block, centre-out.
+
+Bands thinner than `min_band` pixels are skipped. The first cells returned
+are the most central, so a short list of pictures sits near the lyrics.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]]
+
+### muvid.lyricvid.pictures.plan_tiles(pictures, times, cells, , lead=0.15, bounce=Bounce(scale=0.18, duration=0.32, lead=0.04))
+
+Place each sung picture in a cell, in order of its word’s first sung time.
+
+A picture whose word is never sung is left out (see [`unsung_pictures()`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.unsung_pictures)).
+With a `bounce`, each picture shrinks inside its cell by the bounce’s peak,
+so at full size it still fits the cell, and the cells already keep clear of
+the text.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Tile`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.Tile)]
+
+### muvid.lyricvid.pictures.render(video, tiles, out, , bounce=Bounce(scale=0.18, duration=0.32, lead=0.04), fade_in=0.35, border=None, border_px=3, crf=18)
+
+Composite `tiles` onto `video` in one ffmpeg pass; audio is copied.
+
+Each picture is fitted inside its tile box (never cropped), framed by a
+`border` of `border_px` when given, fades in at `appear` and pops on
+each of its `beats` when `bounce` is set.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.lyricvid.pictures.text_block(video, , background, threshold=40, fps=1.0, downscale=4, margin=40)
+
+Where the lyrics are drawn: the box around every non-background pixel of `video`.
+
+Frames are sampled at `fps` and shrunk by `downscale` for speed; a pixel
+is ink when its summed RGB distance from `background` exceeds `threshold`.
+`margin` pixels are added on every side. Raises when nothing is drawn.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]
+
+### muvid.lyricvid.pictures.unsung_pictures(pictures, times)
+
+The words that have a picture but are never sung (so the picture is never shown).
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.lyricvid.pictures.word_times(timed_text)
+
+Every sung start of every word, from a `TimedText.to_dict()` (or its JSON file).
+
+A word’s time is its first glyph’s start when glyph times exist (the measured
+onset), else the word’s own start.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]]
 
 
 # _autosummary/muvid.lyricvid.pipeline.html.md
@@ -16498,7 +16650,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-10 15:32 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/18238b0067b70ebda5719e190d6386e298bba6ae"><code>18238b0</code></a> on branch <code>main</code>, for **muvid 0.0.82** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-11 12:40 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f9b658a7a1774419f235afdc0513e2c23a5635ce"><code>f9b658a</code></a> on branch <code>main</code>, for **muvid 0.0.83** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -16507,9 +16659,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/18238b0067b70ebda5719e190d6386e298bba6ae"><code>18238b0067b70ebda5719e190d6386e298bba6ae</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f9b658a7a1774419f235afdc0513e2c23a5635ce"><code>f9b658a7a1774419f235afdc0513e2c23a5635ce</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.82</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.83</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -16518,9 +16670,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38063561183">38063561183</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38139650818">38139650818</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>6c4238e6b1f31e3f9202e26db6d777a55113c9e4</code> (in the history of the built commit) |
+| Event commit | <code>dffa64b75cb3064db3a9c6324911a243ec9903d4</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -16545,13 +16697,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.82/">0.0.82</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.83/">0.0.83</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 18238b0067b70ebda5719e190d6386e298bba6ae
+git checkout f9b658a7a1774419f235afdc0513e2c23a5635ce
 pip install "epythet==0.2.12"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

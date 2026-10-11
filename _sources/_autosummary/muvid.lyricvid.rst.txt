@@ -14,6 +14,7 @@ muvid.lyricvid
    director
    glyph_align
    manifest
+   pictures
    pipeline
    render_ass
    render_web

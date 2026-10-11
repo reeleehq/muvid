@@ -55,6 +55,7 @@
 - [muvid.lyricvid.director](muvid.lyricvid.director.html.md): The creative director — a song in, one or more &#96;TreatmentSpec&#96;s out.
 - [muvid.lyricvid.glyph_align](muvid.lyricvid.glyph_align.html.md): Per-glyph timing: when was each written character sung? (muvid#142)
 - [muvid.lyricvid.manifest](muvid.lyricvid.manifest.html.md): The lyric-video subgenre’s manifest — muvid’s own first plugin.
+- [muvid.lyricvid.pictures](muvid.lyricvid.pictures.html.md): Pictures for a lyric video: a mosaic that builds up as its words are sung (muvid#151).
 - [muvid.lyricvid.pipeline](muvid.lyricvid.pipeline.html.md): The lyric-video pipeline — the one path from a song to a finished video.
 - [muvid.lyricvid.render_ass](muvid.lyricvid.render_ass.html.md): The default lyric-video renderer: a &#96;Scene&#96; as ASS.
 - [muvid.lyricvid.render_web](muvid.lyricvid.render_web.html.md): The web backend: a &#96;Scene&#96; as a deterministic
