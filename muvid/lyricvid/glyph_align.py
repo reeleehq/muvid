@@ -966,7 +966,9 @@ def misplaced(
         for i, (x, y) in enumerate(zip(fine.words(), coarse.words())):
             f0, c0 = _word_start(x), _word_start(y) + bias
             if abs(f0 - c0) > disagree_s and not near(f0) and near(c0):
-                out[i] = f"fine start {f0:.2f} s is off every onset; vendor {c0:.2f} s is on one"
+                out[i] = (
+                    f"fine start {f0:.2f} s is off every onset; vendor {c0:.2f} s is on one"
+                )
         return out
 
     return Detector(name="misplaced", find=find)
@@ -1097,7 +1099,9 @@ def stem_detectors(
         misplaced(vocals, disagree_s=disagree_s, tol_s=tol_s),
     )
     if drop_unsung:
-        among = lost(vocals, disagree_s=disagree_s, min_glyph_s=min_glyph_s, tol_s=tol_s)
+        among = lost(
+            vocals, disagree_s=disagree_s, min_glyph_s=min_glyph_s, tol_s=tol_s
+        )
         first = (*first, unsung(vocals, among=among))
     return (*first, disordered(first))
 

@@ -222,7 +222,9 @@ def glyphs(
     from muvid.lyricvid.timed_text import from_dict
 
     coarse = from_dict(_json.loads(Path(timing).read_text(encoding="utf-8")))
-    ga._mms_weights(allow_download=allow_download)  # refuse BEFORE separating, not after
+    ga._mms_weights(
+        allow_download=allow_download
+    )  # refuse BEFORE separating, not after
     stem = (
         Path(vocals)
         if vocals
