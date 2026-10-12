@@ -312,55 +312,69 @@ def _load_mms(*, allow_download: bool):
 
     cached = _mms_weights(allow_download=allow_download)
     bundle = torchaudio.pipelines.MMS_FA
-    model = None
-    if cached.exists():
-        model = _mmap_model(bundle, cached)
+    if not cached.exists():  # allowed: fetch to disk first, so it can be mapped
+        import torch
+
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        torch.hub.download_url_to_file(_MMS_URL_BASE + bundle._path, str(cached))
+    model = _mmap_model(bundle, cached)
     if model is None:
         model = bundle.get_model(with_star=True)
     return bundle, model, bundle.get_dict()
 
 
+#: Where torchaudio fetches its pipeline weights from (``utils._get_state_dict``).
+_MMS_URL_BASE = "https://download.pytorch.org/torchaudio/models/"
+
+
 def _mmap_model(bundle, checkpoint: Path):
     """``bundle.get_model(with_star=True)`` with the weights memory-mapped.
 
-    Swaps torchaudio's private model and state-dict builders for the duration
-    of one call and always restores them. Returns ``None`` (use the plain
-    path) when those internals are not where torchaudio 2.x keeps them.
+    Rebuilds torchaudio's ``Wav2Vec2FABundle.get_model`` from its parts rather
+    than swapping its module functions, so nothing global changes: two threads
+    can load at once, and another bundle loaded meanwhile gets its own weights.
+    Returns ``None`` (use the copying path) when those parts are not where
+    torchaudio 2.x keeps them, and warns, because that path is the one that
+    ran a 3.8 GB server out of memory.
     """
+    import warnings
+
     import torch
 
     try:
         from torchaudio.pipelines._wav2vec2 import utils as u
 
-        get_model, remove_aux = u._get_model, u._remove_aux_axes
-        u._get_state_dict  # noqa: B018 - present, or fall back
-    except (ImportError, AttributeError):
+        build, remove_aux, extend = u._get_model, u._remove_aux_axes, u._extend_model
+        model_type, params = bundle._model_type, bundle._params
+        aux, normalize = bundle._remove_aux_axis, bundle._normalize_waveform
+    except (ImportError, AttributeError) as e:
+        warnings.warn(
+            f"muvid: cannot memory-map the MMS_FA weights ({e!r}); loading them "
+            "the copying way, which needs ~2 GB of free memory",
+            RuntimeWarning,
+            stacklevel=3,
+        )
         return None
 
-    def meta_model(*args, **kwargs):
-        with torch.device("meta"):
-            m = get_model(*args, **kwargs)
-        load = m.load_state_dict
-        m.load_state_dict = lambda sd, **kw: load(sd, assign=True, **kw)
-        return m
-
-    def mmap_state_dict(url, dl_kwargs=None, remove_axes=None):
-        sd = torch.load(checkpoint, mmap=True, weights_only=True, map_location="cpu")
-        if remove_axes:
-            remove_aux(sd, remove_axes)
-        return sd
-
-    saved = u._get_model, u._get_state_dict
-    u._get_model, u._get_state_dict = meta_model, mmap_state_dict
-    try:
-        model = bundle.get_model(with_star=True)
-    finally:
-        u._get_model, u._get_state_dict = saved
-    # assign=True kept the mapped tensors; a model left (partly) on the meta
-    # device would fail only at inference, so check now and fall back.
+    with torch.device("meta"):
+        model = build(model_type, params)
+    state = torch.load(checkpoint, mmap=True, weights_only=True, map_location="cpu")
+    if aux:
+        remove_aux(state, aux)
+    model.load_state_dict(state, assign=True)
+    model = extend(
+        model, normalize_waveform=normalize, apply_log_softmax=True, append_star=True
+    )
+    # a tensor left on the meta device would fail only at inference
     if any(t.is_meta for t in (*model.parameters(), *model.buffers())):
+        warnings.warn(
+            "muvid: the memory-mapped MMS_FA model is incomplete; loading the "
+            "weights the copying way, which needs ~2 GB of free memory",
+            RuntimeWarning,
+            stacklevel=3,
+        )
         return None
-    return model
+    return model.eval()
 
 
 def _read_mono(path: Path | str, sample_rate: int):
@@ -845,7 +859,10 @@ def unsung(
     first ghost word's own window held the decaying tail of the previous held
     note: sound, but not its sound. ``among`` is squeeze and not disagreement
     on purpose — a line the vendor MISPLACED was sung somewhere else, and
-    dropping it would delete a sung line.
+    dropping it would delete a sung line. With the stem, :func:`lost` widens
+    ``among`` only by disagreeing words that are off every onset AND sit in
+    another line's window, which a misplaced-but-sung line does not produce
+    (see :func:`stem_detectors`).
     """
     among = among or squeezed()
 
@@ -962,25 +979,49 @@ def lost(
     min_glyph_s: float = MIN_GLYPH_S,
     tol_s: float = ONSET_TOL_S,
 ) -> Detector:
-    """Words the aligner could not place: squeezed, or disagreeing AND off-onset.
+    """Words the aligner could not place, as :func:`unsung`'s ``among``.
 
-    The ``among`` for :func:`unsung` when you have the stem. Squeeze alone
-    missed an unsung intro repeat whose first word the aligner had pushed onto
-    the next line (muvid#150): that word disagreed instead of squeezing, so
-    the line was never "every word flagged". Disagreement alone would drop a
-    line the vendor merely misplaced; a disagreeing word the aligner put ON an
-    onset was sung somewhere, so it is never counted as lost. Remedy:
-    ``replace`` (it only names words; :func:`unsung` decides on dropping).
+    A word is lost when it is :func:`squeezed`, or when it :func:`disagrees`,
+    its fine start is off every onset, AND that start lies inside ANOTHER
+    line's vendor window (bias-shifted): the aligner, finding nothing to put
+    it on, pushed it onto a neighbour. That is the unsung intro repeat of
+    muvid#150, whose first word disagreed instead of squeezing, so a
+    squeeze-only ``among`` never saw the whole line as flagged.
+
+    Each condition guards against deleting sung lyrics, because the remedy
+    this feeds is ``drop``:
+
+    - A disagreeing word the aligner put ON an onset was sung somewhere.
+    - A word left in its OWN line's neighbourhood can be one the vendor merely
+      placed late, by more than the aligner's search margin (``MARGIN_S``).
+      Its window is then quiet, and without the third condition the line is
+      deleted (review of muvid#154).
+
+    Remedy: ``replace`` (it only names words; :func:`unsung` decides).
     """
     sq, dis = squeezed(min_glyph_s=min_glyph_s), disagrees(disagree_s=disagree_s)
     near = _onset_test(vocals, tol_s)
 
     def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
         fw = list(fine.words())
+        bias = _start_bias(fine, coarse)
+        windows, line_of, k = [], {}, 0
+        for li, ln in enumerate(coarse.lines()):
+            windows.append((ln.words[0].start + bias, ln.words[-1].end + bias))
+            for _ in ln.words:
+                line_of[k] = li
+                k += 1
+
+        def in_another_line(i: int) -> bool:
+            t = _word_start(fw[i])
+            return any(
+                a <= t < b for j, (a, b) in enumerate(windows) if j != line_of[i]
+            )
+
         out = {
-            i: f"{why}, and off every onset"
+            i: f"{why}, off every onset, inside another line's window"
             for i, why in dis.find(fine, coarse).items()
-            if not near(_word_start(fw[i]))
+            if not near(_word_start(fw[i])) and in_another_line(i)
         }
         out.update(sq.find(fine, coarse))
         return out

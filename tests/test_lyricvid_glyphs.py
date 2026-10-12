@@ -541,8 +541,8 @@ def test_misplaced_keeps_an_onset_backed_fine_time_the_vendor_contradicts(
 
 def _intro_sung_once():
     """``カ ト ハ`` listed twice by the vendor, sung once; the aligner pushed the
-    repeat's first word onto the next line (off any onset) and squeezed the
-    other two."""
+    repeat's first word into the next line's window (off any onset) and
+    squeezed the other two."""
     recs = [
         {"text": "カ", "start": 1.0, "end": 1.3},
         {"text": "ト", "start": 1.3, "end": 1.6},
@@ -555,7 +555,7 @@ def _intro_sung_once():
     coarse = from_word_records(recs, duration=8.0)
     fine = _place(
         _with_glyphs(coarse),
-        {0: 1.0, 1: 1.3, 2: 1.6, 3: 4.9, 4: 3.0, 5: 3.01, 6: 5.0},
+        {0: 1.0, 1: 1.3, 2: 1.6, 3: 5.25, 4: 3.0, 5: 3.01, 6: 5.0},
     )
     return fine, coarse
 
@@ -584,8 +584,8 @@ def test_lost_never_counts_a_disagreeing_word_on_an_onset(stem_of, onsets_at):
     """A disagreeing word the aligner put on an onset was sung somewhere, so
     its line is never dropped, however quiet the vendor's window is."""
     fine, coarse = _intro_sung_once()
-    onsets_at(1.0, 1.3, 1.6, 4.9, 5.0)  # the pushed カ now sits on an onset
-    stem = stem_of(_stem((0.9, 2.0), (4.9, 5.6), duration=8.0))
+    onsets_at(1.0, 1.3, 1.6, 5.0, 5.25)  # the pushed カ now sits on an onset
+    stem = stem_of(_stem((0.9, 2.0), (5.0, 5.6), duration=8.0))
 
     _, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
 
@@ -649,24 +649,101 @@ def test_the_weight_check_builds_nothing(monkeypatch, tmp_path):
     assert ga._mms_weights(allow_download=False) == ckpt
 
 
-def test_mmap_loading_restores_torchaudio_even_when_building_fails(tmp_path):
-    pytest.importorskip("torchaudio")
+def test_a_sung_line_the_vendor_placed_late_is_never_dropped(stem_of, onsets_at):
+    """Review of muvid#154: ドア was sung at 4.5-5.4 s, the vendor says
+    6.0-8.5 s, beyond the aligner's search margin, so its fine time disagrees
+    and sits off every onset, and its window is quiet. It is in no other
+    line's window, so it is not lost, and its line is never deleted."""
+    recs = [
+        {"text": "カス", "start": 1.0, "end": 2.0, "line_end": True},
+        {"text": "ドア", "start": 6.0, "end": 8.5, "line_end": True},
+        {"text": "パン", "start": 9.0, "end": 10.0, "line_end": True},
+        {"text": "ネコ", "start": 11.0, "end": 12.0, "line_end": True},
+    ]
+    coarse = from_word_records(recs, duration=13.0)
+    fine = _place(_with_glyphs(coarse), {0: 1.0, 1: 5.6, 2: 9.0, 3: 11.0})
+    onsets_at(1.0, 4.5, 4.9, 9.0, 11.0)
+    stem = stem_of(_stem((0.9, 2.1), (4.5, 5.4), (8.9, 12.2), duration=13.0))
+
+    _, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    assert not [r for r in records if r["remedy"] == "drop"]
+
+
+def test_disordered_maps_indices_across_a_dropped_line(stem_of, onsets_at):
+    """The result ``disordered`` judges has the ghost line dropped, so its
+    word positions are not the fine timing's; the flags must land on the
+    right words anyway (an identity mapping passes the simpler test)."""
+    fine, coarse = _intro_sung_once()
+    fine = _place(fine, {6: 1.65})  # バス aligned onto line 0's tail, on an onset
+    onsets_at(1.0, 1.3, 1.6, 1.65, 5.0)
+    stem = stem_of(_stem((0.9, 2.0), (5.0, 5.6), duration=8.0))
+
+    _, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    by = {r["index"]: (r["why"], r["remedy"]) for r in records}
+    assert {k for k, v in by.items() if v[1] == "drop"} == {3, 4, 5}
+    assert {k for k, v in by.items() if v[0] == "disordered"} == {0, 1, 2, 6}
+
+
+def _tiny_mms(tmp_path):
+    """A real MMS_FA-shaped wav2vec2, small enough for CI, saved to disk."""
+    import copy
+
+    torch = pytest.importorskip("torch")
+    torchaudio = pytest.importorskip("torchaudio")
     from torchaudio.pipelines._wav2vec2 import utils as u
 
+    params = copy.deepcopy(torchaudio.pipelines.MMS_FA._params)
+    params.update(
+        encoder_embed_dim=16,
+        encoder_projection_dropout=0.0,
+        encoder_pos_conv_kernel=4,
+        encoder_pos_conv_groups=2,
+        encoder_num_layers=1,
+        encoder_num_heads=2,
+        encoder_ff_interm_features=16,
+        extractor_conv_layer_config=[(8, 10, 5), (8, 3, 2)],
+    )
+    bundle = copy.copy(torchaudio.pipelines.MMS_FA)
+    bundle._params, bundle._remove_aux_axis = params, None
+    ref = u._get_model(bundle._model_type, params)
+    ckpt = tmp_path / "tiny.pt"
+    torch.save(ref.state_dict(), ckpt)
+    ref = u._extend_model(
+        ref,
+        normalize_waveform=bundle._normalize_waveform,
+        apply_log_softmax=True,
+        append_star=True,
+    ).eval()
+    return bundle, ckpt, ref
+
+
+def test_the_mapped_model_is_the_model(tmp_path):
+    """Same outputs as torchaudio's own build, nothing left on the meta
+    device, and nothing global changed (two threads may load at once)."""
+    torch = pytest.importorskip("torch")
+    from torchaudio.pipelines._wav2vec2 import utils as u
+
+    bundle, ckpt, ref = _tiny_mms(tmp_path)
     before = (u._get_model, u._get_state_dict)
 
-    class Boom:
-        def get_model(self, **kw):
-            raise RuntimeError("boom")
+    model = ga._mmap_model(bundle, ckpt)
 
-    with pytest.raises(RuntimeError, match="boom"):
-        ga._mmap_model(Boom(), tmp_path / "model.pt")
+    assert model is not None
+    assert not any(t.is_meta for t in model.parameters())
+    x = torch.randn(1, 4000)
+    with torch.inference_mode():
+        assert float((model(x)[0] - ref(x)[0]).abs().max()) == 0.0
     assert (u._get_model, u._get_state_dict) == before
 
 
-def test_mmap_loading_falls_back_when_torchaudio_internals_moved(monkeypatch, tmp_path):
+def test_mmap_loading_falls_back_loudly_when_torchaudio_internals_moved(
+    monkeypatch, tmp_path
+):
     pytest.importorskip("torchaudio")
     from torchaudio.pipelines._wav2vec2 import utils as u
 
-    monkeypatch.delattr(u, "_get_state_dict")
-    assert ga._mmap_model(object(), tmp_path / "model.pt") is None
+    monkeypatch.delattr(u, "_extend_model")
+    with pytest.warns(RuntimeWarning, match="2 GB"):
+        assert ga._mmap_model(object(), tmp_path / "model.pt") is None
