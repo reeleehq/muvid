@@ -1,5 +1,7 @@
 """Per-glyph timing and the glyph_pages archetype (muvid#142). No torch needed."""
 
+from pathlib import Path
+
 import pytest
 
 from muvid.lyricvid import glyph_align as ga
@@ -449,3 +451,222 @@ def test_default_thresholds_are_refused_alongside_explicit_detectors():
     fine, coarse = _song_with_a_ghost_line()
     with pytest.raises(ValueError, match="default_detectors"):
         ga.reconcile(fine, coarse, disagree_s=1.0, detectors=ga.default_detectors())
+
+
+# --------------------------------------------------------------------------
+# onset-aware reconciliation (muvid#150)
+# --------------------------------------------------------------------------
+
+
+def _place(tt, starts):
+    """Put word ``k``'s glyphs at ``starts[k]`` (a list, one per glyph, or a
+    single start spread 0.1 s apart), leaving other words alone."""
+    from dataclasses import replace
+
+    k = -1
+
+    def move(w):
+        nonlocal k
+        k += 1
+        if k not in starts:
+            return w
+        at = starts[k]
+        ts = at if isinstance(at, list) else [at + 0.1 * i for i in range(len(w.glyphs))]
+        return replace(
+            w,
+            glyphs=tuple(
+                replace(g, start=t, end=t + 0.08) for g, t in zip(w.glyphs, ts)
+            ),
+        )
+
+    return replace(
+        tt,
+        sections=tuple(
+            replace(
+                s,
+                lines=tuple(
+                    replace(l, words=tuple(move(w) for w in l.words)) for l in s.lines
+                ),
+            )
+            for s in tt.sections
+        ),
+    )
+
+
+@pytest.fixture
+def onsets_at(monkeypatch):
+    np = pytest.importorskip("numpy")
+
+    def use(*ts):
+        monkeypatch.setattr(ga, "stem_onsets", lambda vocals: np.array(ts, dtype=float))
+
+    return use
+
+
+def _four_lines():
+    recs = [
+        {"text": "カス", "start": 1.0, "end": 2.0, "line_end": True},
+        {"text": "バス", "start": 3.0, "end": 4.0, "line_end": True},
+        {"text": "ドア", "start": 6.0, "end": 7.0, "line_end": True},
+        {"text": "メロン", "start": 9.0, "end": 10.0, "line_end": True},
+        # two more the aligner agrees on, so the vendor's bias is measured on
+        # a majority, as on a real song
+        {"text": "パン", "start": 11.0, "end": 12.0, "line_end": True},
+        {"text": "ネコ", "start": 13.0, "end": 14.0, "line_end": True},
+    ]
+    coarse = from_word_records(recs, duration=15.0)
+    return _with_glyphs(coarse), coarse
+
+
+def test_misplaced_keeps_an_onset_backed_fine_time_the_vendor_contradicts(
+    stem_of, onsets_at
+):
+    """The muvid#150 table: バス's fine time sits on an onset and the vendor's
+    does not, so the fine time stays; ドア's is the other way round."""
+    fine, coarse = _four_lines()
+    fine = _place(fine, {0: 1.0, 1: 3.6, 2: 6.7, 3: 9.0})
+    onsets_at(1.0, 3.6, 6.0, 9.0, 11.0, 13.0)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    assert {r["text"]: r["why"] for r in records} == {"ドア": "misplaced"}
+    starts = {w.text: w.glyphs[0].start for w in out.words()}
+    assert starts["バス"] == pytest.approx(3.6)
+    assert starts["ドア"] == pytest.approx(6.0)
+    # negative control: the old default distrusts both and takes the vendor's
+    _, old = ga.reconcile(fine, coarse)
+    assert {r["text"] for r in old} == {"バス", "ドア"}
+
+
+def _intro_sung_once():
+    """``カ ト ハ`` listed twice by the vendor, sung once; the aligner pushed the
+    repeat's first word onto the next line (off any onset) and squeezed the
+    other two."""
+    recs = [
+        {"text": "カ", "start": 1.0, "end": 1.3},
+        {"text": "ト", "start": 1.3, "end": 1.6},
+        {"text": "ハ", "start": 1.6, "end": 1.9, "line_end": True},
+        {"text": "カ", "start": 2.5, "end": 2.9},
+        {"text": "ト", "start": 2.9, "end": 3.3},
+        {"text": "ハ", "start": 3.3, "end": 3.8, "line_end": True},
+        {"text": "バス", "start": 5.0, "end": 5.6, "line_end": True},
+    ]
+    coarse = from_word_records(recs, duration=8.0)
+    fine = _place(
+        _with_glyphs(coarse),
+        {0: 1.0, 1: 1.3, 2: 1.6, 3: 4.9, 4: 3.0, 5: 3.01, 6: 5.0},
+    )
+    return fine, coarse
+
+
+def test_unsung_catches_a_repeat_whose_first_word_disagrees_instead_of_squeezing(
+    stem_of, onsets_at
+):
+    fine, coarse = _intro_sung_once()
+    onsets_at(1.0, 1.3, 1.6, 5.0, 5.1)
+    stem = stem_of(_stem((0.9, 2.0), (5.0, 5.6), duration=8.0))
+
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    assert [l.text for l in out.lines()] == [
+        l.text for i, l in enumerate(coarse.lines()) if i != 1
+    ]
+    assert sorted(r["index"] for r in records if r["remedy"] == "drop") == [3, 4, 5]
+    # negative control: squeeze-only `among` misses it, so the ghost stays
+    _, old = ga.reconcile(
+        fine, coarse, detectors=(*ga.default_detectors(), ga.unsung(stem))
+    )
+    assert not [r for r in old if r["remedy"] == "drop"]
+
+
+def test_lost_never_counts_a_disagreeing_word_on_an_onset(stem_of, onsets_at):
+    """A disagreeing word the aligner put on an onset was sung somewhere, so
+    its line is never dropped, however quiet the vendor's window is."""
+    fine, coarse = _intro_sung_once()
+    onsets_at(1.0, 1.3, 1.6, 4.9, 5.0)  # the pushed カ now sits on an onset
+    stem = stem_of(_stem((0.9, 2.0), (4.9, 5.6), duration=8.0))
+
+    _, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    assert not [r for r in records if r["remedy"] == "drop"]
+
+
+def test_disordered_sends_overlapping_and_backwards_lines_to_the_vendor(
+    stem_of, onsets_at
+):
+    fine, coarse = _four_lines()
+    # カス aligned onto バス's time (both on onsets, so nothing else objects),
+    # and ドア's glyphs run backwards
+    fine = _place(fine, {0: 3.1, 1: 3.05, 2: [6.4, 6.2], 3: 9.0})
+    onsets_at(3.05, 3.1, 3.15, 6.2, 6.4, 9.0, 11.0, 13.0)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    assert {r["text"]: r["why"] for r in records} == {
+        "カス": "disordered",
+        "バス": "disordered",
+        "ドア": "disordered",
+    }
+    starts = [l.words[0].glyphs[0].start for l in out.lines()]
+    assert starts == sorted(starts)
+    # negative control: without it the overlap survives
+    first = ga.stem_detectors(stem)[:-1]
+    kept, _ = ga.reconcile(fine, coarse, detectors=first)
+    ln = list(kept.lines())
+    assert ln[0].words[-1].glyphs[-1].start >= ln[1].words[0].glyphs[0].start
+
+
+def test_keep_unsung_leaves_the_drop_out(stem_of, onsets_at):
+    fine, coarse = _intro_sung_once()
+    onsets_at(1.0, 1.3, 1.6, 5.0, 5.1)
+    stem = stem_of(_stem((0.9, 2.0), (5.0, 5.6), duration=8.0))
+
+    dets = ga.stem_detectors(stem, drop_unsung=False)
+
+    assert "unsung" not in [d.name for d in dets]
+    _, records = ga.reconcile(fine, coarse, detectors=dets)
+    assert not [r for r in records if r["remedy"] == "drop"]
+
+
+def test_the_weight_check_builds_nothing(monkeypatch, tmp_path):
+    """The CLI's refuse-early check must not build the 1.2 GB model: it used
+    to, and then refine_glyphs built it again (muvid#150)."""
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("torchaudio")
+    import torchaudio
+
+    monkeypatch.setattr(torch.hub, "get_dir", lambda: str(tmp_path))
+    ckpt = tmp_path / "checkpoints" / Path(torchaudio.pipelines.MMS_FA._path).name
+    ckpt.parent.mkdir()
+    ckpt.write_bytes(b"")
+    monkeypatch.setattr(
+        type(torchaudio.pipelines.MMS_FA),
+        "get_model",
+        lambda *a, **k: pytest.fail("the check built the model"),
+    )
+    assert ga._mms_weights(allow_download=False) == ckpt
+
+
+def test_mmap_loading_restores_torchaudio_even_when_building_fails(tmp_path):
+    pytest.importorskip("torchaudio")
+    from torchaudio.pipelines._wav2vec2 import utils as u
+
+    before = (u._get_model, u._get_state_dict)
+
+    class Boom:
+        def get_model(self, **kw):
+            raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError, match="boom"):
+        ga._mmap_model(Boom(), tmp_path / "model.pt")
+    assert (u._get_model, u._get_state_dict) == before
+
+
+def test_mmap_loading_falls_back_when_torchaudio_internals_moved(monkeypatch, tmp_path):
+    pytest.importorskip("torchaudio")
+    from torchaudio.pipelines._wav2vec2 import utils as u
+
+    monkeypatch.delattr(u, "_get_state_dict")
+    assert ga._mmap_model(object(), tmp_path / "model.pt") is None

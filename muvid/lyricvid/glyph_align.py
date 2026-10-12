@@ -273,8 +273,13 @@ def _hepburn_kana(run: str) -> str:
 # --------------------------------------------------------------------------
 
 
-def _load_mms(*, allow_download: bool):
-    """The MMS_FA model + dictionary, refusing to fetch weights unasked."""
+def _mms_weights(*, allow_download: bool) -> Path:
+    """Where the MMS_FA weights are cached, refusing to fetch them unasked.
+
+    Cheap: checks the file, builds nothing. The CLI calls it before separating
+    the vocals, so a missing licence decision fails in a second, not after
+    minutes of separation.
+    """
     import torch
     import torchaudio
 
@@ -288,7 +293,74 @@ def _load_mms(*, allow_download: bool):
             "MUVID_ALLOW_WEIGHT_DOWNLOAD=1 — after checking the licence fits "
             "your use."
         )
-    return bundle, bundle.get_model(with_star=True), bundle.get_dict()
+    return cached
+
+
+def _load_mms(*, allow_download: bool):
+    """The MMS_FA model + dictionary, refusing to fetch weights unasked.
+
+    When the weights are already cached, the model is built on the meta
+    device and the checkpoint is memory-mapped into it, so the 1.2 GB of
+    weights are file-backed pages the kernel can evict. torchaudio's own path
+    builds a randomly initialised model and then copies a loaded state dict
+    into it: about 2 GB of anonymous memory, which caused a global OOM on a
+    3.8 GB server (muvid#150). Same weights, same model (measured: identical
+    glyph times on a full song). If torchaudio's internals have moved, it
+    falls back to the copying path rather than failing.
+    """
+    import torchaudio
+
+    cached = _mms_weights(allow_download=allow_download)
+    bundle = torchaudio.pipelines.MMS_FA
+    model = None
+    if cached.exists():
+        model = _mmap_model(bundle, cached)
+    if model is None:
+        model = bundle.get_model(with_star=True)
+    return bundle, model, bundle.get_dict()
+
+
+def _mmap_model(bundle, checkpoint: Path):
+    """``bundle.get_model(with_star=True)`` with the weights memory-mapped.
+
+    Swaps torchaudio's private model and state-dict builders for the duration
+    of one call and always restores them. Returns ``None`` (use the plain
+    path) when those internals are not where torchaudio 2.x keeps them.
+    """
+    import torch
+
+    try:
+        from torchaudio.pipelines._wav2vec2 import utils as u
+
+        get_model, remove_aux = u._get_model, u._remove_aux_axes
+        u._get_state_dict  # noqa: B018 - present, or fall back
+    except (ImportError, AttributeError):
+        return None
+
+    def meta_model(*args, **kwargs):
+        with torch.device("meta"):
+            m = get_model(*args, **kwargs)
+        load = m.load_state_dict
+        m.load_state_dict = lambda sd, **kw: load(sd, assign=True, **kw)
+        return m
+
+    def mmap_state_dict(url, dl_kwargs=None, remove_axes=None):
+        sd = torch.load(checkpoint, mmap=True, weights_only=True, map_location="cpu")
+        if remove_axes:
+            remove_aux(sd, remove_axes)
+        return sd
+
+    saved = u._get_model, u._get_state_dict
+    u._get_model, u._get_state_dict = meta_model, mmap_state_dict
+    try:
+        model = bundle.get_model(with_star=True)
+    finally:
+        u._get_model, u._get_state_dict = saved
+    # assign=True kept the mapped tensors; a model left (partly) on the meta
+    # device would fail only at inference, so check now and fall back.
+    if any(t.is_meta for t in (*model.parameters(), *model.buffers())):
+        return None
+    return model
 
 
 def _read_mono(path: Path | str, sample_rate: int):
@@ -530,11 +602,8 @@ def onset_report(
     onset track makes any time look "near" something.
     """
     import numpy as np
-    import soundfile as sf
-    import librosa
 
-    y, sr = sf.read(str(vocals), dtype="float32", always_2d=True)
-    onsets = librosa.onset.onset_detect(y=y.mean(1), sr=sr, units="time")
+    onsets = stem_onsets(vocals)
     starts = np.array(_glyph_starts(timed_text))
     if not len(starts) or not len(onsets):
         return {"n_glyphs": int(len(starts)), "n_onsets": int(len(onsets))}
@@ -617,6 +686,9 @@ UNSUNG_QUIET_SHARE = 0.5
 #: line of silence (2 s on the measured song); a short sung line whose vendor
 #: window is merely LATE lands on a quiet tail too, but a short one.
 UNSUNG_MIN_QUIET_S = 1.0
+#: :func:`disordered`: a line whose last glyph starts within this many seconds
+#: of the next line's first glyph (or after it) overlaps it.
+LINE_GAP_S = 0.05
 #: Frame length for the stem's RMS level.
 UNSUNG_FRAME_S = 0.05
 #: The stem's "loud level" is this percentile of its frame RMS, so the threshold
@@ -816,6 +888,177 @@ def unsung(
         return out
 
     return Detector(name="unsung", find=find, remedy="drop")
+
+
+def stem_onsets(vocals: Path | str):
+    """Acoustic onset times (seconds) of a vocal stem, as a numpy array."""
+    import librosa
+
+    y, sr = _read_stem(vocals)
+    return librosa.onset.onset_detect(y=y, sr=sr, units="time")
+
+
+def _onset_test(vocals: Path | str, tol_s: float) -> Callable[[float], bool]:
+    """``near(t)``: is ``t`` within ``tol_s`` of an onset? Reads the stem once,
+    on first use, so a detector that never needs it costs nothing."""
+    import numpy as np
+
+    onsets = None
+
+    def near(t: float) -> bool:
+        nonlocal onsets
+        if onsets is None:
+            onsets = np.asarray(stem_onsets(vocals), dtype=float)
+        return bool(onsets.size) and float(np.min(np.abs(onsets - t))) <= tol_s
+
+    return near
+
+
+def _start_bias(fine: TimedText, coarse: TimedText) -> float:
+    """Median fine-minus-coarse word start: how late the vendor runs."""
+    import numpy as np
+
+    d = [_word_start(x) - _word_start(y) for x, y in zip(fine.words(), coarse.words())]
+    return float(np.median(d)) if d else 0.0
+
+
+def misplaced(
+    vocals: Path | str,
+    *,
+    disagree_s: float = DISAGREE_S,
+    tol_s: float = ONSET_TOL_S,
+) -> Detector:
+    """Disagreeing words where the onsets side with the vendor. Remedy: ``replace``.
+
+    :func:`disagrees` falls back to the vendor time whenever the two timings
+    differ, but on a song where the fine aligner is good the vendor is usually
+    the one that is wrong (muvid#150: seven words flagged, and every fine time
+    sat within ~60 ms of a stem onset while the vendor times were up to 10 s
+    off, one of them before the end of the previous line). So a word is
+    flagged only when its fine start is off every onset (``tol_s``) AND its
+    bias-shifted vendor start is on one: the evidence has to point at the
+    vendor, not just away from the aligner. Use it in place of
+    :func:`disagrees` when you have the stem (see :func:`stem_detectors`).
+    """
+
+    near = _onset_test(vocals, tol_s)
+
+    def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
+        bias = _start_bias(fine, coarse)
+        out: dict[int, str] = {}
+        for i, (x, y) in enumerate(zip(fine.words(), coarse.words())):
+            f0, c0 = _word_start(x), _word_start(y) + bias
+            if abs(f0 - c0) > disagree_s and not near(f0) and near(c0):
+                out[i] = f"fine start {f0:.2f} s is off every onset; vendor {c0:.2f} s is on one"
+        return out
+
+    return Detector(name="misplaced", find=find)
+
+
+def lost(
+    vocals: Path | str,
+    *,
+    disagree_s: float = DISAGREE_S,
+    min_glyph_s: float = MIN_GLYPH_S,
+    tol_s: float = ONSET_TOL_S,
+) -> Detector:
+    """Words the aligner could not place: squeezed, or disagreeing AND off-onset.
+
+    The ``among`` for :func:`unsung` when you have the stem. Squeeze alone
+    missed an unsung intro repeat whose first word the aligner had pushed onto
+    the next line (muvid#150): that word disagreed instead of squeezing, so
+    the line was never "every word flagged". Disagreement alone would drop a
+    line the vendor merely misplaced; a disagreeing word the aligner put ON an
+    onset was sung somewhere, so it is never counted as lost. Remedy:
+    ``replace`` (it only names words; :func:`unsung` decides on dropping).
+    """
+    sq, dis = squeezed(min_glyph_s=min_glyph_s), disagrees(disagree_s=disagree_s)
+    near = _onset_test(vocals, tol_s)
+
+    def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
+        fw = list(fine.words())
+        out = {
+            i: f"{why}, and off every onset"
+            for i, why in dis.find(fine, coarse).items()
+            if not near(_word_start(fw[i]))
+        }
+        out.update(sq.find(fine, coarse))
+        return out
+
+    return Detector(name="lost", find=find)
+
+
+def _line_starts(ln: Line) -> list[float]:
+    return [g.start for w in ln.words for g in w.glyphs] or [w.start for w in ln.words]
+
+
+def disordered(
+    among: Sequence[Detector],
+    *,
+    gap_s: float = LINE_GAP_S,
+) -> Detector:
+    """Lines that overlap, or whose glyphs run backwards, once ``among`` is applied.
+
+    Seen on dense backing chants (muvid#150): the aligner loses the beat, and
+    after reconciling, a line's last glyph starts after the next line's first,
+    or glyphs inside one line go out of order. Neither timing can be right, and
+    the vendor windows at least keep the lines in order, so every word of such
+    a line (both lines, for an overlap) is flagged. Remedy: ``replace``.
+
+    It judges the RESULT of reconciling with ``among``, so it runs that
+    reconcile itself; pass it after the same detectors::
+
+        dets = stem_detectors(stem)  # already ends with disordered(...)
+    """
+    among = tuple(among)
+
+    def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
+        tt, records = reconcile(fine, coarse, detectors=among)
+        dropped = {r["index"] for r in records if r["remedy"] == "drop"}
+        keep = [k for k in range(len(list(fine.words()))) if k not in dropped]
+        lines = list(tt.lines())
+        spans, k = [], 0
+        for ln in lines:
+            spans.append([keep[j] for j in range(k, k + len(ln.words))])
+            k += len(ln.words)
+        out: dict[int, str] = {}
+        for ln, span in zip(lines, spans):
+            st = _line_starts(ln)
+            if any(b < a - 1e-3 for a, b in zip(st, st[1:])):
+                out.update({j: f"line {ln.text!r}: glyphs out of order" for j in span})
+        for (a, sa), (b, sb) in zip(zip(lines, spans), zip(lines[1:], spans[1:])):
+            if max(_line_starts(a)) >= min(_line_starts(b)) - gap_s:
+                why = f"lines {a.text!r} and {b.text!r} overlap"
+                out.update({j: why for j in (*sa, *sb)})
+        return out
+
+    return Detector(name="disordered", find=find)
+
+
+def stem_detectors(
+    vocals: Path | str,
+    *,
+    disagree_s: float = DISAGREE_S,
+    min_glyph_s: float = MIN_GLYPH_S,
+    tol_s: float = ONSET_TOL_S,
+    drop_unsung: bool = True,
+) -> tuple[Detector, ...]:
+    """What to reconcile with when you have the vocal stem (muvid#150).
+
+    :func:`squeezed`, :func:`misplaced` (in place of :func:`disagrees`, which
+    trusts the vendor even when its time is impossible), :func:`unsung` with
+    ``among=``:func:`lost` (left out when ``drop_unsung`` is false), and
+    :func:`disordered` over the rest. Measured on five songs, this reproduced
+    both hand fixes the first one needed.
+    """
+    first: tuple[Detector, ...] = (
+        squeezed(min_glyph_s=min_glyph_s),
+        misplaced(vocals, disagree_s=disagree_s, tol_s=tol_s),
+    )
+    if drop_unsung:
+        among = lost(vocals, disagree_s=disagree_s, min_glyph_s=min_glyph_s, tol_s=tol_s)
+        first = (*first, unsung(vocals, among=among))
+    return (*first, disordered(first))
 
 
 def _longest_run(mask) -> int:
