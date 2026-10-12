@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-11T12:40:03Z",
+  "built_at": "2026-10-12T05:13:14Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.83",
+    "version": "0.0.84",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "f9b658a7a1774419f235afdc0513e2c23a5635ce",
-    "short_commit": "f9b658a",
+    "commit": "59c49322160c1147645bd4b7345fff8232e4d0cb",
+    "short_commit": "59c4932",
     "branch": "main",
     "tags": [
-      "0.0.83"
+      "0.0.84"
     ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/f9b658a7a1774419f235afdc0513e2c23a5635ce",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/59c49322160c1147645bd4b7345fff8232e4d0cb",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "dffa64b75cb3064db3a9c6324911a243ec9903d4",
+    "sha": "787291df6f05811df0f161ef051747ba2505ab4a",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "38139650818",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/38139650818",
+    "run_id": "38206537823",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/38206537823",
     "server_url": "https://github.com"
   },
   "tools": {
@@ -58,18 +58,20 @@
   },
   "site": {
     "modules_documented": 92,
-    "objects_documented": 972
+    "objects_documented": 978
   },
   "pypi": {
     "checked": true,
     "latest": "0.0.83",
-    "relation": "same",
+    "relation": "ahead",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout f9b658a7a1774419f235afdc0513e2c23a5635ce\npip install \"epythet==0.2.12\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 59c49322160c1147645bd4b7345fff8232e4d0cb\npip install \"epythet==0.2.12\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
-    "aligned": true,
-    "notes": []
+    "aligned": false,
+    "notes": [
+      "The documented version (0.0.84) is ahead of the latest release on PyPI (0.0.83): these docs describe unreleased code."
+    ]
   }
 }

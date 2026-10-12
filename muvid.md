@@ -1,4 +1,4 @@
-> built 2026-10-11 12:40 UTC from f9b658a (main) · muvid 0.0.83. Details: build_info.json
+> built 2026-10-12 05:13 UTC from 59c4932 (main) · muvid 0.0.84. Details: build_info.json
 
 # index.html.md
 
@@ -9188,6 +9188,7 @@ connector, and it never downloads weights unless the caller says
 | [`UNSUNG_QUIET_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_QUIET_DB)       | a frame is quiet below this many dB under the stem's own loud level...                                                                                |
 | [`UNSUNG_QUIET_SHARE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_QUIET_SHARE)    | ...and a line is unsung when at least this share of its window is quiet...                                                                            |
 | [`UNSUNG_MIN_QUIET_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_MIN_QUIET_S)    | ...in one unbroken stretch at least this long.                                                                                                        |
+| [`LINE_GAP_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.LINE_GAP_S)            | a line whose last glyph starts within this many seconds of the next line's first glyph (or after it) overlaps it.                                     |
 | [`UNSUNG_FRAME_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_FRAME_S)        | Frame length for the stem's RMS level.                                                                                                                |
 | [`UNSUNG_REF_PERCENTILE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE) | The stem's "loud level" is this percentile of its frame RMS, so the threshold follows the mix rather than an absolute dBFS a quieter stem would fail. |
 
@@ -9196,13 +9197,18 @@ connector, and it never downloads weights unless the caller says
 | [`default_detectors`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.default_detectors)(\*[, disagree_s, min_glyph_s])   | What [`reconcile()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile) runs when given none: the two that need no audio.   |
 |-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
 | [`disagrees`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disagrees)(\*[, disagree_s])                        | Words whose fine start is more than `disagree_s` from the coarse one.                                                 |
+| [`disordered`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disordered)(among, \*[, gap_s])                     | Lines that overlap, or whose glyphs run backwards, once `among` is applied.                                           |
 | [`glyph_rows`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.glyph_rows)(tt)                                     | One flat record per glyph, for a table or a quick look.                                                               |
+| [`lost`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.lost)(vocals, \*[, disagree_s, min_glyph_s, tol_s]) | Words the aligner could not place, as [`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung)'s `among`.            |
+| [`misplaced`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.misplaced)(vocals, \*[, disagree_s, tol_s])         | Disagreeing words where the onsets side with the vendor.                                                              |
 | [`onset_report`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.onset_report)(timed_text, vocals, \*[, tol_s, ...]) | How well glyph starts sit on acoustic onsets of the vocal stem.                                                       |
 | [`reconcile`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile)(fine, coarse, \*[, disagree_s, ...])     | Distrust the fine timing where a detector says so; remedy it; say where.                                              |
 | [`refine_glyphs`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.refine_glyphs)(timed_text, vocals, \*[, ...])       | Return `timed_text` with measured `Word.glyphs` on every word.                                                        |
 | [`romanize_hepburn`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.romanize_hepburn)(text)                             | Display romanisation (modified Hepburn) of kana text: what a learner reads.                                           |
 | [`romanize_kana`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.romanize_kana)(word)                                | `(glyph, romaji)` per glyph, the romaji chunks concatenating to the word.                                             |
 | [`squeezed`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.squeezed)(\*[, min_glyph_s])                        | Words with two sounded glyphs starting less than `min_glyph_s` apart.                                                 |
+| [`stem_detectors`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_detectors)(vocals, \*[, disagree_s, ...])      | What to reconcile with when you have the vocal stem (muvid#150).                                                      |
+| [`stem_onsets`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_onsets)(vocals)                                | Acoustic onset times (seconds) of a vocal stem, as a numpy array.                                                     |
 | [`unsung`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung)(vocals, \*[, among, quiet_db, ...])         | Lines a vendor transcript lists but nobody sang.                                                                      |
 | [`vocal_stem`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.vocal_stem)(audio, \*, out_dir[, allow_download])   | The song's separated vocal stem (Demucs), raising rather than degrading.                                              |
 | [`word_agreement`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.word_agreement)(fine, coarse, \*[, disagree_s])     | Compare word starts (first glyph start when present) of two timings.                                                  |
@@ -9226,6 +9232,14 @@ Names the words of a fine timing not to trust, and what to do about them.
 `{word_index: reason}`, indices into `list(fine.words())`. `remedy`
 is one of [`REMEDIES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.REMEDIES); when several detectors flag one word, `drop`
 wins — a word nobody sang has no window worth falling back to.
+
+### muvid.lyricvid.glyph_align.LINE_GAP_S *= 0.05*
+
+a line whose last glyph starts within this many seconds
+of the next line’s first glyph (or after it) overlaps it.
+
+* **Type:**
+  [`disordered()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disordered)
 
 ### muvid.lyricvid.glyph_align.MARGIN_S *= 0.5*
 
@@ -9294,12 +9308,74 @@ Remedy: `replace`.
 * **Return type:**
   [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
 
+### muvid.lyricvid.glyph_align.disordered(among, , gap_s=0.05)
+
+Lines that overlap, or whose glyphs run backwards, once `among` is applied.
+
+Seen on dense backing chants (muvid#150): the aligner loses the beat, and
+after reconciling, a line’s last glyph starts after the next line’s first,
+or glyphs inside one line go out of order. Neither timing can be right, and
+the vendor windows at least keep the lines in order, so every word of such
+a line (both lines, for an overlap) is flagged. Remedy: `replace`.
+
+It judges the RESULT of reconciling with `among`, so it runs that
+reconcile itself; pass it after the same detectors:
+
+```default
+dets = stem_detectors(stem)  # already ends with disordered(...)
+```
+
+* **Return type:**
+  [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
+
 ### muvid.lyricvid.glyph_align.glyph_rows(tt)
 
 One flat record per glyph, for a table or a quick look.
 
 * **Return type:**
   [`Iterable`](https://docs.python.org/3/library/typing.html#typing.Iterable)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
+
+### muvid.lyricvid.glyph_align.lost(vocals, , disagree_s=0.3, min_glyph_s=0.04, tol_s=0.08)
+
+Words the aligner could not place, as [`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung)’s `among`.
+
+A word is lost when it is [`squeezed()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.squeezed), or when it [`disagrees()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disagrees),
+its fine start is off every onset, AND that start lies inside ANOTHER
+line’s vendor window (bias-shifted): the aligner, finding nothing to put
+it on, pushed it onto a neighbour. That is the unsung intro repeat of
+muvid#150, whose first word disagreed instead of squeezing, so a
+squeeze-only `among` never saw the whole line as flagged.
+
+Each condition guards against deleting sung lyrics, because the remedy
+this feeds is `drop`:
+
+- A disagreeing word the aligner put ON an onset was sung somewhere.
+- A word left in its OWN line’s neighbourhood can be one the vendor merely
+  placed late, by more than the aligner’s search margin (`MARGIN_S`).
+  Its window is then quiet, and without the third condition the line is
+  deleted (review of muvid#154).
+
+Remedy: `replace` (it only names words; [`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung) decides).
+
+* **Return type:**
+  [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
+
+### muvid.lyricvid.glyph_align.misplaced(vocals, , disagree_s=0.3, tol_s=0.08)
+
+Disagreeing words where the onsets side with the vendor. Remedy: `replace`.
+
+[`disagrees()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disagrees) falls back to the vendor time whenever the two timings
+differ, but on a song where the fine aligner is good the vendor is usually
+the one that is wrong (muvid#150: seven words flagged, and every fine time
+sat within ~60 ms of a stem onset while the vendor times were up to 10 s
+off, one of them before the end of the previous line). So a word is
+flagged only when its fine start is off every onset (`tol_s`) AND its
+bias-shifted vendor start is on one: the evidence has to point at the
+vendor, not just away from the aligner. Use it in place of
+[`disagrees()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disagrees) when you have the stem (see [`stem_detectors()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_detectors)).
+
+* **Return type:**
+  [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
 
 ### muvid.lyricvid.glyph_align.onset_report(timed_text, vocals, , tol_s=0.08, seed=0, trials=20)
 
@@ -9424,6 +9500,23 @@ legitimately ~30 ms apart — and only between neighbours in the same line
 * **Return type:**
   [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
 
+### muvid.lyricvid.glyph_align.stem_detectors(vocals, , disagree_s=0.3, min_glyph_s=0.04, tol_s=0.08, drop_unsung=True)
+
+What to reconcile with when you have the vocal stem (muvid#150).
+
+[`squeezed()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.squeezed), [`misplaced()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.misplaced) (in place of [`disagrees()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disagrees), which
+trusts the vendor even when its time is impossible), [`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung) with
+`among=`[`lost()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.lost) (left out when `drop_unsung` is false), and
+[`disordered()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.disordered) over the rest. Measured on five songs, this reproduced
+both hand fixes the first one needed.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
+
+### muvid.lyricvid.glyph_align.stem_onsets(vocals)
+
+Acoustic onset times (seconds) of a vocal stem, as a numpy array.
+
 ### muvid.lyricvid.glyph_align.unsung(vocals, , among=None, quiet_db=-40.0, quiet_share=0.5, min_quiet_s=1.0, frame_s=0.05)
 
 Lines a vendor transcript lists but nobody sang. Remedy: `drop`.
@@ -9456,7 +9549,10 @@ The unit is the line, because a transcript repeats lines, and because the
 first ghost word’s own window held the decaying tail of the previous held
 note: sound, but not its sound. `among` is squeeze and not disagreement
 on purpose — a line the vendor MISPLACED was sung somewhere else, and
-dropping it would delete a sung line.
+dropping it would delete a sung line. With the stem, [`lost()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.lost) widens
+`among` only by disagreeing words that are off every onset AND sit in
+another line’s window, which a misplaced-but-sung line does not produce
+(see [`stem_detectors()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_detectors)).
 
 * **Return type:**
   [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
@@ -16650,18 +16746,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-11 12:40 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f9b658a7a1774419f235afdc0513e2c23a5635ce"><code>f9b658a</code></a> on branch <code>main</code>, for **muvid 0.0.83** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-12 05:13 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/59c49322160c1147645bd4b7345fff8232e4d0cb"><code>59c4932</code></a> on branch <code>main</code>, for **muvid 0.0.84** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.84) is ahead of the latest release on PyPI (0.0.83): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f9b658a7a1774419f235afdc0513e2c23a5635ce"><code>f9b658a7a1774419f235afdc0513e2c23a5635ce</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/59c49322160c1147645bd4b7345fff8232e4d0cb"><code>59c49322160c1147645bd4b7345fff8232e4d0cb</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.83</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.84</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -16670,9 +16768,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38139650818">38139650818</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38206537823">38206537823</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>dffa64b75cb3064db3a9c6324911a243ec9903d4</code> (in the history of the built commit) |
+| Event commit | <code>787291df6f05811df0f161ef051747ba2505ab4a</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -16697,13 +16795,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.83/">0.0.83</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.83/">0.0.83</a>, older than the documented version (0.0.84).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f9b658a7a1774419f235afdc0513e2c23a5635ce
+git checkout 59c49322160c1147645bd4b7345fff8232e4d0cb
 pip install "epythet==0.2.12"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

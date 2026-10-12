@@ -16,6 +16,7 @@ muvid.lyricvid.glyph\_align
       UNSUNG_QUIET_DB
       UNSUNG_QUIET_SHARE
       UNSUNG_MIN_QUIET_S
+      LINE_GAP_S
       UNSUNG_FRAME_S
       UNSUNG_REF_PERCENTILE
    
@@ -25,13 +26,18 @@ muvid.lyricvid.glyph\_align
    
       default_detectors
       disagrees
+      disordered
       glyph_rows
+      lost
+      misplaced
       onset_report
       reconcile
       refine_glyphs
       romanize_hepburn
       romanize_kana
       squeezed
+      stem_detectors
+      stem_onsets
       unsung
       vocal_stem
       word_agreement

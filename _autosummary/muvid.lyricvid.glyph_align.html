@@ -196,10 +196,13 @@ connector, and it never downloads weights unless the caller says
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.UNSUNG_MIN_QUIET_S" title="muvid.lyricvid.glyph_align.UNSUNG_MIN_QUIET_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNSUNG_MIN_QUIET_S</span></code></a></p></td>
 <td><p>...in one unbroken stretch at least this long.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.UNSUNG_FRAME_S" title="muvid.lyricvid.glyph_align.UNSUNG_FRAME_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNSUNG_FRAME_S</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.LINE_GAP_S" title="muvid.lyricvid.glyph_align.LINE_GAP_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LINE_GAP_S</span></code></a></p></td>
+<td><p>a line whose last glyph starts within this many seconds of the next line's first glyph (or after it) overlaps it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.UNSUNG_FRAME_S" title="muvid.lyricvid.glyph_align.UNSUNG_FRAME_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNSUNG_FRAME_S</span></code></a></p></td>
 <td><p>Frame length for the stem's RMS level.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE" title="muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNSUNG_REF_PERCENTILE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE" title="muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNSUNG_REF_PERCENTILE</span></code></a></p></td>
 <td><p>The stem's "loud level" is this percentile of its frame RMS, so the threshold follows the mix rather than an absolute dBFS a quieter stem would fail.</p></td>
 </tr>
 </tbody>
@@ -213,34 +216,49 @@ connector, and it never downloads weights unless the caller says
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.disagrees" title="muvid.lyricvid.glyph_align.disagrees"><code class="xref py py-obj docutils literal notranslate"><span class="pre">disagrees</span></code></a>(*[, disagree_s])</p></td>
 <td><p>Words whose fine start is more than <code class="docutils literal notranslate"><span class="pre">disagree_s</span></code> from the coarse one.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.glyph_rows" title="muvid.lyricvid.glyph_align.glyph_rows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">glyph_rows</span></code></a>(tt)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.disordered" title="muvid.lyricvid.glyph_align.disordered"><code class="xref py py-obj docutils literal notranslate"><span class="pre">disordered</span></code></a>(among, *[, gap_s])</p></td>
+<td><p>Lines that overlap, or whose glyphs run backwards, once <code class="docutils literal notranslate"><span class="pre">among</span></code> is applied.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.glyph_rows" title="muvid.lyricvid.glyph_align.glyph_rows"><code class="xref py py-obj docutils literal notranslate"><span class="pre">glyph_rows</span></code></a>(tt)</p></td>
 <td><p>One flat record per glyph, for a table or a quick look.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.onset_report" title="muvid.lyricvid.glyph_align.onset_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">onset_report</span></code></a>(timed_text, vocals, *[, tol_s, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.lost" title="muvid.lyricvid.glyph_align.lost"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lost</span></code></a>(vocals, *[, disagree_s, min_glyph_s, tol_s])</p></td>
+<td><p>Words the aligner could not place, as <a class="reference internal" href="#muvid.lyricvid.glyph_align.unsung" title="muvid.lyricvid.glyph_align.unsung"><code class="xref py py-func docutils literal notranslate"><span class="pre">unsung()</span></code></a>'s <code class="docutils literal notranslate"><span class="pre">among</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.misplaced" title="muvid.lyricvid.glyph_align.misplaced"><code class="xref py py-obj docutils literal notranslate"><span class="pre">misplaced</span></code></a>(vocals, *[, disagree_s, tol_s])</p></td>
+<td><p>Disagreeing words where the onsets side with the vendor.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.onset_report" title="muvid.lyricvid.glyph_align.onset_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">onset_report</span></code></a>(timed_text, vocals, *[, tol_s, ...])</p></td>
 <td><p>How well glyph starts sit on acoustic onsets of the vocal stem.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.reconcile" title="muvid.lyricvid.glyph_align.reconcile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reconcile</span></code></a>(fine, coarse, *[, disagree_s, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.reconcile" title="muvid.lyricvid.glyph_align.reconcile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reconcile</span></code></a>(fine, coarse, *[, disagree_s, ...])</p></td>
 <td><p>Distrust the fine timing where a detector says so; remedy it; say where.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.refine_glyphs" title="muvid.lyricvid.glyph_align.refine_glyphs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">refine_glyphs</span></code></a>(timed_text, vocals, *[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.refine_glyphs" title="muvid.lyricvid.glyph_align.refine_glyphs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">refine_glyphs</span></code></a>(timed_text, vocals, *[, ...])</p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">timed_text</span></code> with measured <code class="xref py py-attr docutils literal notranslate"><span class="pre">Word.glyphs</span></code> on every word.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.romanize_hepburn" title="muvid.lyricvid.glyph_align.romanize_hepburn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">romanize_hepburn</span></code></a>(text)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.romanize_hepburn" title="muvid.lyricvid.glyph_align.romanize_hepburn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">romanize_hepburn</span></code></a>(text)</p></td>
 <td><p>Display romanisation (modified Hepburn) of kana text: what a learner reads.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.romanize_kana" title="muvid.lyricvid.glyph_align.romanize_kana"><code class="xref py py-obj docutils literal notranslate"><span class="pre">romanize_kana</span></code></a>(word)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.romanize_kana" title="muvid.lyricvid.glyph_align.romanize_kana"><code class="xref py py-obj docutils literal notranslate"><span class="pre">romanize_kana</span></code></a>(word)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(glyph,</span> <span class="pre">romaji)</span></code> per glyph, the romaji chunks concatenating to the word.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.squeezed" title="muvid.lyricvid.glyph_align.squeezed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">squeezed</span></code></a>(*[, min_glyph_s])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.squeezed" title="muvid.lyricvid.glyph_align.squeezed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">squeezed</span></code></a>(*[, min_glyph_s])</p></td>
 <td><p>Words with two sounded glyphs starting less than <code class="docutils literal notranslate"><span class="pre">min_glyph_s</span></code> apart.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.unsung" title="muvid.lyricvid.glyph_align.unsung"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unsung</span></code></a>(vocals, *[, among, quiet_db, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.stem_detectors" title="muvid.lyricvid.glyph_align.stem_detectors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stem_detectors</span></code></a>(vocals, *[, disagree_s, ...])</p></td>
+<td><p>What to reconcile with when you have the vocal stem (muvid#150).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.stem_onsets" title="muvid.lyricvid.glyph_align.stem_onsets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stem_onsets</span></code></a>(vocals)</p></td>
+<td><p>Acoustic onset times (seconds) of a vocal stem, as a numpy array.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.unsung" title="muvid.lyricvid.glyph_align.unsung"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unsung</span></code></a>(vocals, *[, among, quiet_db, ...])</p></td>
 <td><p>Lines a vendor transcript lists but nobody sang.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.vocal_stem" title="muvid.lyricvid.glyph_align.vocal_stem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vocal_stem</span></code></a>(audio, *, out_dir[, allow_download])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.vocal_stem" title="muvid.lyricvid.glyph_align.vocal_stem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vocal_stem</span></code></a>(audio, *, out_dir[, allow_download])</p></td>
 <td><p>The song's separated vocal stem (Demucs), raising rather than degrading.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.word_agreement" title="muvid.lyricvid.glyph_align.word_agreement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">word_agreement</span></code></a>(fine, coarse, *[, disagree_s])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.word_agreement" title="muvid.lyricvid.glyph_align.word_agreement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">word_agreement</span></code></a>(fine, coarse, *[, disagree_s])</p></td>
 <td><p>Compare word starts (first glyph start when present) of two timings.</p></td>
 </tr>
 </tbody>
@@ -268,6 +286,17 @@ connector, and it never downloads weights unless the caller says
 is one of <a class="reference internal" href="#muvid.lyricvid.glyph_align.REMEDIES" title="muvid.lyricvid.glyph_align.REMEDIES"><code class="xref py py-data docutils literal notranslate"><span class="pre">REMEDIES</span></code></a>; when several detectors flag one word, <code class="docutils literal notranslate"><span class="pre">drop</span></code>
 wins — a word nobody sang has no window worth falling back to.</p>
 <dl class="field-list simple">
+</dl>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.LINE_GAP_S">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">LINE_GAP_S</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.05</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.LINE_GAP_S" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.LINE_GAP_S'">¶</a></dt>
+<dd><p>a line whose last glyph starts within this many seconds
+of the next line’s first glyph (or after it) overlaps it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#muvid.lyricvid.glyph_align.disordered" title="muvid.lyricvid.glyph_align.disordered"><code class="xref py py-func docutils literal notranslate"><span class="pre">disordered()</span></code></a></p>
+</dd>
 </dl>
 </dd></dl>
 <dl class="py data">
@@ -354,12 +383,77 @@ follows the mix rather than an absolute dBFS a quieter stem would fail.</p>
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.disordered">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">disordered</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">among</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">gap_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#disordered"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.disordered" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.disordered'">¶</a></dt>
+<dd><p>Lines that overlap, or whose glyphs run backwards, once <code class="docutils literal notranslate"><span class="pre">among</span></code> is applied.</p>
+<p>Seen on dense backing chants (muvid#150): the aligner loses the beat, and
+after reconciling, a line’s last glyph starts after the next line’s first,
+or glyphs inside one line go out of order. Neither timing can be right, and
+the vendor windows at least keep the lines in order, so every word of such
+a line (both lines, for an overlap) is flagged. Remedy: <code class="docutils literal notranslate"><span class="pre">replace</span></code>.</p>
+<p>It judges the RESULT of reconciling with <code class="docutils literal notranslate"><span class="pre">among</span></code>, so it runs that
+reconcile itself; pass it after the same detectors:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="n">dets</span> <span class="o">=</span> <span class="n">stem_detectors</span><span class="p">(</span><span class="n">stem</span><span class="p">)</span>  <span class="c1"># already ends with disordered(...)</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyricvid.glyph_align.Detector" title="muvid.lyricvid.glyph_align.Detector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Detector</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.glyph_rows">
 <span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">glyph_rows</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tt</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#glyph_rows"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.glyph_rows" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.glyph_rows'">¶</a></dt>
 <dd><p>One flat record per glyph, for a table or a quick look.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterable" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterable</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.lost">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">lost</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocals</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">disagree_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_glyph_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.04</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.08</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#lost"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.lost" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.lost'">¶</a></dt>
+<dd><p>Words the aligner could not place, as <a class="reference internal" href="#muvid.lyricvid.glyph_align.unsung" title="muvid.lyricvid.glyph_align.unsung"><code class="xref py py-func docutils literal notranslate"><span class="pre">unsung()</span></code></a>’s <code class="docutils literal notranslate"><span class="pre">among</span></code>.</p>
+<p>A word is lost when it is <a class="reference internal" href="#muvid.lyricvid.glyph_align.squeezed" title="muvid.lyricvid.glyph_align.squeezed"><code class="xref py py-func docutils literal notranslate"><span class="pre">squeezed()</span></code></a>, or when it <a class="reference internal" href="#muvid.lyricvid.glyph_align.disagrees" title="muvid.lyricvid.glyph_align.disagrees"><code class="xref py py-func docutils literal notranslate"><span class="pre">disagrees()</span></code></a>,
+its fine start is off every onset, AND that start lies inside ANOTHER
+line’s vendor window (bias-shifted): the aligner, finding nothing to put
+it on, pushed it onto a neighbour. That is the unsung intro repeat of
+muvid#150, whose first word disagreed instead of squeezing, so a
+squeeze-only <code class="docutils literal notranslate"><span class="pre">among</span></code> never saw the whole line as flagged.</p>
+<p>Each condition guards against deleting sung lyrics, because the remedy
+this feeds is <code class="docutils literal notranslate"><span class="pre">drop</span></code>:</p>
+<ul class="simple">
+<li><p>A disagreeing word the aligner put ON an onset was sung somewhere.</p></li>
+<li><p>A word left in its OWN line’s neighbourhood can be one the vendor merely
+placed late, by more than the aligner’s search margin (<code class="docutils literal notranslate"><span class="pre">MARGIN_S</span></code>).
+Its window is then quiet, and without the third condition the line is
+deleted (review of muvid#154).</p></li>
+</ul>
+<p>Remedy: <code class="docutils literal notranslate"><span class="pre">replace</span></code> (it only names words; <a class="reference internal" href="#muvid.lyricvid.glyph_align.unsung" title="muvid.lyricvid.glyph_align.unsung"><code class="xref py py-func docutils literal notranslate"><span class="pre">unsung()</span></code></a> decides).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyricvid.glyph_align.Detector" title="muvid.lyricvid.glyph_align.Detector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Detector</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.misplaced">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">misplaced</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocals</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">disagree_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.08</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#misplaced"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.misplaced" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.misplaced'">¶</a></dt>
+<dd><p>Disagreeing words where the onsets side with the vendor. Remedy: <code class="docutils literal notranslate"><span class="pre">replace</span></code>.</p>
+<p><a class="reference internal" href="#muvid.lyricvid.glyph_align.disagrees" title="muvid.lyricvid.glyph_align.disagrees"><code class="xref py py-func docutils literal notranslate"><span class="pre">disagrees()</span></code></a> falls back to the vendor time whenever the two timings
+differ, but on a song where the fine aligner is good the vendor is usually
+the one that is wrong (muvid#150: seven words flagged, and every fine time
+sat within ~60 ms of a stem onset while the vendor times were up to 10 s
+off, one of them before the end of the previous line). So a word is
+flagged only when its fine start is off every onset (<code class="docutils literal notranslate"><span class="pre">tol_s</span></code>) AND its
+bias-shifted vendor start is on one: the evidence has to point at the
+vendor, not just away from the aligner. Use it in place of
+<a class="reference internal" href="#muvid.lyricvid.glyph_align.disagrees" title="muvid.lyricvid.glyph_align.disagrees"><code class="xref py py-func docutils literal notranslate"><span class="pre">disagrees()</span></code></a> when you have the stem (see <a class="reference internal" href="#muvid.lyricvid.glyph_align.stem_detectors" title="muvid.lyricvid.glyph_align.stem_detectors"><code class="xref py py-func docutils literal notranslate"><span class="pre">stem_detectors()</span></code></a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyricvid.glyph_align.Detector" title="muvid.lyricvid.glyph_align.Detector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Detector</span></code></a></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -492,6 +586,28 @@ legitimately ~30 ms apart — and only between neighbours in the same line
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.stem_detectors">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">stem_detectors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocals</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">disagree_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_glyph_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.04</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_unsung</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#stem_detectors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.stem_detectors" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.stem_detectors'">¶</a></dt>
+<dd><p>What to reconcile with when you have the vocal stem (muvid#150).</p>
+<p><a class="reference internal" href="#muvid.lyricvid.glyph_align.squeezed" title="muvid.lyricvid.glyph_align.squeezed"><code class="xref py py-func docutils literal notranslate"><span class="pre">squeezed()</span></code></a>, <a class="reference internal" href="#muvid.lyricvid.glyph_align.misplaced" title="muvid.lyricvid.glyph_align.misplaced"><code class="xref py py-func docutils literal notranslate"><span class="pre">misplaced()</span></code></a> (in place of <a class="reference internal" href="#muvid.lyricvid.glyph_align.disagrees" title="muvid.lyricvid.glyph_align.disagrees"><code class="xref py py-func docutils literal notranslate"><span class="pre">disagrees()</span></code></a>, which
+trusts the vendor even when its time is impossible), <a class="reference internal" href="#muvid.lyricvid.glyph_align.unsung" title="muvid.lyricvid.glyph_align.unsung"><code class="xref py py-func docutils literal notranslate"><span class="pre">unsung()</span></code></a> with
+<code class="docutils literal notranslate"><span class="pre">among=</span></code><a class="reference internal" href="#muvid.lyricvid.glyph_align.lost" title="muvid.lyricvid.glyph_align.lost"><code class="xref py py-func docutils literal notranslate"><span class="pre">lost()</span></code></a> (left out when <code class="docutils literal notranslate"><span class="pre">drop_unsung</span></code> is false), and
+<a class="reference internal" href="#muvid.lyricvid.glyph_align.disordered" title="muvid.lyricvid.glyph_align.disordered"><code class="xref py py-func docutils literal notranslate"><span class="pre">disordered()</span></code></a> over the rest. Measured on five songs, this reproduced
+both hand fixes the first one needed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference internal" href="#muvid.lyricvid.glyph_align.Detector" title="muvid.lyricvid.glyph_align.Detector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Detector</span></code></a>, <a class="reference external" href="https://docs.python.org/3/builtins/constants.html#Ellipsis" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-data docutils literal notranslate"><span class="pre">...</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.stem_onsets">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">stem_onsets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocals</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#stem_onsets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.stem_onsets" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.stem_onsets'">¶</a></dt>
+<dd><p>Acoustic onset times (seconds) of a vocal stem, as a numpy array.</p>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.lyricvid.glyph_align.unsung">
 <span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.glyph_align.</span></span><span class="sig-name descname"><span class="pre">unsung</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vocals</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">among</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiet_db</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-40.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiet_share</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_quiet_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/glyph_align.html#unsung"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.glyph_align.unsung" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.glyph_align.unsung'">¶</a></dt>
 <dd><p>Lines a vendor transcript lists but nobody sang. Remedy: <code class="docutils literal notranslate"><span class="pre">drop</span></code>.</p>
@@ -520,7 +636,10 @@ second of silence, a ghost line is silence end to end.</p>
 first ghost word’s own window held the decaying tail of the previous held
 note: sound, but not its sound. <code class="docutils literal notranslate"><span class="pre">among</span></code> is squeeze and not disagreement
 on purpose — a line the vendor MISPLACED was sung somewhere else, and
-dropping it would delete a sung line.</p>
+dropping it would delete a sung line. With the stem, <a class="reference internal" href="#muvid.lyricvid.glyph_align.lost" title="muvid.lyricvid.glyph_align.lost"><code class="xref py py-func docutils literal notranslate"><span class="pre">lost()</span></code></a> widens
+<code class="docutils literal notranslate"><span class="pre">among</span></code> only by disagreeing words that are off every onset AND sit in
+another line’s window, which a misplaced-but-sung line does not produce
+(see <a class="reference internal" href="#muvid.lyricvid.glyph_align.stem_detectors" title="muvid.lyricvid.glyph_align.stem_detectors"><code class="xref py py-func docutils literal notranslate"><span class="pre">stem_detectors()</span></code></a>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyricvid.glyph_align.Detector" title="muvid.lyricvid.glyph_align.Detector"><code class="xref py py-class docutils literal notranslate"><span class="pre">Detector</span></code></a></span></p>
@@ -559,6 +678,7 @@ of words that disagree by more than <code class="docutils literal notranslate"><
 <ul>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.DISAGREE_S'" class="reference internal" href="#muvid.lyricvid.glyph_align.DISAGREE_S"><code class="docutils literal notranslate"><span class="pre">DISAGREE_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.Detector'" class="reference internal" href="#muvid.lyricvid.glyph_align.Detector"><code class="docutils literal notranslate"><span class="pre">Detector</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.LINE_GAP_S'" class="reference internal" href="#muvid.lyricvid.glyph_align.LINE_GAP_S"><code class="docutils literal notranslate"><span class="pre">LINE_GAP_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.MARGIN_S'" class="reference internal" href="#muvid.lyricvid.glyph_align.MARGIN_S"><code class="docutils literal notranslate"><span class="pre">MARGIN_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.MIN_GLYPH_S'" class="reference internal" href="#muvid.lyricvid.glyph_align.MIN_GLYPH_S"><code class="docutils literal notranslate"><span class="pre">MIN_GLYPH_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.ONSET_TOL_S'" class="reference internal" href="#muvid.lyricvid.glyph_align.ONSET_TOL_S"><code class="docutils literal notranslate"><span class="pre">ONSET_TOL_S</span></code></a></li>
@@ -570,13 +690,18 @@ of words that disagree by more than <code class="docutils literal notranslate"><
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE'" class="reference internal" href="#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE"><code class="docutils literal notranslate"><span class="pre">UNSUNG_REF_PERCENTILE</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.default_detectors'" class="reference internal" href="#muvid.lyricvid.glyph_align.default_detectors"><code class="docutils literal notranslate"><span class="pre">default_detectors()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.disagrees'" class="reference internal" href="#muvid.lyricvid.glyph_align.disagrees"><code class="docutils literal notranslate"><span class="pre">disagrees()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.disordered'" class="reference internal" href="#muvid.lyricvid.glyph_align.disordered"><code class="docutils literal notranslate"><span class="pre">disordered()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.glyph_rows'" class="reference internal" href="#muvid.lyricvid.glyph_align.glyph_rows"><code class="docutils literal notranslate"><span class="pre">glyph_rows()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.lost'" class="reference internal" href="#muvid.lyricvid.glyph_align.lost"><code class="docutils literal notranslate"><span class="pre">lost()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.misplaced'" class="reference internal" href="#muvid.lyricvid.glyph_align.misplaced"><code class="docutils literal notranslate"><span class="pre">misplaced()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.onset_report'" class="reference internal" href="#muvid.lyricvid.glyph_align.onset_report"><code class="docutils literal notranslate"><span class="pre">onset_report()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.reconcile'" class="reference internal" href="#muvid.lyricvid.glyph_align.reconcile"><code class="docutils literal notranslate"><span class="pre">reconcile()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.refine_glyphs'" class="reference internal" href="#muvid.lyricvid.glyph_align.refine_glyphs"><code class="docutils literal notranslate"><span class="pre">refine_glyphs()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.romanize_hepburn'" class="reference internal" href="#muvid.lyricvid.glyph_align.romanize_hepburn"><code class="docutils literal notranslate"><span class="pre">romanize_hepburn()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.romanize_kana'" class="reference internal" href="#muvid.lyricvid.glyph_align.romanize_kana"><code class="docutils literal notranslate"><span class="pre">romanize_kana()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.squeezed'" class="reference internal" href="#muvid.lyricvid.glyph_align.squeezed"><code class="docutils literal notranslate"><span class="pre">squeezed()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.stem_detectors'" class="reference internal" href="#muvid.lyricvid.glyph_align.stem_detectors"><code class="docutils literal notranslate"><span class="pre">stem_detectors()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.stem_onsets'" class="reference internal" href="#muvid.lyricvid.glyph_align.stem_onsets"><code class="docutils literal notranslate"><span class="pre">stem_onsets()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.unsung'" class="reference internal" href="#muvid.lyricvid.glyph_align.unsung"><code class="docutils literal notranslate"><span class="pre">unsung()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.vocal_stem'" class="reference internal" href="#muvid.lyricvid.glyph_align.vocal_stem"><code class="docutils literal notranslate"><span class="pre">vocal_stem()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.glyph_align.word_agreement'" class="reference internal" href="#muvid.lyricvid.glyph_align.word_agreement"><code class="docutils literal notranslate"><span class="pre">word_agreement()</span></code></a></li>
@@ -593,7 +718,7 @@ of words that disagree by more than <code class="docutils literal notranslate"><
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=6b9736a6"></script>
+<script src="../_static/documentation_options.js?v=a01ea66b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
