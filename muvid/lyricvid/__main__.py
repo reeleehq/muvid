@@ -211,7 +211,9 @@ def glyphs(
     agreement reports: read them before trusting the result (muvid#142).
     Lines the transcript lists but the stem shows nobody sang are DROPPED and
     listed under ``reconciled`` with ``remedy: drop`` (muvid#144);
-    --keep-unsung falls back to their vendor windows instead.
+    --keep-unsung falls back to their vendor windows instead. Words whose fine time is off every onset while
+    the vendor's is on one, and lines left overlapping or out of order, go
+    back to their vendor windows (muvid#150); --no-reconcile skips all of it.
     """
     import tempfile
     from pathlib import Path
@@ -220,7 +222,7 @@ def glyphs(
     from muvid.lyricvid.timed_text import from_dict
 
     coarse = from_dict(_json.loads(Path(timing).read_text(encoding="utf-8")))
-    ga._load_mms(allow_download=allow_download)  # refuse BEFORE separating, not after
+    ga._mms_weights(allow_download=allow_download)  # refuse BEFORE separating, not after
     stem = (
         Path(vocals)
         if vocals
@@ -234,7 +236,7 @@ def glyphs(
     agreement = ga.word_agreement(fine, coarse)
     replaced: list = []
     if not no_reconcile:
-        detectors = ga.default_detectors() + (() if keep_unsung else (ga.unsung(stem),))
+        detectors = ga.stem_detectors(stem, drop_unsung=not keep_unsung)
         fine, replaced = ga.reconcile(fine, coarse, detectors=detectors)
     Path(output).write_text(
         _json.dumps(fine.to_dict(), ensure_ascii=False, indent=1), encoding="utf-8"
