@@ -1063,6 +1063,7 @@ def test_timing_overrides_arg_reads_a_mapping_or_a_song_spec(value, expected, tm
     [
         ('{"1": "fine", "x2": "fien"}', "not a line index"),  # never dropped
         ('{"x": "fine"}', "not a line index"),
+        ('{"x1": "fien"}', "not a line index"),  # bad key AND bad value (muvid#159)
         ("[1]", "JSON object"),
         ('{"timing_overrides": []}', "JSON object"),
         ("song.jsn", "neither a file nor JSON"),
