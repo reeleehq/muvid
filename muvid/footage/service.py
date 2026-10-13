@@ -262,6 +262,17 @@ def _is_still_name(name: str, ext: str = "") -> bool:
     return suffix.lower() in STILL_SUFFIXES
 
 
+def _heif_opener():
+    """The HEIC reader registration: ``pi-heif`` (the `scoring` extra: decode-only, no
+    GPL x265 in its wheels), else ``pillow-heif`` if that is what the machine has. Both
+    apply the file's own rotation on decode and reset the EXIF tag (muvid#140)."""
+    try:
+        from pi_heif import register_heif_opener
+    except ImportError:
+        from pillow_heif import register_heif_opener  # raises the ImportError we report
+    return register_heif_opener
+
+
 def _add_still(fp, src: Path, *, clip_id: str, name: str, filename: str) -> dict:
     """Store a photo upright (its EXIF orientation applied — a phone portrait is stored
     sideways otherwise, and ffmpeg does not turn it), RGB, as JPEG, bounded in size."""
@@ -273,7 +284,7 @@ def _add_still(fp, src: Path, *, clip_id: str, name: str, filename: str) -> dict
         raise FootageError(f"adding photos needs Pillow ({e})") from e
     if src.suffix.lower() in (".heic", ".heif"):
         try:
-            from pillow_heif import register_heif_opener
+            register_heif_opener = _heif_opener()
         except ImportError as e:
             raise FootageError(
                 f"{src.name!r} is an iPhone HEIC photo, which this server cannot read yet "

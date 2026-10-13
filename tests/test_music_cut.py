@@ -407,7 +407,7 @@ def test_a_heic_photo_is_refused_plainly_without_its_decoder(bath, tmp_path, mon
     real_import = builtins.__import__
 
     def no_heif(name, *a, **k):
-        if name == "pillow_heif":
+        if name in ("pillow_heif", "pi_heif"):
             raise ImportError("no pillow_heif")
         return real_import(name, *a, **k)
 
@@ -416,3 +416,24 @@ def test_a_heic_photo_is_refused_plainly_without_its_decoder(bath, tmp_path, mon
     heic.write_bytes(b"not really")
     with pytest.raises(service.FootageError, match="HEIC"):
         service.add_clip(bath, path=str(heic), filename=heic.name)
+
+
+def test_an_iphone_heic_photo_goes_in_upright_as_jpeg(bath, tmp_path):
+    """muvid#140: with a HEIC reader (`pi-heif`, in the `scoring` extra the studio
+    installs) a HEIC is read instead of refused. The fixture is a 40x20 picture whose
+    `irot` box says "turn a quarter" (what a phone portrait is); the decoder applies it
+    and resets the EXIF tag, so the stored JPEG is 20x40 and `exif_transpose` does not
+    turn it a second time."""
+    pytest.importorskip("pi_heif")
+    from PIL import Image
+
+    heic = tmp_path / "IMG_0001.HEIC"
+    shutil.copy(Path(__file__).parent / "data" / "portrait_irot.heic", heic)
+    added = service.add_clip(bath, path=str(heic), filename=heic.name)
+    assert added["kind"] == "still"
+    stored = Path(bath.clip_paths()[added["clip_id"]])
+    assert stored.suffix == ".jpg"
+    with Image.open(stored) as im:
+        assert im.format == "JPEG" and im.size == (20, 40)
+        r, g, b = im.getpixel((10, 20))
+        assert r > 150 and g < 80 and b < 80  # the picture, not a blank
