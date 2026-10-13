@@ -123,8 +123,8 @@ def test_the_workspace_is_per_subgenre_and_the_drawers_come_from_disk(data):
     assert subgenre_slugs_on_disk() == ()
     SubgenreWorkspace.for_slug("lyric-video", EMAIL).create_project("p")
     (data / "subgenres" / "stray-file").write_text("not a drawer")
-    # A slug that would shadow a built-in drawer is never read as a subgenre.
-    SubgenreWorkspace.for_slug("visualizer", EMAIL).create_project("p")
+    # A directory shadowing a built-in drawer is never read as a subgenre.
+    (data / "subgenres" / "visualizer" / "projects").mkdir(parents=True)
     assert subgenre_slugs_on_disk() == ("lyric-video", "visualizer")
     kinds = [k for k, _w, _s in downloads._sources()]
     assert kinds == ["footage", "visualizer", "lyric-video"]
@@ -140,3 +140,82 @@ def test_project_status_reports_the_subgenre(data):
         assert tools.project_status("lv")["muvid_genre"] == "lyric-video"
         rows = tools.list_projects()["projects"]
     assert [(r["project_id"], r["muvid_genre"]) for r in rows] == [("lv", "lyric-video")]
+
+
+# -- adversarial-review findings: one id in two drawers ------------------------
+
+
+def _two_drawers(*, email=EMAIL):
+    nw.create_genre_project("music-visualizer", email, "p1", template="cqt")
+    nw.create_genre_project("lyric-video", email, "p1")
+    viz = VisualizerWorkspace.for_email(email).open_project("p1")
+    lyr = SubgenreWorkspace.for_slug("lyric-video", email).open_project("p1")
+    _render(viz, "v" * 12, {"visual": "cqt"})
+    _render(lyr, "l" * 12, {"subgenre": "lyric-video"})
+    return viz, lyr
+
+
+def test_a_title_in_one_drawer_never_shadows_a_render_id_in_another(data):
+    _two_drawers()
+    # The title would make resolve('l'*12) serve the visualizer render.
+    with pytest.raises(ValueError, match="collides with render id"):
+        downloads.organise(EMAIL, "p1", "v" * 12, title="l" * 12)
+    # Even a title written straight to disk cannot beat a raw id elsewhere.
+    viz = VisualizerWorkspace.for_email(EMAIL).open_project("p1")
+    meta = json.loads((viz.renders_dir / ("v" * 12) / "meta.json").read_text())
+    meta["organise"] = {"title": "l" * 12}
+    viz.write_render_meta("v" * 12, meta)
+    assert downloads.resolve(EMAIL, "p1", "l" * 12).artifact_id == "l" * 12
+
+
+def test_a_title_must_be_unique_across_drawers(data):
+    _two_drawers()
+    downloads.organise(EMAIL, "p1", "v" * 12, title="Final")
+    with pytest.raises(ValueError, match="already the title"):
+        downloads.organise(EMAIL, "p1", "l" * 12, title="final")
+    assert downloads.resolve(EMAIL, "p1", "Final").artifact_id == "v" * 12
+
+
+def test_project_status_shows_every_drawer_holding_the_id(data):
+    pytest.importorskip("fastmcp")
+    from muvid.mcp import tools
+    from muvid.mcp.identity import use_email
+
+    _two_drawers()
+    with use_email(EMAIL):
+        st = tools.project_status("p1")
+    assert st["muvid_genre"] == "visualizer"
+    assert [r["render_id"] for r in st["renders"]] == ["v" * 12]
+    [other] = st["also_in"]
+    assert other["muvid_genre"] == "lyric-video"
+    assert [r["render_id"] for r in other["renders"]] == ["l" * 12]
+
+
+def test_creating_an_old_subgenre_project_again_is_refused_not_forked(data):
+    old = VisualizerWorkspace.for_email(EMAIL).create_project("song")
+    _render(old, "a" * 12, {"meta": {"treatment_source": "proposed"}})
+    with pytest.raises(FileExistsError):
+        nw.create_genre_project("lyric-video", EMAIL, "song")
+    assert open_subgenre_project("lyric-video", EMAIL, "song").root == old.root
+    # A visualizer bucket that is not this subgenre's does not block the id.
+    viz = VisualizerWorkspace.for_email(EMAIL).create_project("tune")
+    _render(viz, "c" * 12, {"visual": "cqt"})
+    nw.create_genre_project("lyric-video", EMAIL, "tune")
+
+
+def test_a_mixed_visualizer_bucket_stays_labelled_visualizer(data):
+    ws = VisualizerWorkspace.for_email(EMAIL)
+    mixed = ws.create_project("mixed")
+    for i in range(3):
+        _render(mixed, f"{i}" * 12, {"visual": "cqt"})
+    _render(mixed, "0" * 11 + "a", {"meta": {"treatment_source": "proposed"}})
+    assert _labels() == {("mixed", "visualizer")}
+    # Each render still says what made it.
+    by_id = {d.artifact_id: d.meta["muvid_genre"] for d in downloads.list_deliverables(EMAIL)}
+    assert by_id["0" * 11 + "a"] == "lyric-video" and by_id["1" * 12] == "visualizer"
+
+
+def test_a_subgenre_cannot_take_a_built_in_drawer_name(data):
+    for slug in ("footage", "visualizer"):
+        with pytest.raises(ValueError, match="reserved"):
+            SubgenreWorkspace.for_slug(slug, EMAIL)

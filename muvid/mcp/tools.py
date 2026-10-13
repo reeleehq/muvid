@@ -107,23 +107,34 @@ def project_status(project_id: str) -> dict:
     """Your project's details and its renders (newest-first), whichever muvid
     genre it belongs to. Free.
 
-    Spans both drawers, exactly as downloads do: asserting "no project X" about
+    Spans every drawer, exactly as downloads do: asserting "no project X" about
     a footage project because only the visualizer drawer was checked is a false
     statement about the caller's own work (muvid#23's shape, still live on this
-    tool until now).
+    tool until now). When the same id names projects in more than one drawer
+    (a visualizer bucket and a lyric video can share an id since muvid#103), the
+    first is reported and the others are listed under ``also_in``.
     """
-    from muvid.downloads import _genre_label, _open
+    from muvid.downloads import _genre_label, _open_all
 
     try:
-        kind, pid, proj = _open(current_email(), project_id)
+        found = _open_all(current_email(), project_id)
     except KeyError as e:
         raise _tool_error(str(e)) from None
-    return {
-        "project_id": pid,
-        "muvid_genre": _genre_label(proj, kind),
-        "title": proj.manifest().get("title", pid),
-        "renders": proj.list_renders(),
-    }
+    if not found:
+        raise _tool_error(f"no such project {project_id!r}")
+
+    def _row(kind, pid, proj):
+        return {
+            "project_id": pid,
+            "muvid_genre": _genre_label(proj, kind),
+            "title": proj.manifest().get("title", pid),
+            "renders": proj.list_renders(),
+        }
+
+    out = _row(*found[0])
+    if len(found) > 1:
+        out["also_in"] = [_row(*f) for f in found[1:]]
+    return out
 
 
 def _resolve_input(url: str, dest: Path, *, label: str) -> Path:

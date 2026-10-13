@@ -204,6 +204,10 @@ class VisualizerWorkspace:
 #: The path segment under the data root that holds one directory per subgenre (muvid#103).
 SUBGENRES_SEGMENT = "subgenres"
 
+#: Drawer names a subgenre slug may not take: ``muvid_genre`` would no longer say
+#: which drawer a project is in, and ``downloads`` keys its drawers by these names.
+RESERVED_SLUGS = frozenset({"footage", "visualizer"})
+
 
 @dataclass(frozen=True)
 class SubgenreWorkspace(VisualizerWorkspace):
@@ -221,7 +225,35 @@ class SubgenreWorkspace(VisualizerWorkspace):
     def for_slug(
         cls, slug: str, email: str, *, root: Path | None = None
     ) -> "SubgenreWorkspace":
+        if slug in RESERVED_SLUGS:
+            raise ValueError(
+                f"subgenre slug {slug!r} is reserved for a built-in muvid drawer"
+            )
         return cls(email=email, root=root or data_root(), slug=slug)
+
+    def create_project(
+        self, project_id: str, *, title: str = "", force: bool = False
+    ) -> VisualizerProject:
+        """Create a bucket, refusing to fork one this subgenre already made.
+
+        Before muvid#103 this subgenre's projects were made in the visualizer
+        drawer. Creating the same id here would succeed and shadow it: the
+        subgenre's tools would open the new, empty bucket, and the old renders
+        would drop out of their reach. So an id whose visualizer bucket holds
+        only this subgenre's renders is refused, as it was before.
+        """
+        if not force:
+            try:
+                old = VisualizerWorkspace.for_email(
+                    self.email, root=self.root
+                ).open_project(project_id)
+            except FileNotFoundError:
+                old = None
+            if old is not None and bucket_label(old) == self.slug:
+                raise FileExistsError(
+                    f"project {project_id!r} already exists for {self.email}"
+                )
+        return super().create_project(project_id, title=title, force=force)
 
     @classmethod
     def for_email(cls, email: str, *, root: Path | None = None):
@@ -275,3 +307,45 @@ def open_subgenre_project(
         )
     except FileNotFoundError:
         return VisualizerWorkspace.for_email(email, root=root).open_project(project_id)
+
+
+def subgenre_of_render(meta: dict) -> str | None:
+    """The subgenre a render's ``meta.json`` says made it, if it says.
+
+    ``render_subgenre`` records ``subgenre`` (checked first, so a choreo or montage
+    render, whose own meta also carries ``treatment_source``, is named correctly).
+    ``render_lyric_video`` records no ``subgenre``; its nested pipeline meta has
+    ``treatment_source``, which no visualizer render carries.
+    """
+    if isinstance(meta.get("subgenre"), str) and meta["subgenre"]:
+        return meta["subgenre"]
+    inner = meta.get("meta")
+    if isinstance(inner, dict) and "treatment_source" in inner:
+        from muvid.lyricvid.manifest import SLUG
+
+        return SLUG
+    return None
+
+
+def bucket_label(proj: VisualizerProject) -> str:
+    """What a visualizer-drawer bucket holds: ``"visualizer"``, or the one subgenre
+    that made every one of its renders.
+
+    Before muvid#103 subgenre projects lived in this drawer, so the drawer cannot
+    label them; their renders can. A bucket with no renders, or one that mixes
+    visualizer and subgenre renders (allowed before and after muvid#103), stays
+    ``"visualizer"``. Read-only: nothing is moved or rewritten.
+    """
+    rdir = proj.renders_dir
+    if not rdir.is_dir():
+        return "visualizer"
+    kinds = set()
+    for child in rdir.iterdir():
+        if not child.is_dir():
+            continue
+        try:
+            meta = json.loads((child / "meta.json").read_text())
+        except (OSError, ValueError):
+            meta = {}
+        kinds.add(subgenre_of_render(meta if isinstance(meta, dict) else {}) or "visualizer")
+    return kinds.pop() if len(kinds) == 1 else "visualizer"

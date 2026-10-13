@@ -93,12 +93,13 @@ class _SubgenreDrawer:
 #: Order matters: footage first, because that is where the work is and a
 #: project_id present in several drawers opens the first by default
 #: (:func:`resolve` then looks in every drawer that has the id).
-_BUILTIN_KINDS = ("footage", "visualizer")
-
-
 def _sources():
     from muvid.footage.workspace import FootageWorkspace
-    from muvid.mcp.workspace import VisualizerWorkspace, subgenre_slugs_on_disk
+    from muvid.mcp.workspace import (
+        RESERVED_SLUGS,
+        VisualizerWorkspace,
+        subgenre_slugs_on_disk,
+    )
 
     return (
         ("footage", FootageWorkspace, "final"),
@@ -106,46 +107,26 @@ def _sources():
         *(
             (slug, _SubgenreDrawer(slug), "video")
             for slug in subgenre_slugs_on_disk()
-            if slug not in _BUILTIN_KINDS
+            if slug not in RESERVED_SLUGS
         ),
     )
 
 
 def _subgenre_of_render(meta: dict) -> "str | None":
-    """The subgenre a render's ``meta.json`` says made it, if it says.
+    """The subgenre a render's ``meta.json`` names (see ``workspace.subgenre_of_render``)."""
+    from muvid.mcp.workspace import subgenre_of_render
 
-    Before muvid#103 subgenre projects lived in the visualizer drawer, so the
-    drawer cannot label them; their renders can. ``render_subgenre`` records
-    ``subgenre``; ``render_lyric_video`` records the lyric pipeline's own meta,
-    whose ``treatment_source`` only a lyric video has.
-    """
-    if isinstance(meta.get("subgenre"), str) and meta["subgenre"]:
-        return meta["subgenre"]
-    inner = meta.get("meta")
-    if isinstance(inner, dict) and "treatment_source" in inner:
-        from muvid.lyricvid.manifest import SLUG
-
-        return SLUG
-    return None
+    return subgenre_of_render(meta)
 
 
 def _genre_label(proj, kind: str) -> str:
     """The ``muvid_genre`` a listing shows: the drawer, or for an old visualizer
-    bucket that holds subgenre renders, the subgenre those renders name.
-
-    Read-only: nothing is moved or rewritten (muvid#103 keeps old ids readable).
-    """
+    bucket, what ``workspace.bucket_label`` reads off its renders. Read-only."""
     if kind != "visualizer":
         return kind
-    rdir = proj.renders_dir
-    if not rdir.is_dir():
-        return kind
-    for child in sorted(rdir.iterdir()):
-        if child.is_dir():
-            found = _subgenre_of_render(_read_render_meta(proj, child.name))
-            if found:
-                return found
-    return kind
+    from muvid.mcp.workspace import bucket_label
+
+    return bucket_label(proj)
 
 
 __all__ = [
@@ -332,24 +313,19 @@ def resolve(email: str, project_id: str, artifact_id: str) -> Deliverable:
 def _resolve(email: str, project_id: str, artifact_id: str):
     """``(kind, pid, project, Deliverable)``: :func:`resolve`, plus where it was found.
 
-    Tries every drawer holding the id (muvid#103) and returns the first that has
-    the artifact; when none does, the first drawer's refusal is raised.
+    Since muvid#103 one project id can name a project in more than one drawer
+    (a visualizer bucket and a lyric video, say), and a claim names no drawer.
+    So the precedence :func:`resolve` promises is applied ACROSS drawers, one
+    tier at a time: a reference, then a raw render id in every drawer, and only
+    then an organise-assigned title. Trying drawer by drawer instead would let
+    a title in the first drawer shadow a raw id in the second, and serve the
+    wrong file for a claim naming that id.
     """
+    from muvid.footage.workspace import safe_component
+
     found = _open_all(email, project_id)
     if not found:
         raise KeyError(f"no such project {project_id!r}")
-    first_error = None
-    for kind, pid, proj in found:
-        try:
-            return kind, pid, proj, _resolve_in(proj, kind, pid, project_id, artifact_id)
-        except KeyError as e:
-            first_error = first_error or e
-    raise first_error
-
-
-def _resolve_in(proj, kind: str, pid: str, project_id: str, artifact_id: str):
-    """Resolve ``artifact_id`` inside one opened project (see :func:`resolve`)."""
-    from muvid.footage.workspace import safe_component
 
     raw = (artifact_id or "").strip()
     want_thumb = raw.endswith(THUMBNAIL_SUFFIX)
@@ -359,9 +335,12 @@ def _resolve_in(proj, kind: str, pid: str, project_id: str, artifact_id: str):
     n = parse_ref(raw)
     if n is not None:
         # A reference. Only we can resolve it, because only we know the ordering.
-        for rid, ref_n in _refs_for(proj, kind).items():
-            if ref_n == n and _render_file(proj, kind, rid) is not None:
-                return _deliverable(proj, kind, pid, rid, n, thumbnail=want_thumb)
+        for kind, pid, proj in found:
+            for rid, ref_n in _refs_for(proj, kind).items():
+                if ref_n == n and _render_file(proj, kind, rid) is not None:
+                    return kind, pid, proj, _deliverable(
+                        proj, kind, pid, rid, n, thumbnail=want_thumb
+                    )
         raise KeyError(f"no {format_ref(n)!r} in project {project_id!r}")
 
     try:
@@ -371,19 +350,27 @@ def _resolve_in(proj, kind: str, pid: str, project_id: str, artifact_id: str):
     # Backfill here too, so a render reports the SAME reference however it was
     # asked for. Resolving by id used to skip this, which meant `cut 4` and
     # `b02fc05417ea` described one file with two different labels.
-    try:
-        return _deliverable(
-            proj, kind, pid, aid, _refs_for(proj, kind).get(aid), thumbnail=want_thumb
-        )
-    except KeyError:
-        # Not an id — an organise-assigned TITLE must resolve from the moment
-        # it is accepted (the seam's accepted-title-resolves obligation).
+    first_error = None
+    for kind, pid, proj in found:
+        try:
+            return kind, pid, proj, _deliverable(
+                proj, kind, pid, aid, _refs_for(proj, kind).get(aid),
+                thumbnail=want_thumb,
+            )
+        except KeyError as e:
+            first_error = first_error or e
+    # Not an id — an organise-assigned TITLE must resolve from the moment it
+    # is accepted (the seam's accepted-title-resolves obligation). organise
+    # refuses a title already used in ANY drawer holding this id, so at most
+    # one render matches.
+    for kind, pid, proj in found:
         rid = _render_id_for_title(proj, raw)
-        if rid is None:
-            raise
-        return _deliverable(
-            proj, kind, pid, rid, _refs_for(proj, kind).get(rid), thumbnail=want_thumb
-        )
+        if rid is not None:
+            return kind, pid, proj, _deliverable(
+                proj, kind, pid, rid, _refs_for(proj, kind).get(rid),
+                thumbnail=want_thumb,
+            )
+    raise first_error
 
 
 def list_deliverables(email: str, project_id: str = None) -> "list[Deliverable]":
@@ -560,16 +547,22 @@ def organise(
                 "never win"
             )
         want = new_title.casefold()
-        rdir = proj.renders_dir
-        if rdir.is_dir():
+        # Every drawer holding this id, not only the target's: a claim names no
+        # drawer, so a title must be unique across all of them (muvid#103).
+        for _k, _p, other_proj in _open_all(email, project_id):
+            rdir = other_proj.renders_dir
+            if not rdir.is_dir():
+                continue
             for child in rdir.iterdir():
-                if not child.is_dir() or child.name == render_id:
+                if not child.is_dir():
+                    continue
+                if child.name == render_id and other_proj.root == proj.root:
                     continue
                 if child.name.casefold() == want:
                     raise ValueError(
                         f"{new_title!r} collides with render id {child.name!r}"
                     )
-                sib = _read_render_meta(proj, child.name).get("organise")
+                sib = _read_render_meta(other_proj, child.name).get("organise")
                 other = sib.get("title") if isinstance(sib, dict) else None
                 if isinstance(other, str) and other.strip().casefold() == want:
                     raise ValueError(
