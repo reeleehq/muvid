@@ -76,17 +76,76 @@ _CONTENT_TYPES = {
 THUMBNAIL_SUFFIX = ".thumbnail"
 
 
-#: The two genres muvid hosts, each a (workspace class, render filename stem)
-#: pair. Order matters: footage first, because that is where the work is and a
-#: project_id present in both should resolve to the one the caller meant.
+class _SubgenreDrawer:
+    """One subgenre's workspace, shaped like a workspace class (``for_email``)."""
+
+    def __init__(self, slug: str):
+        self.slug = slug
+
+    def for_email(self, email: str):
+        from muvid.mcp.workspace import SubgenreWorkspace
+
+        return SubgenreWorkspace.for_slug(self.slug, email)
+
+
+#: The drawers muvid hosts, each a (kind, workspace, render filename stem) triple:
+#: footage, the visualizer, then one per subgenre directory on disk (muvid#103).
+#: Order matters: footage first, because that is where the work is and a
+#: project_id present in several drawers opens the first by default
+#: (:func:`resolve` then looks in every drawer that has the id).
+_BUILTIN_KINDS = ("footage", "visualizer")
+
+
 def _sources():
     from muvid.footage.workspace import FootageWorkspace
-    from muvid.mcp.workspace import VisualizerWorkspace
+    from muvid.mcp.workspace import VisualizerWorkspace, subgenre_slugs_on_disk
 
     return (
         ("footage", FootageWorkspace, "final"),
         ("visualizer", VisualizerWorkspace, "video"),
+        *(
+            (slug, _SubgenreDrawer(slug), "video")
+            for slug in subgenre_slugs_on_disk()
+            if slug not in _BUILTIN_KINDS
+        ),
     )
+
+
+def _subgenre_of_render(meta: dict) -> "str | None":
+    """The subgenre a render's ``meta.json`` says made it, if it says.
+
+    Before muvid#103 subgenre projects lived in the visualizer drawer, so the
+    drawer cannot label them; their renders can. ``render_subgenre`` records
+    ``subgenre``; ``render_lyric_video`` records the lyric pipeline's own meta,
+    whose ``treatment_source`` only a lyric video has.
+    """
+    if isinstance(meta.get("subgenre"), str) and meta["subgenre"]:
+        return meta["subgenre"]
+    inner = meta.get("meta")
+    if isinstance(inner, dict) and "treatment_source" in inner:
+        from muvid.lyricvid.manifest import SLUG
+
+        return SLUG
+    return None
+
+
+def _genre_label(proj, kind: str) -> str:
+    """The ``muvid_genre`` a listing shows: the drawer, or for an old visualizer
+    bucket that holds subgenre renders, the subgenre those renders name.
+
+    Read-only: nothing is moved or rewritten (muvid#103 keeps old ids readable).
+    """
+    if kind != "visualizer":
+        return kind
+    rdir = proj.renders_dir
+    if not rdir.is_dir():
+        return kind
+    for child in sorted(rdir.iterdir()):
+        if child.is_dir():
+            found = _subgenre_of_render(_read_render_meta(proj, child.name))
+            if found:
+                return found
+    return kind
 
 
 __all__ = [
@@ -104,12 +163,11 @@ def claim(project_id: str, artifact_id: str) -> dict:
     return {"genre": GENRE, "project_id": project_id, "artifact_id": artifact_id}
 
 
-def _open(email: str, project_id: str):
-    """``(kind, pid, project)`` for whichever genre owns this project, or ``KeyError``.
+def _open_all(email: str, project_id: str) -> list:
+    """``[(kind, pid, project)]`` for every drawer holding this project id, in order.
 
-    Never distinguishes "not yours" from "no such thing": both workspaces are
-    email-scoped, so saying which would leak the existence of another tenant's
-    project.
+    Since muvid#103 a subgenre has its own id space, so one id can name a
+    visualizer bucket and a lyric video at once; resolution has to look in both.
     """
     from muvid.footage.workspace import safe_component
 
@@ -117,12 +175,26 @@ def _open(email: str, project_id: str):
         pid = safe_component(project_id, label="project_id")
     except ValueError as e:
         raise KeyError(str(e)) from None
+    out = []
     for kind, workspace, _stem in _sources():
         try:
-            return kind, pid, workspace.for_email(email).open_project(pid)
+            out.append((kind, pid, workspace.for_email(email).open_project(pid)))
         except (FileNotFoundError, ValueError):
             continue
-    raise KeyError(f"no such project {project_id!r}")
+    return out
+
+
+def _open(email: str, project_id: str):
+    """``(kind, pid, project)`` for whichever genre owns this project, or ``KeyError``.
+
+    The first drawer in :func:`_sources` order wins. Never distinguishes "not
+    yours" from "no such thing": both workspaces are email-scoped, so saying
+    which would leak the existence of another tenant's project.
+    """
+    found = _open_all(email, project_id)
+    if not found:
+        raise KeyError(f"no such project {project_id!r}")
+    return found[0]
 
 
 def _render_file(proj, kind: str, render_id: str, *, thumbnail: bool = False):
@@ -196,7 +268,9 @@ def _deliverable(proj, kind, pid, render_id, ref_n, *, thumbnail=False) -> Deliv
         "canvas": meta.get("canvas"),
         "visual": meta.get("visual"),
         "ok": meta.get("ok"),
-        "muvid_genre": kind,
+        "muvid_genre": (
+            (_subgenre_of_render(meta) or kind) if kind == "visualizer" else kind
+        ),
     }
     if org.get("tags"):
         out_meta["tags"] = list(org["tags"])
@@ -244,7 +318,7 @@ def resolve(email: str, project_id: str, artifact_id: str) -> Deliverable:
     poster image. Precedence: a reference never falls through to titles, and
     a raw id always beats a title — an id-shaped title can therefore never
     win, which is why ``organise`` refuses id-colliding titles at write time.
-    Spans both muvid genres.
+    Spans every muvid drawer (footage, visualizer, each subgenre).
 
     Raises ``KeyError`` for anything that does not resolve to an artifact of
     *this* caller — including ids shaped like an attack and other users' renders.
@@ -252,9 +326,30 @@ def resolve(email: str, project_id: str, artifact_id: str) -> Deliverable:
     else's render" and "no such render" are indistinguishable here, and saying
     which would leak existence.)
     """
-    from muvid.footage.workspace import safe_component
+    return _resolve(email, project_id, artifact_id)[3]
 
-    kind, pid, proj = _open(email, project_id)
+
+def _resolve(email: str, project_id: str, artifact_id: str):
+    """``(kind, pid, project, Deliverable)``: :func:`resolve`, plus where it was found.
+
+    Tries every drawer holding the id (muvid#103) and returns the first that has
+    the artifact; when none does, the first drawer's refusal is raised.
+    """
+    found = _open_all(email, project_id)
+    if not found:
+        raise KeyError(f"no such project {project_id!r}")
+    first_error = None
+    for kind, pid, proj in found:
+        try:
+            return kind, pid, proj, _resolve_in(proj, kind, pid, project_id, artifact_id)
+        except KeyError as e:
+            first_error = first_error or e
+    raise first_error
+
+
+def _resolve_in(proj, kind: str, pid: str, project_id: str, artifact_id: str):
+    """Resolve ``artifact_id`` inside one opened project (see :func:`resolve`)."""
+    from muvid.footage.workspace import safe_component
 
     raw = (artifact_id or "").strip()
     want_thumb = raw.endswith(THUMBNAIL_SUFFIX)
@@ -292,7 +387,7 @@ def resolve(email: str, project_id: str, artifact_id: str) -> Deliverable:
 
 
 def list_deliverables(email: str, project_id: str = None) -> "list[Deliverable]":
-    """Every render this caller can be handed, newest first, across both genres.
+    """Every render this caller can be handed, newest first, across every drawer.
 
     Without this a reference is undiscoverable — a user could only name a render
     they still remembered from an earlier conversation, which is the state that
@@ -357,7 +452,7 @@ def _count_renders(proj, kind: str) -> int:
 
 
 def list_projects(email: str) -> list:
-    """Every project of this caller's, across both muvid genres — rendered or not.
+    """Every project of this caller's, across every muvid drawer — rendered or not.
 
     muvid's half of ``nw.delivery.ProjectLister``. Returns
     ``list[nw.delivery.ProjectSummary]``, newest-modified first. One
@@ -392,7 +487,7 @@ def list_projects(email: str) -> list:
                     created_at=r.get("created"),
                     modified_at=r.get("modified"),
                     deliverable_count=_count_renders(proj, kind),
-                    meta={"muvid_genre": kind},
+                    meta={"muvid_genre": _genre_label(proj, kind)},
                 )
             )
     rows.sort(key=lambda p: p.modified_at or 0.0, reverse=True)
@@ -446,12 +541,13 @@ def organise(
             f"{THUMBNAIL_SUFFIX!r} suffix"
         )
 
-    kind, pid, proj = _open(email, project_id)
     # The target must resolve as the caller's BEFORE anything is written —
     # and resolving through resolve() itself keeps one id vocabulary. (This
     # may backfill ref ordinals as a side effect: the ref store's own
-    # idempotent behaviour on any resolve, not part of this request.)
-    target = resolve(email, project_id, raw)
+    # idempotent behaviour on any resolve, not part of this request.) The
+    # project written to is the one the render was FOUND in: an id can name
+    # more than one drawer (muvid#103).
+    kind, pid, proj, target = _resolve(email, project_id, raw)
     render_id = target.artifact_id
 
     new_title: "str | None" = None

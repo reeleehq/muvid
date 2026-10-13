@@ -830,6 +830,8 @@ hole the size of the rest of the document.
                                               .../edits/{edit_id}.json   (a named edit: edl + name + how_made + created/modified [+ span])
 ```
 
+The visualizer's buckets are `{root}/visualizer/projects/{email}/{project_id}/`, and since muvid#103 each **subgenre** (`lyric-video`, and anything `genre_subgenres` bridges) has its own: `{root}/subgenres/{slug}/projects/{email}/{project_id}/` (`muvid.mcp.workspace.SubgenreWorkspace`), so its project ids are its own and `list_projects` labels it `muvid_genre: "<slug>"`. Subgenre projects made before that live in the visualizer drawer and are **never moved**. Every subgenre tool opens through `open_subgenre_project` (its own bucket, else a visualizer bucket of that id). `downloads.resolve`/`organise` look in every drawer holding the id, and an old bucket is labelled by what its renders' `meta.json` say made them (`downloads._subgenre_of_render`). A subgenre directory is read from disk, not from the installed plugins, so an uninstalled subgenre's renders stay downloadable.
+
 A **host-placed** production (`muvid.Project`, created with `projects_dir` — the studio's path) is an `nw.Project` folder with the same footage layout one level down at `<project>/footage/` (plus `cover.jpg`), a lyric video's song/sources/renders at `<project>/lyric/`, and the host's artifact catalog at `<project>/.reelee/artifacts/` (every song, clip, render and cover hardlinked there by content hash — `muvid/catalog.py`, a knowing duplicate of braidio's writer that should move into nw). The MCP workspace passes no catalog, so its records carry no `artifact_id` and are byte-identical to before.
 
 Anything that changes the shape of `manifest.json`, `alignments.json`, the score

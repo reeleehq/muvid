@@ -110,7 +110,10 @@ def _lyric_video_project_factory(
       sources and the renders at ``<project>/lyric``.
     - ``None`` — like the visualizer, a lyric video is stateless on the connector: a
       "project" is a per-user bucket its renders land in, the lightweight
-      :class:`~muvid.mcp.workspace.VisualizerProject`.
+      :class:`~muvid.mcp.workspace.VisualizerProject` — in the lyric video's OWN
+      directory (:class:`~muvid.mcp.workspace.SubgenreWorkspace`, muvid#103), so its
+      project ids do not collide with the visualizer's and a listing labels it
+      ``lyric-video``.
 
     Both imports are **lazy** so ``import muvid.genre_lyric_video`` stays fastmcp-free.
     """
@@ -125,9 +128,9 @@ def _lyric_video_project_factory(
             template=template,
         )
     else:
-        from muvid.mcp.workspace import VisualizerWorkspace
+        from muvid.mcp.workspace import SubgenreWorkspace
 
-        proj = VisualizerWorkspace.for_email(caller).create_project(
+        proj = SubgenreWorkspace.for_slug(LYRIC_VIDEO_SLUG, caller).create_project(
             project_id, title=title
         )
     return {

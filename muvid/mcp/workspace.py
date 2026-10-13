@@ -14,6 +14,17 @@ Layout (default root ``~/.local/share/muvid``; override via ``MUVID_DATA_HOME``)
 - ``{root}/visualizer/projects/{email}/{project_id}/renders/{render_id}/`` — one render
   (its ``.mp4``, optional ``thumbnail.jpg``, and a ``meta.json`` sidecar)
 
+Every **subgenre** (``lyric-video`` and anything bridged by ``muvid.genre_subgenres``)
+gets the same kind of bucket in a directory that names it (muvid#103), so its project
+ids are its own and a listing can label it:
+
+- ``{root}/subgenres/{slug}/projects/{email}/{project_id}/`` — :class:`SubgenreWorkspace`
+
+Before muvid#103 subgenre projects were created in the visualizer workspace, sharing its
+id space and its ``visualizer`` label. Those projects are not moved: every subgenre tool
+opens through :func:`open_subgenre_project`, which falls back to the visualizer bucket of
+the same id, so an old project id keeps working exactly as before.
+
 Per the app-data-lifecycle rule this lives in the user-data dir, **never** inside the
 app/deploy tree (a deploy's ``rsync --delete`` would erase it).
 """
@@ -188,3 +199,79 @@ class VisualizerWorkspace:
             )
         rows.sort(key=lambda r: r["modified"], reverse=True)
         return rows
+
+
+#: The path segment under the data root that holds one directory per subgenre (muvid#103).
+SUBGENRES_SEGMENT = "subgenres"
+
+
+@dataclass(frozen=True)
+class SubgenreWorkspace(VisualizerWorkspace):
+    """A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.
+
+    A subgenre is stateless the way the visualizer is (a "project" is where renders
+    land), so the bucket is the same :class:`VisualizerProject`; only the directory
+    differs, which gives each subgenre its own project-id space and a path that names
+    it (muvid#103). Built with :meth:`for_slug`, never :meth:`for_email`.
+    """
+
+    slug: str
+
+    @classmethod
+    def for_slug(
+        cls, slug: str, email: str, *, root: Path | None = None
+    ) -> "SubgenreWorkspace":
+        return cls(email=email, root=root or data_root(), slug=slug)
+
+    @classmethod
+    def for_email(cls, email: str, *, root: Path | None = None):
+        raise TypeError(
+            "a SubgenreWorkspace belongs to one subgenre: use "
+            "SubgenreWorkspace.for_slug(slug, email)"
+        )
+
+    @property
+    def projects_dir(self) -> Path:
+        return (
+            self.root
+            / SUBGENRES_SEGMENT
+            / _safe_component(self.slug, label="subgenre")
+            / "projects"
+            / _safe_component(self.email, label="email")
+        )
+
+
+def subgenre_slugs_on_disk(*, root: Path | None = None) -> tuple[str, ...]:
+    """The subgenres that have a directory under the data root, sorted.
+
+    Read from disk rather than from the installed plugins, so a project made by a
+    subgenre that has since been uninstalled is still listed and downloadable.
+    """
+    base = (root or data_root()) / SUBGENRES_SEGMENT
+    if not base.is_dir():
+        return ()
+    out = []
+    for child in base.iterdir():
+        try:
+            if child.is_dir() and _safe_component(child.name, label="subgenre") == child.name:
+                out.append(child.name)
+        except ValueError:
+            continue
+    return tuple(sorted(out))
+
+
+def open_subgenre_project(
+    slug: str, email: str, project_id: str, *, root: Path | None = None
+) -> VisualizerProject:
+    """The bucket a subgenre renders into: its own, else a visualizer bucket of that id.
+
+    The fallback is what keeps every project made before muvid#103 (and every
+    visualizer project a caller already rendered a lyric video into) working: those
+    live in the visualizer workspace and are read in place, never moved.
+    """
+    try:
+        return SubgenreWorkspace.for_slug(slug, email, root=root).open_project(
+            project_id
+        )
+    except FileNotFoundError:
+        return VisualizerWorkspace.for_email(email, root=root).open_project(project_id)

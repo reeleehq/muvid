@@ -75,9 +75,11 @@ def list_visuals() -> dict:
 
 
 def list_projects() -> dict:
-    """List ALL your muvid projects — music-video (footage) AND visualizer. Free.
+    """List ALL your muvid projects — music-video (footage), visualizer, and every
+    subgenre such as lyric-video. Free.
 
-    Rows carry ``muvid_genre`` ("footage" or "visualizer") and ``n_renders``
+    Rows carry ``muvid_genre`` ("footage", "visualizer", or a subgenre's slug
+    such as "lyric-video") and ``n_renders``
     (0 means the project exists but has no finished render yet — it is still
     listed). This tool used to read only the visualizer drawer, so a caller
     whose footage renders the connector had just SERVED was told they had no
@@ -110,7 +112,7 @@ def project_status(project_id: str) -> dict:
     statement about the caller's own work (muvid#23's shape, still live on this
     tool until now).
     """
-    from muvid.downloads import _open
+    from muvid.downloads import _genre_label, _open
 
     try:
         kind, pid, proj = _open(current_email(), project_id)
@@ -118,7 +120,7 @@ def project_status(project_id: str) -> dict:
         raise _tool_error(str(e)) from None
     return {
         "project_id": pid,
-        "muvid_genre": kind,
+        "muvid_genre": _genre_label(proj, kind),
         "title": proj.manifest().get("title", pid),
         "renders": proj.list_renders(),
     }
