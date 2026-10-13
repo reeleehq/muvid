@@ -9,17 +9,24 @@ muvid.mcp.workspace
    .. autosummary::
    
       DATA_HOME_ENV_VAR
+      SUBGENRES_SEGMENT
+      RESERVED_SLUGS
    
    .. rubric:: Functions
 
    .. autosummary::
    
+      bucket_label
       data_root
+      open_subgenre_project
+      subgenre_of_render
+      subgenre_slugs_on_disk
    
    .. rubric:: Classes
 
    .. autosummary::
    
+      SubgenreWorkspace
       VisualizerProject
       VisualizerWorkspace
    

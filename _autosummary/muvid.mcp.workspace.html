@@ -153,6 +153,16 @@ uploads shared across genres) is a deliberate follow-up.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">{root}/visualizer/projects/{email}/{project_id}/renders/{render_id}/</span></code> — one render
 (its <code class="docutils literal notranslate"><span class="pre">.mp4</span></code>, optional <code class="docutils literal notranslate"><span class="pre">thumbnail.jpg</span></code>, and a <code class="docutils literal notranslate"><span class="pre">meta.json</span></code> sidecar)</p></li>
 </ul>
+<p>Every <strong>subgenre</strong> (<code class="docutils literal notranslate"><span class="pre">lyric-video</span></code> and anything bridged by <code class="docutils literal notranslate"><span class="pre">muvid.genre_subgenres</span></code>)
+gets the same kind of bucket in a directory that names it (muvid#103), so its project
+ids are its own and a listing can label it:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">{root}/subgenres/{slug}/projects/{email}/{project_id}/</span></code> — <a class="reference internal" href="#muvid.mcp.workspace.SubgenreWorkspace" title="muvid.mcp.workspace.SubgenreWorkspace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SubgenreWorkspace</span></code></a></p></li>
+</ul>
+<p>Before muvid#103 subgenre projects were created in the visualizer workspace, sharing its
+id space and its <code class="docutils literal notranslate"><span class="pre">visualizer</span></code> label. Those projects are not moved: every subgenre tool
+opens through <a class="reference internal" href="#muvid.mcp.workspace.open_subgenre_project" title="muvid.mcp.workspace.open_subgenre_project"><code class="xref py py-func docutils literal notranslate"><span class="pre">open_subgenre_project()</span></code></a>, which falls back to the visualizer bucket of
+the same id, so an old project id keeps working exactly as before.</p>
 <p>Per the app-data-lifecycle rule this lives in the user-data dir, <strong>never</strong> inside the
 app/deploy tree (a deploy’s <code class="docutils literal notranslate"><span class="pre">rsync</span> <span class="pre">--delete</span></code> would erase it).</p>
 <p class="rubric">Module Attributes</p>
@@ -161,23 +171,44 @@ app/deploy tree (a deploy’s <code class="docutils literal notranslate"><span c
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.DATA_HOME_ENV_VAR" title="muvid.mcp.workspace.DATA_HOME_ENV_VAR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DATA_HOME_ENV_VAR</span></code></a></p></td>
 <td><p>Env var overriding the muvid data root (where per-user visualizer buckets live).</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.workspace.SUBGENRES_SEGMENT" title="muvid.mcp.workspace.SUBGENRES_SEGMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SUBGENRES_SEGMENT</span></code></a></p></td>
+<td><p>The path segment under the data root that holds one directory per subgenre (muvid#103).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.RESERVED_SLUGS" title="muvid.mcp.workspace.RESERVED_SLUGS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RESERVED_SLUGS</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">muvid_genre</span></code> would no longer say which drawer a project is in, and <code class="docutils literal notranslate"><span class="pre">downloads</span></code> keys its drawers by these names.</p></td>
+</tr>
 </tbody>
 </table>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.data_root" title="muvid.mcp.workspace.data_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">data_root</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.bucket_label" title="muvid.mcp.workspace.bucket_label"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bucket_label</span></code></a>(proj)</p></td>
+<td><p>What a visualizer-drawer bucket holds: <code class="docutils literal notranslate"><span class="pre">"visualizer"</span></code>, or the one subgenre whose work is all it holds.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.workspace.data_root" title="muvid.mcp.workspace.data_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">data_root</span></code></a>()</p></td>
 <td><p>The muvid data root: <code class="docutils literal notranslate"><span class="pre">$MUVID_DATA_HOME</span></code> or <code class="docutils literal notranslate"><span class="pre">~/.local/share/muvid</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.open_subgenre_project" title="muvid.mcp.workspace.open_subgenre_project"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_subgenre_project</span></code></a>(slug, email, project_id, *)</p></td>
+<td><p>The bucket a subgenre renders into: its own, else a visualizer bucket of that id.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.workspace.subgenre_of_render" title="muvid.mcp.workspace.subgenre_of_render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">subgenre_of_render</span></code></a>(meta)</p></td>
+<td><p>The subgenre a render's <code class="docutils literal notranslate"><span class="pre">meta.json</span></code> says made it, if it says.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.subgenre_slugs_on_disk" title="muvid.mcp.workspace.subgenre_slugs_on_disk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">subgenre_slugs_on_disk</span></code></a>(*[, root])</p></td>
+<td><p>The subgenres that have a directory under the data root, sorted.</p></td>
 </tr>
 </tbody>
 </table>
 <p class="rubric">Classes</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.VisualizerProject" title="muvid.mcp.workspace.VisualizerProject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisualizerProject</span></code></a>(email, project_id, root)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.SubgenreWorkspace" title="muvid.mcp.workspace.SubgenreWorkspace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SubgenreWorkspace</span></code></a>(email, root, slug)</p></td>
+<td><p>A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.workspace.VisualizerProject" title="muvid.mcp.workspace.VisualizerProject"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisualizerProject</span></code></a>(email, project_id, root)</p></td>
 <td><p>One caller's visualizer bucket — a folder its renders land in.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.workspace.VisualizerWorkspace" title="muvid.mcp.workspace.VisualizerWorkspace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisualizerWorkspace</span></code></a>(email, root)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.workspace.VisualizerWorkspace" title="muvid.mcp.workspace.VisualizerWorkspace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VisualizerWorkspace</span></code></a>(email, root)</p></td>
 <td><p>A single caller's private visualizer area, addressed by <code class="docutils literal notranslate"><span class="pre">email</span></code>.</p></td>
 </tr>
 </tbody>
@@ -188,6 +219,49 @@ app/deploy tree (a deploy’s <code class="docutils literal notranslate"><span c
 <dd><p>Env var overriding the muvid data root (where per-user visualizer buckets live).
 Re-exported from <a class="reference internal" href="muvid.paths.html#module-muvid.paths" title="muvid.paths"><code class="xref py py-mod docutils literal notranslate"><span class="pre">muvid.paths</span></code></a>, the SSOT — this module used to carry its own
 verbatim copy of both, beside a second copy in <code class="docutils literal notranslate"><span class="pre">muvid/footage/workspace.py</span></code>.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.RESERVED_SLUGS">
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">RESERVED_SLUGS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">frozenset({'footage',</span> <span class="pre">'visualizer'})</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.RESERVED_SLUGS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.RESERVED_SLUGS'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">muvid_genre</span></code> would no longer say
+which drawer a project is in, and <code class="docutils literal notranslate"><span class="pre">downloads</span></code> keys its drawers by these names.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Drawer names a subgenre slug may not take</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.SUBGENRES_SEGMENT">
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">SUBGENRES_SEGMENT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'subgenres'</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.SUBGENRES_SEGMENT" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.SUBGENRES_SEGMENT'">¶</a></dt>
+<dd><p>The path segment under the data root that holds one directory per subgenre (muvid#103).</p>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.SubgenreWorkspace">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">SubgenreWorkspace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">email</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slug</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#SubgenreWorkspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.SubgenreWorkspace" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.SubgenreWorkspace'">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#muvid.mcp.workspace.VisualizerWorkspace" title="muvid.mcp.workspace.VisualizerWorkspace"><code class="xref py py-class docutils literal notranslate"><span class="pre">VisualizerWorkspace</span></code></a></p>
+<p>A single caller’s area for ONE subgenre: the visualizer’s bucket, in its own directory.</p>
+<p>A subgenre is stateless the way the visualizer is (a “project” is where renders
+land), so the bucket is the same <a class="reference internal" href="#muvid.mcp.workspace.VisualizerProject" title="muvid.mcp.workspace.VisualizerProject"><code class="xref py py-class docutils literal notranslate"><span class="pre">VisualizerProject</span></code></a>; only the directory
+differs, which gives each subgenre its own project-id space and a path that names
+it (muvid#103). Built with <code class="xref py py-meth docutils literal notranslate"><span class="pre">for_slug()</span></code>, never <code class="xref py py-meth docutils literal notranslate"><span class="pre">for_email()</span></code>.</p>
+<dl class="field-list simple">
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.SubgenreWorkspace.create_project">
+<span class="sig-name descname"><span class="pre">create_project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_id</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">force</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#SubgenreWorkspace.create_project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.SubgenreWorkspace.create_project" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.SubgenreWorkspace.create_project'">¶</a></dt>
+<dd><p>Create a bucket, refusing to fork one this subgenre already made.</p>
+<p>Before muvid#103 this subgenre’s projects were made in the visualizer
+drawer. Creating the same id here would succeed and shadow it: the
+subgenre’s tools would open the new, empty bucket, and the old renders
+would drop out of their reach. So an id whose visualizer bucket holds
+only this subgenre’s renders is refused, as it was before.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.mcp.workspace.VisualizerProject" title="muvid.mcp.workspace.VisualizerProject"><code class="xref py py-class docutils literal notranslate"><span class="pre">VisualizerProject</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.mcp.workspace.VisualizerProject">
@@ -261,6 +335,24 @@ caller can never escape their own subtree.</p>
 </dd></dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.bucket_label">
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">bucket_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">proj</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#bucket_label"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.bucket_label" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.bucket_label'">¶</a></dt>
+<dd><p>What a visualizer-drawer bucket holds: <code class="docutils literal notranslate"><span class="pre">"visualizer"</span></code>, or the one subgenre
+whose work is all it holds.</p>
+<p>Before muvid#103 subgenre projects lived in this drawer, so the drawer cannot
+label them; their renders can. Evidence is each finished render’s
+<code class="docutils literal notranslate"><span class="pre">meta.json</span></code> (a render folder without one is a render that failed or is
+still running, and says nothing), plus the <code class="docutils literal notranslate"><span class="pre">lyricvid/</span></code> folder the lyric
+tools fetch their inputs into. A bucket with no evidence, or one that mixes
+visualizer and subgenre work (allowed before and after muvid#103), stays
+<code class="docutils literal notranslate"><span class="pre">"visualizer"</span></code>. Read-only: nothing is moved or rewritten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.mcp.workspace.data_root">
 <span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">data_root</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#data_root"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.data_root" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.data_root'">¶</a></dt>
 <dd><p>The muvid data root: <code class="docutils literal notranslate"><span class="pre">$MUVID_DATA_HOME</span></code> or <code class="docutils literal notranslate"><span class="pre">~/.local/share/muvid</span></code>.</p>
@@ -272,11 +364,56 @@ A forwarder, not an alias, for the introspection reason given on the footage twi
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.open_subgenre_project">
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">open_subgenre_project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slug</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">email</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_id</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#open_subgenre_project"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.open_subgenre_project" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.open_subgenre_project'">¶</a></dt>
+<dd><p>The bucket a subgenre renders into: its own, else a visualizer bucket of that id.</p>
+<p>The fallback is what keeps every project made before muvid#103 (and every
+visualizer project a caller already rendered a lyric video into) working: those
+live in the visualizer workspace and are read in place, never moved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.mcp.workspace.VisualizerProject" title="muvid.mcp.workspace.VisualizerProject"><code class="xref py py-class docutils literal notranslate"><span class="pre">VisualizerProject</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.subgenre_of_render">
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">subgenre_of_render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">meta</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#subgenre_of_render"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.subgenre_of_render" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.subgenre_of_render'">¶</a></dt>
+<dd><p>The subgenre a render’s <code class="docutils literal notranslate"><span class="pre">meta.json</span></code> says made it, if it says.</p>
+<p><code class="docutils literal notranslate"><span class="pre">render_subgenre</span></code> records <code class="docutils literal notranslate"><span class="pre">subgenre</span></code> (checked first, so a choreo or montage
+render, whose own meta also carries <code class="docutils literal notranslate"><span class="pre">treatment_source</span></code>, is named correctly).
+<code class="docutils literal notranslate"><span class="pre">render_lyric_video</span></code> records no <code class="docutils literal notranslate"><span class="pre">subgenre</span></code>; its nested pipeline meta has
+<code class="docutils literal notranslate"><span class="pre">treatment_source</span></code>, which no visualizer render carries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a> | <a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.mcp.workspace.subgenre_slugs_on_disk">
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.workspace.</span></span><span class="sig-name descname"><span class="pre">subgenre_slugs_on_disk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">root</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/workspace.html#subgenre_slugs_on_disk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.workspace.subgenre_slugs_on_disk" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.workspace.subgenre_slugs_on_disk'">¶</a></dt>
+<dd><p>The subgenres that have a directory under the data root, sorted.</p>
+<p>Read from disk rather than from the installed plugins, so a project made by a
+subgenre that has since been uninstalled is still listed and downloadable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/constants.html#Ellipsis" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-data docutils literal notranslate"><span class="pre">...</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
 <li><a :data-current="activeSection === '#muvid.mcp.workspace.DATA_HOME_ENV_VAR'" class="reference internal" href="#muvid.mcp.workspace.DATA_HOME_ENV_VAR"><code class="docutils literal notranslate"><span class="pre">DATA_HOME_ENV_VAR</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.RESERVED_SLUGS'" class="reference internal" href="#muvid.mcp.workspace.RESERVED_SLUGS"><code class="docutils literal notranslate"><span class="pre">RESERVED_SLUGS</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.SUBGENRES_SEGMENT'" class="reference internal" href="#muvid.mcp.workspace.SUBGENRES_SEGMENT"><code class="docutils literal notranslate"><span class="pre">SUBGENRES_SEGMENT</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.SubgenreWorkspace'" class="reference internal" href="#muvid.mcp.workspace.SubgenreWorkspace"><code class="docutils literal notranslate"><span class="pre">SubgenreWorkspace</span></code></a><ul>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.SubgenreWorkspace.create_project'" class="reference internal" href="#muvid.mcp.workspace.SubgenreWorkspace.create_project"><code class="docutils literal notranslate"><span class="pre">SubgenreWorkspace.create_project()</span></code></a></li>
+</ul>
+</li>
 <li><a :data-current="activeSection === '#muvid.mcp.workspace.VisualizerProject'" class="reference internal" href="#muvid.mcp.workspace.VisualizerProject"><code class="docutils literal notranslate"><span class="pre">VisualizerProject</span></code></a><ul>
 <li><a :data-current="activeSection === '#muvid.mcp.workspace.VisualizerProject.list_renders'" class="reference internal" href="#muvid.mcp.workspace.VisualizerProject.list_renders"><code class="docutils literal notranslate"><span class="pre">VisualizerProject.list_renders()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.mcp.workspace.VisualizerProject.new_render_dir'" class="reference internal" href="#muvid.mcp.workspace.VisualizerProject.new_render_dir"><code class="docutils literal notranslate"><span class="pre">VisualizerProject.new_render_dir()</span></code></a></li>
@@ -288,7 +425,11 @@ A forwarder, not an alias, for the introspection reason given on the footage twi
 <li><a :data-current="activeSection === '#muvid.mcp.workspace.VisualizerWorkspace.open_project'" class="reference internal" href="#muvid.mcp.workspace.VisualizerWorkspace.open_project"><code class="docutils literal notranslate"><span class="pre">VisualizerWorkspace.open_project()</span></code></a></li>
 </ul>
 </li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.bucket_label'" class="reference internal" href="#muvid.mcp.workspace.bucket_label"><code class="docutils literal notranslate"><span class="pre">bucket_label()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.mcp.workspace.data_root'" class="reference internal" href="#muvid.mcp.workspace.data_root"><code class="docutils literal notranslate"><span class="pre">data_root()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.open_subgenre_project'" class="reference internal" href="#muvid.mcp.workspace.open_subgenre_project"><code class="docutils literal notranslate"><span class="pre">open_subgenre_project()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.subgenre_of_render'" class="reference internal" href="#muvid.mcp.workspace.subgenre_of_render"><code class="docutils literal notranslate"><span class="pre">subgenre_of_render()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.mcp.workspace.subgenre_slugs_on_disk'" class="reference internal" href="#muvid.mcp.workspace.subgenre_slugs_on_disk"><code class="docutils literal notranslate"><span class="pre">subgenre_slugs_on_disk()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -302,7 +443,7 @@ A forwarder, not an alias, for the introspection reason given on the footage twi
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=db840bda"></script>
+<script src="../_static/documentation_options.js?v=38a06c88"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
