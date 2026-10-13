@@ -22,6 +22,7 @@ _REQUIRED_IN_CI = [
     ("nw", "mcp"),
     ("fastmcp", "mcp"),
     ("mixing", "(base dependency)"),
+    ("pi_heif", "photos"),  # the HEIC photo test (muvid#140)
 ]
 
 

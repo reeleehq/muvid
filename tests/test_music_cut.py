@@ -407,7 +407,7 @@ def test_a_heic_photo_is_refused_plainly_without_its_decoder(bath, tmp_path, mon
     real_import = builtins.__import__
 
     def no_heif(name, *a, **k):
-        if name == "pillow_heif":
+        if name in ("pillow_heif", "pi_heif"):
             raise ImportError("no pillow_heif")
         return real_import(name, *a, **k)
 
@@ -418,22 +418,22 @@ def test_a_heic_photo_is_refused_plainly_without_its_decoder(bath, tmp_path, mon
         service.add_clip(bath, path=str(heic), filename=heic.name)
 
 
-def test_an_iphone_heic_photo_goes_in_as_jpeg(bath, tmp_path):
-    """muvid#140: with `pillow-heif` (in the `scoring` extra the studio installs) a HEIC
-    is read instead of refused. pillow-heif applies the file's own rotation (`irot`) when
-    it decodes and resets the EXIF tag to 1, so the service's `exif_transpose` neither
-    misses an iPhone portrait nor turns it twice."""
-    heif = pytest.importorskip("pillow_heif")
+def test_an_iphone_heic_photo_goes_in_upright_as_jpeg(bath, tmp_path):
+    """muvid#140: with a HEIC reader (`pi-heif`, in the `scoring` extra the studio
+    installs) a HEIC is read instead of refused. The fixture is a 40x20 picture whose
+    `irot` box says "turn a quarter" (what a phone portrait is); the decoder applies it
+    and resets the EXIF tag, so the stored JPEG is 20x40 and `exif_transpose` does not
+    turn it a second time."""
+    pytest.importorskip("pi_heif")
     from PIL import Image
 
-    heif.register_heif_opener()  # the writer too; the service registers its own reader
     heic = tmp_path / "IMG_0001.HEIC"
-    Image.new("RGB", (40, 20), (200, 30, 30)).save(heic, format="HEIF")
+    shutil.copy(Path(__file__).parent / "data" / "portrait_irot.heic", heic)
     added = service.add_clip(bath, path=str(heic), filename=heic.name)
     assert added["kind"] == "still"
     stored = Path(bath.clip_paths()[added["clip_id"]])
     assert stored.suffix == ".jpg"
     with Image.open(stored) as im:
-        assert im.format == "JPEG" and im.size == (40, 20)
-        r, g, b = im.getpixel((20, 10))
+        assert im.format == "JPEG" and im.size == (20, 40)
+        r, g, b = im.getpixel((10, 20))
         assert r > 150 and g < 80 and b < 80  # the picture, not a blank

@@ -134,10 +134,10 @@ scoring = [
     "mediapipe",
     "mixing[beats]>=0.0.30",
     # iPhone HEIC photos (muvid#140; service._add_still reads them when this imports and
-    # refuses with a plain reason when not). BSD-3; its wheels bundle libheif, dynamically
-    # linked and LGPL, so it is the one non-permissive piece of the core tier — the
-    # library ships as a separate shared object, not compiled into muvid.
-    "pillow-heif",
+    # refuses with a plain reason when not). `pi-heif` is the decode-only build of
+    # pillow-heif: BSD-3, with libheif and libde265 (LGPLv3) dynamically linked in its
+    # wheels. NOT `pillow-heif`, whose wheels also bundle x265 (GPLv2).
+    "pi-heif",
 ]
 # Optional: enables the selector's `boundary_mode="beats+shots"` (PySceneDetect shot cuts as
 # extra cut candidates). Absent → the mode degrades cleanly to beats-only.
@@ -193,6 +193,11 @@ lyricvid-glyphs = [
 # muvid` must not pay for a renderer most callers never reach.
 lyricvid = [
     "pysubs2>=1.6",
+]
+# iPhone HEIC photos on their own (muvid#140): CI installs this so the HEIC test runs; the
+# `scoring` extra already includes the same dependency, which is how the studio gets it.
+photos = [
+    "pi-heif",
 ]
 ui = [
     "fastapi",
@@ -314,7 +319,7 @@ project_name = ""
 # hardcodes the same value in its two install-deps-uv steps; keep the three sites in
 # agreement.
 [tool.wads.ci.install]
-extras = "ai,mcp,ui,lyricvid"
+extras = "ai,mcp,ui,lyricvid,photos"
 
 [tool.wads.ci.commands]
 pre_test = []
