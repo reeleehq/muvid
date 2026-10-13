@@ -9,6 +9,7 @@ muvid.lyrics
    .. autosummary::
    
       indentation_varies
+      layout_dropped
       line_indents
       lyrics_from_transcript
       parse_lyrics_md

@@ -1,4 +1,4 @@
-> built 2026-10-13 09:06 UTC from e42dc6a (main) · muvid 0.0.90. Details: build_info.json
+> built 2026-10-13 15:49 UTC from 1f1fffd (main) · muvid 0.0.91. Details: build_info.json
 
 # index.html.md
 
@@ -8525,6 +8525,7 @@ to splice in.
 
 | [`indentation_varies`](_autosummary/muvid.lyrics.html.md#muvid.lyrics.indentation_varies)(indents)                | True when lyric lines are indented differently: a shape a parse would lose.          |
 |---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [`layout_dropped`](_autosummary/muvid.lyrics.html.md#muvid.lyrics.layout_dropped)(md)                         | What the default parse flattens, as data: `None` for ordinary lyrics.                |
 | [`line_indents`](_autosummary/muvid.lyrics.html.md#muvid.lyrics.line_indents)(md)                           | The leading whitespace of each lyric line, aligned with `parse_lyrics_md(md).lines`. |
 | [`lyrics_from_transcript`](_autosummary/muvid.lyrics.html.md#muvid.lyrics.lyrics_from_transcript)(transcript)         | Build a default LyricsDoc from a transcription response.                             |
 | [`parse_lyrics_md`](_autosummary/muvid.lyrics.html.md#muvid.lyrics.parse_lyrics_md)(md, \*[, preserve_indent]) | Parse the user-editable lyrics markdown.                                             |
@@ -8590,6 +8591,22 @@ True when lyric lines are indented differently: a shape a parse would lose.
 ```pycon
 >>> indentation_varies(["", "  "]), indentation_varies(["  ", "  "])
 (True, False)
+```
+
+### muvid.lyrics.layout_dropped(md)
+
+What the default parse flattens, as data: `None` for ordinary lyrics.
+
+The same test as [`ShapedLyricsWarning`](_autosummary/muvid.lyrics.html.md#muvid.lyrics.ShapedLyricsWarning), for a caller that cannot see
+a Python warning (an MCP reply, a render’s meta; muvid#165). Does not warn.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`int`](https://docs.python.org/3/builtins/functions.html#int)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+```pycon
+>>> layout_dropped("one\ntwo\n")
+>>> layout_dropped("one\n  two\n    three\n")
+{'lines': 3, 'indentations': 3}
 ```
 
 ### muvid.lyrics.line_indents(md)
@@ -17023,7 +17040,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-13 09:06 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/e42dc6ad40e470723f6db631d1373219d3e86930"><code>e42dc6a</code></a> on branch <code>main</code>, for **muvid 0.0.90** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-13 15:49 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/1f1fffd3e15ad0a0afadbddbbb1bbe242638700d"><code>1f1fffd</code></a> on branch <code>main</code>, for **muvid 0.0.91** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -17032,9 +17049,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/e42dc6ad40e470723f6db631d1373219d3e86930"><code>e42dc6ad40e470723f6db631d1373219d3e86930</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/1f1fffd3e15ad0a0afadbddbbb1bbe242638700d"><code>1f1fffd3e15ad0a0afadbddbbb1bbe242638700d</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.90</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.91</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17043,15 +17060,15 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38373080515">38373080515</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38424326866">38424326866</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>2aedfa24af84489b4127af84522ef42816ac172c</code> (in the history of the built commit) |
+| Event commit | <code>c7688a68adf26ee7f3cdfedfdc7aead0d71a88b9</code> (in the history of the built commit) |
 
 ## Tools
 
 |          |         |
 |----------|---------|
-| epythet  | 0.2.15  |
+| epythet  | 0.2.16  |
 | Sphinx   | 9.1.0   |
 | docutils | 0.22.4  |
 | Python   | 3.12.15 |
@@ -17070,14 +17087,14 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.90/">0.0.90</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.91/">0.0.91</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout e42dc6ad40e470723f6db631d1373219d3e86930
-pip install "epythet==0.2.15"
+git checkout 1f1fffd3e15ad0a0afadbddbbb1bbe242638700d
+pip install "epythet==0.2.16"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
 

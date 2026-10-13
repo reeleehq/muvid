@@ -20,6 +20,7 @@ to splice in.
 
 | [`indentation_varies`](#muvid.lyrics.indentation_varies)(indents)                | True when lyric lines are indented differently: a shape a parse would lose.          |
 |---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [`layout_dropped`](#muvid.lyrics.layout_dropped)(md)                         | What the default parse flattens, as data: `None` for ordinary lyrics.                |
 | [`line_indents`](#muvid.lyrics.line_indents)(md)                           | The leading whitespace of each lyric line, aligned with `parse_lyrics_md(md).lines`. |
 | [`lyrics_from_transcript`](#muvid.lyrics.lyrics_from_transcript)(transcript)         | Build a default LyricsDoc from a transcription response.                             |
 | [`parse_lyrics_md`](#muvid.lyrics.parse_lyrics_md)(md, \*[, preserve_indent]) | Parse the user-editable lyrics markdown.                                             |
@@ -85,6 +86,22 @@ True when lyric lines are indented differently: a shape a parse would lose.
 ```pycon
 >>> indentation_varies(["", "  "]), indentation_varies(["  ", "  "])
 (True, False)
+```
+
+### muvid.lyrics.layout_dropped(md)
+
+What the default parse flattens, as data: `None` for ordinary lyrics.
+
+The same test as [`ShapedLyricsWarning`](#muvid.lyrics.ShapedLyricsWarning), for a caller that cannot see
+a Python warning (an MCP reply, a render’s meta; muvid#165). Does not warn.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`int`](https://docs.python.org/3/builtins/functions.html#int)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+```pycon
+>>> layout_dropped("one\ntwo\n")
+>>> layout_dropped("one\n  two\n    three\n")
+{'lines': 3, 'indentations': 3}
 ```
 
 ### muvid.lyrics.line_indents(md)

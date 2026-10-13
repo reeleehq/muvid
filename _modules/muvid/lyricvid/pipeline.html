@@ -205,308 +205,331 @@
 </span><span id="line-19"><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
 </span><span id="line-20">
 </span><span id="line-21"><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-</span><span id="line-22"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-</span><span id="line-23"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
-</span><span id="line-24">
-</span><span id="line-25"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid</span><span class="w"> </span><span class="kn">import</span> <span class="n">spec</span> <span class="k">as</span> <span class="n">spec_mod</span>
-</span><span id="line-26"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.scene</span><span class="w"> </span><span class="kn">import</span> <span class="n">Canvas</span><span class="p">,</span> <span class="n">compile_scene</span>
-</span><span id="line-27"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.timed_text</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
-</span><span id="line-28">    <span class="n">TimedText</span><span class="p">,</span>
-</span><span id="line-29">    <span class="n">from_alignment_store</span><span class="p">,</span>
-</span><span id="line-30">    <span class="n">from_lyrics_and_audio</span><span class="p">,</span>
-</span><span id="line-31">    <span class="n">from_subtitles</span><span class="p">,</span>
-</span><span id="line-32"><span class="p">)</span>
-</span><span id="line-33"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres</span><span class="w"> </span><span class="kn">import</span> <span class="n">RenderRequest</span><span class="p">,</span> <span class="n">RenderResult</span>
-</span><span id="line-34">
-</span><span id="line-35"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-36">    <span class="s2">"RENDERERS"</span><span class="p">,</span>
-</span><span id="line-37">    <span class="s2">"register_renderer"</span><span class="p">,</span>
-</span><span id="line-38">    <span class="s2">"resolve_renderer"</span><span class="p">,</span>
-</span><span id="line-39">    <span class="s2">"select_renderer"</span><span class="p">,</span>
-</span><span id="line-40">    <span class="s2">"build_timed_text"</span><span class="p">,</span>
-</span><span id="line-41">    <span class="s2">"render"</span><span class="p">,</span>
-</span><span id="line-42"><span class="p">]</span>
-</span><span id="line-43">
-</span><span id="line-44"><span class="c1">#: name -&gt; "module:function", resolved lazily so listing costs no import.</span>
-</span><span id="line-45"><span class="n">RENDERERS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-46">    <span class="s2">"ass"</span><span class="p">:</span> <span class="s2">"muvid.lyricvid.render_ass:render"</span><span class="p">,</span>
-</span><span id="line-47">    <span class="s2">"web"</span><span class="p">:</span> <span class="s2">"muvid.lyricvid.render_web:render"</span><span class="p">,</span>
-</span><span id="line-48"><span class="p">}</span>
-</span><span id="line-49">
-</span><span id="line-50"><span class="n">DEFAULT_RENDERER</span> <span class="o">=</span> <span class="s2">"auto"</span>
-</span><span id="line-51">
+</span><span id="line-22"><span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Mapping</span>
+</span><span id="line-23"><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+</span><span id="line-24"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span>
+</span><span id="line-25">
+</span><span id="line-26"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid</span><span class="w"> </span><span class="kn">import</span> <span class="n">spec</span> <span class="k">as</span> <span class="n">spec_mod</span>
+</span><span id="line-27"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.scene</span><span class="w"> </span><span class="kn">import</span> <span class="n">Canvas</span><span class="p">,</span> <span class="n">compile_scene</span>
+</span><span id="line-28"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.timed_text</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-29">    <span class="n">TimedText</span><span class="p">,</span>
+</span><span id="line-30">    <span class="n">from_alignment_store</span><span class="p">,</span>
+</span><span id="line-31">    <span class="n">from_lyrics_and_audio</span><span class="p">,</span>
+</span><span id="line-32">    <span class="n">from_subtitles</span><span class="p">,</span>
+</span><span id="line-33"><span class="p">)</span>
+</span><span id="line-34"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres</span><span class="w"> </span><span class="kn">import</span> <span class="n">RenderRequest</span><span class="p">,</span> <span class="n">RenderResult</span>
+</span><span id="line-35">
+</span><span id="line-36"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-37">    <span class="s2">"RENDERERS"</span><span class="p">,</span>
+</span><span id="line-38">    <span class="s2">"register_renderer"</span><span class="p">,</span>
+</span><span id="line-39">    <span class="s2">"resolve_renderer"</span><span class="p">,</span>
+</span><span id="line-40">    <span class="s2">"select_renderer"</span><span class="p">,</span>
+</span><span id="line-41">    <span class="s2">"build_timed_text"</span><span class="p">,</span>
+</span><span id="line-42">    <span class="s2">"render"</span><span class="p">,</span>
+</span><span id="line-43"><span class="p">]</span>
+</span><span id="line-44">
+</span><span id="line-45"><span class="c1">#: name -&gt; "module:function", resolved lazily so listing costs no import.</span>
+</span><span id="line-46"><span class="n">RENDERERS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-47">    <span class="s2">"ass"</span><span class="p">:</span> <span class="s2">"muvid.lyricvid.render_ass:render"</span><span class="p">,</span>
+</span><span id="line-48">    <span class="s2">"web"</span><span class="p">:</span> <span class="s2">"muvid.lyricvid.render_web:render"</span><span class="p">,</span>
+</span><span id="line-49"><span class="p">}</span>
+</span><span id="line-50">
+</span><span id="line-51"><span class="n">DEFAULT_RENDERER</span> <span class="o">=</span> <span class="s2">"auto"</span>
 </span><span id="line-52">
-</span><span id="line-53"><span class="c1">#: Resource bounds, env-configurable like ``MUVID_FOOTAGE_*``. These exist</span>
-</span><span id="line-54"><span class="c1">#: because the muvid#75/#76 scar is exactly this shape: an allowlisted operation</span>
-</span><span id="line-55"><span class="c1">#: asked for a 590 MB frame. A caller-supplied ``width``/``height``/``fps`` on a</span>
-</span><span id="line-56"><span class="c1">#: caller-supplied song length is the same lever, and the visualizer already</span>
-</span><span id="line-57"><span class="c1">#: bounds duration (``MUVID_MAX_DURATION_S``) — the lyric video bounded nothing.</span>
-</span><span id="line-58"><span class="n">MAX_PIXELS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_LYRICVID_MAX_PIXELS"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="mi">3840</span> <span class="o">*</span> <span class="mi">2160</span><span class="p">)))</span>
-</span><span id="line-59"><span class="n">MAX_FPS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_LYRICVID_MAX_FPS"</span><span class="p">,</span> <span class="s2">"60"</span><span class="p">))</span>
-</span><span id="line-60"><span class="n">MAX_DURATION_S</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_MAX_DURATION_S"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)))</span>
-</span><span id="line-61"><span class="c1">#: The web renderer writes one PNG per frame; this bounds the disk it may take.</span>
-</span><span id="line-62"><span class="n">MAX_FRAMES</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_LYRICVID_MAX_FRAMES"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">30</span><span class="p">)))</span>
-</span><span id="line-63">
+</span><span id="line-53">
+</span><span id="line-54"><span class="c1">#: Resource bounds, env-configurable like ``MUVID_FOOTAGE_*``. These exist</span>
+</span><span id="line-55"><span class="c1">#: because the muvid#75/#76 scar is exactly this shape: an allowlisted operation</span>
+</span><span id="line-56"><span class="c1">#: asked for a 590 MB frame. A caller-supplied ``width``/``height``/``fps`` on a</span>
+</span><span id="line-57"><span class="c1">#: caller-supplied song length is the same lever, and the visualizer already</span>
+</span><span id="line-58"><span class="c1">#: bounds duration (``MUVID_MAX_DURATION_S``) — the lyric video bounded nothing.</span>
+</span><span id="line-59"><span class="n">MAX_PIXELS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_LYRICVID_MAX_PIXELS"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="mi">3840</span> <span class="o">*</span> <span class="mi">2160</span><span class="p">)))</span>
+</span><span id="line-60"><span class="n">MAX_FPS</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_LYRICVID_MAX_FPS"</span><span class="p">,</span> <span class="s2">"60"</span><span class="p">))</span>
+</span><span id="line-61"><span class="n">MAX_DURATION_S</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_MAX_DURATION_S"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span><span class="p">)))</span>
+</span><span id="line-62"><span class="c1">#: The web renderer writes one PNG per frame; this bounds the disk it may take.</span>
+</span><span id="line-63"><span class="n">MAX_FRAMES</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"MUVID_LYRICVID_MAX_FRAMES"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="mi">15</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">*</span> <span class="mi">30</span><span class="p">)))</span>
 </span><span id="line-64">
-</span><span id="line-65"><span class="k">def</span><span class="w"> </span><span class="nf">check_render_bounds</span><span class="p">(</span><span class="n">canvas</span><span class="p">:</span> <span class="n">Canvas</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-66"><span class="w">    </span><span class="sd">"""Refuse a render that would exceed the resource bounds. Refuse, not clamp.</span>
-</span><span id="line-67">
-</span><span id="line-68"><span class="sd">    A clamped request silently produces a different video than the one asked</span>
-</span><span id="line-69"><span class="sd">    for; a refusal tells the caller the bound.</span>
-</span><span id="line-70">
-</span><span id="line-71"><span class="sd">    &gt;&gt;&gt; check_render_bounds(Canvas(width=1920, height=1080, fps=30), 200.0)</span>
-</span><span id="line-72"><span class="sd">    &gt;&gt;&gt; check_render_bounds(Canvas(width=30000, height=30000, fps=30), 10.0)</span>
-</span><span id="line-73"><span class="sd">    Traceback (most recent call last):</span>
-</span><span id="line-74"><span class="sd">    ...</span>
-</span><span id="line-75"><span class="sd">    ValueError: canvas 30000x30000 is 900000000 px/frame; the bound is 8294400 (MUVID_LYRICVID_MAX_PIXELS)</span>
-</span><span id="line-76"><span class="sd">    """</span>
-</span><span id="line-77">    <span class="n">px</span> <span class="o">=</span> <span class="n">canvas</span><span class="o">.</span><span class="n">width</span> <span class="o">*</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span>
-</span><span id="line-78">    <span class="k">if</span> <span class="n">canvas</span><span class="o">.</span><span class="n">width</span> <span class="o">&lt;</span> <span class="mi">16</span> <span class="ow">or</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span> <span class="o">&lt;</span> <span class="mi">16</span><span class="p">:</span>
-</span><span id="line-79">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"canvas </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2"> is too small"</span><span class="p">)</span>
-</span><span id="line-80">    <span class="k">if</span> <span class="n">px</span> <span class="o">&gt;</span> <span class="n">MAX_PIXELS</span><span class="p">:</span>
-</span><span id="line-81">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-82">            <span class="sa">f</span><span class="s2">"canvas </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2"> is </span><span class="si">{</span><span class="n">px</span><span class="si">}</span><span class="s2"> px/frame; the bound is "</span>
-</span><span id="line-83">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">MAX_PIXELS</span><span class="si">}</span><span class="s2"> (MUVID_LYRICVID_MAX_PIXELS)"</span>
-</span><span id="line-84">        <span class="p">)</span>
-</span><span id="line-85">    <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">canvas</span><span class="o">.</span><span class="n">fps</span> <span class="o">&lt;=</span> <span class="n">MAX_FPS</span><span class="p">:</span>
-</span><span id="line-86">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-87">            <span class="sa">f</span><span class="s2">"fps </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="si">}</span><span class="s2"> is outside 1..</span><span class="si">{</span><span class="n">MAX_FPS</span><span class="si">}</span><span class="s2"> (MUVID_LYRICVID_MAX_FPS)"</span>
-</span><span id="line-88">        <span class="p">)</span>
-</span><span id="line-89">    <span class="k">if</span> <span class="n">duration_s</span> <span class="o">&gt;</span> <span class="n">MAX_DURATION_S</span><span class="p">:</span>
-</span><span id="line-90">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-91">            <span class="sa">f</span><span class="s2">"audio is </span><span class="si">{</span><span class="n">duration_s</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s; the render limit is </span><span class="si">{</span><span class="n">MAX_DURATION_S</span><span class="si">}</span><span class="s2">s "</span>
-</span><span id="line-92">            <span class="s2">"(MUVID_MAX_DURATION_S)"</span>
-</span><span id="line-93">        <span class="p">)</span>
-</span><span id="line-94">    <span class="n">frames</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">duration_s</span> <span class="o">*</span> <span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">))</span>
-</span><span id="line-95">    <span class="k">if</span> <span class="n">frames</span> <span class="o">&gt;</span> <span class="n">MAX_FRAMES</span><span class="p">:</span>
-</span><span id="line-96">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-97">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">frames</span><span class="si">}</span><span class="s2"> frames (</span><span class="si">{</span><span class="n">duration_s</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s at </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="si">}</span><span class="s2"> fps) exceeds "</span>
-</span><span id="line-98">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">MAX_FRAMES</span><span class="si">}</span><span class="s2"> (MUVID_LYRICVID_MAX_FRAMES)"</span>
-</span><span id="line-99">        <span class="p">)</span>
-</span><span id="line-100">
+</span><span id="line-65">
+</span><span id="line-66"><span class="k">def</span><span class="w"> </span><span class="nf">check_render_bounds</span><span class="p">(</span><span class="n">canvas</span><span class="p">:</span> <span class="n">Canvas</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-67"><span class="w">    </span><span class="sd">"""Refuse a render that would exceed the resource bounds. Refuse, not clamp.</span>
+</span><span id="line-68">
+</span><span id="line-69"><span class="sd">    A clamped request silently produces a different video than the one asked</span>
+</span><span id="line-70"><span class="sd">    for; a refusal tells the caller the bound.</span>
+</span><span id="line-71">
+</span><span id="line-72"><span class="sd">    &gt;&gt;&gt; check_render_bounds(Canvas(width=1920, height=1080, fps=30), 200.0)</span>
+</span><span id="line-73"><span class="sd">    &gt;&gt;&gt; check_render_bounds(Canvas(width=30000, height=30000, fps=30), 10.0)</span>
+</span><span id="line-74"><span class="sd">    Traceback (most recent call last):</span>
+</span><span id="line-75"><span class="sd">    ...</span>
+</span><span id="line-76"><span class="sd">    ValueError: canvas 30000x30000 is 900000000 px/frame; the bound is 8294400 (MUVID_LYRICVID_MAX_PIXELS)</span>
+</span><span id="line-77"><span class="sd">    """</span>
+</span><span id="line-78">    <span class="n">px</span> <span class="o">=</span> <span class="n">canvas</span><span class="o">.</span><span class="n">width</span> <span class="o">*</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span>
+</span><span id="line-79">    <span class="k">if</span> <span class="n">canvas</span><span class="o">.</span><span class="n">width</span> <span class="o">&lt;</span> <span class="mi">16</span> <span class="ow">or</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span> <span class="o">&lt;</span> <span class="mi">16</span><span class="p">:</span>
+</span><span id="line-80">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"canvas </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2"> is too small"</span><span class="p">)</span>
+</span><span id="line-81">    <span class="k">if</span> <span class="n">px</span> <span class="o">&gt;</span> <span class="n">MAX_PIXELS</span><span class="p">:</span>
+</span><span id="line-82">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-83">            <span class="sa">f</span><span class="s2">"canvas </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2"> is </span><span class="si">{</span><span class="n">px</span><span class="si">}</span><span class="s2"> px/frame; the bound is "</span>
+</span><span id="line-84">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">MAX_PIXELS</span><span class="si">}</span><span class="s2"> (MUVID_LYRICVID_MAX_PIXELS)"</span>
+</span><span id="line-85">        <span class="p">)</span>
+</span><span id="line-86">    <span class="k">if</span> <span class="ow">not</span> <span class="mi">1</span> <span class="o">&lt;=</span> <span class="n">canvas</span><span class="o">.</span><span class="n">fps</span> <span class="o">&lt;=</span> <span class="n">MAX_FPS</span><span class="p">:</span>
+</span><span id="line-87">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-88">            <span class="sa">f</span><span class="s2">"fps </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="si">}</span><span class="s2"> is outside 1..</span><span class="si">{</span><span class="n">MAX_FPS</span><span class="si">}</span><span class="s2"> (MUVID_LYRICVID_MAX_FPS)"</span>
+</span><span id="line-89">        <span class="p">)</span>
+</span><span id="line-90">    <span class="k">if</span> <span class="n">duration_s</span> <span class="o">&gt;</span> <span class="n">MAX_DURATION_S</span><span class="p">:</span>
+</span><span id="line-91">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-92">            <span class="sa">f</span><span class="s2">"audio is </span><span class="si">{</span><span class="n">duration_s</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s; the render limit is </span><span class="si">{</span><span class="n">MAX_DURATION_S</span><span class="si">}</span><span class="s2">s "</span>
+</span><span id="line-93">            <span class="s2">"(MUVID_MAX_DURATION_S)"</span>
+</span><span id="line-94">        <span class="p">)</span>
+</span><span id="line-95">    <span class="n">frames</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">duration_s</span> <span class="o">*</span> <span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">))</span>
+</span><span id="line-96">    <span class="k">if</span> <span class="n">frames</span> <span class="o">&gt;</span> <span class="n">MAX_FRAMES</span><span class="p">:</span>
+</span><span id="line-97">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-98">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">frames</span><span class="si">}</span><span class="s2"> frames (</span><span class="si">{</span><span class="n">duration_s</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">s at </span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="si">}</span><span class="s2"> fps) exceeds "</span>
+</span><span id="line-99">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">MAX_FRAMES</span><span class="si">}</span><span class="s2"> (MUVID_LYRICVID_MAX_FRAMES)"</span>
+</span><span id="line-100">        <span class="p">)</span>
 </span><span id="line-101">
+</span><span id="line-102">
 <div class="viewcode-block" id="register_renderer">
 <a class="viewcode-back" href="../../../_autosummary/muvid.lyricvid.pipeline.html#muvid.lyricvid.pipeline.register_renderer">[docs]</a>
-</span><span id="line-102"><span class="k">def</span><span class="w"> </span><span class="nf">register_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-103"><span class="w">    </span><span class="sd">"""Register a renderer backend as ``"module:function"``.</span>
-</span><span id="line-104">
-</span><span id="line-105"><span class="sd">    The house lazy-registry idiom (cf. ``muvid.footage.strategy``): the target</span>
-</span><span id="line-106"><span class="sd">    is a string so adding a backend costs the import path nothing.</span>
-</span><span id="line-107">
-</span><span id="line-108"><span class="sd">    &gt;&gt;&gt; register_renderer('doctest-demo', 'muvid.lyricvid.render_ass:render')</span>
-</span><span id="line-109"><span class="sd">    &gt;&gt;&gt; 'doctest-demo' in RENDERERS</span>
-</span><span id="line-110"><span class="sd">    True</span>
-</span><span id="line-111"><span class="sd">    &gt;&gt;&gt; del RENDERERS['doctest-demo']</span>
-</span><span id="line-112"><span class="sd">    """</span>
-</span><span id="line-113">    <span class="k">if</span> <span class="s2">":"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">target</span><span class="p">:</span>
-</span><span id="line-114">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"renderer target must be 'module:function', got </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-115">    <span class="n">RENDERERS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span></div>
+</span><span id="line-103"><span class="k">def</span><span class="w"> </span><span class="nf">register_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-104"><span class="w">    </span><span class="sd">"""Register a renderer backend as ``"module:function"``.</span>
+</span><span id="line-105">
+</span><span id="line-106"><span class="sd">    The house lazy-registry idiom (cf. ``muvid.footage.strategy``): the target</span>
+</span><span id="line-107"><span class="sd">    is a string so adding a backend costs the import path nothing.</span>
+</span><span id="line-108">
+</span><span id="line-109"><span class="sd">    &gt;&gt;&gt; register_renderer('doctest-demo', 'muvid.lyricvid.render_ass:render')</span>
+</span><span id="line-110"><span class="sd">    &gt;&gt;&gt; 'doctest-demo' in RENDERERS</span>
+</span><span id="line-111"><span class="sd">    True</span>
+</span><span id="line-112"><span class="sd">    &gt;&gt;&gt; del RENDERERS['doctest-demo']</span>
+</span><span id="line-113"><span class="sd">    """</span>
+</span><span id="line-114">    <span class="k">if</span> <span class="s2">":"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">target</span><span class="p">:</span>
+</span><span id="line-115">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"renderer target must be 'module:function', got </span><span class="si">{</span><span class="n">target</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-116">    <span class="n">RENDERERS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">target</span></div>
 
-</span><span id="line-116">
 </span><span id="line-117">
+</span><span id="line-118">
 <div class="viewcode-block" id="select_renderer">
 <a class="viewcode-back" href="../../../_autosummary/muvid.lyricvid.pipeline.html#muvid.lyricvid.pipeline.select_renderer">[docs]</a>
-</span><span id="line-118"><span class="k">def</span><span class="w"> </span><span class="nf">select_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"auto"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-119"><span class="w">    </span><span class="sd">"""Resolve ``"auto"`` to a backend that can actually run here.</span>
-</span><span id="line-120">
-</span><span id="line-121"><span class="sd">    ``auto`` is a **selector**, not a registered renderer — the same shape as</span>
-</span><span id="line-122"><span class="sd">    ``visual="auto"`` in :mod:`muvid.visualize`. It picks ``ass`` when this</span>
-</span><span id="line-123"><span class="sd">    ffmpeg can burn subtitles in (it needs a libass-enabled build) and ``web``</span>
-</span><span id="line-124"><span class="sd">    otherwise.</span>
-</span><span id="line-125">
-</span><span id="line-126"><span class="sd">    This is deliberately not a fallback inside ``ass``. Asking for ``ass`` on a</span>
-</span><span id="line-127"><span class="sd">    build without libass **fails loudly**, because a renderer that silently</span>
-</span><span id="line-128"><span class="sd">    produces something other than what was asked for is the exact shape muvid</span>
-</span><span id="line-129"><span class="sd">    has been bitten by before. ``auto`` is the caller opting in to "whichever</span>
-</span><span id="line-130"><span class="sd">    works", and the choice it made is recorded in the result's ``meta``.</span>
-</span><span id="line-131">
-</span><span id="line-132"><span class="sd">    &gt;&gt;&gt; select_renderer('web')</span>
-</span><span id="line-133"><span class="sd">    'web'</span>
-</span><span id="line-134"><span class="sd">    &gt;&gt;&gt; select_renderer('auto') in {'ass', 'web'}</span>
-</span><span id="line-135"><span class="sd">    True</span>
-</span><span id="line-136"><span class="sd">    """</span>
-</span><span id="line-137">    <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">"auto"</span><span class="p">:</span>
-</span><span id="line-138">        <span class="k">return</span> <span class="n">name</span>
-</span><span id="line-139">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">has_filter</span>
-</span><span id="line-140">
-</span><span id="line-141">    <span class="k">return</span> <span class="s2">"ass"</span> <span class="k">if</span> <span class="n">has_filter</span><span class="p">(</span><span class="s2">"subtitles"</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"web"</span></div>
+</span><span id="line-119"><span class="k">def</span><span class="w"> </span><span class="nf">select_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"auto"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-120"><span class="w">    </span><span class="sd">"""Resolve ``"auto"`` to a backend that can actually run here.</span>
+</span><span id="line-121">
+</span><span id="line-122"><span class="sd">    ``auto`` is a **selector**, not a registered renderer — the same shape as</span>
+</span><span id="line-123"><span class="sd">    ``visual="auto"`` in :mod:`muvid.visualize`. It picks ``ass`` when this</span>
+</span><span id="line-124"><span class="sd">    ffmpeg can burn subtitles in (it needs a libass-enabled build) and ``web``</span>
+</span><span id="line-125"><span class="sd">    otherwise.</span>
+</span><span id="line-126">
+</span><span id="line-127"><span class="sd">    This is deliberately not a fallback inside ``ass``. Asking for ``ass`` on a</span>
+</span><span id="line-128"><span class="sd">    build without libass **fails loudly**, because a renderer that silently</span>
+</span><span id="line-129"><span class="sd">    produces something other than what was asked for is the exact shape muvid</span>
+</span><span id="line-130"><span class="sd">    has been bitten by before. ``auto`` is the caller opting in to "whichever</span>
+</span><span id="line-131"><span class="sd">    works", and the choice it made is recorded in the result's ``meta``.</span>
+</span><span id="line-132">
+</span><span id="line-133"><span class="sd">    &gt;&gt;&gt; select_renderer('web')</span>
+</span><span id="line-134"><span class="sd">    'web'</span>
+</span><span id="line-135"><span class="sd">    &gt;&gt;&gt; select_renderer('auto') in {'ass', 'web'}</span>
+</span><span id="line-136"><span class="sd">    True</span>
+</span><span id="line-137"><span class="sd">    """</span>
+</span><span id="line-138">    <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">"auto"</span><span class="p">:</span>
+</span><span id="line-139">        <span class="k">return</span> <span class="n">name</span>
+</span><span id="line-140">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">has_filter</span>
+</span><span id="line-141">
+</span><span id="line-142">    <span class="k">return</span> <span class="s2">"ass"</span> <span class="k">if</span> <span class="n">has_filter</span><span class="p">(</span><span class="s2">"subtitles"</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"web"</span></div>
 
-</span><span id="line-142">
 </span><span id="line-143">
+</span><span id="line-144">
 <div class="viewcode-block" id="resolve_renderer">
 <a class="viewcode-back" href="../../../_autosummary/muvid.lyricvid.pipeline.html#muvid.lyricvid.pipeline.resolve_renderer">[docs]</a>
-</span><span id="line-144"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
-</span><span id="line-145"><span class="w">    </span><span class="sd">"""Import and return a renderer backend. Accepts a callable unchanged."""</span>
-</span><span id="line-146">    <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
-</span><span id="line-147">        <span class="k">return</span> <span class="n">name</span>
-</span><span id="line-148">    <span class="n">name</span> <span class="o">=</span> <span class="n">select_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-149">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-150">        <span class="n">target</span> <span class="o">=</span> <span class="n">RENDERERS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-</span><span id="line-151">    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-</span><span id="line-152">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-</span><span id="line-153">            <span class="sa">f</span><span class="s2">"unknown renderer </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; available: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">RENDERERS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-154">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
-</span><span id="line-155">    <span class="kn">from</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module</span>
-</span><span id="line-156">
-</span><span id="line-157">    <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
-</span><span id="line-158">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-159">        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">func</span><span class="p">)</span>
-</span><span id="line-160">    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-161">        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-</span><span id="line-162">            <span class="sa">f</span><span class="s2">"renderer </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> needs an optional dependency: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. "</span>
-</span><span id="line-163">            <span class="sa">f</span><span class="s2">"Try: pip install 'muvid[lyricvid]' (or 'muvid[lyricvid-web]' for web)."</span>
-</span><span id="line-164">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
+</span><span id="line-145"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+</span><span id="line-146"><span class="w">    </span><span class="sd">"""Import and return a renderer backend. Accepts a callable unchanged."""</span>
+</span><span id="line-147">    <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+</span><span id="line-148">        <span class="k">return</span> <span class="n">name</span>
+</span><span id="line-149">    <span class="n">name</span> <span class="o">=</span> <span class="n">select_renderer</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-150">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-151">        <span class="n">target</span> <span class="o">=</span> <span class="n">RENDERERS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+</span><span id="line-152">    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+</span><span id="line-153">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-154">            <span class="sa">f</span><span class="s2">"unknown renderer </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; available: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">RENDERERS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-155">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span>
+</span><span id="line-156">    <span class="kn">from</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module</span>
+</span><span id="line-157">
+</span><span id="line-158">    <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-159">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-160">        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">func</span><span class="p">)</span>
+</span><span id="line-161">    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-162">        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+</span><span id="line-163">            <span class="sa">f</span><span class="s2">"renderer </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> needs an optional dependency: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. "</span>
+</span><span id="line-164">            <span class="sa">f</span><span class="s2">"Try: pip install 'muvid[lyricvid]' (or 'muvid[lyricvid-web]' for web)."</span>
+</span><span id="line-165">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 
-</span><span id="line-165">
 </span><span id="line-166">
+</span><span id="line-167">
 <div class="viewcode-block" id="build_timed_text">
 <a class="viewcode-back" href="../../../_autosummary/muvid.lyricvid.pipeline.html#muvid.lyricvid.pipeline.build_timed_text">[docs]</a>
-</span><span id="line-167"><span class="k">def</span><span class="w"> </span><span class="nf">build_timed_text</span><span class="p">(</span>
-</span><span id="line-168">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-169">    <span class="n">audio</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-170">    <span class="n">lyrics</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-171">    <span class="n">subtitles</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-172">    <span class="n">project</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-173">    <span class="n">aligner</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-174">    <span class="n">timed_text</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-175"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TimedText</span><span class="p">:</span>
-</span><span id="line-176"><span class="w">    </span><span class="sd">"""Get measured word times from whichever input the caller actually has.</span>
-</span><span id="line-177">
-</span><span id="line-178"><span class="sd">    Order of preference is by how much the input is *trusted*: a saved timing</span>
-</span><span id="line-179"><span class="sd">    file (``TimedText.to_dict`` JSON — e.g. one refined to per-glyph times by</span>
-</span><span id="line-180"><span class="sd">    :mod:`muvid.lyricvid.glyph_align`) is used as is; then an existing muvid</span>
-</span><span id="line-181"><span class="sd">    alignment beats a subtitle file, which beats aligning lyrics ourselves,</span>
-</span><span id="line-182"><span class="sd">    which beats transcribing from nothing.</span>
-</span><span id="line-183"><span class="sd">    """</span>
-</span><span id="line-184">    <span class="k">if</span> <span class="n">timed_text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-185">        <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-</span><span id="line-186">
-</span><span id="line-187">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.timed_text</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_dict</span>
-</span><span id="line-188">
-</span><span id="line-189">        <span class="k">return</span> <span class="n">from_dict</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">timed_text</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)))</span>
-</span><span id="line-190">    <span class="k">if</span> <span class="n">project</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-191">        <span class="k">return</span> <span class="n">from_alignment_store</span><span class="p">(</span><span class="n">project</span><span class="p">)</span>
-</span><span id="line-192">    <span class="k">if</span> <span class="n">subtitles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-193">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">media_duration</span>
-</span><span id="line-194">
-</span><span id="line-195">        <span class="k">return</span> <span class="n">from_subtitles</span><span class="p">(</span><span class="n">subtitles</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="n">media_duration</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">)))</span>
-</span><span id="line-196">    <span class="k">return</span> <span class="n">from_lyrics_and_audio</span><span class="p">(</span><span class="n">audio</span><span class="p">,</span> <span class="n">lyrics</span><span class="o">=</span><span class="n">lyrics</span><span class="p">,</span> <span class="n">aligner</span><span class="o">=</span><span class="n">aligner</span><span class="p">)</span></div>
+</span><span id="line-168"><span class="k">def</span><span class="w"> </span><span class="nf">build_timed_text</span><span class="p">(</span>
+</span><span id="line-169">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-170">    <span class="n">audio</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-171">    <span class="n">lyrics</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-172">    <span class="n">subtitles</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-173">    <span class="n">project</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-174">    <span class="n">aligner</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-175">    <span class="n">timed_text</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-176"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TimedText</span><span class="p">:</span>
+</span><span id="line-177"><span class="w">    </span><span class="sd">"""Get measured word times from whichever input the caller actually has.</span>
+</span><span id="line-178">
+</span><span id="line-179"><span class="sd">    Order of preference is by how much the input is *trusted*: a saved timing</span>
+</span><span id="line-180"><span class="sd">    file (``TimedText.to_dict`` JSON — e.g. one refined to per-glyph times by</span>
+</span><span id="line-181"><span class="sd">    :mod:`muvid.lyricvid.glyph_align`) is used as is; then an existing muvid</span>
+</span><span id="line-182"><span class="sd">    alignment beats a subtitle file, which beats aligning lyrics ourselves,</span>
+</span><span id="line-183"><span class="sd">    which beats transcribing from nothing.</span>
+</span><span id="line-184"><span class="sd">    """</span>
+</span><span id="line-185">    <span class="k">if</span> <span class="n">timed_text</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-186">        <span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+</span><span id="line-187">
+</span><span id="line-188">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.timed_text</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_dict</span>
+</span><span id="line-189">
+</span><span id="line-190">        <span class="k">return</span> <span class="n">from_dict</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">timed_text</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)))</span>
+</span><span id="line-191">    <span class="k">if</span> <span class="n">project</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-192">        <span class="k">return</span> <span class="n">from_alignment_store</span><span class="p">(</span><span class="n">project</span><span class="p">)</span>
+</span><span id="line-193">    <span class="k">if</span> <span class="n">subtitles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-194">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">media_duration</span>
+</span><span id="line-195">
+</span><span id="line-196">        <span class="k">return</span> <span class="n">from_subtitles</span><span class="p">(</span><span class="n">subtitles</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="n">media_duration</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">)))</span>
+</span><span id="line-197">    <span class="k">return</span> <span class="n">from_lyrics_and_audio</span><span class="p">(</span><span class="n">audio</span><span class="p">,</span> <span class="n">lyrics</span><span class="o">=</span><span class="n">lyrics</span><span class="p">,</span> <span class="n">aligner</span><span class="o">=</span><span class="n">aligner</span><span class="p">)</span></div>
 
-</span><span id="line-197">
 </span><span id="line-198">
+</span><span id="line-199">
+</span><span id="line-200"><span class="k">def</span><span class="w"> </span><span class="nf">_lyrics_layout_dropped</span><span class="p">(</span><span class="n">inputs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-201"><span class="w">    </span><span class="sd">"""The layout the lyrics file lost, only when that file set the word times.</span>
+</span><span id="line-202">
+</span><span id="line-203"><span class="sd">    A saved timing, an alignment or subtitles win over ``lyrics`` in</span>
+</span><span id="line-204"><span class="sd">    :func:`build_timed_text`, so the file was never parsed and nothing was lost.</span>
+</span><span id="line-205"><span class="sd">    """</span>
+</span><span id="line-206">    <span class="n">lyrics</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lyrics"</span><span class="p">)</span>
+</span><span id="line-207">    <span class="k">if</span> <span class="ow">not</span> <span class="n">lyrics</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"timed_text"</span><span class="p">,</span> <span class="s2">"project"</span><span class="p">,</span> <span class="s2">"subtitles"</span><span class="p">)):</span>
+</span><span id="line-208">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-209">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyrics</span><span class="w"> </span><span class="kn">import</span> <span class="n">layout_dropped</span>
+</span><span id="line-210">
+</span><span id="line-211">    <span class="k">return</span> <span class="n">layout_dropped</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">lyrics</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
+</span><span id="line-212">
+</span><span id="line-213">
 <div class="viewcode-block" id="render">
 <a class="viewcode-back" href="../../../_autosummary/muvid.lyricvid.pipeline.html#muvid.lyricvid.pipeline.render">[docs]</a>
-</span><span id="line-199"><span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">RenderRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RenderResult</span><span class="p">:</span>
-</span><span id="line-200"><span class="w">    </span><span class="sd">"""Render one lyric video. Satisfies :class:`muvid.subgenres.Renderer`.</span>
-</span><span id="line-201">
-</span><span id="line-202"><span class="sd">    ``request.inputs`` takes ``audio`` (required) and any of ``lyrics``,</span>
-</span><span id="line-203"><span class="sd">    ``subtitles``, ``project``. ``request.params`` takes ``treatment`` (a</span>
-</span><span id="line-204"><span class="sd">    treatment spec as a mapping, or omitted to have one proposed), ``renderer``,</span>
-</span><span id="line-205"><span class="sd">    ``width``, ``height``, ``fps``, ``aligner`` and ``persona``, and</span>
-</span><span id="line-206"><span class="sd">    ``captions`` — ``{language: transform}`` (see :mod:`muvid.lyricvid.captions`),</span>
-</span><span id="line-207"><span class="sd">    each written beside the video as an ``.srt`` artifact ``captions.&lt;language&gt;``.</span>
-</span><span id="line-208"><span class="sd">    """</span>
-</span><span id="line-209">    <span class="n">inputs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span>
-</span><span id="line-210">    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
-</span><span id="line-211">
-</span><span id="line-212">    <span class="n">audio</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"audio"</span><span class="p">)</span>
-</span><span id="line-213">    <span class="k">if</span> <span class="ow">not</span> <span class="n">audio</span><span class="p">:</span>
-</span><span id="line-214">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"lyric-video needs inputs['audio']"</span><span class="p">)</span>
-</span><span id="line-215">    <span class="n">audio</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">)</span>
-</span><span id="line-216">    <span class="k">if</span> <span class="ow">not</span> <span class="n">audio</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-217">        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"audio not found: </span><span class="si">{</span><span class="n">audio</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-218">
-</span><span id="line-219">    <span class="n">timed</span> <span class="o">=</span> <span class="n">build_timed_text</span><span class="p">(</span>
-</span><span id="line-220">        <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">,</span>
-</span><span id="line-221">        <span class="n">lyrics</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lyrics"</span><span class="p">),</span>
-</span><span id="line-222">        <span class="n">subtitles</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subtitles"</span><span class="p">),</span>
-</span><span id="line-223">        <span class="n">project</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"project"</span><span class="p">),</span>
-</span><span id="line-224">        <span class="n">aligner</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"aligner"</span><span class="p">),</span>
-</span><span id="line-225">        <span class="n">timed_text</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"timed_text"</span><span class="p">),</span>
-</span><span id="line-226">    <span class="p">)</span>
-</span><span id="line-227">
-</span><span id="line-228">    <span class="n">repair_notes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-229">    <span class="n">treatment_in</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"treatment"</span><span class="p">)</span>
-</span><span id="line-230">    <span class="k">if</span> <span class="n">treatment_in</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-231">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.director</span><span class="w"> </span><span class="kn">import</span> <span class="n">propose_treatments</span>
-</span><span id="line-232">
-</span><span id="line-233">        <span class="n">persona</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"persona"</span><span class="p">)</span>
-</span><span id="line-234">        <span class="n">treatment</span> <span class="o">=</span> <span class="n">propose_treatments</span><span class="p">(</span>
-</span><span id="line-235">            <span class="n">timed</span><span class="p">,</span>
-</span><span id="line-236">            <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-</span><span id="line-237">            <span class="n">song_title</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
-</span><span id="line-238">            <span class="n">personas</span><span class="o">=</span><span class="p">[</span><span class="n">persona</span><span class="p">]</span> <span class="k">if</span> <span class="n">persona</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-239">        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-</span><span id="line-240">        <span class="n">treatment_source</span> <span class="o">=</span> <span class="s2">"proposed"</span>
-</span><span id="line-241">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-242">        <span class="n">treatment</span><span class="p">,</span> <span class="n">repair_notes</span> <span class="o">=</span> <span class="n">spec_mod</span><span class="o">.</span><span class="n">coerce</span><span class="p">(</span><span class="n">treatment_in</span><span class="p">)</span>
-</span><span id="line-243">        <span class="n">treatment_source</span> <span class="o">=</span> <span class="s2">"supplied"</span>
-</span><span id="line-244">        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"strict"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">repair_notes</span><span class="p">:</span>
-</span><span id="line-245">            <span class="c1"># A caller who wants exactly what they asked for, or nothing.</span>
-</span><span id="line-246">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-247">                <span class="s2">"treatment needed repairs and strict=True: "</span> <span class="o">+</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">repair_notes</span><span class="p">)</span>
-</span><span id="line-248">            <span class="p">)</span>
-</span><span id="line-249">
-</span><span id="line-250">    <span class="n">canvas</span> <span class="o">=</span> <span class="n">Canvas</span><span class="p">(</span>
-</span><span id="line-251">        <span class="n">width</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"width"</span><span class="p">,</span> <span class="mi">1920</span><span class="p">)),</span>
-</span><span id="line-252">        <span class="n">height</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"height"</span><span class="p">,</span> <span class="mi">1080</span><span class="p">)),</span>
-</span><span id="line-253">        <span class="n">fps</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"fps"</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
-</span><span id="line-254">    <span class="p">)</span>
-</span><span id="line-255">    <span class="n">check_render_bounds</span><span class="p">(</span><span class="n">canvas</span><span class="p">,</span> <span class="n">timed</span><span class="o">.</span><span class="n">duration</span><span class="p">)</span>
-</span><span id="line-256">    <span class="n">tracks</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-257">    <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"captions"</span><span class="p">):</span>
-</span><span id="line-258">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.captions</span><span class="w"> </span><span class="kn">import</span> <span class="n">caption_tracks</span>
-</span><span id="line-259">
-</span><span id="line-260">        <span class="c1"># built BEFORE the render: an uncovered line fails now, not after a</span>
-</span><span id="line-261">        <span class="c1"># render the caller then has to redo</span>
-</span><span id="line-262">        <span class="n">tracks</span> <span class="o">=</span> <span class="n">caption_tracks</span><span class="p">(</span><span class="n">timed</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">"captions"</span><span class="p">])</span>
-</span><span id="line-263">    <span class="n">scene</span> <span class="o">=</span> <span class="n">compile_scene</span><span class="p">(</span><span class="n">treatment</span><span class="p">,</span> <span class="n">timed</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">)</span>
-</span><span id="line-264">
-</span><span id="line-265">    <span class="n">requested</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"renderer"</span><span class="p">,</span> <span class="n">DEFAULT_RENDERER</span><span class="p">)</span>
-</span><span id="line-266">    <span class="n">backend_name</span> <span class="o">=</span> <span class="n">select_renderer</span><span class="p">(</span><span class="n">requested</span><span class="p">)</span>
-</span><span id="line-267">    <span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_renderer</span><span class="p">(</span><span class="n">backend_name</span><span class="p">)</span>
-</span><span id="line-268">    <span class="n">request</span><span class="o">.</span><span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-269">    <span class="n">request</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-270">
-</span><span id="line-271">    <span class="n">result</span> <span class="o">=</span> <span class="n">backend</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span>
-</span><span id="line-272">
-</span><span id="line-273">    <span class="c1"># Keep the treatment alongside the video: a lyric video you cannot re-derive</span>
-</span><span id="line-274">    <span class="c1"># or hand-edit is an opaque artifact, which is the thing this design avoids.</span>
-</span><span id="line-275">    <span class="n">spec_path</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">workdir</span> <span class="o">/</span> <span class="s2">"treatment.json"</span>
-</span><span id="line-276">    <span class="n">spec_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">treatment</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
-</span><span id="line-277">    <span class="n">caption_paths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-278">    <span class="k">if</span> <span class="n">tracks</span><span class="p">:</span>
-</span><span id="line-279">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.captions</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_caption_tracks</span>
-</span><span id="line-280">
-</span><span id="line-281">        <span class="n">caption_paths</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-282">            <span class="sa">f</span><span class="s2">"captions.</span><span class="si">{</span><span class="n">lang</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="n">path</span>
-</span><span id="line-283">            <span class="k">for</span> <span class="n">lang</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">write_caption_tracks</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-</span><span id="line-284">        <span class="p">}</span>
-</span><span id="line-285">
-</span><span id="line-286">    <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-287">        <span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">meta</span><span class="p">),</span>
-</span><span id="line-288">        <span class="c1"># AFTER the backend's meta, so the choice `auto` made is recorded in one</span>
-</span><span id="line-289">        <span class="c1"># vocabulary ("ass"/"web") rather than whatever the backend calls itself</span>
-</span><span id="line-290">        <span class="s2">"renderer"</span><span class="p">:</span> <span class="n">backend_name</span><span class="p">,</span>
-</span><span id="line-291">        <span class="s2">"renderer_requested"</span><span class="p">:</span> <span class="n">requested</span><span class="p">,</span>
-</span><span id="line-292">        <span class="s2">"treatment_source"</span><span class="p">:</span> <span class="n">treatment_source</span><span class="p">,</span>
-</span><span id="line-293">        <span class="s2">"timing_source"</span><span class="p">:</span> <span class="n">timed</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
-</span><span id="line-294">        <span class="s2">"timing_measured"</span><span class="p">:</span> <span class="n">timed</span><span class="o">.</span><span class="n">measured</span><span class="p">,</span>
-</span><span id="line-295">    <span class="p">}</span>
-</span><span id="line-296">    <span class="c1"># A repaired treatment renders something other than what was asked for.</span>
-</span><span id="line-297">    <span class="c1"># That is fine — but only if the caller can SEE it. Omit-when-empty.</span>
-</span><span id="line-298">    <span class="k">if</span> <span class="n">repair_notes</span><span class="p">:</span>
-</span><span id="line-299">        <span class="n">meta</span><span class="p">[</span><span class="s2">"treatment_repairs"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">repair_notes</span><span class="p">)</span>
-</span><span id="line-300">    <span class="k">if</span> <span class="n">scene</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"uncovered_sections"</span><span class="p">):</span>
-</span><span id="line-301">        <span class="n">meta</span><span class="p">[</span><span class="s2">"uncovered_sections"</span><span class="p">]</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">"uncovered_sections"</span><span class="p">]</span>
-</span><span id="line-302">    <span class="k">return</span> <span class="n">RenderResult</span><span class="p">(</span>
-</span><span id="line-303">        <span class="n">output</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">output</span><span class="p">,</span>
-</span><span id="line-304">        <span class="n">duration_s</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">duration_s</span>
-</span><span id="line-305">        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">duration_s</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-306">        <span class="k">else</span> <span class="n">timed</span><span class="o">.</span><span class="n">duration</span><span class="p">,</span>
-</span><span id="line-307">        <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">artifacts</span><span class="p">),</span> <span class="s2">"treatment"</span><span class="p">:</span> <span class="n">spec_path</span><span class="p">,</span> <span class="o">**</span><span class="n">caption_paths</span><span class="p">},</span>
-</span><span id="line-308">        <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">,</span>
-</span><span id="line-309">    <span class="p">)</span></div>
+</span><span id="line-214"><span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">RenderRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RenderResult</span><span class="p">:</span>
+</span><span id="line-215"><span class="w">    </span><span class="sd">"""Render one lyric video. Satisfies :class:`muvid.subgenres.Renderer`.</span>
+</span><span id="line-216">
+</span><span id="line-217"><span class="sd">    ``request.inputs`` takes ``audio`` (required) and any of ``lyrics``,</span>
+</span><span id="line-218"><span class="sd">    ``subtitles``, ``project``. ``request.params`` takes ``treatment`` (a</span>
+</span><span id="line-219"><span class="sd">    treatment spec as a mapping, or omitted to have one proposed), ``renderer``,</span>
+</span><span id="line-220"><span class="sd">    ``width``, ``height``, ``fps``, ``aligner`` and ``persona``, and</span>
+</span><span id="line-221"><span class="sd">    ``captions`` — ``{language: transform}`` (see :mod:`muvid.lyricvid.captions`),</span>
+</span><span id="line-222"><span class="sd">    each written beside the video as an ``.srt`` artifact ``captions.&lt;language&gt;``.</span>
+</span><span id="line-223"><span class="sd">    """</span>
+</span><span id="line-224">    <span class="n">inputs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span>
+</span><span id="line-225">    <span class="n">params</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+</span><span id="line-226">
+</span><span id="line-227">    <span class="n">audio</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"audio"</span><span class="p">)</span>
+</span><span id="line-228">    <span class="k">if</span> <span class="ow">not</span> <span class="n">audio</span><span class="p">:</span>
+</span><span id="line-229">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"lyric-video needs inputs['audio']"</span><span class="p">)</span>
+</span><span id="line-230">    <span class="n">audio</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">)</span>
+</span><span id="line-231">    <span class="k">if</span> <span class="ow">not</span> <span class="n">audio</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-232">        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"audio not found: </span><span class="si">{</span><span class="n">audio</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-233">
+</span><span id="line-234">    <span class="n">timed</span> <span class="o">=</span> <span class="n">build_timed_text</span><span class="p">(</span>
+</span><span id="line-235">        <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">,</span>
+</span><span id="line-236">        <span class="n">lyrics</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"lyrics"</span><span class="p">),</span>
+</span><span id="line-237">        <span class="n">subtitles</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subtitles"</span><span class="p">),</span>
+</span><span id="line-238">        <span class="n">project</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"project"</span><span class="p">),</span>
+</span><span id="line-239">        <span class="n">aligner</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"aligner"</span><span class="p">),</span>
+</span><span id="line-240">        <span class="n">timed_text</span><span class="o">=</span><span class="n">inputs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"timed_text"</span><span class="p">),</span>
+</span><span id="line-241">    <span class="p">)</span>
+</span><span id="line-242">    <span class="c1"># Read BEFORE the backend runs, so a vanished file fails before any output</span>
+</span><span id="line-243">    <span class="c1"># exists, and the report describes the text that set the timing.</span>
+</span><span id="line-244">    <span class="n">layout_dropped</span> <span class="o">=</span> <span class="n">_lyrics_layout_dropped</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+</span><span id="line-245">
+</span><span id="line-246">    <span class="n">repair_notes</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-247">    <span class="n">treatment_in</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"treatment"</span><span class="p">)</span>
+</span><span id="line-248">    <span class="k">if</span> <span class="n">treatment_in</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-249">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.director</span><span class="w"> </span><span class="kn">import</span> <span class="n">propose_treatments</span>
+</span><span id="line-250">
+</span><span id="line-251">        <span class="n">persona</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"persona"</span><span class="p">)</span>
+</span><span id="line-252">        <span class="n">treatment</span> <span class="o">=</span> <span class="n">propose_treatments</span><span class="p">(</span>
+</span><span id="line-253">            <span class="n">timed</span><span class="p">,</span>
+</span><span id="line-254">            <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+</span><span id="line-255">            <span class="n">song_title</span><span class="o">=</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">,</span> <span class="s2">""</span><span class="p">),</span>
+</span><span id="line-256">            <span class="n">personas</span><span class="o">=</span><span class="p">[</span><span class="n">persona</span><span class="p">]</span> <span class="k">if</span> <span class="n">persona</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-257">        <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-258">        <span class="n">treatment_source</span> <span class="o">=</span> <span class="s2">"proposed"</span>
+</span><span id="line-259">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-260">        <span class="n">treatment</span><span class="p">,</span> <span class="n">repair_notes</span> <span class="o">=</span> <span class="n">spec_mod</span><span class="o">.</span><span class="n">coerce</span><span class="p">(</span><span class="n">treatment_in</span><span class="p">)</span>
+</span><span id="line-261">        <span class="n">treatment_source</span> <span class="o">=</span> <span class="s2">"supplied"</span>
+</span><span id="line-262">        <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"strict"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">repair_notes</span><span class="p">:</span>
+</span><span id="line-263">            <span class="c1"># A caller who wants exactly what they asked for, or nothing.</span>
+</span><span id="line-264">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-265">                <span class="s2">"treatment needed repairs and strict=True: "</span> <span class="o">+</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">repair_notes</span><span class="p">)</span>
+</span><span id="line-266">            <span class="p">)</span>
+</span><span id="line-267">
+</span><span id="line-268">    <span class="n">canvas</span> <span class="o">=</span> <span class="n">Canvas</span><span class="p">(</span>
+</span><span id="line-269">        <span class="n">width</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"width"</span><span class="p">,</span> <span class="mi">1920</span><span class="p">)),</span>
+</span><span id="line-270">        <span class="n">height</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"height"</span><span class="p">,</span> <span class="mi">1080</span><span class="p">)),</span>
+</span><span id="line-271">        <span class="n">fps</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"fps"</span><span class="p">,</span> <span class="mi">30</span><span class="p">)),</span>
+</span><span id="line-272">    <span class="p">)</span>
+</span><span id="line-273">    <span class="n">check_render_bounds</span><span class="p">(</span><span class="n">canvas</span><span class="p">,</span> <span class="n">timed</span><span class="o">.</span><span class="n">duration</span><span class="p">)</span>
+</span><span id="line-274">    <span class="n">tracks</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-275">    <span class="k">if</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"captions"</span><span class="p">):</span>
+</span><span id="line-276">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.captions</span><span class="w"> </span><span class="kn">import</span> <span class="n">caption_tracks</span>
+</span><span id="line-277">
+</span><span id="line-278">        <span class="c1"># built BEFORE the render: an uncovered line fails now, not after a</span>
+</span><span id="line-279">        <span class="c1"># render the caller then has to redo</span>
+</span><span id="line-280">        <span class="n">tracks</span> <span class="o">=</span> <span class="n">caption_tracks</span><span class="p">(</span><span class="n">timed</span><span class="p">,</span> <span class="n">params</span><span class="p">[</span><span class="s2">"captions"</span><span class="p">])</span>
+</span><span id="line-281">    <span class="n">scene</span> <span class="o">=</span> <span class="n">compile_scene</span><span class="p">(</span><span class="n">treatment</span><span class="p">,</span> <span class="n">timed</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">)</span>
+</span><span id="line-282">
+</span><span id="line-283">    <span class="n">requested</span> <span class="o">=</span> <span class="n">params</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"renderer"</span><span class="p">,</span> <span class="n">DEFAULT_RENDERER</span><span class="p">)</span>
+</span><span id="line-284">    <span class="n">backend_name</span> <span class="o">=</span> <span class="n">select_renderer</span><span class="p">(</span><span class="n">requested</span><span class="p">)</span>
+</span><span id="line-285">    <span class="n">backend</span> <span class="o">=</span> <span class="n">resolve_renderer</span><span class="p">(</span><span class="n">backend_name</span><span class="p">)</span>
+</span><span id="line-286">    <span class="n">request</span><span class="o">.</span><span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-287">    <span class="n">request</span><span class="o">.</span><span class="n">output</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-288">
+</span><span id="line-289">    <span class="n">result</span> <span class="o">=</span> <span class="n">backend</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">workdir</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span>
+</span><span id="line-290">
+</span><span id="line-291">    <span class="c1"># Keep the treatment alongside the video: a lyric video you cannot re-derive</span>
+</span><span id="line-292">    <span class="c1"># or hand-edit is an opaque artifact, which is the thing this design avoids.</span>
+</span><span id="line-293">    <span class="n">spec_path</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">workdir</span> <span class="o">/</span> <span class="s2">"treatment.json"</span>
+</span><span id="line-294">    <span class="n">spec_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">treatment</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><span id="line-295">    <span class="n">caption_paths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-296">    <span class="k">if</span> <span class="n">tracks</span><span class="p">:</span>
+</span><span id="line-297">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.captions</span><span class="w"> </span><span class="kn">import</span> <span class="n">write_caption_tracks</span>
+</span><span id="line-298">
+</span><span id="line-299">        <span class="n">caption_paths</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-300">            <span class="sa">f</span><span class="s2">"captions.</span><span class="si">{</span><span class="n">lang</span><span class="si">}</span><span class="s2">"</span><span class="p">:</span> <span class="n">path</span>
+</span><span id="line-301">            <span class="k">for</span> <span class="n">lang</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">write_caption_tracks</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">workdir</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-302">        <span class="p">}</span>
+</span><span id="line-303">
+</span><span id="line-304">    <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-305">        <span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">meta</span><span class="p">),</span>
+</span><span id="line-306">        <span class="c1"># AFTER the backend's meta, so the choice `auto` made is recorded in one</span>
+</span><span id="line-307">        <span class="c1"># vocabulary ("ass"/"web") rather than whatever the backend calls itself</span>
+</span><span id="line-308">        <span class="s2">"renderer"</span><span class="p">:</span> <span class="n">backend_name</span><span class="p">,</span>
+</span><span id="line-309">        <span class="s2">"renderer_requested"</span><span class="p">:</span> <span class="n">requested</span><span class="p">,</span>
+</span><span id="line-310">        <span class="s2">"treatment_source"</span><span class="p">:</span> <span class="n">treatment_source</span><span class="p">,</span>
+</span><span id="line-311">        <span class="s2">"timing_source"</span><span class="p">:</span> <span class="n">timed</span><span class="o">.</span><span class="n">source</span><span class="p">,</span>
+</span><span id="line-312">        <span class="s2">"timing_measured"</span><span class="p">:</span> <span class="n">timed</span><span class="o">.</span><span class="n">measured</span><span class="p">,</span>
+</span><span id="line-313">    <span class="p">}</span>
+</span><span id="line-314">    <span class="c1"># A repaired treatment renders something other than what was asked for.</span>
+</span><span id="line-315">    <span class="c1"># That is fine — but only if the caller can SEE it. Omit-when-empty.</span>
+</span><span id="line-316">    <span class="k">if</span> <span class="n">repair_notes</span><span class="p">:</span>
+</span><span id="line-317">        <span class="n">meta</span><span class="p">[</span><span class="s2">"treatment_repairs"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">repair_notes</span><span class="p">)</span>
+</span><span id="line-318">    <span class="k">if</span> <span class="n">scene</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"uncovered_sections"</span><span class="p">):</span>
+</span><span id="line-319">        <span class="n">meta</span><span class="p">[</span><span class="s2">"uncovered_sections"</span><span class="p">]</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">meta</span><span class="p">[</span><span class="s2">"uncovered_sections"</span><span class="p">]</span>
+</span><span id="line-320">    <span class="c1"># Indented lyrics are parsed flat, so a drawn layout does not reach the</span>
+</span><span id="line-321">    <span class="c1"># scene. A Python warning is invisible to an MCP caller; this key is not.</span>
+</span><span id="line-322">    <span class="c1"># Omit-when-absent, and not a treatment repair (strict=True would refuse).</span>
+</span><span id="line-323">    <span class="k">if</span> <span class="n">layout_dropped</span><span class="p">:</span>
+</span><span id="line-324">        <span class="n">meta</span><span class="p">[</span><span class="s2">"lyrics_layout_ignored"</span><span class="p">]</span> <span class="o">=</span> <span class="n">layout_dropped</span>
+</span><span id="line-325">    <span class="k">return</span> <span class="n">RenderResult</span><span class="p">(</span>
+</span><span id="line-326">        <span class="n">output</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">output</span><span class="p">,</span>
+</span><span id="line-327">        <span class="n">duration_s</span><span class="o">=</span><span class="n">result</span><span class="o">.</span><span class="n">duration_s</span>
+</span><span id="line-328">        <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">duration_s</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-329">        <span class="k">else</span> <span class="n">timed</span><span class="o">.</span><span class="n">duration</span><span class="p">,</span>
+</span><span id="line-330">        <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">artifacts</span><span class="p">),</span> <span class="s2">"treatment"</span><span class="p">:</span> <span class="n">spec_path</span><span class="p">,</span> <span class="o">**</span><span class="n">caption_paths</span><span class="p">},</span>
+</span><span id="line-331">        <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">,</span>
+</span><span id="line-332">    <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -521,7 +544,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=38a06c88"></script>
+    <script src="../../../_static/documentation_options.js?v=9cd8e891"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
