@@ -171,8 +171,12 @@ def _off_frame(tiles: Sequence["Tile"], size: tuple[int, int]) -> list:
     """The tiles whose box leaves a frame of ``size``."""
     W, H = size
     return [
-        t for t in tiles
-        if t.box[0] < 0 or t.box[1] < 0 or t.box[0] + t.box[2] > W or t.box[1] + t.box[3] > H
+        t
+        for t in tiles
+        if t.box[0] < 0
+        or t.box[1] < 0
+        or t.box[0] + t.box[2] > W
+        or t.box[1] + t.box[3] > H
     ]
 
 
