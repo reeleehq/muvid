@@ -67,8 +67,13 @@ pleut* construction, where the run of the text itself makes the picture. It exis
 because the archetype that looks like it should already cover that does not:
 `concrete_page` lays each line out as a **centred horizontal row** and cannot slant,
 indent or shape anything, and `muvid.lyrics.parse_lyrics_md` strips leading whitespace, so
-a hand-drawn ASCII layout pasted into `lyrics.md` is flattened twice, with no signal
-either time, and comes out as centred rows (muvid#109). (`text_on_path` is not a third
+a hand-drawn ASCII layout pasted into `lyrics.md` is flattened twice and comes out as
+centred rows (muvid#109). The parse now *says* so: lines indented differently from one
+another raise a `ShapedLyricsWarning`, and `parse_lyrics_md(md, preserve_indent=True)`
+keeps the indentation in `LyricLine.text` (no archetype reads it yet). The default output
+is pinned byte for byte by `tests/data/lyrics_parse_golden.json`, recorded before the
+change, because a live pipeline renders through this parser daily — do not "fix" the
+default. (`text_on_path` is not a third
 option either — it is a hardcoded sine arc and ignores `shape` entirely.) All of
 `calligram`'s geometry is in row-pitch units and fitted to the frame last, so the shape is
 identical at any resolution, and its `slants` / `head_offsets` are shape parameters rather

@@ -128,7 +128,18 @@ def words_from_transcript(transcript: dict[str, Any]) -> list[dict[str, Any]]:
 # --- markdown round-trip --------------------------------------------------
 
 
-def parse_lyrics_md(md: str) -> LyricsDoc:
+class ShapedLyricsWarning(UserWarning):
+    """Lyric lines are indented differently, and the parse is about to drop it.
+
+    A lyrics file whose lines carry *differing* leading whitespace is almost
+    always a drawn layout (a concrete poem, an *Il pleut*), and the default
+    parse strips that whitespace — so the shape is gone before any archetype
+    sees it (muvid#109). This is the signal that it happened. Uniform
+    indentation (every line indented alike) carries no shape and does not warn.
+    """
+
+
+def parse_lyrics_md(md: str, *, preserve_indent: bool = False) -> LyricsDoc:
     """Parse the user-editable lyrics markdown.
 
     Format::
@@ -143,11 +154,69 @@ def parse_lyrics_md(md: str) -> LyricsDoc:
     Empty lines are separators between sections. ``(instrumental)`` or
     any line starting with ``(`` and ending with ``)`` is treated as a
     non-lyric placeholder (no LyricLine emitted).
+
+    Leading whitespace is stripped by default, and the result for every
+    existing input is unchanged by that default (pinned by a golden test). When
+    the lines are indented *differently* from one another — a drawn layout —
+    stripping destroys the shape, so a :class:`ShapedLyricsWarning` says so.
+    ``preserve_indent=True`` keeps each line's leading whitespace in
+    ``LyricLine.text`` instead (trailing whitespace and the ``//`` anchor are
+    still removed), which :func:`render_lyrics_md` writes back verbatim. No
+    lyric-video archetype honours indentation yet; the word tokeniser skips
+    whitespace, so alignment is the same either way. :func:`line_indents`
+    reads the indentation without changing the parse.
+
+    >>> md = "[v]\\nIl pleut\\n  des voix\\n"
+    >>> [L.text for L in parse_lyrics_md(md, preserve_indent=True).lines]
+    ['Il pleut', '  des voix']
     """
+    doc, indents = _parse_lyrics_md(md, preserve_indent=preserve_indent)
+    if not preserve_indent and indentation_varies(indents):
+        import warnings
+
+        warnings.warn(
+            f"{len(indents)} lyric lines carry {len(set(indents))} different "
+            "indentations — a drawn layout? "
+            "parse_lyrics_md strips leading whitespace, so the shape is lost, "
+            "and no lyric-video archetype honours indentation (concrete_page "
+            "centres every row). Pass preserve_indent=True to keep it in the "
+            "text, or see the calligram / shape_fill archetypes for a shaped "
+            "lyric video.",
+            ShapedLyricsWarning,
+            stacklevel=2,
+        )
+    return doc
+
+
+def line_indents(md: str) -> tuple[str, ...]:
+    """The leading whitespace of each lyric line, aligned with ``parse_lyrics_md(md).lines``.
+
+    Reads the shape the default parse strips, without changing the parse.
+
+    >>> line_indents("[v]\\none\\n  two\\n(aside)\\n\\tthree\\n")
+    ('', '  ', '\\t')
+    """
+    return _parse_lyrics_md(md, preserve_indent=False)[1]
+
+
+def indentation_varies(indents: Iterable[str]) -> bool:
+    """True when lyric lines are indented differently: a shape a parse would lose.
+
+    >>> indentation_varies(["", "  "]), indentation_varies(["  ", "  "])
+    (True, False)
+    """
+    return len(set(indents)) > 1
+
+
+def _parse_lyrics_md(
+    md: str, *, preserve_indent: bool
+) -> tuple[LyricsDoc, tuple[str, ...]]:
+    """The parse proper: the doc, plus each lyric line's leading whitespace."""
     sections: list[LyricSection] = []
     current_label: str | None = None
     current_title = ""
     current_lines: list[LyricLine] = []
+    indents: list[str] = []
     line_index = 0
 
     def flush():
@@ -188,9 +257,13 @@ def parse_lyrics_md(md: str) -> LyricsDoc:
         if line.startswith("#"):
             # Markdown headers other than [section] tags are ignored.
             continue
+        # Whatever str.strip() took off the front: the same notion of
+        # whitespace the default parse has always used.
+        indent = raw[: len(raw) - len(raw.lstrip())]
+        indents.append(indent)
         current_lines.append(
             LyricLine(
-                text=line,
+                text=indent + line if preserve_indent and line else line,
                 line_index=line_index,
                 section_label=current_label or "",
                 start_s=start_s,
@@ -198,7 +271,7 @@ def parse_lyrics_md(md: str) -> LyricsDoc:
         )
         line_index += 1
     flush()
-    return LyricsDoc(sections=tuple(sections))
+    return LyricsDoc(sections=tuple(sections)), tuple(indents)
 
 
 def render_lyrics_md(doc: LyricsDoc) -> str:
@@ -278,8 +351,10 @@ def write_lyrics_md(path: str | Path, doc: LyricsDoc) -> None:
     p.write_text(render_lyrics_md(doc), encoding="utf-8")
 
 
-def read_lyrics_md(path: str | Path) -> LyricsDoc:
-    return parse_lyrics_md(Path(path).read_text(encoding="utf-8"))
+def read_lyrics_md(path: str | Path, *, preserve_indent: bool = False) -> LyricsDoc:
+    return parse_lyrics_md(
+        Path(path).read_text(encoding="utf-8"), preserve_indent=preserve_indent
+    )
 
 
 def read_transcript(path: str | Path) -> dict[str, Any]:
