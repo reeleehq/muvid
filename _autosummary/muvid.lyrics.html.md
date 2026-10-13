@@ -18,15 +18,17 @@ to splice in.
 
 ### Functions
 
-| [`lyrics_from_transcript`](#muvid.lyrics.lyrics_from_transcript)(transcript)         | Build a default LyricsDoc from a transcription response.                  |
-|---------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| [`parse_lyrics_md`](#muvid.lyrics.parse_lyrics_md)(md)                        | Parse the user-editable lyrics markdown.                                  |
-| `read_lyrics_md`(path)                                                                      |                                                                           |
-| `read_transcript`(path)                                                                     |                                                                           |
-| [`render_lyrics_md`](#muvid.lyrics.render_lyrics_md)(doc)                      | Inverse of `parse_lyrics_md`.                                             |
-| [`transcribe`](#muvid.lyrics.transcribe)(audio_path, \*[, api_key, ...]) | Run ElevenLabs Scribe on the audio and (optionally) write the JSON.       |
-| [`words_from_transcript`](#muvid.lyrics.words_from_transcript)(transcript)          | Normalize Scribe's word entries: `[{text, start, end, confidence}, ...]`. |
-| `write_lyrics_md`(path, doc)                                                                |                                                                           |
+| [`indentation_varies`](#muvid.lyrics.indentation_varies)(indents)                | True when lyric lines are indented differently: a shape a parse would lose.          |
+|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [`line_indents`](#muvid.lyrics.line_indents)(md)                           | The leading whitespace of each lyric line, aligned with `parse_lyrics_md(md).lines`. |
+| [`lyrics_from_transcript`](#muvid.lyrics.lyrics_from_transcript)(transcript)         | Build a default LyricsDoc from a transcription response.                             |
+| [`parse_lyrics_md`](#muvid.lyrics.parse_lyrics_md)(md, \*[, preserve_indent]) | Parse the user-editable lyrics markdown.                                             |
+| `read_lyrics_md`(path, \*[, preserve_indent])                                               |                                                                                      |
+| `read_transcript`(path)                                                                     |                                                                                      |
+| [`render_lyrics_md`](#muvid.lyrics.render_lyrics_md)(doc)                      | Inverse of `parse_lyrics_md`.                                                        |
+| [`transcribe`](#muvid.lyrics.transcribe)(audio_path, \*[, api_key, ...]) | Run ElevenLabs Scribe on the audio and (optionally) write the JSON.                  |
+| [`words_from_transcript`](#muvid.lyrics.words_from_transcript)(transcript)          | Normalize Scribe's word entries: `[{text, start, end, confidence}, ...]`.            |
+| `write_lyrics_md`(path, doc)                                                                |                                                                                      |
 
 ### Classes
 
@@ -34,6 +36,11 @@ to splice in.
 |-------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
 | [`LyricSection`](#muvid.lyrics.LyricSection)(\*, label[, title, start_s, ...]) | A user-tagged section in the lyrics markdown.                 |
 | [`LyricsDoc`](#muvid.lyrics.LyricsDoc)(\*, sections)                        | Full parsed view of the user's lyrics markdown.               |
+
+### Exceptions
+
+| [`ShapedLyricsWarning`](#muvid.lyrics.ShapedLyricsWarning)   | Lyric lines are indented differently, and the parse is about to drop it.   |
+|------------------------------------------------------------------------|----------------------------------------------------------------------------|
 
 ### *class* muvid.lyrics.LyricLine(, text, line_index, section_label='', start_s=None)
 
@@ -56,6 +63,44 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Full parsed view of the user’s lyrics markdown.
 
+### *exception* muvid.lyrics.ShapedLyricsWarning
+
+Bases: [`UserWarning`](https://docs.python.org/3/builtins/exceptions.html#UserWarning)
+
+Lyric lines are indented differently, and the parse is about to drop it.
+
+A lyrics file whose lines carry *differing* leading whitespace is almost
+always a drawn layout (a concrete poem, an *Il pleut*), and the default
+parse strips that whitespace — so the shape is gone before any archetype
+sees it (muvid#109). This is the signal that it happened. Uniform
+indentation (every line indented alike) carries no shape and does not warn.
+
+### muvid.lyrics.indentation_varies(indents)
+
+True when lyric lines are indented differently: a shape a parse would lose.
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
+```pycon
+>>> indentation_varies(["", "  "]), indentation_varies(["  ", "  "])
+(True, False)
+```
+
+### muvid.lyrics.line_indents(md)
+
+The leading whitespace of each lyric line, aligned with `parse_lyrics_md(md).lines`.
+
+Reads the shape the default parse strips, without changing the parse.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
+
+```pycon
+>>> line_indents("[v]\none\n  two\n(aside)\n\tthree\n")
+('', '  ', '\t')
+```
+
 ### muvid.lyrics.lyrics_from_transcript(transcript)
 
 Build a default LyricsDoc from a transcription response.
@@ -67,7 +112,7 @@ holds everything; the user is expected to re-tag with real sections.
 * **Return type:**
   [`LyricsDoc`](#muvid.lyrics.LyricsDoc)
 
-### muvid.lyrics.parse_lyrics_md(md)
+### muvid.lyrics.parse_lyrics_md(md, , preserve_indent=False)
 
 Parse the user-editable lyrics markdown.
 
@@ -86,8 +131,27 @@ Empty lines are separators between sections. `(instrumental)` or
 any line starting with `(` and ending with `)` is treated as a
 non-lyric placeholder (no LyricLine emitted).
 
+Leading whitespace is stripped by default, and the result for every
+existing input is unchanged by that default (pinned by a golden test). When
+the lines are indented *differently* from one another — a drawn layout —
+stripping destroys the shape, so a [`ShapedLyricsWarning`](#muvid.lyrics.ShapedLyricsWarning) says so.
+`preserve_indent=True` keeps each line’s leading whitespace in
+`LyricLine.text` instead (trailing whitespace and the `//` anchor are
+still removed), which [`render_lyrics_md()`](#muvid.lyrics.render_lyrics_md) writes back verbatim and
+which anything displaying that text (an alignment’s line text, say) then
+carries. No
+lyric-video archetype honours indentation yet; the word tokeniser skips
+whitespace, so alignment is the same either way. [`line_indents()`](#muvid.lyrics.line_indents)
+reads the indentation without changing the parse.
+
 * **Return type:**
   [`LyricsDoc`](#muvid.lyrics.LyricsDoc)
+
+```pycon
+>>> md = "[v]\nIl pleut\n  des voix\n"
+>>> [L.text for L in parse_lyrics_md(md, preserve_indent=True).lines]
+['Il pleut', '  des voix']
+```
 
 ### muvid.lyrics.render_lyrics_md(doc)
 

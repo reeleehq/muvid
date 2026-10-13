@@ -329,171 +329,269 @@
 </span><span id="line-128"><span class="c1"># --- markdown round-trip --------------------------------------------------</span>
 </span><span id="line-129">
 </span><span id="line-130">
+<div class="viewcode-block" id="ShapedLyricsWarning">
+<a class="viewcode-back" href="../../_autosummary/muvid.lyrics.html#muvid.lyrics.ShapedLyricsWarning">[docs]</a>
+</span><span id="line-131"><span class="k">class</span><span class="w"> </span><span class="nc">ShapedLyricsWarning</span><span class="p">(</span><span class="ne">UserWarning</span><span class="p">):</span>
+</span><span id="line-132"><span class="w">    </span><span class="sd">"""Lyric lines are indented differently, and the parse is about to drop it.</span>
+</span><span id="line-133">
+</span><span id="line-134"><span class="sd">    A lyrics file whose lines carry *differing* leading whitespace is almost</span>
+</span><span id="line-135"><span class="sd">    always a drawn layout (a concrete poem, an *Il pleut*), and the default</span>
+</span><span id="line-136"><span class="sd">    parse strips that whitespace — so the shape is gone before any archetype</span>
+</span><span id="line-137"><span class="sd">    sees it (muvid#109). This is the signal that it happened. Uniform</span>
+</span><span id="line-138"><span class="sd">    indentation (every line indented alike) carries no shape and does not warn.</span>
+</span><span id="line-139"><span class="sd">    """</span></div>
+
+</span><span id="line-140">
+</span><span id="line-141">
 <div class="viewcode-block" id="parse_lyrics_md">
 <a class="viewcode-back" href="../../_autosummary/muvid.lyrics.html#muvid.lyrics.parse_lyrics_md">[docs]</a>
-</span><span id="line-131"><span class="k">def</span><span class="w"> </span><span class="nf">parse_lyrics_md</span><span class="p">(</span><span class="n">md</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LyricsDoc</span><span class="p">:</span>
-</span><span id="line-132"><span class="w">    </span><span class="sd">"""Parse the user-editable lyrics markdown.</span>
-</span><span id="line-133">
-</span><span id="line-134"><span class="sd">    Format::</span>
-</span><span id="line-135">
-</span><span id="line-136"><span class="sd">        [section_label] optional title</span>
-</span><span id="line-137"><span class="sd">        line of lyric            // 12.5</span>
-</span><span id="line-138"><span class="sd">        another line</span>
-</span><span id="line-139">
-</span><span id="line-140"><span class="sd">        [next section]</span>
-</span><span id="line-141"><span class="sd">        ...</span>
-</span><span id="line-142">
-</span><span id="line-143"><span class="sd">    Empty lines are separators between sections. ``(instrumental)`` or</span>
-</span><span id="line-144"><span class="sd">    any line starting with ``(`` and ending with ``)`` is treated as a</span>
-</span><span id="line-145"><span class="sd">    non-lyric placeholder (no LyricLine emitted).</span>
-</span><span id="line-146"><span class="sd">    """</span>
-</span><span id="line-147">    <span class="n">sections</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LyricSection</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-148">    <span class="n">current_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-149">    <span class="n">current_title</span> <span class="o">=</span> <span class="s2">""</span>
-</span><span id="line-150">    <span class="n">current_lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LyricLine</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-151">    <span class="n">line_index</span> <span class="o">=</span> <span class="mi">0</span>
-</span><span id="line-152">
-</span><span id="line-153">    <span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">():</span>
-</span><span id="line-154">        <span class="k">nonlocal</span> <span class="n">current_label</span><span class="p">,</span> <span class="n">current_title</span><span class="p">,</span> <span class="n">current_lines</span>
-</span><span id="line-155">        <span class="k">if</span> <span class="n">current_label</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">current_lines</span><span class="p">:</span>
-</span><span id="line-156">            <span class="k">return</span>
-</span><span id="line-157">        <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-158">            <span class="n">LyricSection</span><span class="p">(</span>
-</span><span id="line-159">                <span class="n">label</span><span class="o">=</span><span class="n">current_label</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
-</span><span id="line-160">                <span class="n">title</span><span class="o">=</span><span class="n">current_title</span><span class="p">,</span>
-</span><span id="line-161">                <span class="n">lines</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">current_lines</span><span class="p">),</span>
-</span><span id="line-162">            <span class="p">)</span>
-</span><span id="line-163">        <span class="p">)</span>
-</span><span id="line-164">        <span class="n">current_label</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-165">        <span class="n">current_title</span> <span class="o">=</span> <span class="s2">""</span>
-</span><span id="line-166">        <span class="n">current_lines</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-167">
-</span><span id="line-168">    <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">md</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
-</span><span id="line-169">        <span class="n">line</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-170">        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
-</span><span id="line-171">            <span class="c1"># Blank line — keep accumulating in the current section. We</span>
-</span><span id="line-172">            <span class="c1"># only flush on a new section header.</span>
-</span><span id="line-173">            <span class="k">continue</span>
-</span><span id="line-174">        <span class="n">m</span> <span class="o">=</span> <span class="n">SECTION_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-</span><span id="line-175">        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
-</span><span id="line-176">            <span class="n">flush</span><span class="p">()</span>
-</span><span id="line-177">            <span class="n">current_label</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-178">            <span class="n">current_title</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-179">            <span class="k">continue</span>
-</span><span id="line-180">        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"("</span><span class="p">)</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">")"</span><span class="p">):</span>
-</span><span id="line-181">            <span class="c1"># Non-lyric placeholder; ignored.</span>
-</span><span id="line-182">            <span class="k">continue</span>
-</span><span id="line-183">        <span class="n">anchor</span> <span class="o">=</span> <span class="n">ANCHOR_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-</span><span id="line-184">        <span class="n">start_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-185">        <span class="k">if</span> <span class="n">anchor</span><span class="p">:</span>
-</span><span id="line-186">            <span class="n">start_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">anchor</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-</span><span id="line-187">            <span class="n">line</span> <span class="o">=</span> <span class="n">ANCHOR_RE</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-188">        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"#"</span><span class="p">):</span>
-</span><span id="line-189">            <span class="c1"># Markdown headers other than [section] tags are ignored.</span>
-</span><span id="line-190">            <span class="k">continue</span>
-</span><span id="line-191">        <span class="n">current_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-192">            <span class="n">LyricLine</span><span class="p">(</span>
-</span><span id="line-193">                <span class="n">text</span><span class="o">=</span><span class="n">line</span><span class="p">,</span>
-</span><span id="line-194">                <span class="n">line_index</span><span class="o">=</span><span class="n">line_index</span><span class="p">,</span>
-</span><span id="line-195">                <span class="n">section_label</span><span class="o">=</span><span class="n">current_label</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
-</span><span id="line-196">                <span class="n">start_s</span><span class="o">=</span><span class="n">start_s</span><span class="p">,</span>
-</span><span id="line-197">            <span class="p">)</span>
-</span><span id="line-198">        <span class="p">)</span>
-</span><span id="line-199">        <span class="n">line_index</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span id="line-200">    <span class="n">flush</span><span class="p">()</span>
-</span><span id="line-201">    <span class="k">return</span> <span class="n">LyricsDoc</span><span class="p">(</span><span class="n">sections</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">sections</span><span class="p">))</span></div>
+</span><span id="line-142"><span class="k">def</span><span class="w"> </span><span class="nf">parse_lyrics_md</span><span class="p">(</span><span class="n">md</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">preserve_indent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LyricsDoc</span><span class="p">:</span>
+</span><span id="line-143"><span class="w">    </span><span class="sd">"""Parse the user-editable lyrics markdown.</span>
+</span><span id="line-144">
+</span><span id="line-145"><span class="sd">    Format::</span>
+</span><span id="line-146">
+</span><span id="line-147"><span class="sd">        [section_label] optional title</span>
+</span><span id="line-148"><span class="sd">        line of lyric            // 12.5</span>
+</span><span id="line-149"><span class="sd">        another line</span>
+</span><span id="line-150">
+</span><span id="line-151"><span class="sd">        [next section]</span>
+</span><span id="line-152"><span class="sd">        ...</span>
+</span><span id="line-153">
+</span><span id="line-154"><span class="sd">    Empty lines are separators between sections. ``(instrumental)`` or</span>
+</span><span id="line-155"><span class="sd">    any line starting with ``(`` and ending with ``)`` is treated as a</span>
+</span><span id="line-156"><span class="sd">    non-lyric placeholder (no LyricLine emitted).</span>
+</span><span id="line-157">
+</span><span id="line-158"><span class="sd">    Leading whitespace is stripped by default, and the result for every</span>
+</span><span id="line-159"><span class="sd">    existing input is unchanged by that default (pinned by a golden test). When</span>
+</span><span id="line-160"><span class="sd">    the lines are indented *differently* from one another — a drawn layout —</span>
+</span><span id="line-161"><span class="sd">    stripping destroys the shape, so a :class:`ShapedLyricsWarning` says so.</span>
+</span><span id="line-162"><span class="sd">    ``preserve_indent=True`` keeps each line's leading whitespace in</span>
+</span><span id="line-163"><span class="sd">    ``LyricLine.text`` instead (trailing whitespace and the ``//`` anchor are</span>
+</span><span id="line-164"><span class="sd">    still removed), which :func:`render_lyrics_md` writes back verbatim and</span>
+</span><span id="line-165"><span class="sd">    which anything displaying that text (an alignment's line text, say) then</span>
+</span><span id="line-166"><span class="sd">    carries. No</span>
+</span><span id="line-167"><span class="sd">    lyric-video archetype honours indentation yet; the word tokeniser skips</span>
+</span><span id="line-168"><span class="sd">    whitespace, so alignment is the same either way. :func:`line_indents`</span>
+</span><span id="line-169"><span class="sd">    reads the indentation without changing the parse.</span>
+</span><span id="line-170">
+</span><span id="line-171"><span class="sd">    &gt;&gt;&gt; md = "[v]\\nIl pleut\\n  des voix\\n"</span>
+</span><span id="line-172"><span class="sd">    &gt;&gt;&gt; [L.text for L in parse_lyrics_md(md, preserve_indent=True).lines]</span>
+</span><span id="line-173"><span class="sd">    ['Il pleut', '  des voix']</span>
+</span><span id="line-174"><span class="sd">    """</span>
+</span><span id="line-175">    <span class="n">doc</span><span class="p">,</span> <span class="n">indents</span> <span class="o">=</span> <span class="n">_parse_lyrics_md</span><span class="p">(</span><span class="n">md</span><span class="p">,</span> <span class="n">preserve_indent</span><span class="o">=</span><span class="n">preserve_indent</span><span class="p">)</span>
+</span><span id="line-176">    <span class="k">if</span> <span class="ow">not</span> <span class="n">preserve_indent</span><span class="p">:</span>
+</span><span id="line-177">        <span class="n">_warn_if_shaped</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">indents</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="line-178">    <span class="k">return</span> <span class="n">doc</span></div>
 
-</span><span id="line-202">
-</span><span id="line-203">
+</span><span id="line-179">
+</span><span id="line-180">
+</span><span id="line-181"><span class="k">def</span><span class="w"> </span><span class="nf">_warn_if_shaped</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="n">LyricsDoc</span><span class="p">,</span> <span class="n">indents</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="o">*</span><span class="p">,</span> <span class="n">stacklevel</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+</span><span id="line-182"><span class="w">    </span><span class="sd">"""Raise a ShapedLyricsWarning when the lines that carry text are indented differently."""</span>
+</span><span id="line-183">    <span class="c1"># An anchor-only line ("   // 4") has no text, so its indent shapes nothing.</span>
+</span><span id="line-184">    <span class="n">worded</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">indents</span><span class="p">,</span> <span class="n">doc</span><span class="o">.</span><span class="n">lines</span><span class="p">)</span> <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">text</span><span class="p">]</span>
+</span><span id="line-185">    <span class="k">if</span> <span class="ow">not</span> <span class="n">indentation_varies</span><span class="p">(</span><span class="n">worded</span><span class="p">):</span>
+</span><span id="line-186">        <span class="k">return</span>
+</span><span id="line-187">    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+</span><span id="line-188">
+</span><span id="line-189">    <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+</span><span id="line-190">        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">worded</span><span class="p">)</span><span class="si">}</span><span class="s2"> lyric lines carry </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">worded</span><span class="p">))</span><span class="si">}</span><span class="s2"> different "</span>
+</span><span id="line-191">        <span class="s2">"indentations, which may be a drawn layout. The parse strips leading "</span>
+</span><span id="line-192">        <span class="s2">"whitespace and no lyric-video archetype honours indentation "</span>
+</span><span id="line-193">        <span class="s2">"(concrete_page centres every row), so any shape is lost. For a shaped "</span>
+</span><span id="line-194">        <span class="s2">"lyric video see the calligram or shape_fill archetypes; to keep the "</span>
+</span><span id="line-195">        <span class="s2">"indentation in the parsed text, call parse_lyrics_md(..., "</span>
+</span><span id="line-196">        <span class="s2">"preserve_indent=True)."</span><span class="p">,</span>
+</span><span id="line-197">        <span class="n">ShapedLyricsWarning</span><span class="p">,</span>
+</span><span id="line-198">        <span class="n">stacklevel</span><span class="o">=</span><span class="n">stacklevel</span><span class="p">,</span>
+</span><span id="line-199">    <span class="p">)</span>
+</span><span id="line-200">
+</span><span id="line-201">
+<div class="viewcode-block" id="line_indents">
+<a class="viewcode-back" href="../../_autosummary/muvid.lyrics.html#muvid.lyrics.line_indents">[docs]</a>
+</span><span id="line-202"><span class="k">def</span><span class="w"> </span><span class="nf">line_indents</span><span class="p">(</span><span class="n">md</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+</span><span id="line-203"><span class="w">    </span><span class="sd">"""The leading whitespace of each lyric line, aligned with ``parse_lyrics_md(md).lines``.</span>
+</span><span id="line-204">
+</span><span id="line-205"><span class="sd">    Reads the shape the default parse strips, without changing the parse.</span>
+</span><span id="line-206">
+</span><span id="line-207"><span class="sd">    &gt;&gt;&gt; line_indents("[v]\\none\\n  two\\n(aside)\\n\\tthree\\n")</span>
+</span><span id="line-208"><span class="sd">    ('', '  ', '\\t')</span>
+</span><span id="line-209"><span class="sd">    """</span>
+</span><span id="line-210">    <span class="k">return</span> <span class="n">_parse_lyrics_md</span><span class="p">(</span><span class="n">md</span><span class="p">,</span> <span class="n">preserve_indent</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span></div>
+
+</span><span id="line-211">
+</span><span id="line-212">
+<div class="viewcode-block" id="indentation_varies">
+<a class="viewcode-back" href="../../_autosummary/muvid.lyrics.html#muvid.lyrics.indentation_varies">[docs]</a>
+</span><span id="line-213"><span class="k">def</span><span class="w"> </span><span class="nf">indentation_varies</span><span class="p">(</span><span class="n">indents</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-214"><span class="w">    </span><span class="sd">"""True when lyric lines are indented differently: a shape a parse would lose.</span>
+</span><span id="line-215">
+</span><span id="line-216"><span class="sd">    &gt;&gt;&gt; indentation_varies(["", "  "]), indentation_varies(["  ", "  "])</span>
+</span><span id="line-217"><span class="sd">    (True, False)</span>
+</span><span id="line-218"><span class="sd">    """</span>
+</span><span id="line-219">    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">indents</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span></div>
+
+</span><span id="line-220">
+</span><span id="line-221">
+</span><span id="line-222"><span class="k">def</span><span class="w"> </span><span class="nf">_parse_lyrics_md</span><span class="p">(</span>
+</span><span id="line-223">    <span class="n">md</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">preserve_indent</span><span class="p">:</span> <span class="nb">bool</span>
+</span><span id="line-224"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">LyricsDoc</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]:</span>
+</span><span id="line-225"><span class="w">    </span><span class="sd">"""The parse proper: the doc, plus each lyric line's leading whitespace."""</span>
+</span><span id="line-226">    <span class="n">sections</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LyricSection</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-227">    <span class="n">current_label</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-228">    <span class="n">current_title</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span id="line-229">    <span class="n">current_lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LyricLine</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-230">    <span class="n">indents</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-231">    <span class="n">line_index</span> <span class="o">=</span> <span class="mi">0</span>
+</span><span id="line-232">
+</span><span id="line-233">    <span class="k">def</span><span class="w"> </span><span class="nf">flush</span><span class="p">():</span>
+</span><span id="line-234">        <span class="k">nonlocal</span> <span class="n">current_label</span><span class="p">,</span> <span class="n">current_title</span><span class="p">,</span> <span class="n">current_lines</span>
+</span><span id="line-235">        <span class="k">if</span> <span class="n">current_label</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">current_lines</span><span class="p">:</span>
+</span><span id="line-236">            <span class="k">return</span>
+</span><span id="line-237">        <span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-238">            <span class="n">LyricSection</span><span class="p">(</span>
+</span><span id="line-239">                <span class="n">label</span><span class="o">=</span><span class="n">current_label</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+</span><span id="line-240">                <span class="n">title</span><span class="o">=</span><span class="n">current_title</span><span class="p">,</span>
+</span><span id="line-241">                <span class="n">lines</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">current_lines</span><span class="p">),</span>
+</span><span id="line-242">            <span class="p">)</span>
+</span><span id="line-243">        <span class="p">)</span>
+</span><span id="line-244">        <span class="n">current_label</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-245">        <span class="n">current_title</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span id="line-246">        <span class="n">current_lines</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-247">
+</span><span id="line-248">    <span class="k">for</span> <span class="n">raw</span> <span class="ow">in</span> <span class="n">md</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+</span><span id="line-249">        <span class="n">line</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-250">        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+</span><span id="line-251">            <span class="c1"># Blank line — keep accumulating in the current section. We</span>
+</span><span id="line-252">            <span class="c1"># only flush on a new section header.</span>
+</span><span id="line-253">            <span class="k">continue</span>
+</span><span id="line-254">        <span class="n">m</span> <span class="o">=</span> <span class="n">SECTION_RE</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</span><span id="line-255">        <span class="k">if</span> <span class="n">m</span><span class="p">:</span>
+</span><span id="line-256">            <span class="n">flush</span><span class="p">()</span>
+</span><span id="line-257">            <span class="n">current_label</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-258">            <span class="n">current_title</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-259">            <span class="k">continue</span>
+</span><span id="line-260">        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"("</span><span class="p">)</span> <span class="ow">and</span> <span class="n">line</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">")"</span><span class="p">):</span>
+</span><span id="line-261">            <span class="c1"># Non-lyric placeholder; ignored.</span>
+</span><span id="line-262">            <span class="k">continue</span>
+</span><span id="line-263">        <span class="n">anchor</span> <span class="o">=</span> <span class="n">ANCHOR_RE</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</span><span id="line-264">        <span class="n">start_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-265">        <span class="k">if</span> <span class="n">anchor</span><span class="p">:</span>
+</span><span id="line-266">            <span class="n">start_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">anchor</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+</span><span id="line-267">            <span class="n">line</span> <span class="o">=</span> <span class="n">ANCHOR_RE</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-268">        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"#"</span><span class="p">):</span>
+</span><span id="line-269">            <span class="c1"># Markdown headers other than [section] tags are ignored.</span>
+</span><span id="line-270">            <span class="k">continue</span>
+</span><span id="line-271">        <span class="c1"># Whatever str.strip() took off the front: the same notion of</span>
+</span><span id="line-272">        <span class="c1"># whitespace the default parse has always used.</span>
+</span><span id="line-273">        <span class="n">indent</span> <span class="o">=</span> <span class="n">raw</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">raw</span><span class="o">.</span><span class="n">lstrip</span><span class="p">())]</span>
+</span><span id="line-274">        <span class="n">indents</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">indent</span><span class="p">)</span>
+</span><span id="line-275">        <span class="n">current_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-276">            <span class="n">LyricLine</span><span class="p">(</span>
+</span><span id="line-277">                <span class="n">text</span><span class="o">=</span><span class="n">indent</span> <span class="o">+</span> <span class="n">line</span> <span class="k">if</span> <span class="n">preserve_indent</span> <span class="ow">and</span> <span class="n">line</span> <span class="k">else</span> <span class="n">line</span><span class="p">,</span>
+</span><span id="line-278">                <span class="n">line_index</span><span class="o">=</span><span class="n">line_index</span><span class="p">,</span>
+</span><span id="line-279">                <span class="n">section_label</span><span class="o">=</span><span class="n">current_label</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">,</span>
+</span><span id="line-280">                <span class="n">start_s</span><span class="o">=</span><span class="n">start_s</span><span class="p">,</span>
+</span><span id="line-281">            <span class="p">)</span>
+</span><span id="line-282">        <span class="p">)</span>
+</span><span id="line-283">        <span class="n">line_index</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span id="line-284">    <span class="n">flush</span><span class="p">()</span>
+</span><span id="line-285">    <span class="k">return</span> <span class="n">LyricsDoc</span><span class="p">(</span><span class="n">sections</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">sections</span><span class="p">)),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">indents</span><span class="p">)</span>
+</span><span id="line-286">
+</span><span id="line-287">
 <div class="viewcode-block" id="render_lyrics_md">
 <a class="viewcode-back" href="../../_autosummary/muvid.lyrics.html#muvid.lyrics.render_lyrics_md">[docs]</a>
-</span><span id="line-204"><span class="k">def</span><span class="w"> </span><span class="nf">render_lyrics_md</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="n">LyricsDoc</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-205"><span class="w">    </span><span class="sd">"""Inverse of ``parse_lyrics_md``. Stable round-trip."""</span>
-</span><span id="line-206">    <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-207">    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">sections</span><span class="p">:</span>
-</span><span id="line-208">        <span class="n">header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">section</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">]"</span>
-</span><span id="line-209">        <span class="k">if</span> <span class="n">section</span><span class="o">.</span><span class="n">title</span><span class="p">:</span>
-</span><span id="line-210">            <span class="n">header</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="n">section</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-211">        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
-</span><span id="line-212">        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">section</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
-</span><span id="line-213">            <span class="n">text</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">text</span>
-</span><span id="line-214">            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">start_s</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-215">                <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">  // </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">start_s</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-216">            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
-</span><span id="line-217">        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
-</span><span id="line-218">    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span></div>
+</span><span id="line-288"><span class="k">def</span><span class="w"> </span><span class="nf">render_lyrics_md</span><span class="p">(</span><span class="n">doc</span><span class="p">:</span> <span class="n">LyricsDoc</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-289"><span class="w">    </span><span class="sd">"""Inverse of ``parse_lyrics_md``. Stable round-trip."""</span>
+</span><span id="line-290">    <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-291">    <span class="k">for</span> <span class="n">section</span> <span class="ow">in</span> <span class="n">doc</span><span class="o">.</span><span class="n">sections</span><span class="p">:</span>
+</span><span id="line-292">        <span class="n">header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"[</span><span class="si">{</span><span class="n">section</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s2">]"</span>
+</span><span id="line-293">        <span class="k">if</span> <span class="n">section</span><span class="o">.</span><span class="n">title</span><span class="p">:</span>
+</span><span id="line-294">            <span class="n">header</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">" </span><span class="si">{</span><span class="n">section</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-295">        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header</span><span class="p">)</span>
+</span><span id="line-296">        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">section</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+</span><span id="line-297">            <span class="n">text</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">text</span>
+</span><span id="line-298">            <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">start_s</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-299">                <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">  // </span><span class="si">{</span><span class="n">line</span><span class="o">.</span><span class="n">start_s</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-300">            <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+</span><span id="line-301">        <span class="n">parts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">""</span><span class="p">)</span>
+</span><span id="line-302">    <span class="k">return</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="o">+</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span></div>
 
-</span><span id="line-219">
-</span><span id="line-220">
+</span><span id="line-303">
+</span><span id="line-304">
 <div class="viewcode-block" id="lyrics_from_transcript">
 <a class="viewcode-back" href="../../_autosummary/muvid.lyrics.html#muvid.lyrics.lyrics_from_transcript">[docs]</a>
-</span><span id="line-221"><span class="k">def</span><span class="w"> </span><span class="nf">lyrics_from_transcript</span><span class="p">(</span><span class="n">transcript</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">LyricsDoc</span><span class="p">:</span>
-</span><span id="line-222"><span class="w">    </span><span class="sd">"""Build a default LyricsDoc from a transcription response.</span>
-</span><span id="line-223">
-</span><span id="line-224"><span class="sd">    Heuristic: split lines on punctuation (``. ? !``) or on long pauses</span>
-</span><span id="line-225"><span class="sd">    (&gt;0.6 s gap between consecutive words). One ``[transcribed]`` section</span>
-</span><span id="line-226"><span class="sd">    holds everything; the user is expected to re-tag with real sections.</span>
-</span><span id="line-227"><span class="sd">    """</span>
-</span><span id="line-228">    <span class="n">words</span> <span class="o">=</span> <span class="n">words_from_transcript</span><span class="p">(</span><span class="n">transcript</span><span class="p">)</span>
-</span><span id="line-229">    <span class="k">if</span> <span class="ow">not</span> <span class="n">words</span><span class="p">:</span>
-</span><span id="line-230">        <span class="k">return</span> <span class="n">LyricsDoc</span><span class="p">(</span><span class="n">sections</span><span class="o">=</span><span class="p">())</span>
-</span><span id="line-231">    <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[[]]</span>
-</span><span id="line-232">    <span class="n">GAP</span> <span class="o">=</span> <span class="mf">0.6</span>
-</span><span id="line-233">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
-</span><span id="line-234">        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">w</span><span class="p">[</span><span class="s2">"start"</span><span class="p">]</span> <span class="o">-</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="s2">"end"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">GAP</span><span class="p">:</span>
-</span><span id="line-235">            <span class="k">if</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
-</span><span id="line-236">                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
-</span><span id="line-237">        <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
-</span><span id="line-238">        <span class="k">if</span> <span class="n">w</span><span class="p">[</span><span class="s2">"text"</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">"?"</span><span class="p">,</span> <span class="s2">"!"</span><span class="p">)):</span>
-</span><span id="line-239">            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
-</span><span id="line-240">    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">grp</span> <span class="k">for</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">lines</span> <span class="k">if</span> <span class="n">grp</span><span class="p">]</span>
-</span><span id="line-241">
-</span><span id="line-242">    <span class="n">out_lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LyricLine</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-243">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
-</span><span id="line-244">        <span class="n">text</span> <span class="o">=</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="s2">"text"</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">grp</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-245">        <span class="n">start_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">grp</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"start"</span><span class="p">])</span>
-</span><span id="line-246">        <span class="n">out_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-247">            <span class="n">LyricLine</span><span class="p">(</span>
-</span><span id="line-248">                <span class="n">text</span><span class="o">=</span><span class="n">text</span><span class="p">,</span>
-</span><span id="line-249">                <span class="n">line_index</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span>
-</span><span id="line-250">                <span class="n">section_label</span><span class="o">=</span><span class="s2">"transcribed"</span><span class="p">,</span>
-</span><span id="line-251">                <span class="n">start_s</span><span class="o">=</span><span class="n">start_s</span><span class="p">,</span>
-</span><span id="line-252">            <span class="p">)</span>
-</span><span id="line-253">        <span class="p">)</span>
-</span><span id="line-254">    <span class="k">return</span> <span class="n">LyricsDoc</span><span class="p">(</span>
-</span><span id="line-255">        <span class="n">sections</span><span class="o">=</span><span class="p">(</span>
-</span><span id="line-256">            <span class="n">LyricSection</span><span class="p">(</span>
-</span><span id="line-257">                <span class="n">label</span><span class="o">=</span><span class="s2">"transcribed"</span><span class="p">,</span>
-</span><span id="line-258">                <span class="n">title</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">,</span>
-</span><span id="line-259">                <span class="n">lines</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">out_lines</span><span class="p">),</span>
-</span><span id="line-260">            <span class="p">),</span>
-</span><span id="line-261">        <span class="p">)</span>
-</span><span id="line-262">    <span class="p">)</span></div>
+</span><span id="line-305"><span class="k">def</span><span class="w"> </span><span class="nf">lyrics_from_transcript</span><span class="p">(</span><span class="n">transcript</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">LyricsDoc</span><span class="p">:</span>
+</span><span id="line-306"><span class="w">    </span><span class="sd">"""Build a default LyricsDoc from a transcription response.</span>
+</span><span id="line-307">
+</span><span id="line-308"><span class="sd">    Heuristic: split lines on punctuation (``. ? !``) or on long pauses</span>
+</span><span id="line-309"><span class="sd">    (&gt;0.6 s gap between consecutive words). One ``[transcribed]`` section</span>
+</span><span id="line-310"><span class="sd">    holds everything; the user is expected to re-tag with real sections.</span>
+</span><span id="line-311"><span class="sd">    """</span>
+</span><span id="line-312">    <span class="n">words</span> <span class="o">=</span> <span class="n">words_from_transcript</span><span class="p">(</span><span class="n">transcript</span><span class="p">)</span>
+</span><span id="line-313">    <span class="k">if</span> <span class="ow">not</span> <span class="n">words</span><span class="p">:</span>
+</span><span id="line-314">        <span class="k">return</span> <span class="n">LyricsDoc</span><span class="p">(</span><span class="n">sections</span><span class="o">=</span><span class="p">())</span>
+</span><span id="line-315">    <span class="n">lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span> <span class="o">=</span> <span class="p">[[]]</span>
+</span><span id="line-316">    <span class="n">GAP</span> <span class="o">=</span> <span class="mf">0.6</span>
+</span><span id="line-317">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">words</span><span class="p">):</span>
+</span><span id="line-318">        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">w</span><span class="p">[</span><span class="s2">"start"</span><span class="p">]</span> <span class="o">-</span> <span class="n">words</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="s2">"end"</span><span class="p">]</span> <span class="o">&gt;</span> <span class="n">GAP</span><span class="p">:</span>
+</span><span id="line-319">            <span class="k">if</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+</span><span id="line-320">                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+</span><span id="line-321">        <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">w</span><span class="p">)</span>
+</span><span id="line-322">        <span class="k">if</span> <span class="n">w</span><span class="p">[</span><span class="s2">"text"</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">"?"</span><span class="p">,</span> <span class="s2">"!"</span><span class="p">)):</span>
+</span><span id="line-323">            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">([])</span>
+</span><span id="line-324">    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">grp</span> <span class="k">for</span> <span class="n">grp</span> <span class="ow">in</span> <span class="n">lines</span> <span class="k">if</span> <span class="n">grp</span><span class="p">]</span>
+</span><span id="line-325">
+</span><span id="line-326">    <span class="n">out_lines</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">LyricLine</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-327">    <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">grp</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+</span><span id="line-328">        <span class="n">text</span> <span class="o">=</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="s2">"text"</span><span class="p">]</span> <span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">grp</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-329">        <span class="n">start_s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">grp</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"start"</span><span class="p">])</span>
+</span><span id="line-330">        <span class="n">out_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-331">            <span class="n">LyricLine</span><span class="p">(</span>
+</span><span id="line-332">                <span class="n">text</span><span class="o">=</span><span class="n">text</span><span class="p">,</span>
+</span><span id="line-333">                <span class="n">line_index</span><span class="o">=</span><span class="n">idx</span><span class="p">,</span>
+</span><span id="line-334">                <span class="n">section_label</span><span class="o">=</span><span class="s2">"transcribed"</span><span class="p">,</span>
+</span><span id="line-335">                <span class="n">start_s</span><span class="o">=</span><span class="n">start_s</span><span class="p">,</span>
+</span><span id="line-336">            <span class="p">)</span>
+</span><span id="line-337">        <span class="p">)</span>
+</span><span id="line-338">    <span class="k">return</span> <span class="n">LyricsDoc</span><span class="p">(</span>
+</span><span id="line-339">        <span class="n">sections</span><span class="o">=</span><span class="p">(</span>
+</span><span id="line-340">            <span class="n">LyricSection</span><span class="p">(</span>
+</span><span id="line-341">                <span class="n">label</span><span class="o">=</span><span class="s2">"transcribed"</span><span class="p">,</span>
+</span><span id="line-342">                <span class="n">title</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">,</span>
+</span><span id="line-343">                <span class="n">lines</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(</span><span class="n">out_lines</span><span class="p">),</span>
+</span><span id="line-344">            <span class="p">),</span>
+</span><span id="line-345">        <span class="p">)</span>
+</span><span id="line-346">    <span class="p">)</span></div>
 
-</span><span id="line-263">
-</span><span id="line-264">
-</span><span id="line-265"><span class="c1"># --- file helpers ---------------------------------------------------------</span>
-</span><span id="line-266">
-</span><span id="line-267"><span class="c1"># Every read/write below pins ``encoding="utf-8"``. Lyrics are non-ASCII by</span>
-</span><span id="line-268"><span class="c1"># nature, and an unqualified ``read_text``/``write_text``/``open`` takes its</span>
-</span><span id="line-269"><span class="c1"># codec from the process locale — ASCII under ``LC_ALL=C`` (a container with no</span>
-</span><span id="line-270"><span class="c1"># locale, cron, a systemd unit), cp1252 on Windows. So the on-disk format is</span>
-</span><span id="line-271"><span class="c1"># UTF-8 *by contract*, which is what these files already are everywhere muvid</span>
-</span><span id="line-272"><span class="c1"># has run; the ambient setting no longer gets a vote.</span>
-</span><span id="line-273">
-</span><span id="line-274">
-</span><span id="line-275"><span class="k">def</span><span class="w"> </span><span class="nf">write_lyrics_md</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="n">LyricsDoc</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-276">    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="line-277">    <span class="n">p</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-278">    <span class="n">p</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">render_lyrics_md</span><span class="p">(</span><span class="n">doc</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
-</span><span id="line-279">
-</span><span id="line-280">
-</span><span id="line-281"><span class="k">def</span><span class="w"> </span><span class="nf">read_lyrics_md</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LyricsDoc</span><span class="p">:</span>
-</span><span id="line-282">    <span class="k">return</span> <span class="n">parse_lyrics_md</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
-</span><span id="line-283">
-</span><span id="line-284">
-</span><span id="line-285"><span class="k">def</span><span class="w"> </span><span class="nf">read_transcript</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="line-286">    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
+</span><span id="line-347">
+</span><span id="line-348">
+</span><span id="line-349"><span class="c1"># --- file helpers ---------------------------------------------------------</span>
+</span><span id="line-350">
+</span><span id="line-351"><span class="c1"># Every read/write below pins ``encoding="utf-8"``. Lyrics are non-ASCII by</span>
+</span><span id="line-352"><span class="c1"># nature, and an unqualified ``read_text``/``write_text``/``open`` takes its</span>
+</span><span id="line-353"><span class="c1"># codec from the process locale — ASCII under ``LC_ALL=C`` (a container with no</span>
+</span><span id="line-354"><span class="c1"># locale, cron, a systemd unit), cp1252 on Windows. So the on-disk format is</span>
+</span><span id="line-355"><span class="c1"># UTF-8 *by contract*, which is what these files already are everywhere muvid</span>
+</span><span id="line-356"><span class="c1"># has run; the ambient setting no longer gets a vote.</span>
+</span><span id="line-357">
+</span><span id="line-358">
+</span><span id="line-359"><span class="k">def</span><span class="w"> </span><span class="nf">write_lyrics_md</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="n">doc</span><span class="p">:</span> <span class="n">LyricsDoc</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-360">    <span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-361">    <span class="n">p</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-362">    <span class="n">p</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">render_lyrics_md</span><span class="p">(</span><span class="n">doc</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><span id="line-363">
+</span><span id="line-364">
+</span><span id="line-365"><span class="k">def</span><span class="w"> </span><span class="nf">read_lyrics_md</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">preserve_indent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LyricsDoc</span><span class="p">:</span>
+</span><span id="line-366">    <span class="n">doc</span><span class="p">,</span> <span class="n">indents</span> <span class="o">=</span> <span class="n">_parse_lyrics_md</span><span class="p">(</span>
+</span><span id="line-367">        <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">),</span> <span class="n">preserve_indent</span><span class="o">=</span><span class="n">preserve_indent</span>
+</span><span id="line-368">    <span class="p">)</span>
+</span><span id="line-369">    <span class="k">if</span> <span class="ow">not</span> <span class="n">preserve_indent</span><span class="p">:</span>
+</span><span id="line-370">        <span class="n">_warn_if_shaped</span><span class="p">(</span><span class="n">doc</span><span class="p">,</span> <span class="n">indents</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+</span><span id="line-371">    <span class="k">return</span> <span class="n">doc</span>
+</span><span id="line-372">
+</span><span id="line-373">
+</span><span id="line-374"><span class="k">def</span><span class="w"> </span><span class="nf">read_transcript</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="line-375">    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">(</span><span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">))</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -507,7 +605,7 @@
 </footer>
     </div>
     
-    <script src="../../_static/documentation_options.js?v=7ffc8fc3"></script>
+    <script src="../../_static/documentation_options.js?v=db840bda"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>

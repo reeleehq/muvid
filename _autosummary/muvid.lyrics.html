@@ -155,13 +155,19 @@ to splice in.</p>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyrics.indentation_varies" title="muvid.lyrics.indentation_varies"><code class="xref py py-obj docutils literal notranslate"><span class="pre">indentation_varies</span></code></a>(indents)</p></td>
+<td><p>True when lyric lines are indented differently: a shape a parse would lose.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyrics.line_indents" title="muvid.lyrics.line_indents"><code class="xref py py-obj docutils literal notranslate"><span class="pre">line_indents</span></code></a>(md)</p></td>
+<td><p>The leading whitespace of each lyric line, aligned with <code class="docutils literal notranslate"><span class="pre">parse_lyrics_md(md).lines</span></code>.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyrics.lyrics_from_transcript" title="muvid.lyrics.lyrics_from_transcript"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lyrics_from_transcript</span></code></a>(transcript)</p></td>
 <td><p>Build a default LyricsDoc from a transcription response.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyrics.parse_lyrics_md" title="muvid.lyrics.parse_lyrics_md"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_lyrics_md</span></code></a>(md)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyrics.parse_lyrics_md" title="muvid.lyrics.parse_lyrics_md"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_lyrics_md</span></code></a>(md, *[, preserve_indent])</p></td>
 <td><p>Parse the user-editable lyrics markdown.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_lyrics_md</span></code>(path)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_lyrics_md</span></code>(path, *[, preserve_indent])</p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_transcript</span></code>(path)</p></td>
@@ -195,6 +201,14 @@ to splice in.</p>
 </tr>
 </tbody>
 </table>
+<p class="rubric">Exceptions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyrics.ShapedLyricsWarning" title="muvid.lyrics.ShapedLyricsWarning"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ShapedLyricsWarning</span></code></a></p></td>
+<td><p>Lyric lines are indented differently, and the parse is about to drop it.</p></td>
+</tr>
+</tbody>
+</table>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.lyrics.LyricLine">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">LyricLine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">text</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">line_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">section_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyrics.html#LyricLine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.LyricLine" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.LyricLine'">¶</a></dt>
@@ -221,6 +235,46 @@ transcripts; if present, they override.</p>
 <dl class="field-list simple">
 </dl>
 </dd></dl>
+<dl class="py exception">
+<dt class="sig sig-object py" id="muvid.lyrics.ShapedLyricsWarning">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">ShapedLyricsWarning</span></span><a class="reference internal" href="../_modules/muvid/lyrics.html#ShapedLyricsWarning"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.ShapedLyricsWarning" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.ShapedLyricsWarning'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#UserWarning" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">UserWarning</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
+<p>Lyric lines are indented differently, and the parse is about to drop it.</p>
+<p>A lyrics file whose lines carry <em>differing</em> leading whitespace is almost
+always a drawn layout (a concrete poem, an <em>Il pleut</em>), and the default
+parse strips that whitespace — so the shape is gone before any archetype
+sees it (muvid#109). This is the signal that it happened. Uniform
+indentation (every line indented alike) carries no shape and does not warn.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyrics.indentation_varies">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">indentation_varies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">indents</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyrics.html#indentation_varies"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.indentation_varies" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.indentation_varies'">¶</a></dt>
+<dd><p>True when lyric lines are indented differently: a shape a parse would lose.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">indentation_varies</span><span class="p">([</span><span class="s2">""</span><span class="p">,</span> <span class="s2">"  "</span><span class="p">]),</span> <span class="n">indentation_varies</span><span class="p">([</span><span class="s2">"  "</span><span class="p">,</span> <span class="s2">"  "</span><span class="p">])</span>
+</span><span id="line-2"><span class="go">(True, False)</span>
+</span></code></pre></div>
+</div>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyrics.line_indents">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">line_indents</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">md</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyrics.html#line_indents"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.line_indents" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.line_indents'">¶</a></dt>
+<dd><p>The leading whitespace of each lyric line, aligned with <code class="docutils literal notranslate"><span class="pre">parse_lyrics_md(md).lines</span></code>.</p>
+<p>Reads the shape the default parse strips, without changing the parse.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/constants.html#Ellipsis" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-data docutils literal notranslate"><span class="pre">...</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">line_indents</span><span class="p">(</span><span class="s2">"[v]</span><span class="se">\n</span><span class="s2">one</span><span class="se">\n</span><span class="s2">  two</span><span class="se">\n</span><span class="s2">(aside)</span><span class="se">\n\t</span><span class="s2">three</span><span class="se">\n</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-2"><span class="go">('', '  ', '\t')</span>
+</span></code></pre></div>
+</div>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.lyrics.lyrics_from_transcript">
 <span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">lyrics_from_transcript</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">transcript</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyrics.html#lyrics_from_transcript"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.lyrics_from_transcript" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.lyrics_from_transcript'">¶</a></dt>
@@ -236,7 +290,7 @@ holds everything; the user is expected to re-tag with real sections.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.lyrics.parse_lyrics_md">
-<span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">parse_lyrics_md</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">md</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyrics.html#parse_lyrics_md"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.parse_lyrics_md" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.parse_lyrics_md'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.lyrics.</span></span><span class="sig-name descname"><span class="pre">parse_lyrics_md</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">md</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">preserve_indent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyrics.html#parse_lyrics_md"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyrics.parse_lyrics_md" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyrics.parse_lyrics_md'">¶</a></dt>
 <dd><p>Parse the user-editable lyrics markdown.</p>
 <p>Format:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="p">[</span><span class="n">section_label</span><span class="p">]</span> <span class="n">optional</span> <span class="n">title</span>
@@ -250,11 +304,28 @@ holds everything; the user is expected to re-tag with real sections.</p>
 <p>Empty lines are separators between sections. <code class="docutils literal notranslate"><span class="pre">(instrumental)</span></code> or
 any line starting with <code class="docutils literal notranslate"><span class="pre">(</span></code> and ending with <code class="docutils literal notranslate"><span class="pre">)</span></code> is treated as a
 non-lyric placeholder (no LyricLine emitted).</p>
+<p>Leading whitespace is stripped by default, and the result for every
+existing input is unchanged by that default (pinned by a golden test). When
+the lines are indented <em>differently</em> from one another — a drawn layout —
+stripping destroys the shape, so a <a class="reference internal" href="#muvid.lyrics.ShapedLyricsWarning" title="muvid.lyrics.ShapedLyricsWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">ShapedLyricsWarning</span></code></a> says so.
+<code class="docutils literal notranslate"><span class="pre">preserve_indent=True</span></code> keeps each line’s leading whitespace in
+<code class="docutils literal notranslate"><span class="pre">LyricLine.text</span></code> instead (trailing whitespace and the <code class="docutils literal notranslate"><span class="pre">//</span></code> anchor are
+still removed), which <a class="reference internal" href="#muvid.lyrics.render_lyrics_md" title="muvid.lyrics.render_lyrics_md"><code class="xref py py-func docutils literal notranslate"><span class="pre">render_lyrics_md()</span></code></a> writes back verbatim and
+which anything displaying that text (an alignment’s line text, say) then
+carries. No
+lyric-video archetype honours indentation yet; the word tokeniser skips
+whitespace, so alignment is the same either way. <a class="reference internal" href="#muvid.lyrics.line_indents" title="muvid.lyrics.line_indents"><code class="xref py py-func docutils literal notranslate"><span class="pre">line_indents()</span></code></a>
+reads the indentation without changing the parse.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyrics.LyricsDoc" title="muvid.lyrics.LyricsDoc"><code class="xref py py-class docutils literal notranslate"><span class="pre">LyricsDoc</span></code></a></span></p>
 </dd>
 </dl>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">md</span> <span class="o">=</span> <span class="s2">"[v]</span><span class="se">\n</span><span class="s2">Il pleut</span><span class="se">\n</span><span class="s2">  des voix</span><span class="se">\n</span><span class="s2">"</span>
+</span><span id="line-2"><span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">L</span><span class="o">.</span><span class="n">text</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">parse_lyrics_md</span><span class="p">(</span><span class="n">md</span><span class="p">,</span> <span class="n">preserve_indent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">lines</span><span class="p">]</span>
+</span><span id="line-3"><span class="go">['Il pleut', '  des voix']</span>
+</span></code></pre></div>
+</div>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.lyrics.render_lyrics_md">
@@ -301,6 +372,9 @@ pass-through; absent → <code class="docutils literal notranslate"><span class=
 <li><a :data-current="activeSection === '#muvid.lyrics.LyricLine'" class="reference internal" href="#muvid.lyrics.LyricLine"><code class="docutils literal notranslate"><span class="pre">LyricLine</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyrics.LyricSection'" class="reference internal" href="#muvid.lyrics.LyricSection"><code class="docutils literal notranslate"><span class="pre">LyricSection</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyrics.LyricsDoc'" class="reference internal" href="#muvid.lyrics.LyricsDoc"><code class="docutils literal notranslate"><span class="pre">LyricsDoc</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyrics.ShapedLyricsWarning'" class="reference internal" href="#muvid.lyrics.ShapedLyricsWarning"><code class="docutils literal notranslate"><span class="pre">ShapedLyricsWarning</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyrics.indentation_varies'" class="reference internal" href="#muvid.lyrics.indentation_varies"><code class="docutils literal notranslate"><span class="pre">indentation_varies()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyrics.line_indents'" class="reference internal" href="#muvid.lyrics.line_indents"><code class="docutils literal notranslate"><span class="pre">line_indents()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyrics.lyrics_from_transcript'" class="reference internal" href="#muvid.lyrics.lyrics_from_transcript"><code class="docutils literal notranslate"><span class="pre">lyrics_from_transcript()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyrics.parse_lyrics_md'" class="reference internal" href="#muvid.lyrics.parse_lyrics_md"><code class="docutils literal notranslate"><span class="pre">parse_lyrics_md()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyrics.render_lyrics_md'" class="reference internal" href="#muvid.lyrics.render_lyrics_md"><code class="docutils literal notranslate"><span class="pre">render_lyrics_md()</span></code></a></li>
@@ -319,7 +393,7 @@ pass-through; absent → <code class="docutils literal notranslate"><span class=
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=7ffc8fc3"></script>
+<script src="../_static/documentation_options.js?v=db840bda"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

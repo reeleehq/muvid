@@ -8,6 +8,8 @@ muvid.lyrics
 
    .. autosummary::
    
+      indentation_varies
+      line_indents
       lyrics_from_transcript
       parse_lyrics_md
       read_lyrics_md
@@ -24,4 +26,10 @@ muvid.lyrics
       LyricLine
       LyricSection
       LyricsDoc
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+   
+      ShapedLyricsWarning
    

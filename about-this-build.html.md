@@ -2,20 +2,18 @@
 
 # About this build
 
-This documentation was built on **2026-10-13 08:18 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f82a6b2efc11a8dbc70fef8db312a71d8c74861e"><code>f82a6b2</code></a> on branch <code>main</code>, for **muvid 0.0.88** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-13 08:48 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/98b8fc674e5910587cc0ffc86106ff990fbad3c5"><code>98b8fc6</code></a> on branch <code>main</code>, for **muvid 0.0.89** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.88) is ahead of the latest release on PyPI (0.0.87): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f82a6b2efc11a8dbc70fef8db312a71d8c74861e"><code>f82a6b2efc11a8dbc70fef8db312a71d8c74861e</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/98b8fc674e5910587cc0ffc86106ff990fbad3c5"><code>98b8fc674e5910587cc0ffc86106ff990fbad3c5</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.88</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.89</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -24,9 +22,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38367524532">38367524532</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38370869604">38370869604</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>06cc526b6aa123dcb0f7273fa3a3cbd366c297ca</code> (in the history of the built commit) |
+| Event commit | <code>0947a4ee0a292a5d6b261dc089541adc990d03c1</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -51,13 +49,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.87/">0.0.87</a>, older than the documented version (0.0.88).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.89/">0.0.89</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f82a6b2efc11a8dbc70fef8db312a71d8c74861e
+git checkout 98b8fc674e5910587cc0ffc86106ff990fbad3c5
 pip install "epythet==0.2.15"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
