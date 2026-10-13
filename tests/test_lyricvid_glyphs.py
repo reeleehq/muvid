@@ -1155,3 +1155,40 @@ def test_glyphs_cli_refuses_a_bad_override_before_aligning(tmp_path, monkeypatch
             glyphs(
                 "song.wav", str(timing), str(tmp_path / "o.json"), timing_overrides=bad
             )
+
+
+def test_repair_spills_clamps_an_earlier_glyph_lit_into_the_next_line():
+    """Third review pass on muvid#157: only the glyphs from the spill on were
+    clamped, so ハ (1.0-2.5) stayed lit into the next line at 2.0."""
+    from dataclasses import replace
+
+    recs = [
+        {"text": "ハ", "start": 1.0, "end": 2.5},
+        {"text": "ット", "start": 1.5, "end": 2.0, "line_end": True},
+        {"text": "マ", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {1: [1.5, 1.97], 2: 2.0},
+    )
+    ha = list(tt.words())[0]
+    tt = _rebuilt_first_word(
+        tt, replace(ha, glyphs=(replace(ha.glyphs[0], start=1.0, end=2.5),))
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    assert [r["text"] for r in records] == ["ト"]
+    for w in list(fixed.lines())[0].words:
+        assert w.end <= 2.0 and all(g.end <= 2.0 for g in w.glyphs)
+
+
+def _rebuilt_first_word(tt, word):
+    from dataclasses import replace
+
+    sec = tt.sections[0]
+    ln = sec.lines[0]
+    ln = replace(ln, words=(word, *ln.words[1:]))
+    return replace(
+        tt, sections=(replace(sec, lines=(ln, *sec.lines[1:])), *tt.sections[1:])
+    )

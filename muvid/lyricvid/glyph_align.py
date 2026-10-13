@@ -1457,8 +1457,9 @@ def repair_spills(
                 }
             )
             flat[i] = replace(g, start=new, measured=False)
-        # nothing lit over the glyph after it, nor into the next line
-        for i in range(first - 1, len(flat)):
+        # in this line, nothing lit over the glyph after it, nor into the
+        # next line — an EARLIER glyph's long span included (review of #157)
+        for i in range(len(flat)):
             g = flat[i]
             stop = flat[i + 1].start if i + 1 < len(flat) else t_next
             flat[i] = replace(g, end=max(g.start, min(g.end, stop)))
