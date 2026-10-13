@@ -1,234 +1,611 @@
 {
- "timing": {
-  "duration": 15.0,
-  "source": "word-records",
-  "measured": false,
-  "sections": [
-   {
-    "label": "*",
-    "lines": [
+ "spill": {
+  "timing": {
+   "duration": 15.0,
+   "source": "word-records",
+   "measured": false,
+   "sections": [
+    {
+     "label": "*",
+     "lines": [
+      {
+       "index": 0,
+       "text": "カス",
+       "words": [
+        {
+         "text": "カス",
+         "start": 1.0,
+         "end": 2.0,
+         "measured": false,
+         "glyphs": [
+          {
+           "text": "カ",
+           "start": 1.0,
+           "end": 1.5,
+           "measured": false
+          },
+          {
+           "text": "ス",
+           "start": 1.5,
+           "end": 2.0,
+           "measured": false
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 1,
+       "text": "バス",
+       "words": [
+        {
+         "text": "バス",
+         "start": 3.0,
+         "end": 4.0,
+         "measured": false,
+         "glyphs": [
+          {
+           "text": "バ",
+           "start": 3.0,
+           "end": 3.5,
+           "measured": false
+          },
+          {
+           "text": "ス",
+           "start": 3.5,
+           "end": 4.0,
+           "measured": false
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 2,
+       "text": "ドア",
+       "words": [
+        {
+         "text": "ドア",
+         "start": 6.0,
+         "end": 7.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "ド",
+           "start": 3.5,
+           "end": 3.58,
+           "measured": true
+          },
+          {
+           "text": "ア",
+           "start": 3.6,
+           "end": 3.68,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 3,
+       "text": "メロン",
+       "words": [
+        {
+         "text": "メロン",
+         "start": 9.0,
+         "end": 10.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "メ",
+           "start": 9.0,
+           "end": 9.08,
+           "measured": true
+          },
+          {
+           "text": "ロ",
+           "start": 9.1,
+           "end": 9.18,
+           "measured": true
+          },
+          {
+           "text": "ン",
+           "start": 9.2,
+           "end": 9.28,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 4,
+       "text": "パン",
+       "words": [
+        {
+         "text": "パン",
+         "start": 11.0,
+         "end": 12.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "パ",
+           "start": 11.0,
+           "end": 11.5,
+           "measured": true
+          },
+          {
+           "text": "ン",
+           "start": 11.5,
+           "end": 12.0,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 5,
+       "text": "ネコ",
+       "words": [
+        {
+         "text": "ネコ",
+         "start": 13.0,
+         "end": 14.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "ネ",
+           "start": 13.0,
+           "end": 13.5,
+           "measured": true
+          },
+          {
+           "text": "コ",
+           "start": 13.5,
+           "end": 14.0,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "report": {
+   "output": "out.json",
+   "vocals": "vocals.wav",
+   "onsets": {
+    "n_glyphs": 9,
+    "n_onsets": 8,
+    "near_onset": 0.556,
+    "random_baseline": 0.183,
+    "median_onset_distance_ms": 0,
+    "tol_ms": 80
+   },
+   "agreement": {
+    "n_words": 6,
+    "median_abs_diff_ms": 25,
+    "median_signed_diff_ms": 0,
+    "disagree_s": 0.3,
+    "disagreements": [
      {
       "index": 0,
       "text": "カス",
-      "words": [
-       {
-        "text": "カス",
-        "start": 1.0,
-        "end": 2.0,
-        "measured": false,
-        "glyphs": [
-         {
-          "text": "カ",
-          "start": 1.0,
-          "end": 1.5,
-          "measured": false
-         },
-         {
-          "text": "ス",
-          "start": 1.5,
-          "end": 2.0,
-          "measured": false
-         }
-        ]
-       }
-      ]
-     },
-     {
-      "index": 1,
-      "text": "バス",
-      "words": [
-       {
-        "text": "バス",
-        "start": 3.0,
-        "end": 4.0,
-        "measured": false,
-        "glyphs": [
-         {
-          "text": "バ",
-          "start": 3.0,
-          "end": 3.5,
-          "measured": false
-         },
-         {
-          "text": "ス",
-          "start": 3.5,
-          "end": 4.0,
-          "measured": false
-         }
-        ]
-       }
-      ]
+      "fine": 3.1,
+      "coarse": 1.0
      },
      {
       "index": 2,
       "text": "ドア",
-      "words": [
-       {
-        "text": "ドア",
-        "start": 6.0,
-        "end": 7.0,
-        "measured": true,
-        "glyphs": [
-         {
-          "text": "ド",
-          "start": 3.5,
-          "end": 3.58,
-          "measured": true
-         },
-         {
-          "text": "ア",
-          "start": 3.6,
-          "end": 3.68,
-          "measured": true
-         }
-        ]
-       }
-      ]
-     },
-     {
-      "index": 3,
-      "text": "メロン",
-      "words": [
-       {
-        "text": "メロン",
-        "start": 9.0,
-        "end": 10.0,
-        "measured": true,
-        "glyphs": [
-         {
-          "text": "メ",
-          "start": 9.0,
-          "end": 9.08,
-          "measured": true
-         },
-         {
-          "text": "ロ",
-          "start": 9.1,
-          "end": 9.18,
-          "measured": true
-         },
-         {
-          "text": "ン",
-          "start": 9.2,
-          "end": 9.28,
-          "measured": true
-         }
-        ]
-       }
-      ]
-     },
-     {
-      "index": 4,
-      "text": "パン",
-      "words": [
-       {
-        "text": "パン",
-        "start": 11.0,
-        "end": 12.0,
-        "measured": true,
-        "glyphs": [
-         {
-          "text": "パ",
-          "start": 11.0,
-          "end": 11.5,
-          "measured": true
-         },
-         {
-          "text": "ン",
-          "start": 11.5,
-          "end": 12.0,
-          "measured": true
-         }
-        ]
-       }
-      ]
-     },
-     {
-      "index": 5,
-      "text": "ネコ",
-      "words": [
-       {
-        "text": "ネコ",
-        "start": 13.0,
-        "end": 14.0,
-        "measured": true,
-        "glyphs": [
-         {
-          "text": "ネ",
-          "start": 13.0,
-          "end": 13.5,
-          "measured": true
-         },
-         {
-          "text": "コ",
-          "start": 13.5,
-          "end": 14.0,
-          "measured": true
-         }
-        ]
-       }
-      ]
+      "fine": 3.5,
+      "coarse": 6.0
      }
     ]
-   }
-  ]
- },
- "report": {
-  "output": "out.json",
-  "vocals": "vocals.wav",
-  "onsets": {
-   "n_glyphs": 9,
-   "n_onsets": 8,
-   "near_onset": 0.556,
-   "random_baseline": 0.183,
-   "median_onset_distance_ms": 0,
-   "tol_ms": 80
-  },
-  "agreement": {
-   "n_words": 6,
-   "median_abs_diff_ms": 25,
-   "median_signed_diff_ms": 0,
-   "disagree_s": 0.3,
-   "disagreements": [
+   },
+   "reconciled": [
     {
      "index": 0,
      "text": "カス",
      "fine": 3.1,
-     "coarse": 1.0
+     "why": "disordered",
+     "detail": "lines 'カス' and 'バス' overlap",
+     "remedy": "replace",
+     "flagged_by": [
+      "disordered"
+     ],
+     "used": 1.0
     },
     {
-     "index": 2,
-     "text": "ドア",
-     "fine": 3.5,
-     "coarse": 6.0
+     "index": 1,
+     "text": "バス",
+     "fine": 3.05,
+     "why": "disordered",
+     "detail": "lines 'カス' and 'バス' overlap",
+     "remedy": "replace",
+     "flagged_by": [
+      "disordered"
+     ],
+     "used": 3.0
+    }
+   ]
+  }
+ },
+ "ghost": {
+  "timing": {
+   "duration": 8.0,
+   "source": "word-records",
+   "measured": true,
+   "sections": [
+    {
+     "label": "*",
+     "lines": [
+      {
+       "index": 0,
+       "text": "カ ト ハ",
+       "words": [
+        {
+         "text": "カ",
+         "start": 1.0,
+         "end": 1.3,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "カ",
+           "start": 1.0,
+           "end": 1.08,
+           "measured": true
+          }
+         ]
+        },
+        {
+         "text": "ト",
+         "start": 1.3,
+         "end": 1.6,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "ト",
+           "start": 1.3,
+           "end": 1.3800000000000001,
+           "measured": true
+          }
+         ]
+        },
+        {
+         "text": "ハ",
+         "start": 1.6,
+         "end": 1.9,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "ハ",
+           "start": 1.6,
+           "end": 1.6800000000000002,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 2,
+       "text": "バス",
+       "words": [
+        {
+         "text": "バス",
+         "start": 5.0,
+         "end": 5.6,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "バ",
+           "start": 5.0,
+           "end": 5.08,
+           "measured": true
+          },
+          {
+           "text": "ス",
+           "start": 5.1,
+           "end": 5.18,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
     }
    ]
   },
-  "reconciled": [
-   {
-    "index": 0,
-    "text": "カス",
-    "fine": 3.1,
-    "why": "disordered",
-    "detail": "lines 'カス' and 'バス' overlap",
-    "remedy": "replace",
-    "flagged_by": [
-     "disordered"
-    ],
-    "used": 1.0
+  "report": {
+   "output": "out.json",
+   "vocals": "vocals.wav",
+   "onsets": {
+    "n_glyphs": 5,
+    "n_onsets": 5,
+    "near_onset": 1.0,
+    "random_baseline": 0.32,
+    "median_onset_distance_ms": 0,
+    "tol_ms": 80
    },
-   {
-    "index": 1,
-    "text": "バス",
-    "fine": 3.05,
-    "why": "disordered",
-    "detail": "lines 'カス' and 'バス' overlap",
-    "remedy": "replace",
-    "flagged_by": [
-     "disordered"
-    ],
-    "used": 3.0
-   }
-  ]
+   "agreement": {
+    "n_words": 7,
+    "median_abs_diff_ms": 0,
+    "median_signed_diff_ms": 0,
+    "disagree_s": 0.3,
+    "disagreements": [
+     {
+      "index": 3,
+      "text": "カ",
+      "fine": 5.25,
+      "coarse": 2.5
+     }
+    ]
+   },
+   "reconciled": [
+    {
+     "index": 3,
+     "text": "カ",
+     "fine": 5.25,
+     "why": "unsung",
+     "detail": "line 'カ ト ハ': every word lost, and the stem is quiet over 100% of its window (1.3 s unbroken)",
+     "remedy": "drop",
+     "flagged_by": [
+      "unsung"
+     ],
+     "used": null
+    },
+    {
+     "index": 4,
+     "text": "ト",
+     "fine": 3.0,
+     "why": "unsung",
+     "detail": "line 'カ ト ハ': every word lost, and the stem is quiet over 100% of its window (1.3 s unbroken)",
+     "remedy": "drop",
+     "flagged_by": [
+      "squeezed",
+      "unsung"
+     ],
+     "used": null
+    },
+    {
+     "index": 5,
+     "text": "ハ",
+     "fine": 3.01,
+     "why": "unsung",
+     "detail": "line 'カ ト ハ': every word lost, and the stem is quiet over 100% of its window (1.3 s unbroken)",
+     "remedy": "drop",
+     "flagged_by": [
+      "squeezed",
+      "unsung"
+     ],
+     "used": null
+    }
+   ]
+  }
+ },
+ "biased": {
+  "timing": {
+   "duration": 15.0,
+   "source": "word-records",
+   "measured": false,
+   "sections": [
+    {
+     "label": "*",
+     "lines": [
+      {
+       "index": 0,
+       "text": "カス",
+       "words": [
+        {
+         "text": "カス",
+         "start": 0.8000000000000007,
+         "end": 1.8000000000000007,
+         "measured": false,
+         "glyphs": [
+          {
+           "text": "カ",
+           "start": 0.8000000000000007,
+           "end": 1.3000000000000007,
+           "measured": false
+          },
+          {
+           "text": "ス",
+           "start": 1.3000000000000007,
+           "end": 1.8000000000000007,
+           "measured": false
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 1,
+       "text": "バス",
+       "words": [
+        {
+         "text": "バス",
+         "start": 2.8000000000000007,
+         "end": 3.8000000000000007,
+         "measured": false,
+         "glyphs": [
+          {
+           "text": "バ",
+           "start": 2.8000000000000007,
+           "end": 3.3000000000000007,
+           "measured": false
+          },
+          {
+           "text": "ス",
+           "start": 3.3000000000000007,
+           "end": 3.8000000000000007,
+           "measured": false
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 2,
+       "text": "ドア",
+       "words": [
+        {
+         "text": "ドア",
+         "start": 6.0,
+         "end": 7.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "ド",
+           "start": 5.8,
+           "end": 5.88,
+           "measured": true
+          },
+          {
+           "text": "ア",
+           "start": 8.7,
+           "end": 8.78,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 3,
+       "text": "メロン",
+       "words": [
+        {
+         "text": "メロン",
+         "start": 9.0,
+         "end": 10.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "メ",
+           "start": 8.8,
+           "end": 8.88,
+           "measured": true
+          },
+          {
+           "text": "ロ",
+           "start": 8.85,
+           "end": 8.93,
+           "measured": true
+          },
+          {
+           "text": "ン",
+           "start": 8.9,
+           "end": 8.98,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 4,
+       "text": "パン",
+       "words": [
+        {
+         "text": "パン",
+         "start": 11.0,
+         "end": 12.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "パ",
+           "start": 10.8,
+           "end": 10.88,
+           "measured": true
+          },
+          {
+           "text": "ン",
+           "start": 11.3,
+           "end": 11.38,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "index": 5,
+       "text": "ネコ",
+       "words": [
+        {
+         "text": "ネコ",
+         "start": 13.0,
+         "end": 14.0,
+         "measured": true,
+         "glyphs": [
+          {
+           "text": "ネ",
+           "start": 12.8,
+           "end": 12.88,
+           "measured": true
+          },
+          {
+           "text": "コ",
+           "start": 13.3,
+           "end": 13.38,
+           "measured": true
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "report": {
+   "output": "out.json",
+   "vocals": "vocals.wav",
+   "onsets": {
+    "n_glyphs": 9,
+    "n_onsets": 13,
+    "near_onset": 1.0,
+    "random_baseline": 0.283,
+    "median_onset_distance_ms": 0,
+    "tol_ms": 80
+   },
+   "agreement": {
+    "n_words": 6,
+    "median_abs_diff_ms": 200,
+    "median_signed_diff_ms": -200,
+    "disagree_s": 0.3,
+    "disagreements": []
+   },
+   "reconciled": [
+    {
+     "index": 0,
+     "text": "カス",
+     "fine": 0.8,
+     "why": "disordered",
+     "detail": "lines 'カス' and 'バス' overlap",
+     "remedy": "replace",
+     "flagged_by": [
+      "disordered"
+     ],
+     "used": 0.8
+    },
+    {
+     "index": 1,
+     "text": "バス",
+     "fine": 2.8,
+     "why": "disordered",
+     "detail": "lines 'カス' and 'バス' overlap",
+     "remedy": "replace",
+     "flagged_by": [
+      "disordered"
+     ],
+     "used": 2.8
+    }
+   ]
+  }
  }
 }

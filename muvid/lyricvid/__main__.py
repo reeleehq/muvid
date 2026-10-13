@@ -237,6 +237,10 @@ def glyphs(
             "--timing-overrides undoes what reconciling did to a line; with "
             "--no-reconcile there is nothing to undo"
         )
+    try:  # refuse a bad override BEFORE separating and aligning, not after
+        ga.check_timing_overrides(overrides, len(list(coarse.lines())))
+    except ValueError as e:
+        raise SystemExit(f"--timing-overrides: {e}") from None
     ga._mms_weights(
         allow_download=allow_download
     )  # refuse BEFORE separating, not after
@@ -257,7 +261,9 @@ def glyphs(
         detectors = ga.stem_detectors(stem, drop_unsung=not keep_unsung)
         refined = fine
         fine, replaced = ga.reconcile(refined, coarse, detectors=detectors)
-        fine, repaired = ga.apply_timing_overrides(fine, refined, replaced, overrides)
+        fine, repaired = ga.apply_timing_overrides(
+            fine, refined, replaced, overrides=overrides
+        )
     if repair_spills:
         fine, spilled = ga.repair_spills(fine, ga.stem_onsets(stem))
         repaired = [*repaired, *spilled]
@@ -271,25 +277,40 @@ def glyphs(
         "agreement": agreement,
         "reconciled": replaced,
     }
-    if overrides or repair_spills:  # opt-in only: the default report is unchanged
+    if timing_overrides or repair_spills:  # opt-in only: the default is unchanged
         report["repaired"] = repaired
     _emit(report)
 
 
 def _timing_overrides_arg(value: str) -> dict:
-    """``--timing-overrides``: inline JSON, or a JSON file holding the mapping
-    or a song spec with a ``timing_overrides`` key. Empty means none."""
+    """``--timing-overrides``: a JSON file or inline JSON. Empty means none.
+
+    The JSON is either the mapping itself (every key a line index) or a song
+    spec, whose ``timing_overrides`` key holds it — absent or null meaning the
+    song has none recorded.
+    """
     from pathlib import Path
+
+    from muvid.lyricvid.glyph_align import TIMING_OVERRIDES
 
     if not value:
         return {}
-    text = value if value.lstrip().startswith("{") else Path(value).read_text("utf-8")
-    obj = _json.loads(text)
-    if isinstance(obj, dict) and "timing_overrides" in obj:
-        obj = obj["timing_overrides"]
+    path = Path(value)
+    obj = _json.loads(path.read_text("utf-8") if path.is_file() else value)
     if not isinstance(obj, dict):
         raise SystemExit("--timing-overrides must be a JSON object")
-    return obj
+    if all(str(k).strip().isdigit() for k in obj):
+        return obj
+    if "timing_overrides" in obj:
+        found = obj["timing_overrides"] or {}
+        if not isinstance(found, dict):
+            raise SystemExit("timing_overrides must be a JSON object")
+        return found
+    if obj and all(v in TIMING_OVERRIDES for v in obj.values()):
+        # a mapping with a mistyped key, not a spec: say so, never ignore it
+        bad = [k for k in obj if not str(k).strip().isdigit()]
+        raise SystemExit(f"--timing-overrides keys must be line indices: {bad}")
+    return {}  # a song spec with no overrides recorded
 
 
 _FUNCS = [
