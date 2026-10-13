@@ -133,6 +133,11 @@ mcp = [
 scoring = [
     "mediapipe",
     "mixing[beats]>=0.0.30",
+    # iPhone HEIC photos (muvid#140; service._add_still reads them when this imports and
+    # refuses with a plain reason when not). BSD-3; its wheels bundle libheif, dynamically
+    # linked and LGPL, so it is the one non-permissive piece of the core tier — the
+    # library ships as a separate shared object, not compiled into muvid.
+    "pillow-heif",
 ]
 # Optional: enables the selector's `boundary_mode="beats+shots"` (PySceneDetect shot cuts as
 # extra cut candidates). Absent → the mode degrades cleanly to beats-only.

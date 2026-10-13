@@ -64,7 +64,7 @@ why = service.explain_edit(
 - **Fades start on the beat.** A fade is shifted so its first frame is on the planner's beat (`_fades_start_on_the_beat`); a fade centred on its beat began changing a third of a second early and was heard as "slightly off" (measured on a real edit: 44 of 62 cuts).
 - **The beat grid runs to the end.** `extend_grid` carries the beat through quiet passages and on to both ends at the song's own pace; without it a quiet outro got one 21 s shot.
 - **Render.** The same assembler as synced cuts. A photo is a looped still input (`assemble._source_input`).
-- **Speed.** "Cut it for me" is a synchronous op, so nothing heavy happens there: the song's analysis is measured at `set_song` and kept (`service.song_analysis`, keyed on the song hash), each video's hash and picture signal at `add_clip`, and probes and photo anchors are memoised per file. Photos are stored upright as JPEG; HEIC needs `pillow-heif`, and without it is refused with a plain reason.
+- **Speed.** "Cut it for me" is a synchronous op, so nothing heavy happens there: the song's analysis is measured at `set_song` and kept (`service.song_analysis`, keyed on the song hash), each video's hash and picture signal at `add_clip`, and probes and photo anchors are memoised per file. Photos are stored upright as JPEG; HEIC is read through `pillow-heif` (in the `scoring` extra, so the studio install has it); on a machine installed without it, it is refused with a plain reason.
 
 ## Traps
 

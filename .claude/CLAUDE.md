@@ -339,6 +339,7 @@ Rules:
 - **Do not add** to the core tier: `madmom` (academic-licensed beat models — dropped;
   librosa via `mixing[beats]` is the sole beat backend), Wav2Lip expert weights,
   `pyiqa` NIMA/MUSIQ/TOPIQ, DOVER, VocaLiST. All non-commercial.
+- `pillow-heif` (iPhone HEIC photos, muvid#140) is in the core tier: BSD-3 itself, with libheif (LGPL) bundled in its wheels as a dynamically linked shared object. It is the one accepted exception, because HEIC is the iPhone default and a refused photo is a user-visible failure.
 - A new core-tier dependency must be MIT/BSD/Apache/ISC. If it is not, it belongs behind
   its own opt-in extra with the same three-gate treatment, and the reason goes in the
   module docstring.
