@@ -69,17 +69,19 @@ def _templates(sg: Subgenre) -> tuple[Template, ...]:
 
 
 def _factory(sg: Subgenre):
-    """A project factory: a per-caller bucket in the visualizer workspace.
+    """A project factory: a per-caller bucket in the subgenre's own workspace.
 
     Subgenres are stateless the way the visualizer is — a "project" is where
-    renders land — so the lightweight ``VisualizerProject`` is the right home.
+    renders land — so the lightweight ``VisualizerProject`` is the right home,
+    in a directory named for the subgenre (``SubgenreWorkspace``, muvid#103):
+    its own project-id space, and a listing that can say what it is.
     Imported lazily so this module stays fastmcp-free.
     """
 
     def factory(caller, project_id, *, title, template, params):
-        from muvid.mcp.workspace import VisualizerWorkspace
+        from muvid.mcp.workspace import SubgenreWorkspace
 
-        proj = VisualizerWorkspace.for_email(caller).create_project(
+        proj = SubgenreWorkspace.for_slug(sg.slug, caller).create_project(
             project_id, title=title
         )
         return {

@@ -19,7 +19,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-from muvid.mcp.tools import _download_claim, _resolve_input, _tool_error, _workspace
+from muvid.mcp.identity import current_email
+from muvid.mcp.tools import _download_claim, _resolve_input, _tool_error
+from muvid.mcp.workspace import open_subgenre_project
 
 __all__ = ["list_subgenres", "render_subgenre"]
 
@@ -98,7 +100,11 @@ def render_subgenre(
             "through the free generic tool"
         )
 
-    proj = _workspace().open_project(project_id)
+    # Its own bucket, else a visualizer one of that id (every pre-muvid#103 project).
+    try:
+        proj = open_subgenre_project(manifest.slug, current_email(), project_id)
+    except ValueError as exc:  # a reserved or unusable slug, or a bad project_id
+        raise _tool_error(str(exc)) from exc
     import uuid
 
     render_id = uuid.uuid4().hex[:12]

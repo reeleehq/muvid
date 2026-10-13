@@ -24,7 +24,10 @@ from pathlib import Path
 from typing import Any
 
 from muvid.lyricvid import tools as _lv
-from muvid.mcp.tools import _download_claim, _resolve_input, _tool_error, _workspace
+from muvid.lyricvid.manifest import SLUG as _LYRIC_VIDEO_SLUG
+from muvid.mcp.identity import current_email
+from muvid.mcp.tools import _download_claim, _resolve_input, _tool_error
+from muvid.mcp.workspace import open_subgenre_project
 
 #: Ceiling on proposals per call. For the AI tool each proposal is one model
 #: call; for the free one it is CPU. Both are bounds a host cannot see through
@@ -61,10 +64,20 @@ def list_archetypes() -> dict:
     }
 
 
+
+def _project(project_id: str):
+    """The caller's lyric-video bucket: its own, else a visualizer one of that id.
+
+    The fallback keeps every project made before muvid#103 — and every visualizer
+    project a caller already rendered a lyric video into — working in place.
+    """
+    return open_subgenre_project(_LYRIC_VIDEO_SLUG, current_email(), project_id)
+
+
 def _fetch_inputs(
     project_id: str, audio: str, lyrics: str | None, subtitles: str | None
 ) -> tuple[Any, dict]:
-    proj = _workspace().open_project(project_id)
+    proj = _project(project_id)
     workdir = Path(proj.root) / "lyricvid"
     workdir.mkdir(parents=True, exist_ok=True)
     inputs: dict[str, str] = {
@@ -152,7 +165,7 @@ def propose_lyric_treatments_ai(
     _proj, inputs = _fetch_inputs(project_id, audio, lyrics, subtitles)
     ref = None
     if reference_image:
-        workdir = Path(_workspace().open_project(project_id).root) / "lyricvid"
+        workdir = Path(_project(project_id).root) / "lyricvid"
         ref = str(
             _resolve_input(reference_image, workdir / "ref", label="reference_image")
         )

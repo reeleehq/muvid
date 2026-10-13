@@ -75,9 +75,11 @@ def list_visuals() -> dict:
 
 
 def list_projects() -> dict:
-    """List ALL your muvid projects — music-video (footage) AND visualizer. Free.
+    """List ALL your muvid projects — music-video (footage), visualizer, and every
+    subgenre such as lyric-video. Free.
 
-    Rows carry ``muvid_genre`` ("footage" or "visualizer") and ``n_renders``
+    Rows carry ``muvid_genre`` ("footage", "visualizer", or a subgenre's slug
+    such as "lyric-video") and ``n_renders``
     (0 means the project exists but has no finished render yet — it is still
     listed). This tool used to read only the visualizer drawer, so a caller
     whose footage renders the connector had just SERVED was told they had no
@@ -105,23 +107,34 @@ def project_status(project_id: str) -> dict:
     """Your project's details and its renders (newest-first), whichever muvid
     genre it belongs to. Free.
 
-    Spans both drawers, exactly as downloads do: asserting "no project X" about
+    Spans every drawer, exactly as downloads do: asserting "no project X" about
     a footage project because only the visualizer drawer was checked is a false
     statement about the caller's own work (muvid#23's shape, still live on this
-    tool until now).
+    tool until now). When the same id names projects in more than one drawer
+    (a visualizer bucket and a lyric video can share an id since muvid#103), the
+    first is reported and the others are listed under ``also_in``.
     """
-    from muvid.downloads import _open
+    from muvid.downloads import _genre_label, _open_all
 
     try:
-        kind, pid, proj = _open(current_email(), project_id)
+        found = _open_all(current_email(), project_id)
     except KeyError as e:
         raise _tool_error(str(e)) from None
-    return {
-        "project_id": pid,
-        "muvid_genre": kind,
-        "title": proj.manifest().get("title", pid),
-        "renders": proj.list_renders(),
-    }
+    if not found:
+        raise _tool_error(f"no such project {project_id!r}")
+
+    def _row(kind, pid, proj):
+        return {
+            "project_id": pid,
+            "muvid_genre": _genre_label(proj, kind),
+            "title": proj.manifest().get("title", pid),
+            "renders": proj.list_renders(),
+        }
+
+    out = _row(*found[0])
+    if len(found) > 1:
+        out["also_in"] = [_row(*f) for f in found[1:]]
+    return out
 
 
 def _resolve_input(url: str, dest: Path, *, label: str) -> Path:
