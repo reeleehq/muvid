@@ -164,7 +164,9 @@ them is the whole art direction. They are **not** interchangeable:
   when the poem is lines on a page. It does **not** make a picture: it cannot
   slant, indent or shape anything, and leading whitespace in your lyrics file
   is stripped before it ever gets here, so a hand-drawn ASCII layout pasted
-  into `lyrics.md` collapses to centred rows.
+  into `lyrics.md` collapses to centred rows. The parse warns when that
+  happens (`ShapedLyricsWarning`: the lines were indented differently from one
+  another); if you see it, the poem wants `calligram` or `shape_fill`.
 - **`calligram`** turns each line into a **slanting streak of upright letters**,
   one letter per grid slot, the streaks fanning open as they descend — the
   Apollinaire *Il pleut* construction. The picture is made by the run of the

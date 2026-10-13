@@ -1,0 +1,62 @@
+{
+ "plain": {
+  "md": "hello world\nsecond line\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='', title='', start_s=None, end_s=None, lines=(LyricLine(text='hello world', line_index=0, section_label='', start_s=None), LyricLine(text='second line', line_index=1, section_label='', start_s=None))),))",
+  "rendered": "[]\nhello world\nsecond line\n"
+ },
+ "sections_anchors_placeholders": {
+  "md": "[intro]\n(instrumental)\n\n[verse 1] first verse\nI came down to the river  // 12.5\nto wash my soul\n\n[chorus]\nhold my hand\nwhen the night comes calling // 30\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='intro', title='', start_s=None, end_s=None, lines=()), LyricSection(label='verse 1', title='first verse', start_s=None, end_s=None, lines=(LyricLine(text='I came down to the river', line_index=0, section_label='verse 1', start_s=12.5), LyricLine(text='to wash my soul', line_index=1, section_label='verse 1', start_s=None))), LyricSection(label='chorus', title='', start_s=None, end_s=None, lines=(LyricLine(text='hold my hand', line_index=2, section_label='chorus', start_s=None), LyricLine(text='when the night comes calling', line_index=3, section_label='chorus', start_s=30.0)))))",
+  "rendered": "[intro]\n\n[verse 1] first verse\nI came down to the river  // 12.50\nto wash my soul\n\n[chorus]\nhold my hand\nwhen the night comes calling  // 30.00\n"
+ },
+ "markdown_headers": {
+  "md": "# Song title\n## sub\n[v]\nline one\n#hashtag line\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='v', title='', start_s=None, end_s=None, lines=(LyricLine(text='line one', line_index=0, section_label='v', start_s=None),)),))",
+  "rendered": "[v]\nline one\n"
+ },
+ "lines_before_any_section": {
+  "md": "orphan one\norphan two\n[a]\nin a\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='', title='', start_s=None, end_s=None, lines=(LyricLine(text='orphan one', line_index=0, section_label='', start_s=None), LyricLine(text='orphan two', line_index=1, section_label='', start_s=None))), LyricSection(label='a', title='', start_s=None, end_s=None, lines=(LyricLine(text='in a', line_index=2, section_label='a', start_s=None),))))",
+  "rendered": "[]\norphan one\norphan two\n\n[a]\nin a\n"
+ },
+ "uniform_indent": {
+  "md": "    [v]\n    one\n    two  // 3.25\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='v', title='', start_s=None, end_s=None, lines=(LyricLine(text='one', line_index=0, section_label='v', start_s=None), LyricLine(text='two', line_index=1, section_label='v', start_s=3.25))),))",
+  "rendered": "[v]\none\ntwo  // 3.25\n"
+ },
+ "il_pleut_shaped": {
+  "md": "[il pleut]\nIl pleut des voix de femmes\n  comme si elles\n    étaient mortes\n      même dans le souvenir\n\tc'est vous aussi\n        qu'il pleut // 7.5\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='il pleut', title='', start_s=None, end_s=None, lines=(LyricLine(text='Il pleut des voix de femmes', line_index=0, section_label='il pleut', start_s=None), LyricLine(text='comme si elles', line_index=1, section_label='il pleut', start_s=None), LyricLine(text='étaient mortes', line_index=2, section_label='il pleut', start_s=None), LyricLine(text='même dans le souvenir', line_index=3, section_label='il pleut', start_s=None), LyricLine(text=\"c'est vous aussi\", line_index=4, section_label='il pleut', start_s=None), LyricLine(text=\"qu'il pleut\", line_index=5, section_label='il pleut', start_s=7.5))),))",
+  "rendered": "[il pleut]\nIl pleut des voix de femmes\ncomme si elles\nétaient mortes\nmême dans le souvenir\nc'est vous aussi\nqu'il pleut  // 7.50\n"
+ },
+ "tabs_and_trailing_ws": {
+  "md": "\t[s]\t\n\tfirst\t \n  second   \n   (aside)   \n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='s', title='', start_s=None, end_s=None, lines=(LyricLine(text='first', line_index=0, section_label='s', start_s=None), LyricLine(text='second', line_index=1, section_label='s', start_s=None))),))",
+  "rendered": "[s]\nfirst\nsecond\n"
+ },
+ "crlf": {
+  "md": "[v]\r\n  one\r\ntwo // 1\r\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='v', title='', start_s=None, end_s=None, lines=(LyricLine(text='one', line_index=0, section_label='v', start_s=None), LyricLine(text='two', line_index=1, section_label='v', start_s=1.0))),))",
+  "rendered": "[v]\none\ntwo  // 1.00\n"
+ },
+ "unicode_ws": {
+  "md": "[v]\n　全角\n nbsp line\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='v', title='', start_s=None, end_s=None, lines=(LyricLine(text='全角', line_index=0, section_label='v', start_s=None), LyricLine(text='nbsp line', line_index=1, section_label='v', start_s=None))),))",
+  "rendered": "[v]\n全角\nnbsp line\n"
+ },
+ "anchor_only_line": {
+  "md": "[v]\n   // 4\nreal line\n",
+  "repr": "LyricsDoc(sections=(LyricSection(label='v', title='', start_s=None, end_s=None, lines=(LyricLine(text='', line_index=0, section_label='v', start_s=4.0), LyricLine(text='real line', line_index=1, section_label='v', start_s=None))),))",
+  "rendered": "[v]\n  // 4.00\nreal line\n"
+ },
+ "empty": {
+  "md": "",
+  "repr": "LyricsDoc(sections=())",
+  "rendered": "\n"
+ },
+ "blank_only": {
+  "md": "\n   \n\t\n",
+  "repr": "LyricsDoc(sections=())",
+  "rendered": "\n"
+ }
+}
