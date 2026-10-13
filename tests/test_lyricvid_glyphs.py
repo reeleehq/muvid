@@ -1058,13 +1058,78 @@ def test_timing_overrides_arg_reads_a_mapping_or_a_song_spec(value, expected, tm
     assert _timing_overrides_arg(str(f)) == expected
 
 
-def test_timing_overrides_arg_refuses_a_mistyped_mapping():
+@pytest.mark.parametrize(
+    "value, msg",
+    [
+        ('{"1": "fine", "x2": "fien"}', "not a line index"),  # never dropped
+        ('{"x": "fine"}', "not a line index"),
+        ("[1]", "JSON object"),
+        ('{"timing_overrides": []}', "JSON object"),
+        ("song.jsn", "neither a file nor JSON"),
+    ],
+)
+def test_a_mistyped_overrides_value_is_refused_not_dropped(value, msg, tmp_path):
+    """Review of muvid#157: a typo beside a valid entry used to read as a
+    song spec with no overrides, silently dropping the valid one too."""
     from muvid.lyricvid.__main__ import _timing_overrides_arg
 
-    with pytest.raises(SystemExit, match="line indices"):
-        _timing_overrides_arg('{"x": "fine"}')
-    with pytest.raises(SystemExit, match="JSON object"):
-        _timing_overrides_arg("[1]")
+    with pytest.raises((SystemExit, ValueError), match=msg):
+        ga.check_timing_overrides(_timing_overrides_arg(value), 4)
+
+
+def test_repair_spills_shares_the_room_between_every_spilled_glyph():
+    """Review of muvid#157: placed one at a time, the first moved glyph took
+    the room the next needed, which stayed on the next line."""
+    recs = [
+        {"text": "ハット", "start": 1.0, "end": 1.9},
+        {"text": "ト", "start": 2.1, "end": 2.1, "line_end": True},
+        {"text": "マ", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {0: [1.0, 1.82, 1.97], 1: 2.2, 2: 2.0},
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    first = list(fixed.lines())[0]
+    gl = [g for w in first.words for g in w.glyphs]
+    hi = 2.0 - ga.LINE_GAP_S
+    assert [r["text"] for r in records] == ["ト", "ト"]
+    assert all(g.start < hi for g in gl)
+    assert all(a.start < b.start and a.end <= b.start for a, b in zip(gl, gl[1:]))
+    for w in first.words:
+        assert w.start <= w.glyphs[0].start and w.glyphs[-1].end <= w.end <= 2.0
+
+
+def test_repair_spills_never_leaves_a_glyph_spilled_or_out_of_order():
+    """A small fuzz over random lines: every repaired line ends up clear of
+    the next one, in order, with no end before its start."""
+    import random
+
+    rng = random.Random(155)
+    for _ in range(500):
+        n = rng.randint(2, 5)
+        starts = sorted(round(rng.uniform(0.5, 2.6), 2) for _ in range(n))
+        recs = [{"text": "カ" * n, "start": 0.5, "end": 2.0, "line_end": True}]
+        recs.append({"text": "マ", "start": 2.0, "end": 3.0, "line_end": True})
+        tt = _place(
+            _with_glyphs(from_word_records(recs, duration=4.0)), {0: starts, 1: 2.0}
+        )
+        ons = sorted(rng.uniform(0.5, 2.0) for _ in range(rng.randint(0, 4)))
+        fixed, records = ga.repair_spills(tt, ons)
+        if not records:
+            continue
+        gl = [g for w in list(fixed.lines())[0].words for g in w.glyphs]
+        assert all(g.start < 2.0 - ga.LINE_GAP_S for g in gl[1:]), starts
+        # in order wherever this pass moved a glyph (the input's own order is not its business)
+        assert all(a.start < b.start for a, b in zip(gl, gl[1:]) if not b.measured), (
+            starts
+        )
+        assert all(g.start <= g.end for g in gl), starts
+        assert all(r["used"] < r["fine"] for r in records), starts
+        for w in list(fixed.lines())[0].words:
+            assert w.start <= w.end <= 2.0, starts
 
 
 @pytest.mark.parametrize("key", [True, 1.5, "1.0"])

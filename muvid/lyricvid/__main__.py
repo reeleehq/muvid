@@ -285,9 +285,11 @@ def glyphs(
 def _timing_overrides_arg(value: str) -> dict:
     """``--timing-overrides``: a JSON file or inline JSON. Empty means none.
 
-    The JSON is either the mapping itself (every key a line index) or a song
-    spec, whose ``timing_overrides`` key holds it — absent or null meaning the
-    song has none recorded.
+    The JSON is either a song spec, whose ``timing_overrides`` key holds the
+    mapping (absent or null: none recorded), or the mapping itself — read as
+    one as soon as any key looks like a line index or any value is an
+    override, so a typo in it is refused by the check rather than read as "a
+    spec with none" and dropped with the valid entries beside it.
     """
     from pathlib import Path
 
@@ -296,21 +298,25 @@ def _timing_overrides_arg(value: str) -> dict:
     if not value:
         return {}
     path = Path(value)
-    obj = _json.loads(path.read_text("utf-8") if path.is_file() else value)
+    try:
+        obj = _json.loads(path.read_text("utf-8") if path.is_file() else value)
+    except ValueError:
+        raise SystemExit(
+            f"--timing-overrides {value!r} is neither a file nor JSON"
+        ) from None
     if not isinstance(obj, dict):
         raise SystemExit("--timing-overrides must be a JSON object")
-    if all(str(k).strip().isdigit() for k in obj):
-        return obj
     if "timing_overrides" in obj:
-        found = obj["timing_overrides"] or {}
+        found = obj["timing_overrides"]
+        if found is None:
+            return {}
         if not isinstance(found, dict):
             raise SystemExit("timing_overrides must be a JSON object")
         return found
-    if obj and all(v in TIMING_OVERRIDES for v in obj.values()):
-        # a mapping with a mistyped key, not a spec: say so, never ignore it
-        bad = [k for k in obj if not str(k).strip().isdigit()]
-        raise SystemExit(f"--timing-overrides keys must be line indices: {bad}")
-    return {}  # a song spec with no overrides recorded
+    looks_like_overrides = any(str(k).strip().isdigit() for k in obj) or any(
+        isinstance(v, str) and v in TIMING_OVERRIDES for v in obj.values()
+    )
+    return obj if looks_like_overrides else {}  # a song spec with none recorded
 
 
 _FUNCS = [

@@ -1398,7 +1398,10 @@ def repair_spills(
     stem's, see :func:`stem_onsets`) at least ``min_step_s`` after the glyph
     before it and ``clear_s`` before the next line — or, with none there,
     midway between that floor and ``gap_s`` before the next line, so it is
-    never left spilled — and is marked ``measured=False``.
+    never left spilled — and is marked ``measured=False``. Every glyph after
+    the first spilled one moves with it: they share that room in equal
+    slices, each taking the first onset in its own slice, so no glyph is
+    left on the next line for want of room an earlier one took.
 
     Then, in that line only, nothing stays lit into the next line or over a
     moved glyph: the glyph before a moved one ends no later than it starts, a
@@ -1426,13 +1429,21 @@ def repair_spills(
             continue
         t_next = min(_line_starts(nxt))
         hi = t_next - gap_s  # a glyph at or past this has spilled
-        moved = False
-        for i in range(1, len(flat)):
-            g, lo = flat[i], flat[i - 1].start + min_step_s
-            if g.start < hi or lo >= hi:
-                continue
-            cand = [t for t in ons if lo <= t <= min(hi, t_next - clear_s)]
-            new = cand[0] if cand else (lo + hi) / 2
+        first = next((i for i in range(1, len(flat)) if flat[i].start >= hi), None)
+        lo = None if first is None else flat[first - 1].start + min_step_s
+        if first is None or lo >= hi:  # nothing spilled, or no room to move it
+            fixed.append(ln)
+            continue
+        # Everything from the first spilled glyph on is read after it, so it
+        # all moves, each into its own slice of [lo, hi): placed one at a time,
+        # a glyph could use up the room the ones after it need (review of #157).
+        tail = range(first, len(flat))
+        width = (hi - lo) / len(tail)
+        for j, i in enumerate(tail):
+            a, b = lo + j * width, lo + (j + 1) * width
+            g = flat[i]
+            cand = [t for t in ons if a <= t < b and t <= t_next - clear_s]
+            new = cand[0] if cand else (a + b) / 2
             out.append(
                 {
                     "text": g.text,
@@ -1445,23 +1456,20 @@ def repair_spills(
                     "used": round(new, 3),
                 }
             )
-            flat[i] = replace(
-                g, start=new, end=max(new, min(g.end, t_next)), measured=False
-            )
-            p = flat[i - 1]
-            flat[i - 1] = replace(p, end=max(p.start, min(p.end, new)))
-            moved = True
-        if not moved:
-            fixed.append(ln)
-            continue
+            flat[i] = replace(g, start=new, measured=False)
+        # nothing lit over the glyph after it, nor into the next line
+        for i in range(first - 1, len(flat)):
+            g = flat[i]
+            stop = flat[i + 1].start if i + 1 < len(flat) else t_next
+            flat[i] = replace(g, end=max(g.start, min(g.end, stop)))
         it = iter(flat)
         words = []
         for w in ln.words:
             gs = tuple(next(it) for _ in w.glyphs)
             if gs:
                 start = min(w.start, gs[0].start)
-                tail = max(gs[-1].end, gs[-1].start + min_tail_s)
-                end = max(start, min(w.end, tail, t_next))
+                last = max(gs[-1].end, gs[-1].start + min_tail_s)
+                end = max(start, gs[-1].end, min(w.end, last, t_next))
                 w = replace(w, start=start, end=end, glyphs=gs)
             words.append(w)
         fixed.append(replace(ln, words=tuple(words)))
