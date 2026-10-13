@@ -32,10 +32,9 @@ app/deploy tree (a deploy’s `rsync --delete` would erase it).
 
 ### Module Attributes
 
-| [`DATA_HOME_ENV_VAR`](#muvid.mcp.workspace.DATA_HOME_ENV_VAR)   | Env var overriding the muvid data root (where per-user visualizer buckets live).                                 |
-|----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| [`SUBGENRES_SEGMENT`](#muvid.mcp.workspace.SUBGENRES_SEGMENT)   | The path segment under the data root that holds one directory per subgenre (muvid#103).                          |
-| [`RESERVED_SLUGS`](#muvid.mcp.workspace.RESERVED_SLUGS)      | `muvid_genre` would no longer say which drawer a project is in, and `downloads` keys its drawers by these names. |
+| [`DATA_HOME_ENV_VAR`](#muvid.mcp.workspace.DATA_HOME_ENV_VAR)   | Env var overriding the muvid data root (where per-user visualizer buckets live).        |
+|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [`SUBGENRES_SEGMENT`](#muvid.mcp.workspace.SUBGENRES_SEGMENT)   | The path segment under the data root that holds one directory per subgenre (muvid#103). |
 
 ### Functions
 
@@ -58,14 +57,6 @@ app/deploy tree (a deploy’s `rsync --delete` would erase it).
 Env var overriding the muvid data root (where per-user visualizer buckets live).
 Re-exported from [`muvid.paths`](muvid.paths.html.md#module-muvid.paths), the SSOT — this module used to carry its own
 verbatim copy of both, beside a second copy in `muvid/footage/workspace.py`.
-
-### muvid.mcp.workspace.RESERVED_SLUGS *= frozenset({'footage', 'visualizer'})*
-
-`muvid_genre` would no longer say
-which drawer a project is in, and `downloads` keys its drawers by these names.
-
-* **Type:**
-  Drawer names a subgenre slug may not take
 
 ### muvid.mcp.workspace.SUBGENRES_SEGMENT *= 'subgenres'*
 

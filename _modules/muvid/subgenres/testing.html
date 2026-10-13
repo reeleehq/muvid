@@ -317,144 +317,148 @@
 </span><span id="line-120">    <span class="c1"># --- manifest ---------------------------------------------------------</span>
 </span><span id="line-121">    <span class="c1"># Subgenre.__post_init__ already refuses a bad slug at construction — the</span>
 </span><span id="line-122">    <span class="c1"># kit re-states the rule so a report reads on its own.</span>
-</span><span id="line-123">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLUG_RE</span>
+</span><span id="line-123">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLUG_RE</span><span class="p">,</span> <span class="n">reserved_slug_reason</span>
 </span><span id="line-124">
 </span><span id="line-125">    <span class="k">if</span> <span class="n">SLUG_RE</span><span class="o">.</span><span class="n">fullmatch</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">):</span>
 </span><span id="line-126">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"slug is a clean path segment"</span><span class="p">)</span>
 </span><span id="line-127">    <span class="k">else</span><span class="p">:</span>
 </span><span id="line-128">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"slug </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is not a clean path segment"</span><span class="p">)</span>
-</span><span id="line-129">
-</span><span id="line-130">    <span class="k">if</span> <span class="ow">not</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">description</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
-</span><span id="line-131">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"description is empty — it is what an agent chooses on"</span><span class="p">)</span>
-</span><span id="line-132">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-133">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"description is non-empty"</span><span class="p">)</span>
-</span><span id="line-134">
-</span><span id="line-135">    <span class="k">if</span> <span class="n">API_VERSION</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">api_versions</span><span class="p">):</span>
-</span><span id="line-136">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-137">            <span class="sa">f</span><span class="s2">"api_versions </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">api_versions</span><span class="p">)</span><span class="si">}</span><span class="s2"> omits running "</span>
-</span><span id="line-138">            <span class="sa">f</span><span class="s2">"API_VERSION </span><span class="si">{</span><span class="n">API_VERSION</span><span class="si">!r}</span><span class="s2">"</span>
-</span><span id="line-139">        <span class="p">)</span>
-</span><span id="line-140">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-141">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"declares API_VERSION </span><span class="si">{</span><span class="n">API_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-142">
-</span><span id="line-143">    <span class="n">_check_json_schema</span><span class="p">(</span><span class="s2">"inputs"</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
-</span><span id="line-144">    <span class="n">_check_json_schema</span><span class="p">(</span><span class="s2">"params_schema"</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">params_schema</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
-</span><span id="line-145">
-</span><span id="line-146">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-147">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
-</span><span id="line-148">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"to_dict() is JSON-serialisable"</span><span class="p">)</span>
-</span><span id="line-149">    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-150">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"to_dict() is not JSON-serialisable: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-151">
-</span><span id="line-152">    <span class="k">if</span> <span class="ow">not</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">:</span>
-</span><span id="line-153">        <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-154">            <span class="s2">"no examples — agents pick better from examples than from prose"</span>
-</span><span id="line-155">        <span class="p">)</span>
-</span><span id="line-156">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-157">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">)</span><span class="si">}</span><span class="s2"> example(s)"</span><span class="p">)</span>
-</span><span id="line-158">
-</span><span id="line-159">    <span class="c1"># --- the renderer resolves, WITHOUT being imported during listing -----</span>
-</span><span id="line-160">    <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func_name</span> <span class="o">=</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
-</span><span id="line-161">    <span class="k">if</span> <span class="ow">not</span> <span class="n">module_name</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">func_name</span><span class="p">:</span>
-</span><span id="line-162">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"render=</span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> is not 'module:function'"</span><span class="p">)</span>
-</span><span id="line-163">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-164">
-</span><span id="line-165">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-166">        <span class="kn">from</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module</span>
-</span><span id="line-167">
-</span><span id="line-168">        <span class="n">fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">func_name</span><span class="p">)</span>
-</span><span id="line-169">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-170">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-171">            <span class="sa">f</span><span class="s2">"render target does not resolve: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-172">        <span class="p">)</span>
-</span><span id="line-173">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-174">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
-</span><span id="line-175">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"render target </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> is not callable"</span><span class="p">)</span>
-</span><span id="line-176">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-177">    <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render target resolves to a callable"</span><span class="p">)</span>
-</span><span id="line-178">
-</span><span id="line-179">    <span class="c1"># --- one real render --------------------------------------------------</span>
-</span><span id="line-180">    <span class="k">if</span> <span class="ow">not</span> <span class="n">render</span><span class="p">:</span>
-</span><span id="line-181">        <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render not attempted (render=False)"</span><span class="p">)</span>
-</span><span id="line-182">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-183">
-</span><span id="line-184">    <span class="c1"># Inputs: the caller's, else the first Example's. A manifest whose required</span>
-</span><span id="line-185">    <span class="c1"># inputs cannot be satisfied from either is SKIPPED honestly, not failed —</span>
-</span><span id="line-186">    <span class="c1"># muvid's own lyric-video needs a real audio file, which no manifest can</span>
-</span><span id="line-187">    <span class="c1"># carry. (It used to fail with "needs inputs['audio']", which made the</span>
-</span><span id="line-188">    <span class="c1"># README's one-liner fail on the reference plugin.)</span>
-</span><span id="line-189">    <span class="n">trial_inputs</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-190">        <span class="nb">dict</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
-</span><span id="line-191">        <span class="k">if</span> <span class="n">inputs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-192">        <span class="k">else</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span> <span class="k">if</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span> <span class="k">else</span> <span class="p">{})</span>
-</span><span id="line-193">    <span class="p">)</span>
-</span><span id="line-194">    <span class="n">trial_params</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-195">        <span class="nb">dict</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
-</span><span id="line-196">        <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-</span><span id="line-197">        <span class="k">else</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="p">)</span> <span class="k">if</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span> <span class="k">else</span> <span class="p">{})</span>
-</span><span id="line-198">    <span class="p">)</span>
-</span><span id="line-199">    <span class="n">required</span> <span class="o">=</span> <span class="nb">list</span><span class="p">((</span><span class="n">subgenre</span><span class="o">.</span><span class="n">inputs</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"required"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span>
-</span><span id="line-200">    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">required</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">trial_inputs</span><span class="p">]</span>
-</span><span id="line-201">    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
-</span><span id="line-202">        <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-203">            <span class="sa">f</span><span class="s2">"render not attempted: required inputs </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2"> were not supplied "</span>
-</span><span id="line-204">            <span class="s2">"(pass inputs=..., or give the first Example inputs)"</span>
-</span><span id="line-205">        <span class="p">)</span>
-</span><span id="line-206">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-207">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span> <span class="k">as</span> <span class="n">_validate</span>
-</span><span id="line-208">
-</span><span id="line-209">    <span class="n">problems</span> <span class="o">=</span> <span class="n">_validate</span><span class="p">(</span><span class="n">trial_inputs</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="s2">"inputs"</span><span class="p">)</span>
-</span><span id="line-210">    <span class="n">problems</span> <span class="o">+=</span> <span class="n">_validate</span><span class="p">(</span><span class="n">trial_params</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">params_schema</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="s2">"params"</span><span class="p">)</span>
-</span><span id="line-211">    <span class="k">if</span> <span class="n">problems</span><span class="p">:</span>
-</span><span id="line-212">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-213">            <span class="s2">"trial inputs/params do not satisfy the manifest's own "</span>
-</span><span id="line-214">            <span class="s2">"schema: "</span> <span class="o">+</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">problems</span><span class="p">)</span>
-</span><span id="line-215">        <span class="p">)</span>
-</span><span id="line-216">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-217">    <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"trial inputs/params satisfy the declared schema"</span><span class="p">)</span>
-</span><span id="line-218">
-</span><span id="line-219">    <span class="n">wd</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="s2">"conformance"</span>
-</span><span id="line-220">    <span class="n">wd</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># the HOST keeps the workdir promise</span>
-</span><span id="line-221">    <span class="n">out</span> <span class="o">=</span> <span class="n">wd</span> <span class="o">/</span> <span class="s2">"out.bin"</span>
-</span><span id="line-222">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-223">        <span class="n">result</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span>
-</span><span id="line-224">            <span class="n">RenderRequest</span><span class="p">(</span>
-</span><span id="line-225">                <span class="n">subgenre</span><span class="o">=</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span>
-</span><span id="line-226">                <span class="n">inputs</span><span class="o">=</span><span class="n">trial_inputs</span><span class="p">,</span>
-</span><span id="line-227">                <span class="n">params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
-</span><span id="line-228">                <span class="n">workdir</span><span class="o">=</span><span class="n">wd</span><span class="p">,</span>
-</span><span id="line-229">                <span class="n">output</span><span class="o">=</span><span class="n">out</span><span class="p">,</span>
-</span><span id="line-230">            <span class="p">)</span>
-</span><span id="line-231">        <span class="p">)</span>
-</span><span id="line-232">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-233">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"render raised </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-234">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-235">
-</span><span id="line-236">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">RenderResult</span><span class="p">):</span>
-</span><span id="line-237">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-238">            <span class="sa">f</span><span class="s2">"render returned </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">, expected RenderResult"</span>
-</span><span id="line-239">        <span class="p">)</span>
-</span><span id="line-240">        <span class="k">return</span> <span class="n">report</span>
-</span><span id="line-241">    <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render returned a RenderResult"</span><span class="p">)</span>
-</span><span id="line-242">
-</span><span id="line-243">    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">output</span> <span class="o">!=</span> <span class="n">out</span><span class="p">:</span>
-</span><span id="line-244">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-245">            <span class="sa">f</span><span class="s2">"render wrote to </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">, but was asked for </span><span class="si">{</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-246">        <span class="p">)</span>
-</span><span id="line-247">    <span class="k">elif</span> <span class="ow">not</span> <span class="n">out</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-248">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render reported success but produced no file"</span><span class="p">)</span>
-</span><span id="line-249">    <span class="k">else</span><span class="p">:</span>
-</span><span id="line-250">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render produced the requested output path"</span><span class="p">)</span>
-</span><span id="line-251">
-</span><span id="line-252">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-253">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
-</span><span id="line-254">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"RenderResult.to_dict() is JSON-serialisable"</span><span class="p">)</span>
-</span><span id="line-255">    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-256">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-257">            <span class="sa">f</span><span class="s2">"RenderResult.to_dict() is not JSON-serialisable: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-258">        <span class="p">)</span>
-</span><span id="line-259">
-</span><span id="line-260">    <span class="k">return</span> <span class="n">report</span></div>
+</span><span id="line-129">    <span class="c1"># A reserved slug is a clean segment the host will still refuse, so the kit</span>
+</span><span id="line-130">    <span class="c1"># must say so; otherwise it reports ok for a plugin that cannot render (#167).</span>
+</span><span id="line-131">    <span class="k">if</span> <span class="n">reason</span> <span class="o">:=</span> <span class="n">reserved_slug_reason</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">):</span>
+</span><span id="line-132">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reason</span><span class="p">)</span>
+</span><span id="line-133">
+</span><span id="line-134">    <span class="k">if</span> <span class="ow">not</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">description</span><span class="o">.</span><span class="n">strip</span><span class="p">():</span>
+</span><span id="line-135">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"description is empty — it is what an agent chooses on"</span><span class="p">)</span>
+</span><span id="line-136">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-137">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"description is non-empty"</span><span class="p">)</span>
+</span><span id="line-138">
+</span><span id="line-139">    <span class="k">if</span> <span class="n">API_VERSION</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">api_versions</span><span class="p">):</span>
+</span><span id="line-140">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-141">            <span class="sa">f</span><span class="s2">"api_versions </span><span class="si">{</span><span class="nb">tuple</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">api_versions</span><span class="p">)</span><span class="si">}</span><span class="s2"> omits running "</span>
+</span><span id="line-142">            <span class="sa">f</span><span class="s2">"API_VERSION </span><span class="si">{</span><span class="n">API_VERSION</span><span class="si">!r}</span><span class="s2">"</span>
+</span><span id="line-143">        <span class="p">)</span>
+</span><span id="line-144">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-145">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"declares API_VERSION </span><span class="si">{</span><span class="n">API_VERSION</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-146">
+</span><span id="line-147">    <span class="n">_check_json_schema</span><span class="p">(</span><span class="s2">"inputs"</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+</span><span id="line-148">    <span class="n">_check_json_schema</span><span class="p">(</span><span class="s2">"params_schema"</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">params_schema</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+</span><span id="line-149">
+</span><span id="line-150">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-151">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
+</span><span id="line-152">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"to_dict() is JSON-serialisable"</span><span class="p">)</span>
+</span><span id="line-153">    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-154">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"to_dict() is not JSON-serialisable: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-155">
+</span><span id="line-156">    <span class="k">if</span> <span class="ow">not</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">:</span>
+</span><span id="line-157">        <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-158">            <span class="s2">"no examples — agents pick better from examples than from prose"</span>
+</span><span id="line-159">        <span class="p">)</span>
+</span><span id="line-160">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-161">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">)</span><span class="si">}</span><span class="s2"> example(s)"</span><span class="p">)</span>
+</span><span id="line-162">
+</span><span id="line-163">    <span class="c1"># --- the renderer resolves, WITHOUT being imported during listing -----</span>
+</span><span id="line-164">    <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func_name</span> <span class="o">=</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-165">    <span class="k">if</span> <span class="ow">not</span> <span class="n">module_name</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">func_name</span><span class="p">:</span>
+</span><span id="line-166">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"render=</span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> is not 'module:function'"</span><span class="p">)</span>
+</span><span id="line-167">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-168">
+</span><span id="line-169">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-170">        <span class="kn">from</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module</span>
+</span><span id="line-171">
+</span><span id="line-172">        <span class="n">fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">func_name</span><span class="p">)</span>
+</span><span id="line-173">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-174">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-175">            <span class="sa">f</span><span class="s2">"render target does not resolve: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-176">        <span class="p">)</span>
+</span><span id="line-177">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-178">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+</span><span id="line-179">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"render target </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> is not callable"</span><span class="p">)</span>
+</span><span id="line-180">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-181">    <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render target resolves to a callable"</span><span class="p">)</span>
+</span><span id="line-182">
+</span><span id="line-183">    <span class="c1"># --- one real render --------------------------------------------------</span>
+</span><span id="line-184">    <span class="k">if</span> <span class="ow">not</span> <span class="n">render</span><span class="p">:</span>
+</span><span id="line-185">        <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render not attempted (render=False)"</span><span class="p">)</span>
+</span><span id="line-186">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-187">
+</span><span id="line-188">    <span class="c1"># Inputs: the caller's, else the first Example's. A manifest whose required</span>
+</span><span id="line-189">    <span class="c1"># inputs cannot be satisfied from either is SKIPPED honestly, not failed —</span>
+</span><span id="line-190">    <span class="c1"># muvid's own lyric-video needs a real audio file, which no manifest can</span>
+</span><span id="line-191">    <span class="c1"># carry. (It used to fail with "needs inputs['audio']", which made the</span>
+</span><span id="line-192">    <span class="c1"># README's one-liner fail on the reference plugin.)</span>
+</span><span id="line-193">    <span class="n">trial_inputs</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-194">        <span class="nb">dict</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+</span><span id="line-195">        <span class="k">if</span> <span class="n">inputs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-196">        <span class="k">else</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">inputs</span><span class="p">)</span> <span class="k">if</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span> <span class="k">else</span> <span class="p">{})</span>
+</span><span id="line-197">    <span class="p">)</span>
+</span><span id="line-198">    <span class="n">trial_params</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-199">        <span class="nb">dict</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
+</span><span id="line-200">        <span class="k">if</span> <span class="n">params</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-201">        <span class="k">else</span> <span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">params</span><span class="p">)</span> <span class="k">if</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">examples</span> <span class="k">else</span> <span class="p">{})</span>
+</span><span id="line-202">    <span class="p">)</span>
+</span><span id="line-203">    <span class="n">required</span> <span class="o">=</span> <span class="nb">list</span><span class="p">((</span><span class="n">subgenre</span><span class="o">.</span><span class="n">inputs</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"required"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span>
+</span><span id="line-204">    <span class="n">missing</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">required</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">trial_inputs</span><span class="p">]</span>
+</span><span id="line-205">    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+</span><span id="line-206">        <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-207">            <span class="sa">f</span><span class="s2">"render not attempted: required inputs </span><span class="si">{</span><span class="n">missing</span><span class="si">}</span><span class="s2"> were not supplied "</span>
+</span><span id="line-208">            <span class="s2">"(pass inputs=..., or give the first Example inputs)"</span>
+</span><span id="line-209">        <span class="p">)</span>
+</span><span id="line-210">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-211">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._schema</span><span class="w"> </span><span class="kn">import</span> <span class="n">validate</span> <span class="k">as</span> <span class="n">_validate</span>
+</span><span id="line-212">
+</span><span id="line-213">    <span class="n">problems</span> <span class="o">=</span> <span class="n">_validate</span><span class="p">(</span><span class="n">trial_inputs</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="s2">"inputs"</span><span class="p">)</span>
+</span><span id="line-214">    <span class="n">problems</span> <span class="o">+=</span> <span class="n">_validate</span><span class="p">(</span><span class="n">trial_params</span><span class="p">,</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">params_schema</span><span class="p">,</span> <span class="n">where</span><span class="o">=</span><span class="s2">"params"</span><span class="p">)</span>
+</span><span id="line-215">    <span class="k">if</span> <span class="n">problems</span><span class="p">:</span>
+</span><span id="line-216">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-217">            <span class="s2">"trial inputs/params do not satisfy the manifest's own "</span>
+</span><span id="line-218">            <span class="s2">"schema: "</span> <span class="o">+</span> <span class="s2">"; "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">problems</span><span class="p">)</span>
+</span><span id="line-219">        <span class="p">)</span>
+</span><span id="line-220">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-221">    <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"trial inputs/params satisfy the declared schema"</span><span class="p">)</span>
+</span><span id="line-222">
+</span><span id="line-223">    <span class="n">wd</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="s2">"conformance"</span>
+</span><span id="line-224">    <span class="n">wd</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># the HOST keeps the workdir promise</span>
+</span><span id="line-225">    <span class="n">out</span> <span class="o">=</span> <span class="n">wd</span> <span class="o">/</span> <span class="s2">"out.bin"</span>
+</span><span id="line-226">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-227">        <span class="n">result</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span>
+</span><span id="line-228">            <span class="n">RenderRequest</span><span class="p">(</span>
+</span><span id="line-229">                <span class="n">subgenre</span><span class="o">=</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span>
+</span><span id="line-230">                <span class="n">inputs</span><span class="o">=</span><span class="n">trial_inputs</span><span class="p">,</span>
+</span><span id="line-231">                <span class="n">params</span><span class="o">=</span><span class="n">trial_params</span><span class="p">,</span>
+</span><span id="line-232">                <span class="n">workdir</span><span class="o">=</span><span class="n">wd</span><span class="p">,</span>
+</span><span id="line-233">                <span class="n">output</span><span class="o">=</span><span class="n">out</span><span class="p">,</span>
+</span><span id="line-234">            <span class="p">)</span>
+</span><span id="line-235">        <span class="p">)</span>
+</span><span id="line-236">    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-237">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"render raised </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-238">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-239">
+</span><span id="line-240">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">RenderResult</span><span class="p">):</span>
+</span><span id="line-241">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-242">            <span class="sa">f</span><span class="s2">"render returned </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">, expected RenderResult"</span>
+</span><span id="line-243">        <span class="p">)</span>
+</span><span id="line-244">        <span class="k">return</span> <span class="n">report</span>
+</span><span id="line-245">    <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render returned a RenderResult"</span><span class="p">)</span>
+</span><span id="line-246">
+</span><span id="line-247">    <span class="k">if</span> <span class="n">result</span><span class="o">.</span><span class="n">output</span> <span class="o">!=</span> <span class="n">out</span><span class="p">:</span>
+</span><span id="line-248">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-249">            <span class="sa">f</span><span class="s2">"render wrote to </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">output</span><span class="si">}</span><span class="s2">, but was asked for </span><span class="si">{</span><span class="n">out</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-250">        <span class="p">)</span>
+</span><span id="line-251">    <span class="k">elif</span> <span class="ow">not</span> <span class="n">out</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-252">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render reported success but produced no file"</span><span class="p">)</span>
+</span><span id="line-253">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-254">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"render produced the requested output path"</span><span class="p">)</span>
+</span><span id="line-255">
+</span><span id="line-256">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-257">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span>
+</span><span id="line-258">        <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">"RenderResult.to_dict() is JSON-serialisable"</span><span class="p">)</span>
+</span><span id="line-259">    <span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-260">        <span class="n">report</span><span class="o">.</span><span class="n">failures</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-261">            <span class="sa">f</span><span class="s2">"RenderResult.to_dict() is not JSON-serialisable: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-262">        <span class="p">)</span>
+</span><span id="line-263">
+</span><span id="line-264">    <span class="k">return</span> <span class="n">report</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -469,7 +473,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=9cd8e891"></script>
+    <script src="../../../_static/documentation_options.js?v=ab2062fb"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

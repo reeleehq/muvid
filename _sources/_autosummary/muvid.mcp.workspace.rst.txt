@@ -10,7 +10,6 @@ muvid.mcp.workspace
    
       DATA_HOME_ENV_VAR
       SUBGENRES_SEGMENT
-      RESERVED_SLUGS
    
    .. rubric:: Functions
 

@@ -215,184 +215,202 @@
 </span><span id="line-26"><span class="kn">from</span><span class="w"> </span><span class="nn">importlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">import_module</span>
 </span><span id="line-27"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Iterator</span>
 </span><span id="line-28">
-</span><span id="line-29"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">ENTRY_POINT_GROUP</span><span class="p">,</span> <span class="n">Subgenre</span>
-</span><span id="line-30">
-</span><span id="line-31"><span class="c1">#: slug -&gt; manifest, for everything registered in-process.</span>
-</span><span id="line-32"><span class="n">_SUBGENRES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-33">
-</span><span id="line-34"><span class="c1">#: slug -&gt; manifest, for everything found on entry points. Populated once.</span>
-</span><span id="line-35"><span class="n">_DISCOVERED</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-36">
-</span><span id="line-37"><span class="c1">#: Distributions whose entry point could not be loaded, and why. Kept rather</span>
-</span><span id="line-38"><span class="c1">#: than raised so `subgenre_catalog()` can report a broken plugin without</span>
-</span><span id="line-39"><span class="c1">#: refusing to serve the working ones.</span>
-</span><span id="line-40"><span class="n">_LOAD_ERRORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-41">
-</span><span id="line-42">
+</span><span id="line-29"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-30">    <span class="n">ENTRY_POINT_GROUP</span><span class="p">,</span>
+</span><span id="line-31">    <span class="n">Subgenre</span><span class="p">,</span>
+</span><span id="line-32">    <span class="n">reserved_slug_reason</span><span class="p">,</span>
+</span><span id="line-33"><span class="p">)</span>
+</span><span id="line-34">
+</span><span id="line-35"><span class="c1">#: slug -&gt; manifest, for everything registered in-process.</span>
+</span><span id="line-36"><span class="n">_SUBGENRES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-37">
+</span><span id="line-38"><span class="c1">#: slug -&gt; manifest, for everything found on entry points. Populated once.</span>
+</span><span id="line-39"><span class="n">_DISCOVERED</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-40">
+</span><span id="line-41"><span class="c1">#: Distributions whose entry point could not be loaded, and why. Kept rather</span>
+</span><span id="line-42"><span class="c1">#: than raised so `subgenre_catalog()` can report a broken plugin without</span>
+</span><span id="line-43"><span class="c1">#: refusing to serve the working ones.</span>
+</span><span id="line-44"><span class="n">_LOAD_ERRORS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-45">
+</span><span id="line-46">
 <div class="viewcode-block" id="register_subgenre">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.register_subgenre">[docs]</a>
-</span><span id="line-43"><span class="k">def</span><span class="w"> </span><span class="nf">register_subgenre</span><span class="p">(</span><span class="n">subgenre</span><span class="p">:</span> <span class="n">Subgenre</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Subgenre</span><span class="p">:</span>
-</span><span id="line-44"><span class="w">    </span><span class="sd">"""Register a subgenre in this process. Returns it, so it can be used inline.</span>
-</span><span id="line-45">
-</span><span id="line-46"><span class="sd">    Raises :class:`ValueError` on a slug collision, matching ``nw.genres``'</span>
-</span><span id="line-47"><span class="sd">    ``on_conflict="error"``: a slug is a persisted path segment and a public</span>
-</span><span id="line-48"><span class="sd">    contract value, so silently replacing one is never the kind thing to do.</span>
+</span><span id="line-47"><span class="k">def</span><span class="w"> </span><span class="nf">register_subgenre</span><span class="p">(</span><span class="n">subgenre</span><span class="p">:</span> <span class="n">Subgenre</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Subgenre</span><span class="p">:</span>
+</span><span id="line-48"><span class="w">    </span><span class="sd">"""Register a subgenre in this process. Returns it, so it can be used inline.</span>
 </span><span id="line-49">
-</span><span id="line-50"><span class="sd">    &gt;&gt;&gt; from muvid.subgenres import Subgenre, register_subgenre, list_subgenres</span>
-</span><span id="line-51"><span class="sd">    &gt;&gt;&gt; sg = register_subgenre(Subgenre(</span>
-</span><span id="line-52"><span class="sd">    ...     slug='demo-doctest', title='Demo', description='.',</span>
-</span><span id="line-53"><span class="sd">    ...     render='muvid.subgenres.testing:echo_renderer', api_versions=("1",)))</span>
-</span><span id="line-54"><span class="sd">    &gt;&gt;&gt; 'demo-doctest' in list_subgenres()</span>
-</span><span id="line-55"><span class="sd">    True</span>
-</span><span id="line-56"><span class="sd">    &gt;&gt;&gt; unregister_subgenre('demo-doctest')</span>
-</span><span id="line-57"><span class="sd">    """</span>
-</span><span id="line-58">    <span class="k">if</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span> <span class="ow">in</span> <span class="n">_SUBGENRES</span><span class="p">:</span>
-</span><span id="line-59">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-60">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is already registered. Slugs are "</span>
-</span><span id="line-61">            <span class="s2">"persisted path segments and public contract values; pick another."</span>
-</span><span id="line-62">        <span class="p">)</span>
-</span><span id="line-63">    <span class="n">installed</span> <span class="o">=</span> <span class="n">_discover</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">)</span>
-</span><span id="line-64">    <span class="k">if</span> <span class="n">installed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-65">        <span class="c1"># The same collision rule for an INSTALLED plugin: an in-process</span>
-</span><span id="line-66">        <span class="c1"># registration used to shadow it silently, which is exactly the</span>
-</span><span id="line-67">        <span class="c1"># two-plugins-fighting-over-a-directory case the rule exists for.</span>
-</span><span id="line-68">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-69">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is already provided by the installed "</span>
-</span><span id="line-70">            <span class="sa">f</span><span class="s2">"distribution </span><span class="si">{</span><span class="n">installed</span><span class="o">.</span><span class="n">provider</span><span class="si">!r}</span><span class="s2">; pick another slug."</span>
-</span><span id="line-71">        <span class="p">)</span>
-</span><span id="line-72">    <span class="n">_SUBGENRES</span><span class="p">[</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">subgenre</span>
-</span><span id="line-73">    <span class="k">return</span> <span class="n">subgenre</span></div>
+</span><span id="line-50"><span class="sd">    Raises :class:`ValueError` on a slug collision, matching ``nw.genres``'</span>
+</span><span id="line-51"><span class="sd">    ``on_conflict="error"``: a slug is a persisted path segment and a public</span>
+</span><span id="line-52"><span class="sd">    contract value, so silently replacing one is never the kind thing to do.</span>
+</span><span id="line-53">
+</span><span id="line-54"><span class="sd">    &gt;&gt;&gt; from muvid.subgenres import Subgenre, register_subgenre, list_subgenres</span>
+</span><span id="line-55"><span class="sd">    &gt;&gt;&gt; sg = register_subgenre(Subgenre(</span>
+</span><span id="line-56"><span class="sd">    ...     slug='demo-doctest', title='Demo', description='.',</span>
+</span><span id="line-57"><span class="sd">    ...     render='muvid.subgenres.testing:echo_renderer', api_versions=("1",)))</span>
+</span><span id="line-58"><span class="sd">    &gt;&gt;&gt; 'demo-doctest' in list_subgenres()</span>
+</span><span id="line-59"><span class="sd">    True</span>
+</span><span id="line-60"><span class="sd">    &gt;&gt;&gt; unregister_subgenre('demo-doctest')</span>
+</span><span id="line-61"><span class="sd">    """</span>
+</span><span id="line-62">    <span class="k">if</span> <span class="n">reason</span> <span class="o">:=</span> <span class="n">reserved_slug_reason</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">):</span>
+</span><span id="line-63">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">; pick another slug."</span><span class="p">)</span>
+</span><span id="line-64">    <span class="k">if</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span> <span class="ow">in</span> <span class="n">_SUBGENRES</span><span class="p">:</span>
+</span><span id="line-65">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-66">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is already registered. Slugs are "</span>
+</span><span id="line-67">            <span class="s2">"persisted path segments and public contract values; pick another."</span>
+</span><span id="line-68">        <span class="p">)</span>
+</span><span id="line-69">    <span class="n">installed</span> <span class="o">=</span> <span class="n">_discover</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">)</span>
+</span><span id="line-70">    <span class="k">if</span> <span class="n">installed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-71">        <span class="c1"># The same collision rule for an INSTALLED plugin: an in-process</span>
+</span><span id="line-72">        <span class="c1"># registration used to shadow it silently, which is exactly the</span>
+</span><span id="line-73">        <span class="c1"># two-plugins-fighting-over-a-directory case the rule exists for.</span>
+</span><span id="line-74">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-75">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is already provided by the installed "</span>
+</span><span id="line-76">            <span class="sa">f</span><span class="s2">"distribution </span><span class="si">{</span><span class="n">installed</span><span class="o">.</span><span class="n">provider</span><span class="si">!r}</span><span class="s2">; pick another slug."</span>
+</span><span id="line-77">        <span class="p">)</span>
+</span><span id="line-78">    <span class="n">_SUBGENRES</span><span class="p">[</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">subgenre</span>
+</span><span id="line-79">    <span class="k">return</span> <span class="n">subgenre</span></div>
 
-</span><span id="line-74">
-</span><span id="line-75">
+</span><span id="line-80">
+</span><span id="line-81">
 <div class="viewcode-block" id="unregister_subgenre">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.unregister_subgenre">[docs]</a>
-</span><span id="line-76"><span class="k">def</span><span class="w"> </span><span class="nf">unregister_subgenre</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-77"><span class="w">    </span><span class="sd">"""Remove an in-process registration. Mostly for tests and doctests."""</span>
-</span><span id="line-78">    <span class="n">_SUBGENRES</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+</span><span id="line-82"><span class="k">def</span><span class="w"> </span><span class="nf">unregister_subgenre</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-83"><span class="w">    </span><span class="sd">"""Remove an in-process registration. Mostly for tests and doctests."""</span>
+</span><span id="line-84">    <span class="n">_SUBGENRES</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
 
-</span><span id="line-79">
-</span><span id="line-80">
-</span><span id="line-81"><span class="k">def</span><span class="w"> </span><span class="nf">_discover</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]:</span>
-</span><span id="line-82"><span class="w">    </span><span class="sd">"""Load every ``muvid.subgenres.v1`` entry point's MANIFEST (not renderer)."""</span>
-</span><span id="line-83">    <span class="k">global</span> <span class="n">_DISCOVERED</span>
-</span><span id="line-84">    <span class="k">if</span> <span class="n">_DISCOVERED</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">refresh</span><span class="p">:</span>
-</span><span id="line-85">        <span class="k">return</span> <span class="n">_DISCOVERED</span>
-</span><span id="line-86">    <span class="kn">from</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">entry_points</span>
-</span><span id="line-87">
-</span><span id="line-88">    <span class="n">found</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-89">    <span class="n">_LOAD_ERRORS</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-</span><span id="line-90">    <span class="k">for</span> <span class="n">ep</span> <span class="ow">in</span> <span class="n">entry_points</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="n">ENTRY_POINT_GROUP</span><span class="p">):</span>
-</span><span id="line-91">        <span class="n">dist</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">ep</span><span class="p">,</span> <span class="s2">"dist"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ep</span><span class="o">.</span><span class="n">name</span>
-</span><span id="line-92">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-93">            <span class="n">obj</span> <span class="o">=</span> <span class="n">ep</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
-</span><span id="line-94">            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">):</span>
-</span><span id="line-95">                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-</span><span id="line-96">                    <span class="sa">f</span><span class="s2">"expected a muvid.subgenres.Subgenre, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-97">                <span class="p">)</span>
-</span><span id="line-98">            <span class="c1"># Record who provided it; the manifest is frozen, so rebuild.</span>
-</span><span id="line-99">            <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
-</span><span id="line-100">
-</span><span id="line-101">            <span class="n">obj</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">provider</span><span class="o">=</span><span class="n">dist</span><span class="p">)</span>
-</span><span id="line-102">            <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">slug</span> <span class="ow">in</span> <span class="n">found</span><span class="p">:</span>
-</span><span id="line-103">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"duplicate subgenre slug </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-104">            <span class="n">found</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span>
-</span><span id="line-105">        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># one bad plugin must not break the catalogue</span>
-</span><span id="line-106">            <span class="n">_LOAD_ERRORS</span><span class="p">[</span><span class="n">dist</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-107">            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-</span><span id="line-108">                <span class="sa">f</span><span class="s2">"muvid: could not load subgenre plugin </span><span class="si">{</span><span class="n">dist</span><span class="si">!r}</span><span class="s2">: "</span>
-</span><span id="line-109">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-</span><span id="line-110">                <span class="ne">RuntimeWarning</span><span class="p">,</span>
-</span><span id="line-111">                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-112">            <span class="p">)</span>
-</span><span id="line-113">    <span class="n">_DISCOVERED</span> <span class="o">=</span> <span class="n">found</span>
-</span><span id="line-114">    <span class="k">return</span> <span class="n">found</span>
-</span><span id="line-115">
-</span><span id="line-116">
-</span><span id="line-117"><span class="k">def</span><span class="w"> </span><span class="nf">_all</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]:</span>
-</span><span id="line-118"><span class="w">    </span><span class="sd">"""In-process registrations win over discovered ones with the same slug."""</span>
-</span><span id="line-119">    <span class="n">merged</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_discover</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">))</span>
-</span><span id="line-120">    <span class="n">merged</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_SUBGENRES</span><span class="p">)</span>
-</span><span id="line-121">    <span class="k">return</span> <span class="n">merged</span>
-</span><span id="line-122">
+</span><span id="line-85">
+</span><span id="line-86">
+</span><span id="line-87"><span class="k">def</span><span class="w"> </span><span class="nf">_discover</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]:</span>
+</span><span id="line-88"><span class="w">    </span><span class="sd">"""Load every ``muvid.subgenres.v1`` entry point's MANIFEST (not renderer)."""</span>
+</span><span id="line-89">    <span class="k">global</span> <span class="n">_DISCOVERED</span>
+</span><span id="line-90">    <span class="k">if</span> <span class="n">_DISCOVERED</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">refresh</span><span class="p">:</span>
+</span><span id="line-91">        <span class="k">return</span> <span class="n">_DISCOVERED</span>
+</span><span id="line-92">    <span class="kn">from</span><span class="w"> </span><span class="nn">importlib.metadata</span><span class="w"> </span><span class="kn">import</span> <span class="n">entry_points</span>
+</span><span id="line-93">
+</span><span id="line-94">    <span class="n">found</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-95">    <span class="n">_LOAD_ERRORS</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+</span><span id="line-96">    <span class="k">for</span> <span class="n">ep</span> <span class="ow">in</span> <span class="n">entry_points</span><span class="p">(</span><span class="n">group</span><span class="o">=</span><span class="n">ENTRY_POINT_GROUP</span><span class="p">):</span>
+</span><span id="line-97">        <span class="n">dist</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">ep</span><span class="p">,</span> <span class="s2">"dist"</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="n">ep</span><span class="o">.</span><span class="n">name</span>
+</span><span id="line-98">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-99">            <span class="n">obj</span> <span class="o">=</span> <span class="n">ep</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+</span><span id="line-100">            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">):</span>
+</span><span id="line-101">                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="line-102">                    <span class="sa">f</span><span class="s2">"expected a muvid.subgenres.Subgenre, got </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-103">                <span class="p">)</span>
+</span><span id="line-104">            <span class="c1"># Record who provided it; the manifest is frozen, so rebuild.</span>
+</span><span id="line-105">            <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+</span><span id="line-106">
+</span><span id="line-107">            <span class="n">obj</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">provider</span><span class="o">=</span><span class="n">dist</span><span class="p">)</span>
+</span><span id="line-108">            <span class="k">if</span> <span class="n">reason</span> <span class="o">:=</span> <span class="n">reserved_slug_reason</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">slug</span><span class="p">):</span>
+</span><span id="line-109">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="n">reason</span><span class="p">)</span>
+</span><span id="line-110">            <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">slug</span> <span class="ow">in</span> <span class="n">found</span><span class="p">:</span>
+</span><span id="line-111">                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"duplicate subgenre slug </span><span class="si">{</span><span class="n">obj</span><span class="o">.</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-112">            <span class="n">found</span><span class="p">[</span><span class="n">obj</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj</span>
+</span><span id="line-113">        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># one bad plugin must not break the catalogue</span>
+</span><span id="line-114">            <span class="n">_LOAD_ERRORS</span><span class="p">[</span><span class="n">dist</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-115">            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+</span><span id="line-116">                <span class="sa">f</span><span class="s2">"muvid: could not load subgenre plugin </span><span class="si">{</span><span class="n">dist</span><span class="si">!r}</span><span class="s2">: "</span>
+</span><span id="line-117">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+</span><span id="line-118">                <span class="ne">RuntimeWarning</span><span class="p">,</span>
+</span><span id="line-119">                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-120">            <span class="p">)</span>
+</span><span id="line-121">    <span class="n">_DISCOVERED</span> <span class="o">=</span> <span class="n">found</span>
+</span><span id="line-122">    <span class="k">return</span> <span class="n">found</span>
 </span><span id="line-123">
+</span><span id="line-124">
+</span><span id="line-125"><span class="k">def</span><span class="w"> </span><span class="nf">reject_subgenre</span><span class="p">(</span><span class="n">subgenre</span><span class="p">:</span> <span class="n">Subgenre</span><span class="p">,</span> <span class="n">reason</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-126"><span class="w">    </span><span class="sd">"""Record a manifest a bridge declined, the way a broken plugin is recorded.</span>
+</span><span id="line-127">
+</span><span id="line-128"><span class="sd">    Also drops an in-process registration of it, so the catalogue never lists a</span>
+</span><span id="line-129"><span class="sd">    slug and its load error at once (an entry-point one is not in ``_SUBGENRES``).</span>
+</span><span id="line-130"><span class="sd">    """</span>
+</span><span id="line-131">    <span class="n">_LOAD_ERRORS</span><span class="p">[</span><span class="n">subgenre</span><span class="o">.</span><span class="n">provider</span> <span class="ow">or</span> <span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"ValueError: </span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-132">    <span class="n">_SUBGENRES</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">subgenre</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-133">
+</span><span id="line-134">
+</span><span id="line-135"><span class="k">def</span><span class="w"> </span><span class="nf">_all</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Subgenre</span><span class="p">]:</span>
+</span><span id="line-136"><span class="w">    </span><span class="sd">"""In-process registrations win over discovered ones with the same slug."""</span>
+</span><span id="line-137">    <span class="n">merged</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_discover</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">))</span>
+</span><span id="line-138">    <span class="n">merged</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_SUBGENRES</span><span class="p">)</span>
+</span><span id="line-139">    <span class="k">return</span> <span class="n">merged</span>
+</span><span id="line-140">
+</span><span id="line-141">
 <div class="viewcode-block" id="list_subgenres">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.list_subgenres">[docs]</a>
-</span><span id="line-124"><span class="k">def</span><span class="w"> </span><span class="nf">list_subgenres</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-125"><span class="w">    </span><span class="sd">"""Every available subgenre slug, sorted. Imports no renderer."""</span>
-</span><span id="line-126">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">))</span></div>
+</span><span id="line-142"><span class="k">def</span><span class="w"> </span><span class="nf">list_subgenres</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-143"><span class="w">    </span><span class="sd">"""Every available subgenre slug, sorted. Imports no renderer."""</span>
+</span><span id="line-144">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">))</span></div>
 
-</span><span id="line-127">
-</span><span id="line-128">
+</span><span id="line-145">
+</span><span id="line-146">
 <div class="viewcode-block" id="get_subgenre">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.get_subgenre">[docs]</a>
-</span><span id="line-129"><span class="k">def</span><span class="w"> </span><span class="nf">get_subgenre</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Subgenre</span><span class="p">:</span>
-</span><span id="line-130"><span class="w">    </span><span class="sd">"""The manifest for ``slug``. Imports no renderer."""</span>
-</span><span id="line-131">    <span class="n">available</span> <span class="o">=</span> <span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">)</span>
-</span><span id="line-132">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-133">        <span class="k">return</span> <span class="n">available</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span>
-</span><span id="line-134">    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
-</span><span id="line-135">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
-</span><span id="line-136">            <span class="sa">f</span><span class="s2">"unknown subgenre </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">. Available: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'(none)'</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-137">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span></div>
+</span><span id="line-147"><span class="k">def</span><span class="w"> </span><span class="nf">get_subgenre</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Subgenre</span><span class="p">:</span>
+</span><span id="line-148"><span class="w">    </span><span class="sd">"""The manifest for ``slug``. Imports no renderer."""</span>
+</span><span id="line-149">    <span class="n">available</span> <span class="o">=</span> <span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">)</span>
+</span><span id="line-150">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-151">        <span class="k">return</span> <span class="n">available</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span>
+</span><span id="line-152">    <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+</span><span id="line-153">        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+</span><span id="line-154">            <span class="sa">f</span><span class="s2">"unknown subgenre </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">. Available: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'(none)'</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-155">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span></div>
 
-</span><span id="line-138">
-</span><span id="line-139">
+</span><span id="line-156">
+</span><span id="line-157">
 <div class="viewcode-block" id="subgenre_catalog">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.subgenre_catalog">[docs]</a>
-</span><span id="line-140"><span class="k">def</span><span class="w"> </span><span class="nf">subgenre_catalog</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="line-141"><span class="w">    </span><span class="sd">"""JSON-able catalogue: what a CLI, an HTTP route, an MCP tool or an agent serves.</span>
-</span><span id="line-142">
-</span><span id="line-143"><span class="sd">    Imports no renderer, so this stays cheap however many plugins are installed.</span>
-</span><span id="line-144"><span class="sd">    ``load_errors`` is part of the payload on purpose — a broken plugin should be</span>
-</span><span id="line-145"><span class="sd">    visible to whoever is choosing, not silently absent.</span>
-</span><span id="line-146"><span class="sd">    """</span>
-</span><span id="line-147">    <span class="n">available</span> <span class="o">=</span> <span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">)</span>
-</span><span id="line-148">    <span class="k">return</span> <span class="p">{</span>
-</span><span id="line-149">        <span class="s2">"api_version"</span><span class="p">:</span> <span class="nb">__import__</span><span class="p">(</span>
-</span><span id="line-150">            <span class="s2">"muvid.subgenres._manifest"</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s2">"API_VERSION"</span><span class="p">]</span>
-</span><span id="line-151">        <span class="p">)</span><span class="o">.</span><span class="n">API_VERSION</span><span class="p">,</span>
-</span><span id="line-152">        <span class="s2">"subgenres"</span><span class="p">:</span> <span class="p">[</span><span class="n">available</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">)],</span>
-</span><span id="line-153">        <span class="s2">"load_errors"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_LOAD_ERRORS</span><span class="p">),</span>
-</span><span id="line-154">    <span class="p">}</span></div>
+</span><span id="line-158"><span class="k">def</span><span class="w"> </span><span class="nf">subgenre_catalog</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="line-159"><span class="w">    </span><span class="sd">"""JSON-able catalogue: what a CLI, an HTTP route, an MCP tool or an agent serves.</span>
+</span><span id="line-160">
+</span><span id="line-161"><span class="sd">    Imports no renderer, so this stays cheap however many plugins are installed.</span>
+</span><span id="line-162"><span class="sd">    ``load_errors`` is part of the payload on purpose — a broken plugin should be</span>
+</span><span id="line-163"><span class="sd">    visible to whoever is choosing, not silently absent.</span>
+</span><span id="line-164"><span class="sd">    """</span>
+</span><span id="line-165">    <span class="n">available</span> <span class="o">=</span> <span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">)</span>
+</span><span id="line-166">    <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-167">        <span class="s2">"api_version"</span><span class="p">:</span> <span class="nb">__import__</span><span class="p">(</span>
+</span><span id="line-168">            <span class="s2">"muvid.subgenres._manifest"</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s2">"API_VERSION"</span><span class="p">]</span>
+</span><span id="line-169">        <span class="p">)</span><span class="o">.</span><span class="n">API_VERSION</span><span class="p">,</span>
+</span><span id="line-170">        <span class="s2">"subgenres"</span><span class="p">:</span> <span class="p">[</span><span class="n">available</span><span class="p">[</span><span class="n">s</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">)],</span>
+</span><span id="line-171">        <span class="s2">"load_errors"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">_LOAD_ERRORS</span><span class="p">),</span>
+</span><span id="line-172">    <span class="p">}</span></div>
 
-</span><span id="line-155">
-</span><span id="line-156">
+</span><span id="line-173">
+</span><span id="line-174">
 <div class="viewcode-block" id="resolve_renderer">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.resolve_renderer">[docs]</a>
-</span><span id="line-157"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_renderer</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-</span><span id="line-158"><span class="w">    </span><span class="sd">"""Import and return the renderer for ``slug``.</span>
-</span><span id="line-159">
-</span><span id="line-160"><span class="sd">    This is the only function in the module that imports plugin code, and it is</span>
-</span><span id="line-161"><span class="sd">    called at render time, not at listing time.</span>
-</span><span id="line-162"><span class="sd">    """</span>
-</span><span id="line-163">    <span class="n">sg</span> <span class="o">=</span> <span class="n">get_subgenre</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
-</span><span id="line-164">    <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func_name</span> <span class="o">=</span> <span class="n">sg</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
-</span><span id="line-165">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-166">        <span class="n">module</span> <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
-</span><span id="line-167">    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-168">        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
-</span><span id="line-169">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> declares render=</span><span class="si">{</span><span class="n">sg</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> but "</span>
-</span><span id="line-170">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">module_name</span><span class="si">!r}</span><span class="s2"> could not be imported: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. If this plugin needs "</span>
-</span><span id="line-171">            <span class="s2">"an optional dependency, install it."</span>
-</span><span id="line-172">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-</span><span id="line-173">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-174">        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">func_name</span><span class="p">)</span>
-</span><span id="line-175">    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
-</span><span id="line-176">        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
-</span><span id="line-177">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> declares render=</span><span class="si">{</span><span class="n">sg</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> but "</span>
-</span><span id="line-178">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">module_name</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">func_name</span><span class="si">!r}</span><span class="s2">."</span>
-</span><span id="line-179">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span></div>
+</span><span id="line-175"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_renderer</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+</span><span id="line-176"><span class="w">    </span><span class="sd">"""Import and return the renderer for ``slug``.</span>
+</span><span id="line-177">
+</span><span id="line-178"><span class="sd">    This is the only function in the module that imports plugin code, and it is</span>
+</span><span id="line-179"><span class="sd">    called at render time, not at listing time.</span>
+</span><span id="line-180"><span class="sd">    """</span>
+</span><span id="line-181">    <span class="n">sg</span> <span class="o">=</span> <span class="n">get_subgenre</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
+</span><span id="line-182">    <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func_name</span> <span class="o">=</span> <span class="n">sg</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-183">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-184">        <span class="n">module</span> <span class="o">=</span> <span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">)</span>
+</span><span id="line-185">    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-186">        <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+</span><span id="line-187">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> declares render=</span><span class="si">{</span><span class="n">sg</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> but "</span>
+</span><span id="line-188">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">module_name</span><span class="si">!r}</span><span class="s2"> could not be imported: </span><span class="si">{</span><span class="n">exc</span><span class="si">}</span><span class="s2">. If this plugin needs "</span>
+</span><span id="line-189">            <span class="s2">"an optional dependency, install it."</span>
+</span><span id="line-190">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+</span><span id="line-191">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-192">        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">func_name</span><span class="p">)</span>
+</span><span id="line-193">    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+</span><span id="line-194">        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+</span><span id="line-195">            <span class="sa">f</span><span class="s2">"subgenre </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> declares render=</span><span class="si">{</span><span class="n">sg</span><span class="o">.</span><span class="n">render</span><span class="si">!r}</span><span class="s2"> but "</span>
+</span><span id="line-196">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">module_name</span><span class="si">!r}</span><span class="s2"> has no attribute </span><span class="si">{</span><span class="n">func_name</span><span class="si">!r}</span><span class="s2">."</span>
+</span><span id="line-197">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="kc">None</span></div>
 
-</span><span id="line-180">
-</span><span id="line-181">
+</span><span id="line-198">
+</span><span id="line-199">
 <div class="viewcode-block" id="iter_subgenres">
 <a class="viewcode-back" href="../../../_autosummary/muvid.subgenres.html#muvid.subgenres.iter_subgenres">[docs]</a>
-</span><span id="line-182"><span class="k">def</span><span class="w"> </span><span class="nf">iter_subgenres</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Subgenre</span><span class="p">]:</span>
-</span><span id="line-183"><span class="w">    </span><span class="sd">"""Iterate manifests in slug order."""</span>
-</span><span id="line-184">    <span class="n">available</span> <span class="o">=</span> <span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">)</span>
-</span><span id="line-185">    <span class="k">for</span> <span class="n">slug</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">):</span>
-</span><span id="line-186">        <span class="k">yield</span> <span class="n">available</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span></div>
+</span><span id="line-200"><span class="k">def</span><span class="w"> </span><span class="nf">iter_subgenres</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">refresh</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="n">Subgenre</span><span class="p">]:</span>
+</span><span id="line-201"><span class="w">    </span><span class="sd">"""Iterate manifests in slug order."""</span>
+</span><span id="line-202">    <span class="n">available</span> <span class="o">=</span> <span class="n">_all</span><span class="p">(</span><span class="n">refresh</span><span class="o">=</span><span class="n">refresh</span><span class="p">)</span>
+</span><span id="line-203">    <span class="k">for</span> <span class="n">slug</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">available</span><span class="p">):</span>
+</span><span id="line-204">        <span class="k">yield</span> <span class="n">available</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -407,7 +425,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=9cd8e891"></script>
+    <script src="../../../_static/documentation_options.js?v=ab2062fb"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
