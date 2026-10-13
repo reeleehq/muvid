@@ -50,27 +50,34 @@ connector, and it never downloads weights unless the caller says
 | [`LINE_GAP_S`](#muvid.lyricvid.glyph_align.LINE_GAP_S)            | a line whose last glyph starts within this many seconds of the next line's first glyph (or after it) overlaps it.                                     |
 | [`UNSUNG_FRAME_S`](#muvid.lyricvid.glyph_align.UNSUNG_FRAME_S)        | Frame length for the stem's RMS level.                                                                                                                |
 | [`UNSUNG_REF_PERCENTILE`](#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE) | The stem's "loud level" is this percentile of its frame RMS, so the threshold follows the mix rather than an absolute dBFS a quieter stem would fail. |
+| [`TIMING_OVERRIDES`](#muvid.lyricvid.glyph_align.TIMING_OVERRIDES)      | What a recorded per-song timing override may say about a line.                                                                                        |
+| [`SPILL_MIN_STEP_S`](#muvid.lyricvid.glyph_align.SPILL_MIN_STEP_S)      | a moved glyph starts at least this long after the glyph before it (a mora takes ~0.1 s)...                                                            |
+| [`SPILL_CLEAR_S`](#muvid.lyricvid.glyph_align.SPILL_CLEAR_S)         | ...an onset it moves to is at least this long before the next line...                                                                                 |
+| [`SPILL_MIN_TAIL_S`](#muvid.lyricvid.glyph_align.SPILL_MIN_TAIL_S)      | ...and a word whose glyph moved ends no earlier than this after its last glyph's start (CTC spans are spiky; a 0 s word would never light).           |
 
 ### Functions
 
-| [`default_detectors`](#muvid.lyricvid.glyph_align.default_detectors)(\*[, disagree_s, min_glyph_s])   | What [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile) runs when given none: the two that need no audio.   |
-|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
-| [`disagrees`](#muvid.lyricvid.glyph_align.disagrees)(\*[, disagree_s])                        | Words whose fine start is more than `disagree_s` from the coarse one.                                                 |
-| [`disordered`](#muvid.lyricvid.glyph_align.disordered)(among, \*[, gap_s])                     | Lines that overlap, or whose glyphs run backwards, once `among` is applied.                                           |
-| [`glyph_rows`](#muvid.lyricvid.glyph_align.glyph_rows)(tt)                                     | One flat record per glyph, for a table or a quick look.                                                               |
-| [`lost`](#muvid.lyricvid.glyph_align.lost)(vocals, \*[, disagree_s, min_glyph_s, tol_s]) | Words the aligner could not place, as [`unsung()`](#muvid.lyricvid.glyph_align.unsung)'s `among`.            |
-| [`misplaced`](#muvid.lyricvid.glyph_align.misplaced)(vocals, \*[, disagree_s, tol_s])         | Disagreeing words where the onsets side with the vendor.                                                              |
-| [`onset_report`](#muvid.lyricvid.glyph_align.onset_report)(timed_text, vocals, \*[, tol_s, ...]) | How well glyph starts sit on acoustic onsets of the vocal stem.                                                       |
-| [`reconcile`](#muvid.lyricvid.glyph_align.reconcile)(fine, coarse, \*[, disagree_s, ...])     | Distrust the fine timing where a detector says so; remedy it; say where.                                              |
-| [`refine_glyphs`](#muvid.lyricvid.glyph_align.refine_glyphs)(timed_text, vocals, \*[, ...])       | Return `timed_text` with measured `Word.glyphs` on every word.                                                        |
-| [`romanize_hepburn`](#muvid.lyricvid.glyph_align.romanize_hepburn)(text)                             | Display romanisation (modified Hepburn) of kana text: what a learner reads.                                           |
-| [`romanize_kana`](#muvid.lyricvid.glyph_align.romanize_kana)(word)                                | `(glyph, romaji)` per glyph, the romaji chunks concatenating to the word.                                             |
-| [`squeezed`](#muvid.lyricvid.glyph_align.squeezed)(\*[, min_glyph_s])                        | Words with two sounded glyphs starting less than `min_glyph_s` apart.                                                 |
-| [`stem_detectors`](#muvid.lyricvid.glyph_align.stem_detectors)(vocals, \*[, disagree_s, ...])      | What to reconcile with when you have the vocal stem (muvid#150).                                                      |
-| [`stem_onsets`](#muvid.lyricvid.glyph_align.stem_onsets)(vocals)                                | Acoustic onset times (seconds) of a vocal stem, as a numpy array.                                                     |
-| [`unsung`](#muvid.lyricvid.glyph_align.unsung)(vocals, \*[, among, quiet_db, ...])         | Lines a vendor transcript lists but nobody sang.                                                                      |
-| [`vocal_stem`](#muvid.lyricvid.glyph_align.vocal_stem)(audio, \*, out_dir[, allow_download])   | The song's separated vocal stem (Demucs), raising rather than degrading.                                              |
-| [`word_agreement`](#muvid.lyricvid.glyph_align.word_agreement)(fine, coarse, \*[, disagree_s])     | Compare word starts (first glyph start when present) of two timings.                                                  |
+| [`apply_timing_overrides`](#muvid.lyricvid.glyph_align.apply_timing_overrides)(reconciled, fine, ...)      | Put recorded human judgements back over [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile)'s result.      |
+|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| [`check_timing_overrides`](#muvid.lyricvid.glyph_align.check_timing_overrides)(overrides, n_lines)         | Validate recorded timing overrides against a transcript of `n_lines`.                                               |
+| [`default_detectors`](#muvid.lyricvid.glyph_align.default_detectors)(\*[, disagree_s, min_glyph_s])   | What [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile) runs when given none: the two that need no audio. |
+| [`disagrees`](#muvid.lyricvid.glyph_align.disagrees)(\*[, disagree_s])                        | Words whose fine start is more than `disagree_s` from the coarse one.                                               |
+| [`disordered`](#muvid.lyricvid.glyph_align.disordered)(among, \*[, gap_s])                     | Lines that overlap, or whose glyphs run backwards, once `among` is applied.                                         |
+| [`glyph_rows`](#muvid.lyricvid.glyph_align.glyph_rows)(tt)                                     | One flat record per glyph, for a table or a quick look.                                                             |
+| [`lost`](#muvid.lyricvid.glyph_align.lost)(vocals, \*[, disagree_s, min_glyph_s, tol_s]) | Words the aligner could not place, as [`unsung()`](#muvid.lyricvid.glyph_align.unsung)'s `among`.          |
+| [`misplaced`](#muvid.lyricvid.glyph_align.misplaced)(vocals, \*[, disagree_s, tol_s])         | Disagreeing words where the onsets side with the vendor.                                                            |
+| [`onset_report`](#muvid.lyricvid.glyph_align.onset_report)(timed_text, vocals, \*[, tol_s, ...]) | How well glyph starts sit on acoustic onsets of the vocal stem.                                                     |
+| [`reconcile`](#muvid.lyricvid.glyph_align.reconcile)(fine, coarse, \*[, disagree_s, ...])     | Distrust the fine timing where a detector says so; remedy it; say where.                                            |
+| [`refine_glyphs`](#muvid.lyricvid.glyph_align.refine_glyphs)(timed_text, vocals, \*[, ...])       | Return `timed_text` with measured `Word.glyphs` on every word.                                                      |
+| [`repair_spills`](#muvid.lyricvid.glyph_align.repair_spills)(tt, onsets, \*[, gap_s, ...])        | Pull a line's glyphs back off the NEXT line, where they aligned (muvid#155).                                        |
+| [`romanize_hepburn`](#muvid.lyricvid.glyph_align.romanize_hepburn)(text)                             | Display romanisation (modified Hepburn) of kana text: what a learner reads.                                         |
+| [`romanize_kana`](#muvid.lyricvid.glyph_align.romanize_kana)(word)                                | `(glyph, romaji)` per glyph, the romaji chunks concatenating to the word.                                           |
+| [`squeezed`](#muvid.lyricvid.glyph_align.squeezed)(\*[, min_glyph_s])                        | Words with two sounded glyphs starting less than `min_glyph_s` apart.                                               |
+| [`stem_detectors`](#muvid.lyricvid.glyph_align.stem_detectors)(vocals, \*[, disagree_s, ...])      | What to reconcile with when you have the vocal stem (muvid#150).                                                    |
+| [`stem_onsets`](#muvid.lyricvid.glyph_align.stem_onsets)(vocals)                                | Acoustic onset times (seconds) of a vocal stem, as a numpy array.                                                   |
+| [`unsung`](#muvid.lyricvid.glyph_align.unsung)(vocals, \*[, among, quiet_db, ...])         | Lines a vendor transcript lists but nobody sang.                                                                    |
+| [`vocal_stem`](#muvid.lyricvid.glyph_align.vocal_stem)(audio, \*, out_dir[, allow_download])   | The song's separated vocal stem (Demucs), raising rather than degrading.                                            |
+| [`word_agreement`](#muvid.lyricvid.glyph_align.word_agreement)(fine, coarse, \*[, disagree_s])     | Compare word starts (first glyph start when present) of two timings.                                                |
 
 ### Classes
 
@@ -124,6 +131,29 @@ evenly and marked unmeasured (the word was sung; the aligner could not place
 it). `drop`: remove the word, and a line or section left empty (it was
 never sung, so lighting it at ANY time is wrong).
 
+### muvid.lyricvid.glyph_align.SPILL_CLEAR_S *= 0.1*
+
+…an onset it moves to is at least this long before the next line…
+
+### muvid.lyricvid.glyph_align.SPILL_MIN_STEP_S *= 0.08*
+
+a moved glyph starts at least this long after the
+glyph before it (a mora takes ~0.1 s)…
+
+* **Type:**
+  [`repair_spills()`](#muvid.lyricvid.glyph_align.repair_spills)
+
+### muvid.lyricvid.glyph_align.SPILL_MIN_TAIL_S *= 0.05*
+
+…and a word whose glyph moved ends no earlier than this after its last
+glyph’s start (CTC spans are spiky; a 0 s word would never light).
+
+### muvid.lyricvid.glyph_align.TIMING_OVERRIDES *= ('fine',)*
+
+What a recorded per-song timing override may say about a line. `fine`:
+the vendor window is junk and the aligner’s times are right, so the line
+gets its fine timing back, whatever [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile) did to it.
+
 ### muvid.lyricvid.glyph_align.UNSUNG_FRAME_S *= 0.05*
 
 Frame length for the stem’s RMS level.
@@ -150,6 +180,43 @@ quiet below this many dB under the stem’s own loud level…
 
 The stem’s “loud level” is this percentile of its frame RMS, so the threshold
 follows the mix rather than an absolute dBFS a quieter stem would fail.
+
+### muvid.lyricvid.glyph_align.apply_timing_overrides(reconciled, fine, records, , overrides)
+
+Put recorded human judgements back over [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile)’s result.
+
+`overrides` is per-song DATA, `{"<line index>": "fine"}` — the line’s
+0-based position in the transcript `fine` was refined from (string keys,
+as JSON writes them, or ints). It belongs in the song’s own spec beside
+the lyrics, never in code: it says “on THIS song, this line’s vendor
+window is junk and the aligner’s times sit on onsets” (muvid#150, used on
+five songs). Each value is one of [`TIMING_OVERRIDES`](#muvid.lyricvid.glyph_align.TIMING_OVERRIDES).
+
+`reconciled` and `records` are what `reconcile(fine, coarse, ...)`
+returned; words are matched by position, so a line is restored exactly —
+even one [`unsung()`](#muvid.lyricvid.glyph_align.unsung) dropped, since a person said it was sung. Only
+the named line changes: a neighbour [`disordered()`](#muvid.lyricvid.glyph_align.disordered) flagged together
+with it keeps its vendor window unless it is named too. `reconcile`’s
+records still say what reconcile did; these say what undid it. Returns
+the timing and one record per word whose timing changed (same keys as
+[`reconcile()`](#muvid.lyricvid.glyph_align.reconcile)’s; `why` is `"override"`). Empty or `None`
+`overrides` return `reconciled` unchanged.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TimedText`](muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]]
+
+### muvid.lyricvid.glyph_align.check_timing_overrides(overrides, n_lines)
+
+Validate recorded timing overrides against a transcript of `n_lines`.
+
+Returns `{line index: how}`. Refuses (`ValueError`) a key that is not
+an integer line index (a bool or a fractional number included), one out of
+range, two spellings of one line that disagree, and a value outside
+[`TIMING_OVERRIDES`](#muvid.lyricvid.glyph_align.TIMING_OVERRIDES). Cheap, so a caller can run it BEFORE the
+expensive alignment it is about to correct.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.lyricvid.glyph_align.default_detectors(, disagree_s=0.3, min_glyph_s=0.04)
 
@@ -285,6 +352,41 @@ replace nothing else. A line with nothing romanisable keeps evenly spread,
 
 * **Return type:**
   [`TimedText`](muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText)
+
+### muvid.lyricvid.glyph_align.repair_spills(tt, onsets, , gap_s=0.05, min_step_s=0.08, clear_s=0.1, min_tail_s=0.05)
+
+Pull a line’s glyphs back off the NEXT line, where they aligned (muvid#155).
+
+Seen on a real song: `ハット`’s `ト` aligned onto the next line’s `ト`.
+It also follows from [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile) itself: a line sent back to its
+vendor window can end on a neighbour the aligner had right. A glyph (not
+a line’s first) starting within `gap_s` of the next line’s first glyph,
+or after it, has SPILLED. It moves to the first of `onsets` (the vocal
+stem’s, see [`stem_onsets()`](#muvid.lyricvid.glyph_align.stem_onsets)) at least `min_step_s` after the glyph
+before it and `clear_s` before the next line — or, with none there,
+midway between that floor and `gap_s` before the next line, so it is
+never left spilled — and is marked `measured=False`. Every glyph after
+the first spilled one moves with it: they share that room in equal
+slices, each taking the first onset in its own slice, so no glyph is
+left on the next line for want of room an earlier one took.
+
+Then, in that line only, nothing stays lit into the next line or over a
+moved glyph: the glyph before a moved one ends no later than it starts, a
+moved glyph ends by the next line, and each word spans its glyphs (from its
+first glyph’s start, to its last glyph’s end or `min_tail_s` past its
+start — CTC spans are spiky) and ends by the next line too. A glyph with
+no room before the next line (the line itself already sits on it) is left
+alone: moving it would put it before the glyph it follows, and a whole
+line on its neighbour is [`disordered()`](#muvid.lyricvid.glyph_align.disordered)’s case, not a spill.
+
+Run it on [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile)’s result (and after
+[`apply_timing_overrides()`](#muvid.lyricvid.glyph_align.apply_timing_overrides)). Returns the timing — the very object
+passed in when nothing spilled — and one record per moved glyph: `text`,
+`line`, `why` (`"spilled"`), `detail`, `remedy` (`"onset"` or
+`"midpoint"`), `fine` (its start before) and `used` (its start now).
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TimedText`](muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]]
 
 ### muvid.lyricvid.glyph_align.romanize_hepburn(text)
 

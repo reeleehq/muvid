@@ -2,20 +2,18 @@
 
 # About this build
 
-This documentation was built on **2026-10-12 05:13 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/59c49322160c1147645bd4b7345fff8232e4d0cb"><code>59c4932</code></a> on branch <code>main</code>, for **muvid 0.0.84** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-13 06:03 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/2f268fe99e15116fd7b38fd22c0eff837229f83d"><code>2f268fe</code></a> on branch <code>main</code>, for **muvid 0.0.85** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.84) is ahead of the latest release on PyPI (0.0.83): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/59c49322160c1147645bd4b7345fff8232e4d0cb"><code>59c49322160c1147645bd4b7345fff8232e4d0cb</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/2f268fe99e15116fd7b38fd22c0eff837229f83d"><code>2f268fe99e15116fd7b38fd22c0eff837229f83d</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.84</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.85</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -24,15 +22,15 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38206537823">38206537823</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38353953113">38353953113</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>787291df6f05811df0f161ef051747ba2505ab4a</code> (in the history of the built commit) |
+| Event commit | <code>7e22f551743e436f6e0cbb89d22e5a60f0c6b5ed</code> (in the history of the built commit) |
 
 ## Tools
 
 |          |         |
 |----------|---------|
-| epythet  | 0.2.12  |
+| epythet  | 0.2.14  |
 | Sphinx   | 9.1.0   |
 | docutils | 0.22.4  |
 | Python   | 3.12.15 |
@@ -51,14 +49,14 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.83/">0.0.83</a>, older than the documented version (0.0.84).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.85/">0.0.85</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 59c49322160c1147645bd4b7345fff8232e4d0cb
-pip install "epythet==0.2.12"
+git checkout 2f268fe99e15116fd7b38fd22c0eff837229f83d
+pip install "epythet==0.2.14"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
 

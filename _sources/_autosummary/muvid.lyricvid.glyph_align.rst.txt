@@ -19,11 +19,17 @@ muvid.lyricvid.glyph\_align
       LINE_GAP_S
       UNSUNG_FRAME_S
       UNSUNG_REF_PERCENTILE
+      TIMING_OVERRIDES
+      SPILL_MIN_STEP_S
+      SPILL_CLEAR_S
+      SPILL_MIN_TAIL_S
    
    .. rubric:: Functions
 
    .. autosummary::
    
+      apply_timing_overrides
+      check_timing_overrides
       default_detectors
       disagrees
       disordered
@@ -33,6 +39,7 @@ muvid.lyricvid.glyph\_align
       onset_report
       reconcile
       refine_glyphs
+      repair_spills
       romanize_hepburn
       romanize_kana
       squeezed
