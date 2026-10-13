@@ -162,6 +162,20 @@ def _probe_size(video) -> tuple[int, int]:
     return int(w), int(h)
 
 
+def frame_size(video) -> tuple[int, int]:
+    """``(width, height)`` of ``video``'s frames: the ``size`` to plan cells for."""
+    return _probe_size(video)
+
+
+def _off_frame(tiles: Sequence["Tile"], size: tuple[int, int]) -> list:
+    """The tiles whose box leaves a frame of ``size``."""
+    W, H = size
+    return [
+        t for t in tiles
+        if t.box[0] < 0 or t.box[1] < 0 or t.box[0] + t.box[2] > W or t.box[1] + t.box[3] > H
+    ]
+
+
 def _rgb(colour: str) -> tuple[int, int, int]:
     c = colour.lstrip("#")
     return tuple(int(c[i : i + 2], 16) for i in (0, 2, 4))
@@ -349,6 +363,14 @@ def render(
     out = Path(out)
     if not tiles:
         raise ValueError("no tiles to render")
+    # Cells planned for another frame size (mosaic_cells' default is 1920x1080) would
+    # put pictures off-frame: a plausible-looking video missing them, not an error.
+    size = _probe_size(video)
+    if outside := _off_frame(tiles, size):
+        raise ValueError(
+            f"{len(outside)} tile(s) fall outside the {size[0]}x{size[1]} frame of "
+            f"{video}: plan the cells with mosaic_cells(..., size=frame_size(video))."
+        )
     dur, rate = _probe_duration(video), _probe_rate(video)
     args = ["ffmpeg", "-v", "error", "-y", "-i", str(video)]
     chains, prev = [], "0:v"

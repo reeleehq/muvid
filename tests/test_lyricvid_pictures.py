@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from muvid.lyricvid.pictures import (
+    frame_size,
     Bounce,
     Picture,
     Tile,
@@ -137,3 +138,25 @@ def test_render_finds_the_text_and_bounces_a_tile(tmp_path):
                           "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True, check=True).stdout
     f = np.frombuffer(raw, np.uint8).reshape(180, 320, 3).astype(int)
     assert (f[72:108, 44:276].min(-1) > 200).all()
+
+
+@needs_ffmpeg
+def test_render_refuses_tiles_planned_for_another_frame_size(tmp_path):
+    """mosaic_cells defaults to 1920x1080; on a smaller video those cells are off-frame,
+    which used to render a video quietly missing its pictures (sprint review)."""
+    lyr = tmp_path / "lyrics.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=0x101010:s=320x180:d=1:r=25",
+                    "-vf", "drawbox=x=40:y=70:w=240:h=40:color=white:t=fill", "-pix_fmt", "yuv420p", str(lyr)],
+                   check=True)
+    img = tmp_path / "red.png"
+    subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "color=c=red:s=80x60", "-frames:v", "1", str(img)],
+                   check=True)
+    assert frame_size(lyr) == (320, 180)
+    block = text_block(lyr, background="#101010", margin=4)
+    stale = mosaic_cells(1, (block[0] * 6, block[1] * 6, block[2] * 6, block[3] * 6))  # 1920x1080
+    tile, = plan_tiles([Picture("w", str(img), "c")], {"w": [0.5]}, stale)
+    with pytest.raises(ValueError, match="outside the 320x180 frame"):
+        render(lyr, [tile], tmp_path / "out.mp4")
+    good = mosaic_cells(1, block, size=frame_size(lyr), gap=4, min_band=30)
+    tile, = plan_tiles([Picture("w", str(img), "c")], {"w": [0.5]}, good)
+    assert render(lyr, [tile], tmp_path / "ok.mp4").exists()
