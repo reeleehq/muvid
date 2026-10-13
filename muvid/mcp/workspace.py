@@ -204,9 +204,10 @@ class VisualizerWorkspace:
 #: The path segment under the data root that holds one directory per subgenre (muvid#103).
 SUBGENRES_SEGMENT = "subgenres"
 
-#: Drawer names a subgenre slug may not take: ``muvid_genre`` would no longer say
-#: which drawer a project is in, and ``downloads`` keys its drawers by these names.
-RESERVED_SLUGS = frozenset({"footage", "visualizer"})
+# Drawer names a subgenre slug may not take. The set is defined beside the
+# manifest (muvid#167) so a plugin is refused before it reaches a project; the
+# name stays importable from here.
+from muvid.subgenres._manifest import RESERVED_SLUGS  # noqa: E402
 
 
 @dataclass(frozen=True)

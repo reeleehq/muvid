@@ -23,6 +23,27 @@ from typing import Any, Mapping, Sequence
 #: What a slug may look like. It is a path segment and a contract value.
 SLUG_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
+#: Drawer names no subgenre may take: ``muvid_genre`` would stop saying which
+#: drawer a project is in, and ``downloads`` keys its drawers by these names
+#: (muvid#103). Lives here, stdlib-only, so the conformance kit, discovery and
+#: the nw bridge can refuse it without importing the MCP workspace; the
+#: workspace re-exports the same set.
+RESERVED_SLUGS = frozenset({"footage", "visualizer"})
+
+
+def reserved_slug_reason(slug: str) -> str | None:
+    """Why ``slug`` cannot name a subgenre, or ``None``. A pure function of the slug.
+
+    >>> reserved_slug_reason("visualizer")[:20]
+    "slug 'visualizer' is"
+    >>> reserved_slug_reason("lyric-video") is None
+    True
+    """
+    if slug in RESERVED_SLUGS:
+        return f"slug {slug!r} is reserved for a built-in muvid drawer"
+    return None
+
+
 #: Bumped when the manifest shape or the renderer contract changes
 #: incompatibly. A plugin declares the versions it supports via
 #: :attr:`Subgenre.api_versions`; the host refuses to register a manifest that

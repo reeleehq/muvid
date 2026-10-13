@@ -88,6 +88,16 @@ class _SubgenreDrawer:
         return SubgenreWorkspace.for_slug(self.slug, email)
 
 
+#: The render file's stem per drawer; every subgenre drawer uses the default.
+_RENDER_STEMS = {"footage": "final", "visualizer": "video"}
+_DEFAULT_RENDER_STEM = "video"
+
+
+def _render_stem(kind: str) -> str:
+    """The stem of a drawer's render file, without rescanning ``subgenres/`` (muvid#167)."""
+    return _RENDER_STEMS.get(kind, _DEFAULT_RENDER_STEM)
+
+
 #: The drawers muvid hosts, each a (kind, workspace, render filename stem) triple:
 #: footage, the visualizer, then one per subgenre directory on disk (muvid#103).
 #: Order matters: footage first, because that is where the work is and a
@@ -102,10 +112,10 @@ def _sources():
     )
 
     return (
-        ("footage", FootageWorkspace, "final"),
-        ("visualizer", VisualizerWorkspace, "video"),
+        ("footage", FootageWorkspace, _render_stem("footage")),
+        ("visualizer", VisualizerWorkspace, _render_stem("visualizer")),
         *(
-            (slug, _SubgenreDrawer(slug), "video")
+            (slug, _SubgenreDrawer(slug), _render_stem(slug))
             for slug in subgenre_slugs_on_disk()
             if slug not in RESERVED_SLUGS
         ),
@@ -180,7 +190,7 @@ def _open(email: str, project_id: str):
 
 def _render_file(proj, kind: str, render_id: str, *, thumbnail: bool = False):
     """The video (or poster) for one render, or ``None``."""
-    stem = next(st for k, _w, st in _sources() if k == kind)
+    stem = _render_stem(kind)
     render_dir = proj.renders_dir / render_id
     if thumbnail:
         for ext in (".jpg", ".png"):

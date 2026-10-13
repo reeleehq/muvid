@@ -120,12 +120,16 @@ def check_subgenre_conformance(
     # --- manifest ---------------------------------------------------------
     # Subgenre.__post_init__ already refuses a bad slug at construction — the
     # kit re-states the rule so a report reads on its own.
-    from muvid.subgenres._manifest import SLUG_RE
+    from muvid.subgenres._manifest import SLUG_RE, reserved_slug_reason
 
     if SLUG_RE.fullmatch(subgenre.slug or ""):
         report.passed.append("slug is a clean path segment")
     else:
         report.failures.append(f"slug {subgenre.slug!r} is not a clean path segment")
+    # A reserved slug is a clean segment the host will still refuse, so the kit
+    # must say so; otherwise it reports ok for a plugin that cannot render (#167).
+    if reason := reserved_slug_reason(subgenre.slug or ""):
+        report.failures.append(reason)
 
     if not subgenre.description.strip():
         report.failures.append("description is empty — it is what an agent chooses on")

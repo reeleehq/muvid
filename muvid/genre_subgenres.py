@@ -33,6 +33,8 @@ from nw import (
 )
 
 from muvid.subgenres import Subgenre, iter_subgenres
+from muvid.subgenres._manifest import reserved_slug_reason
+from muvid.subgenres._registry import reject_subgenre
 
 __all__ = ["bridge_subgenres", "BRIDGED"]
 
@@ -105,6 +107,12 @@ def bridge_subgenres(*, refresh: bool = False) -> dict[str, Genre]:
     existing = set(list_genres())
     for sg in iter_subgenres(refresh=refresh):
         if sg.slug in existing or sg.slug in BRIDGED:
+            continue
+        # Discovery and register_subgenre already refuse a reserved slug; this
+        # is the last gate, so a manifest that got past them (a poked registry)
+        # still never gets a project factory that can only raise (muvid#167).
+        if reason := reserved_slug_reason(sg.slug):
+            reject_subgenre(sg, reason)
             continue
         genre = register_genre(
             Genre(
