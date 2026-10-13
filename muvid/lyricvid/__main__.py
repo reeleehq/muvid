@@ -287,11 +287,13 @@ def _timing_overrides_arg(value: str) -> dict:
 
     The JSON is either a song spec, whose ``timing_overrides`` key holds the
     mapping (absent or null: none recorded), or the mapping itself — read as
-    one as soon as any key contains a digit (``"1"``, but also a typo like
-    ``"x1"``) or any value is an override, so a typo in it is refused by the
-    check rather than read as "a spec with none" and dropped with the valid
-    entries beside it. Spec field names (``title``, ``lyrics``...) carry no
-    digit, which is what keeps the two apart.
+    one as soon as any key looks like a line index or any value is an
+    override, or when EVERY entry is a string value under a key containing a
+    digit (a typo such as ``{"x1": "fien"}``), so a typo in it is refused by
+    the check rather than read as "a spec with none" and dropped with the
+    valid entries beside it. A spec with any other field (``title``...) stays
+    a spec, whatever digits its other keys hold. Not detectable, so still read
+    as a spec: a typo with no digit in its key and no valid value.
     """
     from pathlib import Path
 
@@ -315,8 +317,16 @@ def _timing_overrides_arg(value: str) -> dict:
         if not isinstance(found, dict):
             raise SystemExit("timing_overrides must be a JSON object")
         return found
-    looks_like_overrides = any(any(c.isdigit() for c in str(k)) for k in obj) or any(
-        isinstance(v, str) and v in TIMING_OVERRIDES for v in obj.values()
+    looks_like_overrides = (
+        any(str(k).strip().isdigit() for k in obj)
+        or any(isinstance(v, str) and v in TIMING_OVERRIDES for v in obj.values())
+        or (  # every entry shaped like "<something with a digit>": "<string>"
+            bool(obj)
+            and all(
+                isinstance(v, str) and any(c.isdigit() for c in str(k))
+                for k, v in obj.items()
+            )
+        )
     )
     return obj if looks_like_overrides else {}  # a song spec with none recorded
 

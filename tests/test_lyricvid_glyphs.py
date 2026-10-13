@@ -1045,6 +1045,9 @@ def test_repair_spills_clamps_the_whole_word_and_never_moves_a_glyph_later():
         ('{"1": "fine"}', {"1": "fine"}),
         ('{"title": "x", "timing_overrides": {"1": "fine"}}', {"1": "fine"}),
         ('{"title": "x", "lyrics": "y"}', {}),  # a spec with none recorded
+        ('{"title": "x", "mp3": "a.mp3"}', {}),  # digits in a spec key (#159 review)
+        ('{"title": "x", "id3": {}}', {}),
+        ('{"title": "x", "h1": "Hat"}', {}),
         ('{"title": "x", "timing_overrides": null}', {}),
         ("{}", {}),
     ],
