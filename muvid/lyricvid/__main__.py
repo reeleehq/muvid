@@ -204,6 +204,8 @@ def glyphs(
     allow_download: bool = False,
     no_reconcile: bool = False,
     keep_unsung: bool = False,
+    timing_overrides: str = "",
+    repair_spills: bool = False,
 ) -> None:
     """Refine word TIMING (TimedText JSON) to per-glyph times; write OUTPUT JSON.
 
@@ -214,6 +216,13 @@ def glyphs(
     --keep-unsung falls back to their vendor windows instead. Words whose fine time is off every onset while
     the vendor's is on one, and lines left overlapping or out of order, go
     back to their vendor windows (muvid#150); --no-reconcile skips all of it.
+
+    Two opt-in post-passes (muvid#155); without them the output is unchanged.
+    --timing-overrides takes the song's recorded judgements, ``{"<line index>":
+    "fine"}``, as a JSON file (or a song spec holding a ``timing_overrides``
+    key) or inline JSON, and gives those lines the aligner's times back.
+    --repair-spills pulls glyphs that aligned onto the NEXT line back onto a
+    stem onset before it. Both are listed under ``repaired``.
     """
     import tempfile
     from pathlib import Path
@@ -222,6 +231,12 @@ def glyphs(
     from muvid.lyricvid.timed_text import from_dict
 
     coarse = from_dict(_json.loads(Path(timing).read_text(encoding="utf-8")))
+    overrides = _timing_overrides_arg(timing_overrides)
+    if overrides and no_reconcile:
+        raise SystemExit(
+            "--timing-overrides undoes what reconciling did to a line; with "
+            "--no-reconcile there is nothing to undo"
+        )
     ga._mms_weights(
         allow_download=allow_download
     )  # refuse BEFORE separating, not after
@@ -237,21 +252,44 @@ def glyphs(
     fine = ga.refine_glyphs(coarse, stem, allow_download=allow_download)
     agreement = ga.word_agreement(fine, coarse)
     replaced: list = []
+    repaired: list = []
     if not no_reconcile:
         detectors = ga.stem_detectors(stem, drop_unsung=not keep_unsung)
-        fine, replaced = ga.reconcile(fine, coarse, detectors=detectors)
+        refined = fine
+        fine, replaced = ga.reconcile(refined, coarse, detectors=detectors)
+        fine, repaired = ga.apply_timing_overrides(fine, refined, replaced, overrides)
+    if repair_spills:
+        fine, spilled = ga.repair_spills(fine, ga.stem_onsets(stem))
+        repaired = [*repaired, *spilled]
     Path(output).write_text(
         _json.dumps(fine.to_dict(), ensure_ascii=False, indent=1), encoding="utf-8"
     )
-    _emit(
-        {
-            "output": output,
-            "vocals": str(stem),
-            "onsets": ga.onset_report(fine, stem),
-            "agreement": agreement,
-            "reconciled": replaced,
-        }
-    )
+    report = {
+        "output": output,
+        "vocals": str(stem),
+        "onsets": ga.onset_report(fine, stem),
+        "agreement": agreement,
+        "reconciled": replaced,
+    }
+    if overrides or repair_spills:  # opt-in only: the default report is unchanged
+        report["repaired"] = repaired
+    _emit(report)
+
+
+def _timing_overrides_arg(value: str) -> dict:
+    """``--timing-overrides``: inline JSON, or a JSON file holding the mapping
+    or a song spec with a ``timing_overrides`` key. Empty means none."""
+    from pathlib import Path
+
+    if not value:
+        return {}
+    text = value if value.lstrip().startswith("{") else Path(value).read_text("utf-8")
+    obj = _json.loads(text)
+    if isinstance(obj, dict) and "timing_overrides" in obj:
+        obj = obj["timing_overrides"]
+    if not isinstance(obj, dict):
+        raise SystemExit("--timing-overrides must be a JSON object")
+    return obj
 
 
 _FUNCS = [

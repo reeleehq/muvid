@@ -747,3 +747,212 @@ def test_mmap_loading_falls_back_loudly_when_torchaudio_internals_moved(
     monkeypatch.delattr(u, "_extend_model")
     with pytest.warns(RuntimeWarning, match="2 GB"):
         assert ga._mmap_model(object(), tmp_path / "model.pt") is None
+
+
+# --------------------------------------------------------------------------
+# the default output is pinned (muvid#155): the repairs below are opt-in
+# --------------------------------------------------------------------------
+
+_GLYPHS_GOLDEN = Path(__file__).parent / "data" / "glyphs_default_golden.json"
+
+
+def _spilled_song():
+    """カス aligned onto バス (both sent back to the vendor); the vendor's バス
+    then ends on ドア's first glyph, which the aligner had right: a spill."""
+    fine, coarse = _four_lines()
+    return _place(fine, {0: 3.1, 1: 3.05, 2: 3.5, 3: 9.0}), coarse
+
+
+_SPILL_ONSETS = (3.05, 3.1, 3.15, 3.5, 3.6, 9.0, 11.0, 13.0)
+
+
+def _run_glyphs_cli(tmp_path, monkeypatch, capsys, **flags):
+    """The ``glyphs`` verb end to end, with the model and the stem faked."""
+    import json
+
+    import numpy as np
+
+    from muvid.lyricvid.__main__ import glyphs
+
+    fine, coarse = _spilled_song()
+    monkeypatch.setattr(ga, "_mms_weights", lambda **kw: tmp_path)
+    monkeypatch.setattr(ga, "refine_glyphs", lambda tt, stem, **kw: fine)
+    monkeypatch.setattr(
+        ga, "stem_onsets", lambda vocals: np.array(_SPILL_ONSETS, dtype=float)
+    )
+    y = _stem((0.0, 15.0), duration=15.0)
+    monkeypatch.setattr(ga, "_read_stem", lambda vocals: (y, _SR))
+    timing = tmp_path / "timing.json"
+    timing.write_text(json.dumps(coarse.to_dict(), ensure_ascii=False), "utf-8")
+    out = tmp_path / "out.json"
+    capsys.readouterr()
+    glyphs("song.wav", str(timing), str(out), vocals="vocals.wav", **flags)
+    report = json.loads(capsys.readouterr().out)
+    report["output"] = "out.json"  # a tmp path; everything else is pinned
+    return {"timing": json.loads(out.read_text("utf-8")), "report": report}
+
+
+def _refresh_glyphs_golden(tmp_path, monkeypatch, capsys):  # pragma: no cover
+    """Re-record the golden. Only on purpose: it is what the default IS."""
+    import json
+
+    got = _run_glyphs_cli(tmp_path, monkeypatch, capsys)
+    _GLYPHS_GOLDEN.write_text(
+        json.dumps(got, ensure_ascii=False, indent=1) + "\n", "utf-8"
+    )
+
+
+def test_glyphs_default_output_is_pinned(tmp_path, monkeypatch, capsys):
+    """The glyphs CLI with no new flags writes exactly what it wrote before
+    muvid#155: a live pipeline renders from this file every day, so the
+    spill repair and the overrides may only ever be opted into."""
+    import json
+
+    pytest.importorskip("numpy")
+    got = _run_glyphs_cli(tmp_path, monkeypatch, capsys)
+    assert got == json.loads(_GLYPHS_GOLDEN.read_text("utf-8"))
+
+
+def test_repair_spills_moves_a_glyph_off_the_next_line_onto_an_onset(
+    stem_of, onsets_at
+):
+    fine, coarse = _spilled_song()
+    onsets_at(*_SPILL_ONSETS)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+    out, _ = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    fixed, records = ga.repair_spills(out, _SPILL_ONSETS)
+
+    assert [(r["text"], r["line"], r["remedy"], r["used"]) for r in records] == [
+        ("ス", "バス", "onset", 3.1)
+    ]
+    basu = list(fixed.lines())[1]
+    su = basu.words[0].glyphs[-1]
+    assert (su.start, su.measured) == (pytest.approx(3.1), False)
+    assert su.end <= 3.5 and basu.words[0].end <= 3.5
+    assert basu.words[0].glyphs[0] == list(out.lines())[1].words[0].glyphs[0]
+    # every other line is untouched
+    others = [l for i, l in enumerate(fixed.lines()) if i != 1]
+    assert others == [l for i, l in enumerate(out.lines()) if i != 1]
+    # negative control: that is the spill the default leaves in place
+    assert list(out.lines())[1].words[0].glyphs[-1].start >= 3.5 - ga.LINE_GAP_S
+
+
+def test_repair_spills_falls_back_to_the_midpoint_and_never_moves_a_first_glyph():
+    recs = [
+        {"text": "ハット", "start": 1.0, "end": 2.0, "line_end": True},
+        {"text": "トマト", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {0: [1.0, 1.4, 2.0], 1: 2.0},  # ハット's ト sits on トマト's ト
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    assert [(r["text"], r["remedy"]) for r in records] == [("ト", "midpoint")]
+    lo = 1.4 + ga.SPILL_MIN_STEP_S
+    assert list(fixed.words())[0].glyphs[-1].start == pytest.approx((lo + 2.0) / 2)
+    # a line that STARTS on the next one is disordered's business, not this
+    # ...and one with no room left is not moved before the glyph it follows
+    first = _place(tt, {0: [2.0, 2.1, 2.2]})
+    assert ga.repair_spills(first, None) == (first, [])
+    # nothing spilled: the very same object back, no records
+    clean = _place(tt, {0: [1.0, 1.4, 1.7]})
+    assert ga.repair_spills(clean, (1.5,)) == (clean, [])
+
+
+def test_timing_overrides_give_a_line_its_fine_times_back(stem_of, onsets_at):
+    fine, coarse = _spilled_song()
+    onsets_at(*_SPILL_ONSETS)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    got, recs = ga.apply_timing_overrides(out, fine, records, {"1": "fine"})
+
+    assert list(got.lines())[1] == list(fine.lines())[1]
+    assert list(got.lines())[0] == list(out.lines())[0]  # not overridden
+    assert [(r["index"], r["why"], r["remedy"]) for r in recs] == [
+        (1, "override", "fine")
+    ]
+    assert "disordered" in recs[0]["detail"]
+    # ints work too, and no overrides is the identity
+    assert ga.apply_timing_overrides(out, fine, records, {1: "fine"})[0] == got
+    assert ga.apply_timing_overrides(out, fine, records, None) == (out, [])
+    assert ga.apply_timing_overrides(out, fine, records, {}) == (out, [])
+
+
+def test_an_override_restores_a_line_unsung_dropped(stem_of, onsets_at):
+    """A person said it was sung, so it comes back, in its place."""
+    fine, coarse = _intro_sung_once()
+    onsets_at(1.0, 1.3, 1.6, 5.0, 5.1)
+    stem = stem_of(_stem((0.9, 2.0), (5.0, 5.6), duration=8.0))
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+    assert len(list(out.lines())) == 2
+
+    got, recs = ga.apply_timing_overrides(out, fine, records, {"1": "fine"})
+
+    assert list(got.lines()) == [list(out.lines())[0], *list(fine.lines())[1:2], list(out.lines())[1]]
+    assert sorted(r["index"] for r in recs) == [3, 4, 5]
+
+
+@pytest.mark.parametrize(
+    "overrides, msg",
+    [
+        ({"x": "fine"}, "not a line index"),
+        ({"9": "fine"}, "out of range"),
+        ({"-1": "fine"}, "out of range"),
+        ({"0": "vendor"}, "must be one of"),
+    ],
+)
+def test_bad_timing_overrides_are_refused(overrides, msg):
+    fine, coarse = _four_lines()
+    with pytest.raises(ValueError, match=msg):
+        ga.apply_timing_overrides(fine, fine, [], overrides)
+
+
+def test_overrides_refuse_a_reconciled_timing_from_elsewhere():
+    fine, _ = _four_lines()
+    other, _ = _intro_sung_once()
+    with pytest.raises(ValueError, match="does not come from"):
+        ga.apply_timing_overrides(other, fine, [], {"0": "fine"})
+
+
+def test_glyphs_cli_opts_in_to_both_repairs(tmp_path, monkeypatch, capsys):
+    import json
+
+    pytest.importorskip("numpy")
+    spec = tmp_path / "song.json"
+    spec.write_text(json.dumps({"title": "x", "timing_overrides": {"0": "fine"}}))
+
+    got = _run_glyphs_cli(
+        tmp_path, monkeypatch, capsys, timing_overrides=str(spec), repair_spills=True
+    )
+
+    rep = got["report"]["repaired"]
+    assert [(r["why"], r["text"]) for r in rep] == [
+        ("override", "カス"),
+        ("spilled", "ス"),
+    ]
+    pinned = json.loads(_GLYPHS_GOLDEN.read_text("utf-8"))
+    assert got["report"]["reconciled"] == pinned["report"]["reconciled"]
+    assert got["timing"] != pinned["timing"]
+    # each flag alone, inline JSON too
+    only = _run_glyphs_cli(
+        tmp_path, monkeypatch, capsys, timing_overrides='{"0": "fine"}'
+    )
+    assert [r["why"] for r in only["report"]["repaired"]] == ["override"]
+
+
+def test_glyphs_cli_refuses_overrides_without_reconciling(
+    tmp_path, monkeypatch, capsys
+):
+    pytest.importorskip("numpy")
+    with pytest.raises(SystemExit, match="nothing to undo"):
+        _run_glyphs_cli(
+            tmp_path,
+            monkeypatch,
+            capsys,
+            timing_overrides='{"0": "fine"}',
+            no_reconcile=True,
+        )

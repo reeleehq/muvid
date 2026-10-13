@@ -1226,6 +1226,224 @@ def reconcile(
     return replace(fine, sections=tuple(sections)), records
 
 
+# --------------------------------------------------------------------------
+# post-passes over the reconciled timing (muvid#155) — both opt-in
+# --------------------------------------------------------------------------
+
+#: What a recorded per-song timing override may say about a line. ``fine``:
+#: the vendor window is junk and the aligner's times are right, so the line
+#: gets its fine timing back, whatever :func:`reconcile` did to it.
+TIMING_OVERRIDES = ("fine",)
+#: :func:`repair_spills`: a moved glyph starts at least this long after the
+#: glyph before it (a mora takes ~0.1 s)...
+SPILL_MIN_STEP_S = 0.08
+#: ...an onset it moves to is at least this long before the next line...
+SPILL_CLEAR_S = 0.1
+#: ...and a word whose glyph moved ends no earlier than this after its last
+#: glyph's start (CTC spans are spiky; a 0 s word would never light).
+SPILL_MIN_TAIL_S = 0.05
+
+
+def _rebuilt(tt: TimedText, lines: Iterable[Line]) -> TimedText:
+    """``tt`` with its lines replaced, in order, by ``lines`` (same count)."""
+    it = iter(lines)
+    return replace(
+        tt,
+        sections=tuple(
+            replace(sec, lines=tuple(next(it) for _ in sec.lines))
+            for sec in tt.sections
+        ),
+    )
+
+
+def apply_timing_overrides(
+    reconciled: TimedText,
+    fine: TimedText,
+    records: Sequence[Mapping[str, Any]],
+    overrides: Mapping[str | int, str] | None,
+) -> tuple[TimedText, list[dict[str, Any]]]:
+    """Put recorded human judgements back over :func:`reconcile`'s result.
+
+    ``overrides`` is per-song DATA, ``{"<line index>": "fine"}`` — the line's
+    0-based position in the transcript ``fine`` was refined from (string keys,
+    as JSON writes them, or ints). It belongs in the song's own spec beside
+    the lyrics, never in code: it says "on THIS song, this line's vendor
+    window is junk and the aligner's times sit on onsets" (muvid#150, used on
+    five songs). Each value is one of :data:`TIMING_OVERRIDES`.
+
+    ``reconciled`` and ``records`` are what ``reconcile(fine, coarse, ...)``
+    returned; words are matched by position, so a line is restored exactly —
+    even one :func:`unsung` dropped, since a person said it was sung. Returns
+    the timing and one record per word whose timing changed (same keys as
+    :func:`reconcile`'s; ``why`` is ``"override"``). Empty or ``None``
+    ``overrides`` return ``reconciled`` unchanged.
+    """
+    if not overrides:
+        return reconciled, []
+    fine_lines = list(fine.lines())
+    chosen: dict[int, str] = {}
+    for key, how in overrides.items():
+        try:
+            li = int(key)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"timing_overrides key {key!r} is not a line index"
+            ) from None
+        if not 0 <= li < len(fine_lines):
+            raise ValueError(
+                f"timing_overrides line {li} is out of range: the transcript "
+                f"has {len(fine_lines)} lines (0-based)"
+            )
+        if how not in TIMING_OVERRIDES:
+            raise ValueError(
+                f"timing_overrides[{key!r}] must be one of {TIMING_OVERRIDES}, "
+                f"not {how!r}"
+            )
+        chosen[li] = how
+
+    by_index = {r["index"]: r for r in records}
+    dropped = {k for k, r in by_index.items() if r["remedy"] == "drop"}
+    fw, rw = list(fine.words()), iter(reconciled.words())
+    kept: dict[int, Word] = {}
+    for k, w in enumerate(fw):
+        if k in dropped:
+            continue
+        got = next(rw, None)
+        if got is None or got.text != w.text:
+            raise ValueError(
+                "reconciled does not come from fine and records: pass what "
+                "reconcile(fine, ...) returned"
+            )
+        kept[k] = got
+    if next(rw, None) is not None:
+        raise ValueError("reconciled has more words than fine minus its drops")
+
+    out: list[dict[str, Any]] = []
+    lines: list[Line] = []
+    k = 0
+    for li, ln in enumerate(fine_lines):
+        span = range(k, k + len(ln.words))
+        k += len(ln.words)
+        if li in chosen:
+            for j in span:
+                if j in by_index:  # reconcile changed it; the override undoes that
+                    prev = by_index[j]
+                    out.append(
+                        {
+                            "index": j,
+                            "text": fw[j].text,
+                            "fine": round(_word_start(fw[j]), 3),
+                            "why": "override",
+                            "detail": f"timing_overrides[{li}] = {chosen[li]!r}, "
+                            f"undoing {prev['why']} ({prev['remedy']})",
+                            "remedy": chosen[li],
+                            "flagged_by": list(prev.get("flagged_by", ())),
+                            "used": round(_word_start(fw[j]), 3),
+                        }
+                    )
+            lines.append(ln)
+        else:
+            lines.append(replace(ln, words=tuple(kept[j] for j in span if j in kept)))
+    restored = _rebuilt(fine, lines)
+    return replace(
+        reconciled,
+        sections=tuple(
+            replace(sec, lines=tuple(ln for ln in sec.lines if ln.words))
+            for sec in restored.sections
+            if any(ln.words for ln in sec.lines)
+        ),
+    ), out
+
+
+def repair_spills(
+    tt: TimedText,
+    onsets: Sequence[float] | None,
+    *,
+    gap_s: float = LINE_GAP_S,
+    min_step_s: float = SPILL_MIN_STEP_S,
+    clear_s: float = SPILL_CLEAR_S,
+    min_tail_s: float = SPILL_MIN_TAIL_S,
+) -> tuple[TimedText, list[dict[str, Any]]]:
+    """Pull a line's glyphs back off the NEXT line, where they aligned (muvid#155).
+
+    Seen on a real song: ``ハット``'s ``ト`` aligned onto the next line's ``ト``.
+    It also follows from :func:`reconcile` itself: a line sent back to its
+    vendor window can end on a neighbour the aligner had right. A glyph (not
+    a line's first) starting within ``gap_s`` of the next line's first glyph,
+    or after it, moves to the first of ``onsets`` (the vocal stem's, see
+    :func:`stem_onsets`) at least ``min_step_s`` after the glyph before it and
+    ``clear_s`` before the next line — or, with none there, midway between the
+    two — and is marked ``measured=False``. Its end, and the ends of the words
+    in that line, are clamped so nothing stays lit into the next line. A glyph
+    with no room before the next line (the line itself already sits on it) is
+    left alone: moving it would put it before the glyph it follows, and a whole
+    line on its neighbour is :func:`disordered`'s case, not a spill.
+
+    Run it on :func:`reconcile`'s result (and after
+    :func:`apply_timing_overrides`). Returns the timing and one record per
+    moved glyph: ``text``, ``line``, ``why`` (``"spilled"``), ``detail``,
+    ``remedy`` (``"onset"`` or ``"midpoint"``), ``fine`` (its start before)
+    and ``used`` (its start now).
+    """
+    ons = sorted(float(t) for t in (onsets if onsets is not None else ()))
+    src = list(tt.lines())
+    out: list[dict[str, Any]] = []
+    fixed: list[Line] = []
+    for ln, nxt in zip(src, [*src[1:], None]):
+        if nxt is None or not nxt.words:
+            fixed.append(ln)
+            continue
+        t_next = min(_line_starts(nxt))
+        moved = False
+        prev_start: float | None = None
+        words = []
+        for w in ln.words:
+            glyphs = []
+            for g in w.glyphs:
+                lo = None if prev_start is None else prev_start + min_step_s
+                if lo is not None and g.start >= t_next - gap_s and lo < t_next:
+                    cand = [t for t in ons if lo <= t <= t_next - clear_s]
+                    new = cand[0] if cand else (lo + t_next) / 2
+                    out.append(
+                        {
+                            "text": g.text,
+                            "line": ln.text,
+                            "why": "spilled",
+                            "detail": f"starts {g.start:.2f} s, at or past the "
+                            f"next line's {t_next:.2f} s",
+                            "remedy": "onset" if cand else "midpoint",
+                            "fine": round(g.start, 3),
+                            "used": round(new, 3),
+                        }
+                    )
+                    g = replace(
+                        g, start=new, end=max(new, min(g.end, t_next)), measured=False
+                    )
+                    moved = True
+                glyphs.append(g)
+                prev_start = g.start
+            words.append(replace(w, glyphs=tuple(glyphs)))
+        if moved:
+            words = [
+                replace(
+                    w,
+                    end=max(
+                        w.start,
+                        min(
+                            w.end,
+                            max(w.glyphs[-1].end, w.glyphs[-1].start + min_tail_s),
+                        ),
+                    ),
+                )
+                if w.glyphs
+                else w
+                for w in words
+            ]
+            ln = replace(ln, words=tuple(words))
+        fixed.append(ln)
+    return (_rebuilt(tt, fixed), out) if out else (tt, out)
+
+
 def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
     """One flat record per glyph, for a table or a quick look."""
     for li, ln in enumerate(tt.lines()):
