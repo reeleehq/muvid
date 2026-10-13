@@ -26,7 +26,11 @@ import warnings
 from importlib import import_module
 from typing import Any, Callable, Iterator
 
-from muvid.subgenres._manifest import ENTRY_POINT_GROUP, Subgenre
+from muvid.subgenres._manifest import (
+    ENTRY_POINT_GROUP,
+    Subgenre,
+    reserved_slug_reason,
+)
 
 #: slug -> manifest, for everything registered in-process.
 _SUBGENRES: dict[str, Subgenre] = {}
@@ -55,6 +59,8 @@ def register_subgenre(subgenre: Subgenre) -> Subgenre:
     True
     >>> unregister_subgenre('demo-doctest')
     """
+    if reason := reserved_slug_reason(subgenre.slug):
+        raise ValueError(f"subgenre {subgenre.slug!r}: {reason}; pick another slug.")
     if subgenre.slug in _SUBGENRES:
         raise ValueError(
             f"subgenre {subgenre.slug!r} is already registered. Slugs are "
@@ -99,6 +105,8 @@ def _discover(*, refresh: bool = False) -> dict[str, Subgenre]:
             from dataclasses import replace
 
             obj = replace(obj, provider=dist)
+            if reason := reserved_slug_reason(obj.slug):
+                raise ValueError(reason)
             if obj.slug in found:
                 raise ValueError(f"duplicate subgenre slug {obj.slug!r}")
             found[obj.slug] = obj
@@ -112,6 +120,11 @@ def _discover(*, refresh: bool = False) -> dict[str, Subgenre]:
             )
     _DISCOVERED = found
     return found
+
+
+def reject_subgenre(subgenre: Subgenre, reason: str) -> None:
+    """Record a manifest a bridge declined, the way a broken plugin is recorded."""
+    _LOAD_ERRORS[subgenre.provider or subgenre.slug] = f"ValueError: {reason}"
 
 
 def _all(*, refresh: bool = False) -> dict[str, Subgenre]:
