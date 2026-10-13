@@ -32,6 +32,7 @@ dependencies (numpy).
 | [`bounce_expr`](#muvid.lyricvid.pictures.bounce_expr)(beats, bounce)                    | An ffmpeg expression of `t`: 1 at rest, `1 + scale` at the peak of each pop.      |
 |------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | [`credits`](#muvid.lyricvid.pictures.credits)(tiles)                                | The credit line of every shown picture, in order of appearance, without repeats.  |
+| [`frame_size`](#muvid.lyricvid.pictures.frame_size)(video)                             | `(width, height)` of `video`'s frames: the `size` to plan cells for.              |
 | [`mosaic_cells`](#muvid.lyricvid.pictures.mosaic_cells)(n, block, \*[, size, gap, ...])  | `n` cells in one row above and one row below the text block, centre-out.          |
 | [`plan_tiles`](#muvid.lyricvid.pictures.plan_tiles)(pictures, times, cells, \*[, ...]) | Place each sung picture in a cell, in order of its word's first sung time.        |
 | [`render`](#muvid.lyricvid.pictures.render)(video, tiles, out, \*[, bounce, ...])  | Composite `tiles` onto `video` in one ffmpeg pass; audio is copied.               |
@@ -84,6 +85,13 @@ failure nobody downstream can see.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.lyricvid.pictures.frame_size(video)
+
+`(width, height)` of `video`’s frames: the `size` to plan cells for.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]
 
 ### muvid.lyricvid.pictures.mosaic_cells(n, block, , size=(1920, 1080), gap=24, aspect=1.3333333333333333, top=0.04, bottom=0.95, min_band=120, width=0.94)
 

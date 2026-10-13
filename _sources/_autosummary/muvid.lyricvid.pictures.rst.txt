@@ -10,6 +10,7 @@ muvid.lyricvid.pictures
    
       bounce_expr
       credits
+      frame_size
       mosaic_cells
       plan_tiles
       render

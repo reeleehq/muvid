@@ -1,4 +1,4 @@
-> built 2026-10-13 07:00 UTC from f4f11c1 (main) · muvid 0.0.87. Details: build_info.json
+> built 2026-10-13 08:18 UTC from f82a6b2 (main) · muvid 0.0.88. Details: build_info.json
 
 # index.html.md
 
@@ -9913,6 +9913,7 @@ dependencies (numpy).
 | [`bounce_expr`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.bounce_expr)(beats, bounce)                    | An ffmpeg expression of `t`: 1 at rest, `1 + scale` at the peak of each pop.      |
 |------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 | [`credits`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.credits)(tiles)                                | The credit line of every shown picture, in order of appearance, without repeats.  |
+| [`frame_size`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.frame_size)(video)                             | `(width, height)` of `video`'s frames: the `size` to plan cells for.              |
 | [`mosaic_cells`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.mosaic_cells)(n, block, \*[, size, gap, ...])  | `n` cells in one row above and one row below the text block, centre-out.          |
 | [`plan_tiles`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.plan_tiles)(pictures, times, cells, \*[, ...]) | Place each sung picture in a cell, in order of its word's first sung time.        |
 | [`render`](_autosummary/muvid.lyricvid.pictures.html.md#muvid.lyricvid.pictures.render)(video, tiles, out, \*[, bounce, ...])  | Composite `tiles` onto `video` in one ffmpeg pass; audio is copied.               |
@@ -9965,6 +9966,13 @@ failure nobody downstream can see.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.lyricvid.pictures.frame_size(video)
+
+`(width, height)` of `video`’s frames: the `size` to plan cells for.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]
 
 ### muvid.lyricvid.pictures.mosaic_cells(n, block, , size=(1920, 1080), gap=24, aspect=1.3333333333333333, top=0.04, bottom=0.95, min_band=120, width=0.94)
 
@@ -16848,18 +16856,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-13 07:00 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f4f11c1bf653794fe812bb67781771cf3c6c3c30"><code>f4f11c1</code></a> on branch <code>main</code>, for **muvid 0.0.87** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-13 08:18 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f82a6b2efc11a8dbc70fef8db312a71d8c74861e"><code>f82a6b2</code></a> on branch <code>main</code>, for **muvid 0.0.88** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.88) is ahead of the latest release on PyPI (0.0.87): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f4f11c1bf653794fe812bb67781771cf3c6c3c30"><code>f4f11c1bf653794fe812bb67781771cf3c6c3c30</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f82a6b2efc11a8dbc70fef8db312a71d8c74861e"><code>f82a6b2efc11a8dbc70fef8db312a71d8c74861e</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.87</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.88</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -16868,15 +16878,15 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38359269281">38359269281</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38367524532">38367524532</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>c7f17a5287455380db61eee33b823ea506a79502</code> (in the history of the built commit) |
+| Event commit | <code>06cc526b6aa123dcb0f7273fa3a3cbd366c297ca</code> (in the history of the built commit) |
 
 ## Tools
 
 |          |         |
 |----------|---------|
-| epythet  | 0.2.14  |
+| epythet  | 0.2.15  |
 | Sphinx   | 9.1.0   |
 | docutils | 0.22.4  |
 | Python   | 3.12.15 |
@@ -16895,14 +16905,14 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.87/">0.0.87</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.87/">0.0.87</a>, older than the documented version (0.0.88).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f4f11c1bf653794fe812bb67781771cf3c6c3c30
-pip install "epythet==0.2.14"
+git checkout f82a6b2efc11a8dbc70fef8db312a71d8c74861e
+pip install "epythet==0.2.15"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
 

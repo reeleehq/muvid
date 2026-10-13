@@ -171,22 +171,25 @@ dependencies (numpy).</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.credits" title="muvid.lyricvid.pictures.credits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">credits</span></code></a>(tiles)</p></td>
 <td><p>The credit line of every shown picture, in order of appearance, without repeats.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.mosaic_cells" title="muvid.lyricvid.pictures.mosaic_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mosaic_cells</span></code></a>(n, block, *[, size, gap, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.frame_size" title="muvid.lyricvid.pictures.frame_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">frame_size</span></code></a>(video)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code> of <code class="docutils literal notranslate"><span class="pre">video</span></code>'s frames: the <code class="docutils literal notranslate"><span class="pre">size</span></code> to plan cells for.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.mosaic_cells" title="muvid.lyricvid.pictures.mosaic_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mosaic_cells</span></code></a>(n, block, *[, size, gap, ...])</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">n</span></code> cells in one row above and one row below the text block, centre-out.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.plan_tiles" title="muvid.lyricvid.pictures.plan_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plan_tiles</span></code></a>(pictures, times, cells, *[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.plan_tiles" title="muvid.lyricvid.pictures.plan_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plan_tiles</span></code></a>(pictures, times, cells, *[, ...])</p></td>
 <td><p>Place each sung picture in a cell, in order of its word's first sung time.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.render" title="muvid.lyricvid.pictures.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(video, tiles, out, *[, bounce, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.render" title="muvid.lyricvid.pictures.render"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render</span></code></a>(video, tiles, out, *[, bounce, ...])</p></td>
 <td><p>Composite <code class="docutils literal notranslate"><span class="pre">tiles</span></code> onto <code class="docutils literal notranslate"><span class="pre">video</span></code> in one ffmpeg pass; audio is copied.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.text_block" title="muvid.lyricvid.pictures.text_block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">text_block</span></code></a>(video, *, background[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.text_block" title="muvid.lyricvid.pictures.text_block"><code class="xref py py-obj docutils literal notranslate"><span class="pre">text_block</span></code></a>(video, *, background[, ...])</p></td>
 <td><p>Where the lyrics are drawn: the box around every non-background pixel of <code class="docutils literal notranslate"><span class="pre">video</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.unsung_pictures" title="muvid.lyricvid.pictures.unsung_pictures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unsung_pictures</span></code></a>(pictures, times)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.unsung_pictures" title="muvid.lyricvid.pictures.unsung_pictures"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unsung_pictures</span></code></a>(pictures, times)</p></td>
 <td><p>The words that have a picture but are never sung (so the picture is never shown).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.word_times" title="muvid.lyricvid.pictures.word_times"><code class="xref py py-obj docutils literal notranslate"><span class="pre">word_times</span></code></a>(timed_text)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.pictures.word_times" title="muvid.lyricvid.pictures.word_times"><code class="xref py py-obj docutils literal notranslate"><span class="pre">word_times</span></code></a>(timed_text)</p></td>
 <td><p>Every sung start of every word, from a <code class="docutils literal notranslate"><span class="pre">TimedText.to_dict()</span></code> (or its JSON file).</p></td>
 </tr>
 </tbody>
@@ -251,6 +254,16 @@ failure nobody downstream can see.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.lyricvid.pictures.frame_size">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.pictures.</span></span><span class="sig-name descname"><span class="pre">frame_size</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/pictures.html#frame_size"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.pictures.frame_size" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.pictures.frame_size'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">(width,</span> <span class="pre">height)</span></code> of <code class="docutils literal notranslate"><span class="pre">video</span></code>’s frames: the <code class="docutils literal notranslate"><span class="pre">size</span></code> to plan cells for.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -337,6 +350,7 @@ onset), else the word’s own start.</p>
 <li><a :data-current="activeSection === '#muvid.lyricvid.pictures.Tile'" class="reference internal" href="#muvid.lyricvid.pictures.Tile"><code class="docutils literal notranslate"><span class="pre">Tile</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.pictures.bounce_expr'" class="reference internal" href="#muvid.lyricvid.pictures.bounce_expr"><code class="docutils literal notranslate"><span class="pre">bounce_expr()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.pictures.credits'" class="reference internal" href="#muvid.lyricvid.pictures.credits"><code class="docutils literal notranslate"><span class="pre">credits()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.pictures.frame_size'" class="reference internal" href="#muvid.lyricvid.pictures.frame_size"><code class="docutils literal notranslate"><span class="pre">frame_size()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.pictures.mosaic_cells'" class="reference internal" href="#muvid.lyricvid.pictures.mosaic_cells"><code class="docutils literal notranslate"><span class="pre">mosaic_cells()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.pictures.plan_tiles'" class="reference internal" href="#muvid.lyricvid.pictures.plan_tiles"><code class="docutils literal notranslate"><span class="pre">plan_tiles()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.pictures.render'" class="reference internal" href="#muvid.lyricvid.pictures.render"><code class="docutils literal notranslate"><span class="pre">render()</span></code></a></li>
@@ -356,7 +370,7 @@ onset), else the word’s own start.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=97e62c01"></script>
+<script src="../_static/documentation_options.js?v=7ffc8fc3"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
