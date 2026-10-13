@@ -93,3 +93,30 @@ def test_layout_dropped_does_not_warn():
         warnings.simplefilter("error")
         assert layout_dropped(SHAPED) == {"lines": 2, "indentations": 2}
         assert layout_dropped(FLAT) is None
+
+
+def test_a_lyrics_file_that_vanishes_fails_before_any_output(tmp_path, monkeypatch):
+    """The file is read before the backend runs, never after the video is written."""
+    lyrics = tmp_path / "lyrics.md"
+    lyrics.write_text(SHAPED, encoding="utf-8")
+    def vanishing(**kw):
+        lyrics.unlink()
+        return real_timed
+
+    real_timed = from_words([("one", 0.0, 1.0)], duration=1.0)
+    ran = []
+    monkeypatch.setattr(pipeline, "build_timed_text", vanishing)
+    monkeypatch.setattr(pipeline, "select_renderer", lambda name: "fake")
+    monkeypatch.setattr(pipeline, "resolve_renderer", lambda name: ran.append(1))
+    audio = tmp_path / "song.wav"
+    audio.write_bytes(b"")
+    req = RenderRequest(
+        subgenre="lyric-video",
+        inputs={"audio": str(audio), "lyrics": str(lyrics)},
+        params={},
+        workdir=tmp_path / "wd",
+        output=tmp_path / "out.mp4",
+    )
+    with pytest.raises(FileNotFoundError):
+        pipeline.render(req)
+    assert not ran and not (tmp_path / "out.mp4").exists()

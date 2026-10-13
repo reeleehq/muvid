@@ -239,6 +239,9 @@ def render(request: RenderRequest) -> RenderResult:
         aligner=params.get("aligner"),
         timed_text=inputs.get("timed_text"),
     )
+    # Read BEFORE the backend runs, so a vanished file fails before any output
+    # exists, and the report describes the text that set the timing.
+    layout_dropped = _lyrics_layout_dropped(inputs)
 
     repair_notes: list[str] = []
     treatment_in = params.get("treatment")
@@ -317,8 +320,8 @@ def render(request: RenderRequest) -> RenderResult:
     # Indented lyrics are parsed flat, so a drawn layout does not reach the
     # scene. A Python warning is invisible to an MCP caller; this key is not.
     # Omit-when-absent, and not a treatment repair (strict=True would refuse).
-    if dropped := _lyrics_layout_dropped(inputs):
-        meta["lyrics_layout_ignored"] = dropped
+    if layout_dropped:
+        meta["lyrics_layout_ignored"] = layout_dropped
     return RenderResult(
         output=result.output,
         duration_s=result.duration_s
