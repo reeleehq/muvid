@@ -317,8 +317,14 @@ def subgenre_of_render(meta: dict) -> str | None:
     ``render_lyric_video`` records no ``subgenre``; its nested pipeline meta has
     ``treatment_source``, which no visualizer render carries.
     """
-    if isinstance(meta.get("subgenre"), str) and meta["subgenre"]:
-        return meta["subgenre"]
+    named = meta.get("subgenre")
+    if isinstance(named, str) and named:
+        # A name that could not be a subgenre drawer is not evidence of one.
+        try:
+            ok = _safe_component(named, label="subgenre") == named
+        except ValueError:
+            ok = False
+        return named if ok and named not in RESERVED_SLUGS else None
     inner = meta.get("meta")
     if isinstance(inner, dict) and "treatment_source" in inner:
         from muvid.lyricvid.manifest import SLUG
@@ -329,23 +335,29 @@ def subgenre_of_render(meta: dict) -> str | None:
 
 def bucket_label(proj: VisualizerProject) -> str:
     """What a visualizer-drawer bucket holds: ``"visualizer"``, or the one subgenre
-    that made every one of its renders.
+    whose work is all it holds.
 
     Before muvid#103 subgenre projects lived in this drawer, so the drawer cannot
-    label them; their renders can. A bucket with no renders, or one that mixes
-    visualizer and subgenre renders (allowed before and after muvid#103), stays
+    label them; their renders can. Evidence is each finished render's
+    ``meta.json`` (a render folder without one is a render that failed or is
+    still running, and says nothing), plus the ``lyricvid/`` folder the lyric
+    tools fetch their inputs into. A bucket with no evidence, or one that mixes
+    visualizer and subgenre work (allowed before and after muvid#103), stays
     ``"visualizer"``. Read-only: nothing is moved or rewritten.
     """
-    rdir = proj.renders_dir
-    if not rdir.is_dir():
-        return "visualizer"
+    from muvid.lyricvid.manifest import SLUG as lyric_slug
+
     kinds = set()
-    for child in rdir.iterdir():
-        if not child.is_dir():
+    if (proj.root / "lyricvid").is_dir():
+        kinds.add(lyric_slug)
+    rdir = proj.renders_dir
+    for child in rdir.iterdir() if rdir.is_dir() else ():
+        spec = child / "meta.json"
+        if not (child.is_dir() and spec.is_file()):
             continue
         try:
-            meta = json.loads((child / "meta.json").read_text())
+            meta = json.loads(spec.read_text())
         except (OSError, ValueError):
-            meta = {}
+            continue
         kinds.add(subgenre_of_render(meta if isinstance(meta, dict) else {}) or "visualizer")
     return kinds.pop() if len(kinds) == 1 else "visualizer"

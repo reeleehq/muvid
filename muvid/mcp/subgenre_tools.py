@@ -101,7 +101,10 @@ def render_subgenre(
         )
 
     # Its own bucket, else a visualizer one of that id (every pre-muvid#103 project).
-    proj = open_subgenre_project(manifest.slug, current_email(), project_id)
+    try:
+        proj = open_subgenre_project(manifest.slug, current_email(), project_id)
+    except ValueError as exc:  # a reserved or unusable slug, or a bad project_id
+        raise _tool_error(str(exc)) from exc
     import uuid
 
     render_id = uuid.uuid4().hex[:12]

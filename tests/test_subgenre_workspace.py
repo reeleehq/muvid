@@ -219,3 +219,30 @@ def test_a_subgenre_cannot_take_a_built_in_drawer_name(data):
     for slug in ("footage", "visualizer"):
         with pytest.raises(ValueError, match="reserved"):
             SubgenreWorkspace.for_slug(slug, EMAIL)
+
+
+# -- second review pass ---------------------------------------------------------
+
+
+def test_a_failed_render_is_not_evidence(data):
+    old = VisualizerWorkspace.for_email(EMAIL).create_project("pA")
+    _render(old, "a" * 12, {"meta": {"treatment_source": "proposed"}})
+    old.new_render_dir("b" * 12)  # a refused render: a folder, no meta.json
+    assert _labels() == {("pA", "lyric-video")}
+    with pytest.raises(FileExistsError):
+        SubgenreWorkspace.for_slug("lyric-video", EMAIL).create_project("pA")
+
+
+def test_fetched_lyric_inputs_are_evidence_for_an_unrendered_bucket(data):
+    old = VisualizerWorkspace.for_email(EMAIL).create_project("drafted")
+    (old.root / "lyricvid").mkdir()
+    assert _labels() == {("drafted", "lyric-video")}
+    with pytest.raises(FileExistsError):
+        nw.create_genre_project("lyric-video", EMAIL, "drafted")
+
+
+@pytest.mark.parametrize("named", ["footage", "visualizer", "../x", "a/b", ""])
+def test_a_subgenre_name_that_cannot_be_a_drawer_is_not_believed(data, named):
+    old = VisualizerWorkspace.for_email(EMAIL).create_project("odd")
+    _render(old, "a" * 12, {"subgenre": named})
+    assert _labels() == {("odd", "visualizer")}
