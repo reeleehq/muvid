@@ -104,3 +104,18 @@ def test_read_lyrics_md_threads_the_option(tmp_path):
     assert read_lyrics_md(path, preserve_indent=True).lines[1].text == "  comme si elles"
     with pytest.warns(ShapedLyricsWarning):
         assert read_lyrics_md(path).lines[1].text == "comme si elles"
+
+
+def test_the_warning_points_at_the_caller(tmp_path):
+    path = tmp_path / "lyrics.md"
+    path.write_text(IL_PLEUT, encoding="utf-8")
+    for call in (lambda: parse_lyrics_md(IL_PLEUT), lambda: read_lyrics_md(path)):
+        with pytest.warns(ShapedLyricsWarning) as record:
+            call()
+        assert record[0].filename == __file__
+
+
+def test_an_anchor_only_line_shapes_nothing():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", ShapedLyricsWarning)
+        parse_lyrics_md(GOLDEN["anchor_only_line"]["md"])

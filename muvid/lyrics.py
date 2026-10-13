@@ -161,7 +161,9 @@ def parse_lyrics_md(md: str, *, preserve_indent: bool = False) -> LyricsDoc:
     stripping destroys the shape, so a :class:`ShapedLyricsWarning` says so.
     ``preserve_indent=True`` keeps each line's leading whitespace in
     ``LyricLine.text`` instead (trailing whitespace and the ``//`` anchor are
-    still removed), which :func:`render_lyrics_md` writes back verbatim. No
+    still removed), which :func:`render_lyrics_md` writes back verbatim and
+    which anything displaying that text (an alignment's line text, say) then
+    carries. No
     lyric-video archetype honours indentation yet; the word tokeniser skips
     whitespace, so alignment is the same either way. :func:`line_indents`
     reads the indentation without changing the parse.
@@ -171,21 +173,30 @@ def parse_lyrics_md(md: str, *, preserve_indent: bool = False) -> LyricsDoc:
     ['Il pleut', '  des voix']
     """
     doc, indents = _parse_lyrics_md(md, preserve_indent=preserve_indent)
-    if not preserve_indent and indentation_varies(indents):
-        import warnings
-
-        warnings.warn(
-            f"{len(indents)} lyric lines carry {len(set(indents))} different "
-            "indentations — a drawn layout? "
-            "parse_lyrics_md strips leading whitespace, so the shape is lost, "
-            "and no lyric-video archetype honours indentation (concrete_page "
-            "centres every row). Pass preserve_indent=True to keep it in the "
-            "text, or see the calligram / shape_fill archetypes for a shaped "
-            "lyric video.",
-            ShapedLyricsWarning,
-            stacklevel=2,
-        )
+    if not preserve_indent:
+        _warn_if_shaped(doc, indents, stacklevel=3)
     return doc
+
+
+def _warn_if_shaped(doc: LyricsDoc, indents: tuple[str, ...], *, stacklevel: int):
+    """Raise a ShapedLyricsWarning when the lines that carry text are indented differently."""
+    # An anchor-only line ("   // 4") has no text, so its indent shapes nothing.
+    worded = [i for i, line in zip(indents, doc.lines) if line.text]
+    if not indentation_varies(worded):
+        return
+    import warnings
+
+    warnings.warn(
+        f"{len(worded)} lyric lines carry {len(set(worded))} different "
+        "indentations, which may be a drawn layout. The parse strips leading "
+        "whitespace and no lyric-video archetype honours indentation "
+        "(concrete_page centres every row), so any shape is lost. For a shaped "
+        "lyric video see the calligram or shape_fill archetypes; to keep the "
+        "indentation in the parsed text, call parse_lyrics_md(..., "
+        "preserve_indent=True).",
+        ShapedLyricsWarning,
+        stacklevel=stacklevel,
+    )
 
 
 def line_indents(md: str) -> tuple[str, ...]:
@@ -352,9 +363,12 @@ def write_lyrics_md(path: str | Path, doc: LyricsDoc) -> None:
 
 
 def read_lyrics_md(path: str | Path, *, preserve_indent: bool = False) -> LyricsDoc:
-    return parse_lyrics_md(
+    doc, indents = _parse_lyrics_md(
         Path(path).read_text(encoding="utf-8"), preserve_indent=preserve_indent
     )
+    if not preserve_indent:
+        _warn_if_shaped(doc, indents, stacklevel=3)
+    return doc
 
 
 def read_transcript(path: str | Path) -> dict[str, Any]:
