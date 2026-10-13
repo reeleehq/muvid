@@ -123,8 +123,13 @@ def _discover(*, refresh: bool = False) -> dict[str, Subgenre]:
 
 
 def reject_subgenre(subgenre: Subgenre, reason: str) -> None:
-    """Record a manifest a bridge declined, the way a broken plugin is recorded."""
+    """Record a manifest a bridge declined, the way a broken plugin is recorded.
+
+    Also drops an in-process registration of it, so the catalogue never lists a
+    slug and its load error at once (an entry-point one is not in ``_SUBGENRES``).
+    """
     _LOAD_ERRORS[subgenre.provider or subgenre.slug] = f"ValueError: {reason}"
+    _SUBGENRES.pop(subgenre.slug, None)
 
 
 def _all(*, refresh: bool = False) -> dict[str, Subgenre]:

@@ -88,11 +88,6 @@ class _SubgenreDrawer:
         return SubgenreWorkspace.for_slug(self.slug, email)
 
 
-#: The drawers muvid hosts, each a (kind, workspace, render filename stem) triple:
-#: footage, the visualizer, then one per subgenre directory on disk (muvid#103).
-#: Order matters: footage first, because that is where the work is and a
-#: project_id present in several drawers opens the first by default
-#: (:func:`resolve` then looks in every drawer that has the id).
 #: The render file's stem per drawer; every subgenre drawer uses the default.
 _RENDER_STEMS = {"footage": "final", "visualizer": "video"}
 _DEFAULT_RENDER_STEM = "video"
@@ -103,6 +98,11 @@ def _render_stem(kind: str) -> str:
     return _RENDER_STEMS.get(kind, _DEFAULT_RENDER_STEM)
 
 
+#: The drawers muvid hosts, each a (kind, workspace, render filename stem) triple:
+#: footage, the visualizer, then one per subgenre directory on disk (muvid#103).
+#: Order matters: footage first, because that is where the work is and a
+#: project_id present in several drawers opens the first by default
+#: (:func:`resolve` then looks in every drawer that has the id).
 def _sources():
     from muvid.footage.workspace import FootageWorkspace
     from muvid.mcp.workspace import (

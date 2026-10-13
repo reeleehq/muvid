@@ -101,7 +101,11 @@ def test_the_bridge_skips_a_reserved_slug_and_records_why(clean_registry):
     assert "visualizer" not in genre_subgenres.BRIDGED
     # nw's own built-in is untouched and no muvid factory replaced it
     assert getattr(nw.get_genre("music-visualizer"), "slug", None) == "music-visualizer"
-    assert "reserved" in reg.subgenre_catalog()["load_errors"]["visualizer"]
+    cat = reg.subgenre_catalog()
+    assert "reserved" in cat["load_errors"]["visualizer"]
+    assert "visualizer" not in [s["slug"] for s in cat["subgenres"]]
+    # and a refresh does not resurrect it
+    assert "visualizer" not in reg.list_subgenres(refresh=True)
 
 
 def test_existing_project_ids_stay_readable(tmp_path, monkeypatch):
