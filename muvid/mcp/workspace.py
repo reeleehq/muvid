@@ -285,7 +285,10 @@ def subgenre_slugs_on_disk(*, root: Path | None = None) -> tuple[str, ...]:
     out = []
     for child in base.iterdir():
         try:
-            if child.is_dir() and _safe_component(child.name, label="subgenre") == child.name:
+            if (
+                child.is_dir()
+                and _safe_component(child.name, label="subgenre") == child.name
+            ):
                 out.append(child.name)
         except ValueError:
             continue
@@ -359,5 +362,7 @@ def bucket_label(proj: VisualizerProject) -> str:
             meta = json.loads(spec.read_text())
         except (OSError, ValueError):
             continue
-        kinds.add(subgenre_of_render(meta if isinstance(meta, dict) else {}) or "visualizer")
+        kinds.add(
+            subgenre_of_render(meta if isinstance(meta, dict) else {}) or "visualizer"
+        )
     return kinds.pop() if len(kinds) == 1 else "visualizer"

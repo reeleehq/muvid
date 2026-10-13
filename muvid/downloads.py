@@ -338,8 +338,11 @@ def _resolve(email: str, project_id: str, artifact_id: str):
         for kind, pid, proj in found:
             for rid, ref_n in _refs_for(proj, kind).items():
                 if ref_n == n and _render_file(proj, kind, rid) is not None:
-                    return kind, pid, proj, _deliverable(
-                        proj, kind, pid, rid, n, thumbnail=want_thumb
+                    return (
+                        kind,
+                        pid,
+                        proj,
+                        _deliverable(proj, kind, pid, rid, n, thumbnail=want_thumb),
                     )
         raise KeyError(f"no {format_ref(n)!r} in project {project_id!r}")
 
@@ -353,9 +356,18 @@ def _resolve(email: str, project_id: str, artifact_id: str):
     first_error = None
     for kind, pid, proj in found:
         try:
-            return kind, pid, proj, _deliverable(
-                proj, kind, pid, aid, _refs_for(proj, kind).get(aid),
-                thumbnail=want_thumb,
+            return (
+                kind,
+                pid,
+                proj,
+                _deliverable(
+                    proj,
+                    kind,
+                    pid,
+                    aid,
+                    _refs_for(proj, kind).get(aid),
+                    thumbnail=want_thumb,
+                ),
             )
         except KeyError as e:
             first_error = first_error or e
@@ -366,9 +378,18 @@ def _resolve(email: str, project_id: str, artifact_id: str):
     for kind, pid, proj in found:
         rid = _render_id_for_title(proj, raw)
         if rid is not None:
-            return kind, pid, proj, _deliverable(
-                proj, kind, pid, rid, _refs_for(proj, kind).get(rid),
-                thumbnail=want_thumb,
+            return (
+                kind,
+                pid,
+                proj,
+                _deliverable(
+                    proj,
+                    kind,
+                    pid,
+                    rid,
+                    _refs_for(proj, kind).get(rid),
+                    thumbnail=want_thumb,
+                ),
             )
     raise first_error
 

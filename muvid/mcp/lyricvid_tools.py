@@ -64,7 +64,6 @@ def list_archetypes() -> dict:
     }
 
 
-
 def _project(project_id: str):
     """The caller's lyric-video bucket: its own, else a visualizer one of that id.
 
