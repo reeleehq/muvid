@@ -471,7 +471,9 @@ def _place(tt, starts):
         if k not in starts:
             return w
         at = starts[k]
-        ts = at if isinstance(at, list) else [at + 0.1 * i for i in range(len(w.glyphs))]
+        ts = (
+            at if isinstance(at, list) else [at + 0.1 * i for i in range(len(w.glyphs))]
+        )
         return replace(
             w,
             glyphs=tuple(
@@ -747,3 +749,446 @@ def test_mmap_loading_falls_back_loudly_when_torchaudio_internals_moved(
     monkeypatch.delattr(u, "_extend_model")
     with pytest.warns(RuntimeWarning, match="2 GB"):
         assert ga._mmap_model(object(), tmp_path / "model.pt") is None
+
+
+# --------------------------------------------------------------------------
+# the default output is pinned (muvid#155): the repairs below are opt-in
+# --------------------------------------------------------------------------
+
+_GLYPHS_GOLDEN = Path(__file__).parent / "data" / "glyphs_default_golden.json"
+
+
+def _spilled_song():
+    """カス aligned onto バス (both sent back to the vendor); the vendor's バス
+    then ends on ドア's first glyph, which the aligner had right: a spill."""
+    fine, coarse = _four_lines()
+    return _place(fine, {0: 3.1, 1: 3.05, 2: 3.5, 3: 9.0}), coarse
+
+
+_SPILL_ONSETS = (3.05, 3.1, 3.15, 3.5, 3.6, 9.0, 11.0, 13.0)
+
+_BIASED = {
+    0: [0.8, 2.75],  # ends exactly LINE_GAP_S before バス: an overlap
+    1: [2.8, 3.3],
+    2: [5.8, 8.7],  # 0.1 s before メロン: not one
+    3: [8.8, 8.85, 8.9],  # 0.05 s apart: not squeezed at MIN_GLYPH_S
+    4: [10.8, 11.3],
+    5: [12.8, 13.3],
+}
+
+
+def _biased_song():
+    """The vendor runs 0.2 s late everywhere, so the measured bias is not 0."""
+    fine, coarse = _four_lines()
+    return _place(fine, _BIASED), coarse
+
+
+#: The fixtures the default output is pinned on: (song, onsets, sung spans,
+#: duration). Between them they reach a spill, a dropped ghost line, a
+#: non-zero bias, both sides of LINE_GAP_S and of MIN_GLYPH_S.
+_PINNED_SONGS = {
+    "spill": (_spilled_song, _SPILL_ONSETS, ((0.0, 15.0),), 15.0),
+    "ghost": (
+        _intro_sung_once,
+        (1.0, 1.3, 1.6, 5.0, 5.1),
+        ((0.9, 2.0), (5.0, 5.6)),
+        8.0,
+    ),
+    "biased": (
+        _biased_song,
+        tuple(t for ts in _BIASED.values() for t in ts),
+        ((0.0, 15.0),),
+        15.0,
+    ),
+}
+
+
+def _run_glyphs_cli(tmp_path, monkeypatch, capsys, *, song="spill", **flags):
+    """The ``glyphs`` verb end to end, with the model and the stem faked."""
+    import json
+
+    import numpy as np
+
+    from muvid.lyricvid.__main__ import glyphs
+
+    make, onsets, spans, duration = _PINNED_SONGS[song]
+    fine, coarse = make()
+    monkeypatch.setattr(ga, "_mms_weights", lambda **kw: tmp_path)
+    monkeypatch.setattr(ga, "refine_glyphs", lambda tt, stem, **kw: fine)
+    monkeypatch.setattr(ga, "stem_onsets", lambda vocals: np.array(onsets, dtype=float))
+    y = _stem(*spans, duration=duration)
+    monkeypatch.setattr(ga, "_read_stem", lambda vocals: (y, _SR))
+    timing = tmp_path / "timing.json"
+    timing.write_text(json.dumps(coarse.to_dict(), ensure_ascii=False), "utf-8")
+    out = tmp_path / "out.json"
+    capsys.readouterr()
+    glyphs("song.wav", str(timing), str(out), vocals="vocals.wav", **flags)
+    report = json.loads(capsys.readouterr().out)
+    report["output"] = "out.json"  # a tmp path; everything else is pinned
+    return {"timing": json.loads(out.read_text("utf-8")), "report": report}
+
+
+def _refresh_glyphs_golden(tmp_path, monkeypatch, capsys):  # pragma: no cover
+    """Re-record the golden. Only on purpose: it is what the default IS."""
+    import json
+
+    got = {
+        name: _run_glyphs_cli(tmp_path, monkeypatch, capsys, song=name)
+        for name in _PINNED_SONGS
+    }
+    _GLYPHS_GOLDEN.write_text(
+        json.dumps(got, ensure_ascii=False, indent=1) + "\n", "utf-8"
+    )
+
+
+@pytest.mark.parametrize("song", sorted(_PINNED_SONGS))
+def test_glyphs_default_output_is_pinned(song, tmp_path, monkeypatch, capsys):
+    """The glyphs CLI with no new flags writes exactly what it wrote before
+    muvid#155: a live pipeline renders from this file every day, so the
+    spill repair and the overrides may only ever be opted into. The golden
+    was recorded from the code BEFORE that change; re-record it only on
+    purpose (``_refresh_glyphs_golden``)."""
+    import json
+
+    pytest.importorskip("numpy")
+    got = _run_glyphs_cli(tmp_path, monkeypatch, capsys, song=song)
+    assert got == json.loads(_GLYPHS_GOLDEN.read_text("utf-8"))[song]
+
+
+def test_repair_spills_moves_a_glyph_off_the_next_line_onto_an_onset(
+    stem_of, onsets_at
+):
+    fine, coarse = _spilled_song()
+    onsets_at(*_SPILL_ONSETS)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+    out, _ = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    fixed, records = ga.repair_spills(out, _SPILL_ONSETS)
+
+    assert [(r["text"], r["line"], r["remedy"], r["used"]) for r in records] == [
+        ("ス", "バス", "onset", 3.1)
+    ]
+    basu = list(fixed.lines())[1]
+    su = basu.words[0].glyphs[-1]
+    assert (su.start, su.measured) == (pytest.approx(3.1), False)
+    assert su.end <= 3.5 and basu.words[0].end <= 3.5
+    ba, was = basu.words[0].glyphs[0], list(out.lines())[1].words[0].glyphs[0]
+    assert ba.start == was.start  # the first glyph never moves...
+    assert (was.end, ba.end) == (pytest.approx(3.5), pytest.approx(3.1))  # ...but
+    # it no longer stays lit over the glyph moved in after it
+    # every other line is untouched
+    others = [l for i, l in enumerate(fixed.lines()) if i != 1]
+    assert others == [l for i, l in enumerate(out.lines()) if i != 1]
+    # negative control: that is the spill the default leaves in place
+    assert list(out.lines())[1].words[0].glyphs[-1].start >= 3.5 - ga.LINE_GAP_S
+
+
+def test_repair_spills_falls_back_to_the_midpoint_and_never_moves_a_first_glyph():
+    recs = [
+        {"text": "ハット", "start": 1.0, "end": 2.0, "line_end": True},
+        {"text": "トマト", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {0: [1.0, 1.4, 2.0], 1: 2.0},  # ハット's ト sits on トマト's ト
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    assert [(r["text"], r["remedy"]) for r in records] == [("ト", "midpoint")]
+    lo = 1.4 + ga.SPILL_MIN_STEP_S
+    hi = 2.0 - ga.LINE_GAP_S  # never left inside the gap it was flagged for
+    assert list(fixed.words())[0].glyphs[-1].start == pytest.approx((lo + hi) / 2)
+    # a line that STARTS on the next one is disordered's business, not this
+    # ...and one with no room left is not moved before the glyph it follows
+    first = _place(tt, {0: [2.0, 2.1, 2.2]})
+    assert ga.repair_spills(first, None) == (first, [])
+    # nothing spilled: the very same object back, no records
+    clean = _place(tt, {0: [1.0, 1.4, 1.7]})
+    assert ga.repair_spills(clean, (1.5,)) == (clean, [])
+
+
+def test_timing_overrides_give_a_line_its_fine_times_back(stem_of, onsets_at):
+    fine, coarse = _spilled_song()
+    onsets_at(*_SPILL_ONSETS)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+
+    got, recs = ga.apply_timing_overrides(out, fine, records, overrides={"1": "fine"})
+
+    assert list(got.lines())[1] == list(fine.lines())[1]
+    assert list(got.lines())[0] == list(out.lines())[0]  # not overridden
+    assert [(r["index"], r["why"], r["remedy"]) for r in recs] == [
+        (1, "override", "fine")
+    ]
+    assert "disordered" in recs[0]["detail"]
+    # ints work too, and no overrides is the identity
+    assert (
+        ga.apply_timing_overrides(out, fine, records, overrides={1: "fine"})[0] == got
+    )
+    assert ga.apply_timing_overrides(out, fine, records, overrides=None) == (out, [])
+    assert ga.apply_timing_overrides(out, fine, records, overrides={}) == (out, [])
+
+
+def test_an_override_restores_a_line_unsung_dropped(stem_of, onsets_at):
+    """A person said it was sung, so it comes back, in its place."""
+    fine, coarse = _intro_sung_once()
+    onsets_at(1.0, 1.3, 1.6, 5.0, 5.1)
+    stem = stem_of(_stem((0.9, 2.0), (5.0, 5.6), duration=8.0))
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+    assert len(list(out.lines())) == 2
+
+    got, recs = ga.apply_timing_overrides(out, fine, records, overrides={"1": "fine"})
+
+    assert list(got.lines()) == [
+        list(out.lines())[0],
+        *list(fine.lines())[1:2],
+        list(out.lines())[1],
+    ]
+    assert sorted(r["index"] for r in recs) == [3, 4, 5]
+
+
+@pytest.mark.parametrize(
+    "overrides, msg",
+    [
+        ({"x": "fine"}, "not a line index"),
+        ({"9": "fine"}, "out of range"),
+        ({"-1": "fine"}, "out of range"),
+        ({"0": "vendor"}, "must be one of"),
+    ],
+)
+def test_bad_timing_overrides_are_refused(overrides, msg):
+    fine, coarse = _four_lines()
+    with pytest.raises(ValueError, match=msg):
+        ga.apply_timing_overrides(fine, fine, [], overrides=overrides)
+
+
+def test_overrides_refuse_a_reconciled_timing_from_elsewhere():
+    fine, _ = _four_lines()
+    other, _ = _intro_sung_once()
+    with pytest.raises(ValueError, match="does not come from"):
+        ga.apply_timing_overrides(other, fine, [], overrides={"0": "fine"})
+
+
+def test_glyphs_cli_opts_in_to_both_repairs(tmp_path, monkeypatch, capsys):
+    import json
+
+    pytest.importorskip("numpy")
+    spec = tmp_path / "song.json"
+    spec.write_text(json.dumps({"title": "x", "timing_overrides": {"0": "fine"}}))
+
+    got = _run_glyphs_cli(
+        tmp_path, monkeypatch, capsys, timing_overrides=str(spec), repair_spills=True
+    )
+
+    rep = got["report"]["repaired"]
+    assert [(r["why"], r["text"]) for r in rep] == [
+        ("override", "カス"),
+        ("spilled", "ス"),
+    ]
+    pinned = json.loads(_GLYPHS_GOLDEN.read_text("utf-8"))["spill"]
+    assert got["report"]["reconciled"] == pinned["report"]["reconciled"]
+    assert got["timing"] != pinned["timing"]
+    # each flag alone, inline JSON too
+    only = _run_glyphs_cli(
+        tmp_path, monkeypatch, capsys, timing_overrides='{"0": "fine"}'
+    )
+    assert [r["why"] for r in only["report"]["repaired"]] == ["override"]
+
+
+def test_glyphs_cli_refuses_overrides_without_reconciling(
+    tmp_path, monkeypatch, capsys
+):
+    pytest.importorskip("numpy")
+    with pytest.raises(SystemExit, match="nothing to undo"):
+        _run_glyphs_cli(
+            tmp_path,
+            monkeypatch,
+            capsys,
+            timing_overrides='{"0": "fine"}',
+            no_reconcile=True,
+        )
+
+
+def test_repair_spills_clamps_the_whole_word_and_never_moves_a_glyph_later():
+    """Review of muvid#157: a word whose first glyph moved kept its vendor
+    start and end, past the next line; and a glyph just inside the gap was
+    moved LATER and still reported repaired."""
+    recs = [
+        {"text": "ハ", "start": 1.0, "end": 1.5},
+        {"text": "ト", "start": 2.3, "end": 2.3, "line_end": True},
+        {"text": "マ", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)), {0: 1.0, 1: 2.3, 2: 2.0}
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    to = list(fixed.words())[1]
+    assert len(records) == 1
+    assert to.start == to.glyphs[0].start < 2.0 - ga.LINE_GAP_S
+    assert to.start <= to.end <= 2.0
+    # [1.0, 1.9, 1.96] before 2.0: ト has no room (1.9 + a mora is already in
+    # the gap), so it is left alone rather than moved later and called fixed
+    hatto = [{"text": "ハット", "start": 1.0, "end": 2.0, "line_end": True}, recs[2]]
+    late = _place(
+        _with_glyphs(from_word_records(hatto, duration=4.0)),
+        {0: [1.0, 1.9, 1.96], 1: 2.0},
+    )
+    assert ga.repair_spills(late, None) == (late, [])
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        ('{"1": "fine"}', {"1": "fine"}),
+        ('{"title": "x", "timing_overrides": {"1": "fine"}}', {"1": "fine"}),
+        ('{"title": "x", "lyrics": "y"}', {}),  # a spec with none recorded
+        ('{"title": "x", "timing_overrides": null}', {}),
+        ("{}", {}),
+    ],
+)
+def test_timing_overrides_arg_reads_a_mapping_or_a_song_spec(value, expected, tmp_path):
+    from muvid.lyricvid.__main__ import _timing_overrides_arg
+
+    assert _timing_overrides_arg(value) == expected
+    f = tmp_path / "spec.json"
+    f.write_text(value)
+    assert _timing_overrides_arg(str(f)) == expected
+
+
+@pytest.mark.parametrize(
+    "value, msg",
+    [
+        ('{"1": "fine", "x2": "fien"}', "not a line index"),  # never dropped
+        ('{"x": "fine"}', "not a line index"),
+        ("[1]", "JSON object"),
+        ('{"timing_overrides": []}', "JSON object"),
+        ("song.jsn", "neither a file nor JSON"),
+    ],
+)
+def test_a_mistyped_overrides_value_is_refused_not_dropped(value, msg, tmp_path):
+    """Review of muvid#157: a typo beside a valid entry used to read as a
+    song spec with no overrides, silently dropping the valid one too."""
+    from muvid.lyricvid.__main__ import _timing_overrides_arg
+
+    with pytest.raises((SystemExit, ValueError), match=msg):
+        ga.check_timing_overrides(_timing_overrides_arg(value), 4)
+
+
+def test_repair_spills_shares_the_room_between_every_spilled_glyph():
+    """Review of muvid#157: placed one at a time, the first moved glyph took
+    the room the next needed, which stayed on the next line."""
+    recs = [
+        {"text": "ハット", "start": 1.0, "end": 1.9},
+        {"text": "ト", "start": 2.1, "end": 2.1, "line_end": True},
+        {"text": "マ", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {0: [1.0, 1.82, 1.97], 1: 2.2, 2: 2.0},
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    first = list(fixed.lines())[0]
+    gl = [g for w in first.words for g in w.glyphs]
+    hi = 2.0 - ga.LINE_GAP_S
+    assert [r["text"] for r in records] == ["ト", "ト"]
+    assert all(g.start < hi for g in gl)
+    assert all(a.start < b.start and a.end <= b.start for a, b in zip(gl, gl[1:]))
+    for w in first.words:
+        assert w.start <= w.glyphs[0].start and w.glyphs[-1].end <= w.end <= 2.0
+
+
+def test_repair_spills_never_leaves_a_glyph_spilled_or_out_of_order():
+    """A small fuzz over random lines: every repaired line ends up clear of
+    the next one, in order, with no end before its start."""
+    import random
+
+    rng = random.Random(155)
+    for _ in range(500):
+        n = rng.randint(2, 5)
+        starts = sorted(round(rng.uniform(0.5, 2.6), 2) for _ in range(n))
+        recs = [{"text": "カ" * n, "start": 0.5, "end": 2.0, "line_end": True}]
+        recs.append({"text": "マ", "start": 2.0, "end": 3.0, "line_end": True})
+        tt = _place(
+            _with_glyphs(from_word_records(recs, duration=4.0)), {0: starts, 1: 2.0}
+        )
+        ons = sorted(rng.uniform(0.5, 2.0) for _ in range(rng.randint(0, 4)))
+        fixed, records = ga.repair_spills(tt, ons)
+        if not records:
+            continue
+        gl = [g for w in list(fixed.lines())[0].words for g in w.glyphs]
+        assert all(g.start < 2.0 - ga.LINE_GAP_S for g in gl[1:]), starts
+        # in order wherever this pass moved a glyph (the input's own order is not its business)
+        assert all(a.start < b.start for a, b in zip(gl, gl[1:]) if not b.measured), (
+            starts
+        )
+        assert all(g.start <= g.end for g in gl), starts
+        assert all(r["used"] < r["fine"] for r in records), starts
+        for w in list(fixed.lines())[0].words:
+            assert w.start <= w.end <= 2.0, starts
+
+
+@pytest.mark.parametrize("key", [True, 1.5, "1.0"])
+def test_a_line_index_must_be_an_integer(key):
+    with pytest.raises(ValueError, match="not a line index"):
+        ga.check_timing_overrides({key: "fine"}, 4)
+
+
+def test_glyphs_cli_refuses_a_bad_override_before_aligning(tmp_path, monkeypatch):
+    """The refusal must come before the weights, the stem and the model."""
+    import json
+
+    from muvid.lyricvid.__main__ import glyphs
+
+    _, coarse = _four_lines()
+    timing = tmp_path / "timing.json"
+    timing.write_text(json.dumps(coarse.to_dict(), ensure_ascii=False), "utf-8")
+    monkeypatch.setattr(
+        ga, "_mms_weights", lambda **kw: pytest.fail("reached the model first")
+    )
+    for bad, msg in (('{"99": "fine"}', "out of range"), ('{"0": "vendor"}', "one of")):
+        with pytest.raises(SystemExit, match=msg):
+            glyphs(
+                "song.wav", str(timing), str(tmp_path / "o.json"), timing_overrides=bad
+            )
+
+
+def test_repair_spills_clamps_an_earlier_glyph_lit_into_the_next_line():
+    """Third review pass on muvid#157: only the glyphs from the spill on were
+    clamped, so ハ (1.0-2.5) stayed lit into the next line at 2.0."""
+    from dataclasses import replace
+
+    recs = [
+        {"text": "ハ", "start": 1.0, "end": 2.5},
+        {"text": "ット", "start": 1.5, "end": 2.0, "line_end": True},
+        {"text": "マ", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {1: [1.5, 1.97], 2: 2.0},
+    )
+    ha = list(tt.words())[0]
+    tt = _rebuilt_first_word(
+        tt, replace(ha, glyphs=(replace(ha.glyphs[0], start=1.0, end=2.5),))
+    )
+
+    fixed, records = ga.repair_spills(tt, None)
+
+    assert [r["text"] for r in records] == ["ト"]
+    for w in list(fixed.lines())[0].words:
+        assert w.end <= 2.0 and all(g.end <= 2.0 for g in w.glyphs)
+
+
+def _rebuilt_first_word(tt, word):
+    from dataclasses import replace
+
+    sec = tt.sections[0]
+    ln = sec.lines[0]
+    ln = replace(ln, words=(word, *ln.words[1:]))
+    return replace(
+        tt, sections=(replace(sec, lines=(ln, *sec.lines[1:])), *tt.sections[1:])
+    )

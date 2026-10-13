@@ -269,6 +269,15 @@ python -m muvid.lyricvid render song.mp3 out.mp4 --timed-text glyphs.json --trea
   keeps them (vendor windows instead). In Python, `reconcile(...,
   detectors=(*default_detectors(), unsung(stem)))`; a new check is a
   `Detector(name, find, remedy)` — the seam, not a branch.
+- Two **opt-in** post-passes, off unless asked for (muvid#155):
+  `--repair-spills` pulls a line's last glyphs back off the NEXT line (seen:
+  `ハット`'s `ト` on the next line's `ト`) onto a stem onset, unmeasured;
+  `--timing-overrides song.json` applies the song's recorded judgements
+  `{"<0-based line index>": "fine"}` (the aligner was right, the vendor window
+  is junk). The overrides are a person's call about ONE song: record them in
+  that song's spec, never in code, and never invent one. Both land under
+  `repaired` in the report. In Python: `apply_timing_overrides(...)` then
+  `repair_spills(...)` on `reconcile`'s result.
 - `ー` has no onset; it is placed midway between its neighbours, unmeasured.
 - Treatment: archetype `glyph_pages`, `params.emphasis` = the target
   characters (`fold_marks: true` makes `ハ` cover `バ`/`パ`); others get a milder
