@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-13T06:49:11Z",
+  "built_at": "2026-10-13T07:00:51Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.86",
+    "version": "0.0.87",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "6de280fc3293311c40b93105f19206de17b27a12",
-    "short_commit": "6de280f",
+    "commit": "f4f11c1bf653794fe812bb67781771cf3c6c3c30",
+    "short_commit": "f4f11c1",
     "branch": "main",
     "tags": [
-      "0.0.86"
+      "0.0.87"
     ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/6de280fc3293311c40b93105f19206de17b27a12",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/f4f11c1bf653794fe812bb67781771cf3c6c3c30",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "7f6860e76421f478e3e90a19ed4f6ef1ec73ed73",
+    "sha": "c7f17a5287455380db61eee33b823ea506a79502",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "38358120457",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/38358120457",
+    "run_id": "38359269281",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/38359269281",
     "server_url": "https://github.com"
   },
   "tools": {
@@ -62,16 +62,14 @@
   },
   "pypi": {
     "checked": true,
-    "latest": "0.0.85",
-    "relation": "ahead",
+    "latest": "0.0.87",
+    "relation": "same",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 6de280fc3293311c40b93105f19206de17b27a12\npip install \"epythet==0.2.14\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout f4f11c1bf653794fe812bb67781771cf3c6c3c30\npip install \"epythet==0.2.14\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
-    "aligned": false,
-    "notes": [
-      "The documented version (0.0.86) is ahead of the latest release on PyPI (0.0.85): these docs describe unreleased code."
-    ]
+    "aligned": true,
+    "notes": []
   }
 }
