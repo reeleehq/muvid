@@ -1045,6 +1045,9 @@ def test_repair_spills_clamps_the_whole_word_and_never_moves_a_glyph_later():
         ('{"1": "fine"}', {"1": "fine"}),
         ('{"title": "x", "timing_overrides": {"1": "fine"}}', {"1": "fine"}),
         ('{"title": "x", "lyrics": "y"}', {}),  # a spec with none recorded
+        ('{"title": "x", "mp3": "a.mp3"}', {}),  # digits in a spec key (#159 review)
+        ('{"title": "x", "id3": {}}', {}),
+        ('{"title": "x", "h1": "Hat"}', {}),
         ('{"title": "x", "timing_overrides": null}', {}),
         ("{}", {}),
     ],
@@ -1063,6 +1066,7 @@ def test_timing_overrides_arg_reads_a_mapping_or_a_song_spec(value, expected, tm
     [
         ('{"1": "fine", "x2": "fien"}', "not a line index"),  # never dropped
         ('{"x": "fine"}', "not a line index"),
+        ('{"x1": "fien"}', "not a line index"),  # bad key AND bad value (muvid#159)
         ("[1]", "JSON object"),
         ('{"timing_overrides": []}', "JSON object"),
         ("song.jsn", "neither a file nor JSON"),
