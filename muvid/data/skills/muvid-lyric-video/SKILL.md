@@ -166,7 +166,10 @@ them is the whole art direction. They are **not** interchangeable:
   is stripped before it ever gets here, so a hand-drawn ASCII layout pasted
   into `lyrics.md` collapses to centred rows. The parse warns when that
   happens (`ShapedLyricsWarning`: the lines were indented differently from one
-  another); if you see it, the poem wants `calligram` or `shape_fill`.
+  another); if you see it, the poem wants `calligram` or `shape_fill`. A render
+  from a lyrics file also records it as `meta["lyrics_layout_ignored"]`
+  (`{lines, indentations}`), present only then, so a caller that never sees a
+  Python warning can still tell.
 - **`calligram`** turns each line into a **slanting streak of upright letters**,
   one letter per grid slot, the streaks fanning open as they descend — the
   Apollinaire *Il pleut* construction. The picture is made by the run of the

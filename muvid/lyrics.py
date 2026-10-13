@@ -180,8 +180,7 @@ def parse_lyrics_md(md: str, *, preserve_indent: bool = False) -> LyricsDoc:
 
 def _warn_if_shaped(doc: LyricsDoc, indents: tuple[str, ...], *, stacklevel: int):
     """Raise a ShapedLyricsWarning when the lines that carry text are indented differently."""
-    # An anchor-only line ("   // 4") has no text, so its indent shapes nothing.
-    worded = [i for i, line in zip(indents, doc.lines) if line.text]
+    worded = _worded_indents(doc, indents)
     if not indentation_varies(worded):
         return
     import warnings
@@ -197,6 +196,28 @@ def _warn_if_shaped(doc: LyricsDoc, indents: tuple[str, ...], *, stacklevel: int
         ShapedLyricsWarning,
         stacklevel=stacklevel,
     )
+
+
+def _worded_indents(doc: LyricsDoc, indents: tuple[str, ...]) -> list[str]:
+    """Indents of the lines that carry text. An anchor-only line ("   // 4") shapes nothing."""
+    return [i for i, line in zip(indents, doc.lines) if line.text]
+
+
+def layout_dropped(md: str) -> dict[str, int] | None:
+    """What the default parse flattens, as data: ``None`` for ordinary lyrics.
+
+    The same test as :class:`ShapedLyricsWarning`, for a caller that cannot see
+    a Python warning (an MCP reply, a render's meta; muvid#165). Does not warn.
+
+    >>> layout_dropped("one\\ntwo\\n")
+    >>> layout_dropped("one\\n  two\\n    three\\n")
+    {'lines': 3, 'indentations': 3}
+    """
+    doc, indents = _parse_lyrics_md(md, preserve_indent=False)
+    worded = _worded_indents(doc, indents)
+    if not indentation_varies(worded):
+        return None
+    return {"lines": len(worded), "indentations": len(set(worded))}
 
 
 def line_indents(md: str) -> tuple[str, ...]:

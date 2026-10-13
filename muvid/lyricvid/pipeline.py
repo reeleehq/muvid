@@ -19,6 +19,7 @@ backend by name never falls back -- it fails loudly.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, Callable
 
@@ -196,6 +197,20 @@ def build_timed_text(
     return from_lyrics_and_audio(audio, lyrics=lyrics, aligner=aligner)
 
 
+def _lyrics_layout_dropped(inputs: Mapping[str, Any]) -> dict[str, int] | None:
+    """The layout the lyrics file lost, only when that file set the word times.
+
+    A saved timing, an alignment or subtitles win over ``lyrics`` in
+    :func:`build_timed_text`, so the file was never parsed and nothing was lost.
+    """
+    lyrics = inputs.get("lyrics")
+    if not lyrics or any(inputs.get(k) for k in ("timed_text", "project", "subtitles")):
+        return None
+    from muvid.lyrics import layout_dropped
+
+    return layout_dropped(Path(lyrics).read_text(encoding="utf-8"))
+
+
 def render(request: RenderRequest) -> RenderResult:
     """Render one lyric video. Satisfies :class:`muvid.subgenres.Renderer`.
 
@@ -224,6 +239,9 @@ def render(request: RenderRequest) -> RenderResult:
         aligner=params.get("aligner"),
         timed_text=inputs.get("timed_text"),
     )
+    # Read BEFORE the backend runs, so a vanished file fails before any output
+    # exists, and the report describes the text that set the timing.
+    layout_dropped = _lyrics_layout_dropped(inputs)
 
     repair_notes: list[str] = []
     treatment_in = params.get("treatment")
@@ -299,6 +317,11 @@ def render(request: RenderRequest) -> RenderResult:
         meta["treatment_repairs"] = list(repair_notes)
     if scene.meta.get("uncovered_sections"):
         meta["uncovered_sections"] = scene.meta["uncovered_sections"]
+    # Indented lyrics are parsed flat, so a drawn layout does not reach the
+    # scene. A Python warning is invisible to an MCP caller; this key is not.
+    # Omit-when-absent, and not a treatment repair (strict=True would refuse).
+    if layout_dropped:
+        meta["lyrics_layout_ignored"] = layout_dropped
     return RenderResult(
         output=result.output,
         duration_s=result.duration_s
