@@ -1,4 +1,4 @@
-> built 2026-10-13 16:03 UTC from 0365218 (main) · muvid 0.0.92. Details: build_info.json
+> built 2026-10-14 04:46 UTC from 041a1e2 (main) · muvid 0.0.93. Details: build_info.json
 
 # index.html.md
 
@@ -6806,7 +6806,7 @@ Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 
 An operation refused — the message says why and what to do next.
 
-### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None)
+### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -6827,6 +6827,11 @@ server-side `path` and original `filename`. Never in a client’s schema.
 
 * **Type:**
   Parameters only the HOST supplies (`nw.GenreOp.host_params`)
+
+#### limits *: [Mapping](https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [int](https://docs.python.org/3/builtins/functions.html#int)]*
+
+Count ceilings the op enforces (`max_videos`, `max_photos`), so a client can
+show “8 of 12” and refuse the extra files before sending a byte (muvid#170).
 
 #### max_upload_bytes *: [int](https://docs.python.org/3/builtins/functions.html#int) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -17031,18 +17036,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-13 16:03 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/0365218c4d2c66fa32b09680bfea1651fead38d2"><code>0365218</code></a> on branch <code>main</code>, for **muvid 0.0.92** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-14 04:46 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/041a1e26edbbef879416bb2eba0522b6338574c9"><code>041a1e2</code></a> on branch <code>main</code>, for **muvid 0.0.93** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.93) is ahead of the latest release on PyPI (0.0.92): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/0365218c4d2c66fa32b09680bfea1651fead38d2"><code>0365218c4d2c66fa32b09680bfea1651fead38d2</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/041a1e26edbbef879416bb2eba0522b6338574c9"><code>041a1e26edbbef879416bb2eba0522b6338574c9</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.92</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.93</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17051,9 +17058,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38426154993">38426154993</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/38512413612">38512413612</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>8e925b896a63980f70656491e91f310ed53f0c1f</code> (in the history of the built commit) |
+| Event commit | <code>597baac53d5807f3c513eaefea6a84a79a0d6c02</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17078,13 +17085,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.92/">0.0.92</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.92/">0.0.92</a>, older than the documented version (0.0.93).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 0365218c4d2c66fa32b09680bfea1651fead38d2
+git checkout 041a1e26edbbef879416bb2eba0522b6338574c9
 pip install "epythet==0.2.17"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
