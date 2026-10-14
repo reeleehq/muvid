@@ -81,6 +81,8 @@ def clip_limit_message(*, kind: str, limit: int, given: int) -> str:
         f"This project already holds the most {kind}s it can ({given} of {limit}). "
         f"Remove a {kind} to add another."
     )
+
+
 #: The file types taken as a photo rather than a video (lower-case, with the dot).
 STILL_SUFFIXES = (
     ".jpg",
