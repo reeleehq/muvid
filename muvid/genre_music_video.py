@@ -139,6 +139,15 @@ def _footage_of(project):
     return footage if footage is not None else project
 
 
+def _with_limits(doc: str | None, limits) -> str | None:
+    """``doc`` with the op's count ceilings stated, so a client reading the served
+    description knows them before a refusal (muvid#170); unchanged when there are none."""
+    if not limits:
+        return doc
+    stated = ", ".join(f"{k.replace('_', ' ')}: {v}" for k, v in limits.items())
+    return f"{(doc or '').rstrip()}\n\nLimits per project — {stated}."
+
+
 def _as_genre_op(spec) -> GenreOp:
     """One catalogue row → an ``nw.GenreOp`` whose ``fn`` takes the HOST's project.
 
@@ -157,7 +166,7 @@ def _as_genre_op(spec) -> GenreOp:
         return op(_footage_of(project), **kwargs)
 
     fn.__name__ = fn.__qualname__ = spec.name
-    fn.__doc__ = op.__doc__
+    fn.__doc__ = _with_limits(inspect.getdoc(op), spec.limits)
     fn.__signature__ = sig.replace(parameters=params)
     return GenreOp(
         name=spec.name,

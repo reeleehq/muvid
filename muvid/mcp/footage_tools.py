@@ -66,6 +66,11 @@ def _n_videos(proj) -> int:
     return sum(1 for c in proj.list_clips() if c.get("kind") != "still")
 
 
+def _limit_message(given: int) -> str:
+    """The shared video-limit refusal (muvid#170): names the limit and the count held."""
+    return service.clip_limit_message(kind="video", limit=_MAX_CLIPS, given=given)
+
+
 def _tool_error(msg: str):
     from fastmcp.exceptions import ToolError
 
@@ -220,7 +225,7 @@ def add_footage(project_id: str, *, url: str, name: str = "") -> dict:
 
     proj = _open(project_id)
     if _n_videos(proj) >= _MAX_CLIPS:
-        raise _tool_error(f"clip limit reached ({_MAX_CLIPS}); this is a bounded v1")
+        raise _tool_error(_limit_message(_n_videos(proj)))
     direct = _resolve_media_url(url, what="clip")
     ext = _url_ext(url, "") or _url_ext(direct, "mp4")
     # Fetch into a tempdir, then hand off to the service (which copies into clips/ under
@@ -271,7 +276,7 @@ def add_footage_folder(project_id: str, *, url: str, name_prefix: str = "") -> d
     existing = _n_videos(proj)
     room = _MAX_CLIPS - existing
     if room <= 0:
-        raise _tool_error(f"clip limit reached ({_MAX_CLIPS}); this is a bounded v1")
+        raise _tool_error(_limit_message(existing))
 
     try:
         direct, kind = resolve_share_link(url)

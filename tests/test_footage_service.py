@@ -392,7 +392,12 @@ def test_catalogue_rows_match_the_registered_nw_ops():
     assert ops == g.FOOTAGE_OPS
     for spec, op in zip(specs, ops):
         assert (op.title, op.effect, op.runs) == (spec.title, spec.effect, spec.runs)
-        assert op.description == inspect.getdoc(getattr(service, spec.name))
+        doc = inspect.getdoc(getattr(service, spec.name))
+        if spec.limits:  # muvid#170: the served description states the ceilings
+            assert op.description.startswith(doc)
+            assert op.description != doc
+        else:
+            assert op.description == doc
         schema = op.params_schema
         assert schema["additionalProperties"] is False
         assert not set(spec.hide) & set(schema.get("properties", {}))
@@ -1416,3 +1421,31 @@ def test_coalescing_never_merges_two_differently_slipped_cuts():
 
     merged = _coalesce_absorbed([EdlEntry(0.0, 5.0, "A"), EdlEntry(5.0, 8.0, "A", slip_s=0.3)])
     assert [e.slip_s for e in merged] == [0.0, 0.3]
+
+
+# -- the count limits: stated before a refusal, and the refusal names them (muvid#170) --
+
+
+def test_add_clip_spec_exposes_the_limits_and_the_description_states_them():
+    spec = next(s for s in service.FOOTAGE_OP_SPECS if s.name == "add_clip")
+    assert spec.limits == {
+        "max_videos": service.MAX_CLIPS,
+        "max_photos": service.MAX_STILLS,
+    }
+    op = next(o for o in nw.genre_ops("music_video") if o.name == "add_clip")
+    assert f"max videos: {service.MAX_CLIPS}" in op.description
+    assert f"max photos: {service.MAX_STILLS}" in op.description
+
+
+def test_status_carries_the_limits(fp):
+    assert service.status(fp)["limits"] == dict(service.FOOTAGE_LIMITS)
+
+
+def test_the_video_refusal_names_the_limit_and_how_many_are_held(fp, tmp_path, monkeypatch):
+    monkeypatch.setattr(service, "MAX_CLIPS", 2)  # fp already holds A and B
+    extra = _bytes_file(tmp_path / "C.mp4", b"clip-c")
+    with pytest.raises(FootageError) as err:
+        service.add_clip(fp, path=str(extra), clip_id="C", duration_s=5.0)
+    msg = str(err.value)
+    assert "2 of 2" in msg and "videos" in msg and "Remove a video" in msg
+    assert "bounded v1" not in msg

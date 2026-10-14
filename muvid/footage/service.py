@@ -47,7 +47,8 @@ import math
 import os
 import time
 import uuid
-from dataclasses import dataclass, replace
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal, Optional, Union
 
@@ -67,6 +68,19 @@ MAX_CLIPS = int(os.environ.get("MUVID_FOOTAGE_MAX_CLIPS", "8"))
 #: Most photos one project may hold (env ``MUVID_FOOTAGE_MAX_STILLS``) — separate from
 #: :data:`MAX_CLIPS`: a photo costs no decode at cut time and a day out is dozens of them.
 MAX_STILLS = int(os.environ.get("MUVID_FOOTAGE_MAX_STILLS", "40"))
+
+
+def clip_limit_message(*, kind: str, limit: int, given: int) -> str:
+    """The refusal for a project already holding its most ``kind`` (``video`` | ``photo``).
+
+    One wording for every site that enforces the cap (the service and the URL-fetch
+    transports), so a person reads the same plain sentence wherever they hit it: it names
+    the limit, says how many the project holds and what to do next (muvid#170).
+    """
+    return (
+        f"This project already holds the most {kind}s it can ({given} of {limit}). "
+        f"Remove a {kind} to add another."
+    )
 #: The file types taken as a photo rather than a video (lower-case, with the dot).
 STILL_SUFFIXES = (
     ".jpg",
@@ -221,9 +235,15 @@ def add_clip(
     still = _is_still_name(filename or str(path), ext)
     n_stills = sum(1 for c in rows if c.get("kind") == STILL_KIND)
     if still and n_stills >= MAX_STILLS:
-        raise FootageError(f"photo limit reached ({MAX_STILLS}); this is a bounded v1")
+        raise FootageError(
+            clip_limit_message(kind="photo", limit=MAX_STILLS, given=n_stills)
+        )
     if not still and len(known) - n_stills >= MAX_CLIPS:
-        raise FootageError(f"video limit reached ({MAX_CLIPS}); this is a bounded v1")
+        raise FootageError(
+            clip_limit_message(
+                kind="video", limit=MAX_CLIPS, given=len(known) - n_stills
+            )
+        )
     clip_id = _normalised_id(clip_id, label="clip_id") if clip_id else ""
     if clip_id and clip_id in known:
         raise FootageError(
@@ -662,6 +682,7 @@ def status(fp) -> dict:
         "roles": footage_roles(fp),
         "edits": edit_rows,
         "next_step": _next_step(fp, aligns, edit_rows, render_rows),
+        "limits": dict(FOOTAGE_LIMITS),
     }
     cover = fp.cover_info()
     if cover and cover.get("artifact_id"):
@@ -3571,7 +3592,16 @@ class OpSpec:
     host_params: tuple[str, ...] = ()
     #: The op's own ceiling for a host-streamed upload (``nw.GenreOp.max_upload_bytes``).
     max_upload_bytes: Optional[int] = None
+    #: Count ceilings the op enforces (``max_videos``, ``max_photos``), so a client can
+    #: show "8 of 12" and refuse the extra files before sending a byte (muvid#170).
+    limits: Mapping[str, int] = field(default_factory=dict, hash=False)
 
+
+#: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.
+FOOTAGE_LIMITS: Mapping[str, int] = {
+    "max_videos": MAX_CLIPS,
+    "max_photos": MAX_STILLS,
+}
 
 FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("status", "Show where the video stands", "read"),
@@ -3590,6 +3620,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         hide=("duration_s", "ext"),
         host_params=("path", "filename"),
         max_upload_bytes=CLIP_MAX_BYTES,
+        limits=FOOTAGE_LIMITS,
     ),
     OpSpec("remove_clip", "Remove a video", "destroy"),
     OpSpec("align", "Listen to the videos", "write", runs="job"),

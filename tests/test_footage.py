@@ -628,7 +628,7 @@ def test_add_footage_enforces_the_clip_cap(tmp_path, monkeypatch):
     proj = FootageWorkspace.for_email("u@x.com").create_project("p")
     (tmp_path / "x").write_bytes(b"\x00")  # a source file for the pre-fill copy
     proj.add_clip("existing", str(tmp_path / "x"), ext="mp4")  # pre-fill to the cap
-    with use_email("u@x.com"), pytest.raises(ToolError, match="limit"):
+    with use_email("u@x.com"), pytest.raises(ToolError, match=r"most videos it can \(1 of 1\)"):
         ft.add_footage("p", url="https://example.com/clip.mp4")
 
 
