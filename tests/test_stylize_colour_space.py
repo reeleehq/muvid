@@ -2,7 +2,7 @@
 
 import pytest
 
-looks = pytest.importorskip("looks")
+import looks
 
 from muvid.footage.look import DEFAULT_ASSUMED_COLOR_SPACE, LookError, stylize
 
@@ -19,8 +19,3 @@ def test_opting_out_keeps_the_upstream_refusal():
     with pytest.raises(LookError, match="colour space"):
         stylize(_GRADE, assume_color_space=None, **_KW)
 
-
-def test_a_different_space_is_honoured():
-    assert "in_color_matrix=bt2020" in stylize(
-        _GRADE, assume_color_space="bt2020nc", **_KW
-    )

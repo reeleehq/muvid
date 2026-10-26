@@ -98,14 +98,16 @@ from typing import Any, Optional, Sequence
 #: is why it is a named constant a caller overrides rather than a hidden literal.
 DEFAULT_PUNCH_ZOOM = 1.12
 
-#: The colour space :func:`stylize` declares for the assembler's output when the
+#: The colour space :func:`stylize` ASSUMES for the assembler's output when the
 #: caller names none (muvid#190). ``looks`` Rule 22 refuses an RGB-only step
 #: (``saturation`` ...) on a clip with no declared colour space, because the
 #: RGB round trip would otherwise use whatever matrix the ffmpeg build guesses.
-#: muvid does not probe its sources, and what it splices after is the
-#: assembler's own scale/pad/fps stage over phone footage, which is BT.709 by
-#: convention. It is passed as ``assume_color_space`` so ``looks`` records on
-#: the plan that it was a guess (``ClipSpec.color_assumed``), not a measurement.
+#: This is a GUESS, not a fact: the assembler keeps each source's own colour tags
+#: (it neither converts nor tags), so a BT.601 clip or a JPEG still is mis-read
+#: as BT.709 on ffmpeg >= 7 (measured in the #190 review). Phone footage is
+#: mostly BT.709, and it is the best single answer until the assembler
+#: normalises its output (the real fix, filed as a follow-up). The plan keeps
+#: ``color_assumed``, but ``stylize`` does not surface it yet.
 DEFAULT_ASSUMED_COLOR_SPACE = "bt709"
 
 #: Where :func:`punch_in` zooms toward, as a fraction of the canvas. Centre.
