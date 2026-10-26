@@ -404,6 +404,7 @@ def propose_edit(
     save: bool = False,
     name: str = "",
     pace: str = "",
+    order: str = "",
 ) -> dict:
     """Propose an EDL **without rendering it** — the cheap half of assembly. Free, seconds.
 
@@ -430,7 +431,11 @@ def propose_edit(
     land on the beat (``music`` in the reply). ``roles`` says how each clip was used;
     overrule one with ``footage_set_has_song``. Every video must have been listened to
     (``align_footage``) or declared. ``pace`` (``slow``/``steady``/``driving``/
-    ``frantic``) sets how often the cuts to the music come.
+    ``frantic``) sets how often the cuts to the music come. ``order`` is how the pictures
+    follow one another: ``taken`` (the default) in the order they were taken — by the time
+    their files say, upload order for any that say nothing; ``music.order`` /
+    ``music.order_note`` report which applied — or ``planner``, the reuse order that
+    ignores chronology.
     """
     return _call(
         project_id,
@@ -442,6 +447,7 @@ def propose_edit(
         save=save,
         name=name,
         pace=pace,
+        order=order,
     )
 
 

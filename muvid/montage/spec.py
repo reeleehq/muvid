@@ -256,6 +256,10 @@ class Palette:
     accent: str = "#e0533d"
 
 
+#: The reuse orders a :class:`Reuse` may name.
+REUSE_ORDERS = ("least_used", "chronological")
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Reuse:
     """The reuse POLICY — how a small pool carries a long song.
@@ -268,6 +272,11 @@ class Reuse:
 
     min_gap: int = 6
     reserve_for_finale: bool = True
+    #: ``least_used``: the policy above. ``chronological``: pictures follow the order
+    #: they were taken in (``Media.taken_at``; upload order for any without one) and
+    #: ``min_gap`` / ``reserve_for_finale`` do not apply — a day told in order has no
+    #: "strongest held for the end" (muvid#137).
+    order: str = "least_used"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -422,6 +431,10 @@ def validate(spec: TreatmentSpec) -> list[str]:
         errs.append(f"direction.grade {d.grade!r} is not one of {_enum(GRADES)}")
     if d.reuse.min_gap < 0:
         errs.append("direction.reuse.min_gap must be >= 0")
+    if d.reuse.order not in REUSE_ORDERS:
+        errs.append(
+            f"direction.reuse.order {d.reuse.order!r} is not one of {_enum(REUSE_ORDERS)}"
+        )
     if not spec.scenes:
         errs.append("scenes is empty — at least one scene is required")
     for i, sc in enumerate(spec.scenes):
@@ -626,6 +639,7 @@ def json_schema() -> dict[str, Any]:
                         "properties": {
                             "min_gap": {"type": "integer", "minimum": 0},
                             "reserve_for_finale": {"type": "boolean"},
+                            "order": {"type": "string", "enum": list(REUSE_ORDERS)},
                         },
                     },
                 },

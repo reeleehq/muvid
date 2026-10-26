@@ -91,6 +91,12 @@ FITS = ("cover", "contain")
 _ASPECT_TOLERANCE = 0.02
 STILL = "still"
 VIDEO = "video"
+#: How the pictures are ordered across the song. ``taken``: by capture time, so a day
+#: reads as it happened (muvid#137) — upload order where a file has no capture time;
+#: ``planner``: the montage planner's own reuse policy (least used first, a golden-ratio
+#: stride, the strongest held for the finale), which ignores chronology.
+ORDERS = ("taken", "planner")
+DEFAULT_ORDER = "taken"
 
 
 @dataclass(frozen=True)
@@ -102,6 +108,11 @@ class FreeSource:
     path: str
     kind: str = VIDEO
     duration_s: Optional[float] = None
+    #: When it was captured (wall-clock seconds, :mod:`muvid.footage.capture_time`);
+    #: ``None`` when the file does not say.
+    taken_at: Optional[float] = None
+    #: The tag ``taken_at`` came from (:mod:`muvid.footage.capture_time`), for the report.
+    taken_source: str = ""
 
     @property
     def is_still(self) -> bool:
@@ -509,8 +520,22 @@ def _media_for(sources: Sequence[FreeSource]):
                 duration=float(s.duration_s),
                 strength=m.strength,
             )
-        media.append(m)
+        media.append(replace(m, taken_at=s.taken_at))
     return media
+
+
+def _mixed_clock_note(sources: Sequence[FreeSource]) -> str:
+    """A caution when the capture times are not on one clock: a video that only carries a
+    UTC ``creation_time`` is compared as is, hours from photos beside it."""
+    from muvid.footage.capture_time import CREATION_TIME
+
+    kinds = {s.taken_source for s in sources if s.taken_at is not None}
+    if CREATION_TIME in kinds and len(kinds) > 1:
+        return (
+            "some videos only carry a UTC capture time, so they may sit hours from the "
+            "photos taken at the same moment"
+        )
+    return ""
 
 
 def _treatment(archetype: str, cut_feel: str):
@@ -563,6 +588,7 @@ def fill_spans(
     fps: float = 30.0,
     fit: str = "cover",
     size_of: Callable[[str], Optional[tuple[int, int]]] = display_size,
+    order: str = DEFAULT_ORDER,
 ) -> MusicCut:
     """Free cuts of ``sources`` covering ``spans`` of the song (default: all of it).
 
@@ -572,7 +598,9 @@ def fill_spans(
     ``anchor_of`` (a still's focal point). ``archetype`` is a montage archetype with one
     picture per slot, or ``"auto"``; ``cut_feel`` a montage pace (``slow``, ``steady``,
     ``driving``, ``frantic``). ``fit`` is one of :data:`FITS`; ``size_of`` reads a
-    picture's displayed size (for ``cover``).
+    picture's displayed size (for ``cover``). ``order`` is one of :data:`ORDERS`: by
+    default the pictures follow the order they were TAKEN in
+    (:func:`chronological_picks`); the report says which order applied and why.
 
     Returns :class:`MusicCut` whose ``entries`` are validated-shape
     :class:`~muvid.footage.edl.EdlEntry` free cuts, contiguous over each span, in song
@@ -600,8 +628,27 @@ def fill_spans(
             f"{list(SINGLE_PICTURE_ARCHETYPES)} or 'auto'"
         )
     treatment = _treatment(chosen, cut_feel)
+    if order not in ORDERS:
+        raise ValueError(f"order must be one of {list(ORDERS)}, got {order!r}")
     media = _media_for(sources)
-    plan = plan_montage(analysis, media, treatment)
+    if order == "taken":
+        from dataclasses import replace as _replace
+
+        direction = treatment.direction
+        treatment = _replace(
+            treatment,
+            direction=_replace(
+                direction, reuse=_replace(direction.reuse, order="chronological")
+            ),
+        )
+    plan = plan_montage(
+        analysis,
+        media,
+        treatment,
+        active=lambda d: any(d.start < b - 1e-6 and d.end > a + 1e-6 for a, b in spans),
+    )
+    order_used = plan.reuse.get("order", "planner")
+    order_note = plan.reuse.get("order_note", "") or _mixed_clock_note(sources)
     energy_at = _section_energy(analysis)
     beats = np.asarray(analysis.beats, dtype=float)
     if fit not in FITS:
@@ -700,6 +747,10 @@ def fill_spans(
         "beat_source": getattr(analysis, "beat_source", ""),
         "style": chosen,
         "pace": treatment.direction.cut_feel,
+        # which order the pictures follow, and why (taken -> upload when no file says
+        # when it was taken)
+        "order": order_used,
+        "order_note": order_note,
         "sections": [
             {"label": s.label, "start": round(s.start, 2), "end": round(s.end, 2)}
             for s in analysis.sections

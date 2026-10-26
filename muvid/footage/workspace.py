@@ -357,13 +357,23 @@ class MusicVideoFootageProject:
 
     # -- footage clips -------------------------------------------------------
     def add_clip(
-        self, clip_id: str, src_path: str, *, ext: str, name: str = "", kind: str = ""
+        self,
+        clip_id: str,
+        src_path: str,
+        *,
+        ext: str,
+        name: str = "",
+        kind: str = "",
+        taken_at: "float | None" = None,
+        taken_source: str = "",
     ) -> str:
         """Store a footage clip from a local file; returns its ``clip_id``.
 
         ``kind="still"`` stores a photo (no sound, no duration); the default is a video,
         and writes no ``kind`` key, so a manifest written before photos existed reads
-        the same."""
+        the same. ``taken_at`` (wall-clock seconds, see
+        :mod:`muvid.footage.capture_time`) and ``taken_source`` (the tag it came from)
+        are recorded only when known — a manifest without them reads the same too."""
         import shutil
 
         cid = normalise_id(clip_id, label="clip_id")
@@ -381,6 +391,8 @@ class MusicVideoFootageProject:
         entry = {"clip_id": cid, "file": dest.name, "name": name or cid}
         _set_or_drop(entry, "kind", kind or None)
         _set_or_drop(entry, "artifact_id", artifact_id)
+        _set_or_drop(entry, "taken_at", taken_at)
+        _set_or_drop(entry, "taken_source", taken_source or None)
         clips.append(entry)
         self._write_manifest(m)
         return cid
@@ -456,6 +468,7 @@ class MusicVideoFootageProject:
             _set_or_drop(row, "artifact_id", c.get("artifact_id"))
             _set_or_drop(row, "kind", c.get("kind"))
             _set_or_drop(row, "has_song", c.get("has_song"))
+            _set_or_drop(row, "taken_at", c.get("taken_at"))
             rows.append(row)
         return rows
 

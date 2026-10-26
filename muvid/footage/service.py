@@ -263,7 +263,17 @@ def add_clip(
         )
     cid = clip_id or uuid.uuid4().hex[:_CLIP_ID_HEX]
     label = name or (Path(filename).stem if filename else "") or cid
-    fp.add_clip(cid, str(src), ext=_ext_of(ext, filename, src), name=label)
+    from muvid.footage.capture_time import video_capture_time
+
+    taken, taken_source = video_capture_time(src)
+    fp.add_clip(
+        cid,
+        str(src),
+        ext=_ext_of(ext, filename, src),
+        name=label,
+        taken_at=taken,
+        taken_source=taken_source,
+    )
     _record_clip_duration(fp, cid, dur)
     _record_clip_hash(fp, cid)
     _warm(_warm_activity, fp, cid)
@@ -316,6 +326,11 @@ def _add_still(fp, src: Path, *, clip_id: str, name: str, filename: str) -> dict
         register_heif_opener()
     try:
         with Image.open(src) as im:
+            from muvid.footage.capture_time import photo_capture_time
+
+            taken, taken_source = photo_capture_time(
+                im
+            )  # before the re-save drops EXIF
             im = ImageOps.exif_transpose(im).convert("RGB")
             im.thumbnail((STILL_MAX_SIDE, STILL_MAX_SIDE))
             with tempfile.TemporaryDirectory() as tmp:
@@ -325,7 +340,13 @@ def _add_still(fp, src: Path, *, clip_id: str, name: str, filename: str) -> dict
                 cid = clip_id or uuid.uuid4().hex[:_CLIP_ID_HEX]
                 label = name or (Path(filename).stem if filename else "") or cid
                 fp.add_clip(
-                    cid, str(normalised), ext="jpg", name=label, kind=STILL_KIND
+                    cid,
+                    str(normalised),
+                    ext="jpg",
+                    name=label,
+                    kind=STILL_KIND,
+                    taken_at=taken,
+                    taken_source=taken_source,
                 )
     except (OSError, ValueError, Image.DecompressionBombError) as e:
         # PIL's "cannot identify image file" is an OSError; a huge photo is a bomb error
@@ -490,6 +511,8 @@ def _free_sources(fp, placements) -> list:
                 path=paths[cid],
                 kind=STILL if still else VIDEO,
                 duration_s=None if still else _clip_duration(fp, cid),
+                taken_at=c.get("taken_at"),
+                taken_source=c.get("taken_source", ""),
             )
         )
     return out
@@ -613,13 +636,21 @@ STYLES = {
 
 
 def _music_fill(
-    fp, entries, sources, song_dur, *, pace: str = "", style: str = "auto", canvas=None
+    fp,
+    entries,
+    sources,
+    song_dur,
+    *,
+    pace: str = "",
+    style: str = "auto",
+    canvas=None,
+    order: str = "",
 ):
     """Replace the gap entries of ``entries`` with free cuts of ``sources`` cut to the
     music; ``(entries, report)``. The synced cuts are untouched."""
     from muvid.footage.assemble import DEFAULT_FPS
     from muvid.footage.edl import fill_gaps
-    from muvid.footage.music_cut import fill_spans
+    from muvid.footage.music_cut import DEFAULT_ORDER, fill_spans
 
     entries = fill_gaps(entries, song_dur) if entries else []
     gaps = (
@@ -637,6 +668,7 @@ def _music_fill(
         song_duration=song_dur,
         archetype=STYLES[style or "auto"],
         cut_feel=pace,
+        order=order or DEFAULT_ORDER,
         envelope_of=lambda s: _activity_envelope(fp, s),
         canvas=canvas or fp.canvas(),
         fps=DEFAULT_FPS,
@@ -1886,6 +1918,7 @@ def _auto_edit(
     pace="",
     style="auto",
     canvas=None,
+    order="",
 ):
     """The auto path, synced half then music half: the strategy cuts the clips that
     carry the song (:func:`_role_of`); every span it leaves empty is cut to the music
@@ -1918,7 +1951,14 @@ def _auto_edit(
         excluded = list(excluded) + more
     try:
         entries, music = _music_fill(
-            fp, entries, free, song_dur, pace=pace, style=style, canvas=canvas
+            fp,
+            entries,
+            free,
+            song_dur,
+            pace=pace,
+            style=style,
+            canvas=canvas,
+            order=order,
         )
     except (ImportError, OSError) as e:
         # The music half needs the montage analysis (librosa, ffmpeg). Without it the
@@ -2069,6 +2109,7 @@ def propose_edit(
     span: Optional[tuple[float, float]] = None,
     pace: Literal["", "slow", "steady", "driving", "frantic"] = "",
     style: Literal["auto", "cuts", "fades"] = "auto",
+    order: Literal["", "taken", "planner"] = "",
 ) -> dict:
     """Cut it for me: build an edit of the whole song — or of ``span`` (``[start_s,
     end_s]``, the part of the song the video covers) — from the placed videos, and (by
@@ -2095,7 +2136,11 @@ def propose_edit(
     music — no ``align`` needed. ``pace`` (``slow``/``steady``/``driving``/``frantic``)
     sets how often those cuts come; ``style`` how the picture changes: ``cuts`` (hard,
     on the beat), ``fades`` (each starting on the beat), or ``auto`` (the song's
-    choice — fades for a slow song). ``explain_edit`` says why
+    choice — fades for a slow song). ``order`` is how the pictures follow one another:
+    ``taken`` (the default) in the order they were taken, so a day reads as it happened
+    — by the time their files say, upload order for any that say nothing (``music``
+    reports which) — or ``planner``, the montage planner's reuse order, which ignores
+    chronology. ``explain_edit`` says why
     each cut is where it is.
     """
     from muvid.footage.edl import validate_edl
@@ -2108,6 +2153,10 @@ def propose_edit(
     strat = strategy or ("weighted" if has_selection_config else DEFAULT_STRATEGY)
     if style not in STYLES:
         raise FootageError(f"style must be one of {sorted(STYLES)}, got {style!r}")
+    from muvid.footage.music_cut import ORDERS
+
+    if order and order not in ORDERS:
+        raise FootageError(f"order must be one of {list(ORDERS)}, got {order!r}")
     try:
         context = _selection_context(fp, strat, preset, weights, config)
         proposal, excluded, music = _auto_edit(
@@ -2119,6 +2168,7 @@ def propose_edit(
             recover=True,
             pace=pace,
             style=style,
+            order=order,
         )
         if span is not None:
             excluded = [
@@ -2171,6 +2221,7 @@ def propose_edit(
             ("weights", weights),
             ("config", config),
             ("pace", pace),
+            ("order", (music or {}).get("order", "") if music else ""),
             ("style", "" if style == "auto" else style),
         ):
             if value:

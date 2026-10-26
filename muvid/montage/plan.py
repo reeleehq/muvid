@@ -708,12 +708,98 @@ def _stride_pick(candidates: Sequence[int], ordinal: int) -> int:
     return candidates[min(j, len(candidates) - 1)]
 
 
+def _chronological_order(pool: Sequence[Media]) -> tuple[list[int], str, str]:
+    """``(pool indices in the order taken, "taken"|"upload", note)``: dated pictures by
+    capture time, undated after them in pool order; none dated -> pool order."""
+    dated = [m for m in pool if m.taken_at is not None]
+    if not dated:
+        return (
+            [m.index for m in pool],
+            "upload",
+            "no file says when it was taken, so the pictures follow upload order",
+        )
+    ordered = sorted(
+        pool, key=lambda m: (m.taken_at is None, m.taken_at or 0.0, m.index)
+    )
+    missing = len(pool) - len(dated)
+    note = (
+        f"{missing} of {len(pool)} have no capture time and follow the rest in upload order"
+        if missing
+        else ""
+    )
+    return [m.index for m in ordered], "taken", note
+
+
+def _assign_chronological(
+    drafts: Sequence[SlotDraft],
+    pool: Sequence[Media],
+    active: Callable[[SlotDraft], bool] | None,
+) -> tuple[list[dict[int, tuple[int, int]]], dict[str, Any]]:
+    """The ``chronological`` reuse order (muvid#137): the day, in the order it was taken.
+
+    Only the ACTIVE drafts (the ones that will be shown) use up the day; the rest get the
+    first picture and are not counted. With at least as many pictures as shown tiles each
+    tile takes the strongest picture of its share of the day (a long day is sampled
+    evenly and in order, not truncated); with fewer, the day repeats from its start.
+
+    >>> from muvid.montage.analysis import Media
+    >>> pool = [Media(index=i, path=f'{i}.jpg', kind='photo', width=1, height=1,
+    ...               taken_at=t) for i, t in enumerate([30.0, 10.0, 20.0])]
+    >>> ds = [SlotDraft(start=i, end=i + 1, section='v', archetype='beat_cut') for i in range(5)]
+    >>> picks, stats = _assign_chronological(ds, pool, None)
+    >>> [p[0][0] for p in picks], stats['order']      # 10, 20, 30, then the day repeats
+    ([1, 2, 0, 1, 2], 'taken')
+    """
+    order, used, note = _chronological_order(pool)
+    strength = {m.index: m.strength for m in pool}
+    live = [bool(active(d)) if active else True for d in drafts]
+    tiles = sum(d.regions for d, on in zip(drafts, live) if on)
+    n = len(order)
+    if n >= tiles > 0:
+        seq = [
+            max(
+                order[k * n // tiles : (k + 1) * n // tiles],
+                key=lambda i: (strength[i], -i),
+            )
+            for k in range(tiles)
+        ]
+    else:
+        seq = [order[k % n] for k in range(tiles)]
+    uses = {i: 0 for i in order}
+    nxt = iter(seq)
+    out: list[dict[int, tuple[int, int]]] = []
+    for d, on in zip(drafts, live):
+        assigned = {}
+        for r in range(d.regions):
+            if on:
+                m = next(nxt)
+                assigned[r] = (m, uses[m])
+                uses[m] += 1
+            else:
+                assigned[r] = (order[0], 0)  # not shown: not counted
+        out.append(assigned)
+    stats = {
+        "pool": n,
+        "cover": None,
+        "min_gap": 0,
+        "reserved_for_finale": [],
+        "finale_start": None,
+        "uses": {str(i): c for i, c in uses.items()},
+        "n_assignments": tiles,
+        "min_observed_gap": None,
+        "order": used,
+        "order_note": note,
+    }
+    return out, stats
+
+
 def assign_media(
     drafts: Sequence[SlotDraft],
     media: Sequence[Media],
     reuse: spec_mod.Reuse,
     *,
     finale_start: float | None = None,
+    active: Callable[[SlotDraft], bool] | None = None,
 ) -> tuple[list[dict[int, tuple[int, int]]], dict[str, Any]]:
     """Fill every region of every draft with ``(media_index, use_ordinal)``.
 
@@ -735,6 +821,8 @@ def assign_media(
     cover = next((m.index for m in media if m.kind == "cover"), None)
     pool = [m for m in media if m.kind != "cover"]
     pool_idx = [m.index for m in pool]
+    if reuse.order == "chronological" and pool:
+        return _assign_chronological(drafts, pool, active)
     if not pool_idx:
         if cover is None:
             raise ValueError("the media pool is empty")
@@ -905,9 +993,16 @@ def finale_of(sections: Sequence[Section]) -> Section | None:
 
 
 def plan_montage(
-    analysis: Analysis, media: Sequence[Media], treatment: spec_mod.TreatmentSpec
+    analysis: Analysis,
+    media: Sequence[Media],
+    treatment: spec_mod.TreatmentSpec,
+    *,
+    active: Callable[[SlotDraft], bool] | None = None,
 ) -> Plan:
-    """Pool + measurements + treatment -> a :class:`Plan`. Pure and deterministic."""
+    """Pool + measurements + treatment -> a :class:`Plan`. Pure and deterministic.
+
+    ``active`` says which slots will actually be shown (a caller filling only part of
+    the song); the ``chronological`` reuse order spends the pool on those alone."""
     if not analysis.sections:
         raise ValueError("analysis has no sections")
     if not media:
@@ -938,6 +1033,7 @@ def plan_montage(
         media,
         treatment.direction.reuse,
         finale_start=finale.start if finale else None,
+        active=active,
     )
     by_index = {m.index: m for m in media}
     punch_s = PUNCH_BEATS * analysis.beat_s
