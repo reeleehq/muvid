@@ -2639,6 +2639,16 @@ def _validate_look(i, e, canvas) -> None:
         )
 
 
+def blend_lead(t: "Transition") -> float:
+    """Seconds a transition reads BEFORE its own cut's start (in that cut's source)."""
+    return t.duration_s * TRANSITION_SPLIT
+
+
+def blend_trail(t: "Transition") -> float:
+    """Seconds a transition reads PAST the end of the PREVIOUS cut (in its source)."""
+    return t.duration_s * (1 - TRANSITION_SPLIT)
+
+
 def _validate_transition(i, e, prev, by_id) -> None:
     """The four things a transition has to satisfy. Raises ``ValueError``.
 
@@ -2675,10 +2685,8 @@ def _validate_transition(i, e, prev, by_id) -> None:
     # the identical inequality, so it could never be the sole cause of a rejection.
     # (Mutation testing is how that was established — the term was written first and
     # deleting it left the suite green.)
-    lead, trail = t.duration_s * TRANSITION_SPLIT, t.duration_s * (1 - TRANSITION_SPLIT)
-    prev_own_trail = (
-        prev.transition.duration_s * (1 - TRANSITION_SPLIT) if prev.transition else 0.0
-    )
+    lead, trail = blend_lead(t), blend_trail(t)
+    prev_own_trail = blend_trail(prev.transition) if prev.transition else 0.0
     if prev_own_trail + lead > _span(prev) + _EPS:
         raise ValueError(
             f"EDL entry {i}: its transition needs {lead:.3f}s from the END of entry "

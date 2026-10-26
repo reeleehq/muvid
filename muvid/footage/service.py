@@ -2454,6 +2454,7 @@ def set_cut(
     i = _check_index(entries, index)
     e: EdlEntry = entries[i]
     changes: dict = {}
+    swapped = False
     if clip_id is not None and (clip_id or "") != e.clip_id:
         changes.update(
             clip_id=clip_id or "",
@@ -2461,8 +2462,9 @@ def set_cut(
             crop_end=None,
             slip_s=0.0,
             rate=1.0,
-            source_in=_swap_in_point(fp, clip_id or "", e),
+            source_in=None,  # set below, from the cut as it will finally be
         )
+        swapped = True
         if not clip_id:  # a gap carries no picture, so no look either
             changes.update(
                 look=None, look_time_varying=False, look_spec=None, transition=None
@@ -2517,16 +2519,30 @@ def set_cut(
         # The cut keeps showing the footage it showed where it still plays: at a speed
         # other than 1, moving its start moves its slip too.
         e = _moved_start(e, float(song_start))
+    if swapped:
+        # the in-point depends on the cut's FINAL span, rate and neighbour, so it is
+        # chosen after everything else in this call has been applied (muvid#181)
+        e = replace(
+            e,
+            source_in=_swap_in_point(
+                fp, clip_id or "", e, entries[i + 1] if i + 1 < len(entries) else None
+            ),
+        )
     entries[i] = e
     return _store_changed(fp, record, entries, changed=i)
 
 
-def _swap_in_point(fp, clip_id: str, e) -> Optional[float]:
+def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     """Where a cut swapped onto ``clip_id`` starts in it: ``None`` (synced, follows the
     clip's place) for a clip with the song in it; for a clip cut to the music, the start
     of the clip — just past a thumb on the button, and far enough in for the cut's blend
-    — so a swap never inherits another clip's in-point (47 s into a 10 s clip)."""
-    from muvid.footage.edl import EDGE_S
+    — so a swap never inherits another clip's in-point (47 s into a 10 s clip).
+
+    The in-point also leaves room AFTER the cut: the next cut's blend (``following``) reads
+    its trail past this cut's end in this clip, and ``validate_edl`` requires it. A clip
+    too short to hold the span, its own blend and that trail is refused here, plainly,
+    rather than by the gate on the next save (muvid#181)."""
+    from muvid.footage.edl import EDGE_S, blend_lead, blend_trail
 
     if not clip_id:
         return None
@@ -2541,13 +2557,35 @@ def _swap_in_point(fp, clip_id: str, e) -> Optional[float]:
     lead = e.transition.duration_s if e.transition is not None else 0.0
     if row.get("kind") == STILL_KIND:
         return round(lead, 4)
-    return round(
-        min(
-            EDGE_S + lead,
-            max(0.0, _clip_duration(fp, clip_id) - (e.song_end - e.song_start)),
-        ),
-        4,
+    # What the gate asks of the clip, in clip seconds (it scales both by the cut's rate):
+    # the cut's own lead BEFORE the in-point, and the next cut's trail PAST the cut's end.
+    rate = e.rate
+    span = (e.song_end - e.song_start) * rate
+    need_before = blend_lead(e.transition) * rate if e.transition is not None else 0.0
+    need_after = (
+        blend_trail(following.transition) * rate
+        if following is not None and following.transition is not None
+        else 0.0
     )
+    duration = _clip_duration(fp, clip_id)
+    room = duration - span - need_after  # the latest the cut may start in the clip
+    if room < need_before - _EPS:
+        raise FootageError(
+            f"clip {clip_id!r} is {duration:.2f}s, too short for this "
+            f"{e.song_end - e.song_start:.2f}s cut"
+            + (
+                f" with {need_before:.2f}s of its own blend before"
+                if need_before
+                else ""
+            )
+            + (
+                f" and {need_after:.2f}s of the next cut's blend after"
+                if need_after
+                else ""
+            )
+            + f" — it needs {span + need_before + need_after:.2f}s"
+        )
+    return round(min(EDGE_S + lead, max(0.0, room)), 4)
 
 
 def _moved_start(e, start: float):
