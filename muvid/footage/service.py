@@ -3347,23 +3347,24 @@ def _ref_label(ref_n) -> dict:
 _EDITOR_EXTRA_HINT = "the lacing-native editor bridge needs the 'editor' extra (pip install 'muvid[editor]')"
 
 
-def editor_document(fp) -> dict:
+def editor_document(fp, *, edit_id: str = "") -> dict:
     """The project as lacing-native standoff annotations, for a multitrack editor.
 
-    One tier per clip (its ``clip-alignment/v1`` and, once scored, its
-    ``clip-score-track/v1`` curves) plus a ``DECISION`` tier holding the current default
-    proposal as ``music-video-edl/v1`` entries — everything referenced to the song by
-    content hash, on one shared song-time axis. Needs the ``editor`` extra (lacing) and
-    an alignment.
+    One tier per clip, photos and clips cut to the music included (its
+    ``clip-alignment/v1`` and, once scored, its ``clip-score-track/v1`` curves) plus a
+    ``DECISION`` tier holding what ``propose_edit`` would build now — or the saved edit
+    ``edit_id``, when one is named — as ``music-video-edl/v1`` entries, free cuts
+    carrying their ``source_in``; everything referenced to the song by content hash, on
+    one shared song-time axis. Needs the ``editor`` extra (lacing) and a clip.
     """
     try:
         from muvid.footage.lacing_bridge import editor_document as _document
     except ImportError as e:
         raise FootageError(_EDITOR_EXTRA_HINT) from e
-    if not fp.load_alignments():
-        raise FootageError("no alignment yet — call align_footage first")
+    if not fp.manifest().get("clips"):
+        raise FootageError("no alignment yet — add footage, then call align_footage")
     try:
-        return _document(fp)
+        return _document(fp, edit_id=edit_id)
     except ValueError as e:
         raise FootageError(str(e)) from e
 

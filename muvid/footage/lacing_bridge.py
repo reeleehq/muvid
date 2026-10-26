@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import time as _time
 import uuid
+from collections.abc import Collection, Mapping
 from typing import Sequence
 
 #: Rational-time rate for all bridge annotations: microseconds.
@@ -38,6 +39,8 @@ MUSIC_VIDEO_EDL_SCHEMA = "annot://schema/music-video-edl/v1"
 #: Tier names. Clip lanes are per-clip (``clip:<id>``); these are the shared ones.
 DECISION_TIER = "DECISION"
 _PROVENANCE_AGENT = "processor:muvid.footage.lacing_bridge"
+#: ``service.FREE_ROLE``, spelled here so importing the bridge imports no service.
+_FREE_ROLE = "to_the_music"
 
 
 def _interval(start_s: float, end_s: float):
@@ -81,8 +84,22 @@ def _annotation(
     )
 
 
-def alignment_annotations(aligns, *, song_asset_id: str, attributed_to: str) -> list:
-    """One ``clip-alignment/v1`` per clip, spanning the clip's coverage of the song."""
+def alignment_annotations(
+    aligns,
+    *,
+    song_asset_id: str,
+    attributed_to: str,
+    stills: Collection[str] = (),
+    roles: Mapping[str, str] | None = None,
+) -> list:
+    """One ``clip-alignment/v1`` per clip, spanning the clip's coverage of the song.
+
+    ``stills`` names the clips that are photos, and ``roles`` is
+    ``service.footage_roles``: a photo has no place on the song (its record sits at
+    0, the same zero-length interval an unplaced clip gets), so the body says
+    ``"still": true``; a clip cut to the music rather than synced says
+    ``"role": "to_the_music"``. Both keys are omitted when absent (muvid#138).
+    """
     out = []
     for a in aligns:
         lo, hi = a.coverage
@@ -101,6 +118,12 @@ def alignment_annotations(aligns, *, song_asset_id: str, attributed_to: str) -> 
                     "offset_s": a.offset_s,
                     "duration_s": a.duration_s,
                     "overlaps": a.overlaps,
+                    **({"still": True} if a.clip_id in stills else {}),
+                    **(
+                        {"role": roles[a.clip_id]}
+                        if roles and roles.get(a.clip_id) == _FREE_ROLE
+                        else {}
+                    ),
                 },
                 schema=CLIP_ALIGNMENT_SCHEMA,
                 attributed_to=attributed_to,
@@ -335,39 +358,69 @@ def edl_from_annotations(
     return sorted(out, key=lambda e: e["song_start"])
 
 
-def editor_document(proj, *, attributed_to: str = "") -> dict:
+def editor_document(proj, *, attributed_to: str = "", edit_id: str = "") -> dict:
     """The whole project as one lacing-native document for a multitrack editor.
 
     Tiers: one lane group per clip (alignment + its score sub-tracks) + the DECISION
-    lane. The EDL rendered into DECISION is the current default proposal; an editor
+    lane. Every clip has a lane, photos and clips cut to the music included (a photo
+    has no place on the song: its alignment record sits at 0 and says ``still``).
+    The EDL rendered into DECISION is what ``propose_edit`` would build now (the
+    synced videos cut by the strategy, the rest cut to the music, with each free
+    cut's ``source_in``), or the saved edit ``edit_id`` when one is named. An editor
     mutates that tier and exports it back through :func:`edl_from_annotations`.
     """
+    from muvid.footage import service
     from muvid.footage.edl import fill_gaps, validate_edl
     from muvid.footage.scoring.grid import load_tensor
-    from muvid.footage.strategy import DEFAULT_STRATEGY, select_edl
+    from muvid.footage.strategy import DEFAULT_STRATEGY
 
     if not proj.has_song():
         raise ValueError("no song set — call set_song first")
-    aligns = proj.load_alignments()
+    decision_error = None
+    try:
+        placements = service._placements(proj)
+    except (
+        ValueError
+    ) as e:  # a clip whose length cannot be read: lanes from what is placed
+        placements, decision_error = proj.load_alignments(), str(e)
     song_dur = proj.song_duration()
     song_asset_id = proj.song_hash()
     who = attributed_to or f"user:{proj.email}"
+    stills = {
+        c["clip_id"]
+        for c in proj.manifest().get("clips", [])
+        if c.get("kind") == service.STILL_KIND
+    }
 
     annotations = alignment_annotations(
-        aligns, song_asset_id=song_asset_id, attributed_to=who
+        placements,
+        song_asset_id=song_asset_id,
+        attributed_to=who,
+        stills=stills,
+        roles=service.footage_roles(proj),
     )
     tensor = load_tensor(proj.root)
     if tensor is not None:
         annotations += score_track_annotations(
             tensor, song_asset_id=song_asset_id, attributed_to=who
         )
-    overlapping = [a for a in aligns if a.overlaps]
-    decision_error = None
-    if overlapping:
+    if placements and decision_error is None:
         try:
+            if edit_id:
+                _, saved = service._edit_entries(proj, edit_id)
+                proposal = fill_gaps(saved, song_dur)
+            else:
+                proposal, _, _ = service._auto_edit(
+                    proj,
+                    placements,
+                    song_dur,
+                    strategy=DEFAULT_STRATEGY,
+                    context=None,
+                    recover=True,
+                )
             entries = validate_edl(
-                fill_gaps(select_edl(DEFAULT_STRATEGY, aligns, song_dur), song_dur),
-                aligns,
+                proposal,
+                placements,
                 song_dur,
                 canvas=proj.canvas(),
                 # This builds the DECISION tier an editor opens and edits; it renders
@@ -378,10 +431,11 @@ def editor_document(proj, *, attributed_to: str = "") -> dict:
             )
         except (ValueError, KeyError) as e:
             # The alignment + score-track annotations below are independently good —
-            # only the DEFAULT proposal failed to build (e.g. a self-inconsistent
-            # persisted alignment, or a legitimate selection past MAX_EDL_ENTRIES). An
-            # editor can still open the document and place its own DECISION entries;
-            # losing the whole export over an unrelated failure would not.
+            # only the proposal failed to build (e.g. a self-inconsistent persisted
+            # alignment, a video nobody has listened to yet, or a legitimate selection
+            # past MAX_EDL_ENTRIES). An editor can still open the document and place
+            # its own DECISION entries; losing the whole export over an unrelated
+            # failure would not.
             decision_error = str(e)
         else:
             annotations += edl_annotations(
@@ -389,7 +443,7 @@ def editor_document(proj, *, attributed_to: str = "") -> dict:
             )
 
     tiers = [{"name": DECISION_TIER, "stereotype": "NONE"}] + [
-        {"name": f"clip:{a.clip_id}", "stereotype": "NONE"} for a in aligns
+        {"name": f"clip:{a.clip_id}", "stereotype": "NONE"} for a in placements
     ]
     return {
         "project_id": proj.project_id,
