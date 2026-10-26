@@ -43,6 +43,8 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 
 import numpy as np
 
+from muvid.footage.edl import EDGE_S
+
 __all__ = [
     "ARCHETYPE_AUTO",
     "Envelope",
@@ -62,9 +64,6 @@ SLOW_TEMPO_BPM = 92.0
 SINGLE_PICTURE_ARCHETYPES = ("beat_cut", "ballad_dissolve", "stop_motion")
 #: A piece of a cut shorter than this (seconds) is folded into its neighbour.
 MIN_PIECE_S = 0.4
-#: Keep this far (seconds) from a video's first and last frame: phone clips start and
-#: stop with the shake of a thumb on the button.
-EDGE_S = 0.25
 #: Weights of the source-in score: beats hit, liveliness matched to loudness, reuse,
 #: and focus (log of the stretch's sharpness over the video's own, so a whip-pan blur —
 #: which changes a lot and shows nothing — loses to a lively stretch in focus).

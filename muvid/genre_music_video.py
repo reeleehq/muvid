@@ -32,11 +32,13 @@ from nw import (
     GenreOp,
     Template,
     register_genre,
+    register_genre_limits,
     register_genre_ops,
     register_genre_project_factory,
 )
 
 from muvid.footage import service as _service
+from muvid.footage.edl import EDGE_S, RATE_MAX_DEV, SLIP_MAX_S
 
 MUSIC_VIDEO_SLUG = "music_video"
 
@@ -183,4 +185,15 @@ def _as_genre_op(spec) -> GenreOp:
 #: The catalogue a host serves for ``music_video`` — one ``nw.GenreOp`` per operation.
 FOOTAGE_OPS: tuple[GenreOp, ...] = register_genre_ops(
     MUSIC_VIDEO_SLUG, [_as_genre_op(spec) for spec in _service.FOOTAGE_OP_SPECS]
+)
+
+
+#: The numeric bounds the operations enforce, for a frontend that validates the same
+#: ones (reelee#692): ``edge_s`` is how far a cut stays from a source video's first and
+#: last frame, ``slip_max_s`` the largest slip of a cut, ``rate_max_dev`` how far a cut's
+#: speed may move from 1. Values are the constants the code reads, never copies. (Not
+#: ``service.FOOTAGE_LIMITS``: those are count ceilings a client sees on ``add_clip``.)
+LIMITS: dict[str, float] = register_genre_limits(
+    MUSIC_VIDEO_SLUG,
+    {"edge_s": EDGE_S, "slip_max_s": SLIP_MAX_S, "rate_max_dev": RATE_MAX_DEV},
 )

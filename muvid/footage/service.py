@@ -2224,7 +2224,7 @@ def _swap_in_point(fp, clip_id: str, e) -> Optional[float]:
     clip's place) for a clip with the song in it; for a clip cut to the music, the start
     of the clip — just past a thumb on the button, and far enough in for the cut's blend
     — so a swap never inherits another clip's in-point (47 s into a 10 s clip)."""
-    from muvid.footage.music_cut import EDGE_S
+    from muvid.footage.edl import EDGE_S
 
     if not clip_id:
         return None
