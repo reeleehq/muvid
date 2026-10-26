@@ -72,7 +72,7 @@ dependencies = [
     # configure-time error or a silently retimed clip, which is the whole muvid#66 fix.
     # 0.0.23 registers the clock-reading effects (grain, gate_weave) and the
     # `LookPlan.time_varying` that `stylize` reads (muvid#180).
-    "looks>=0.0.23",
+    "looks>=0.0.26",
 ]
 
 [project.scripts]

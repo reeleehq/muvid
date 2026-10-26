@@ -98,6 +98,18 @@ from typing import Any, Optional, Sequence
 #: is why it is a named constant a caller overrides rather than a hidden literal.
 DEFAULT_PUNCH_ZOOM = 1.12
 
+#: The colour space :func:`stylize` ASSUMES for the assembler's output when the
+#: caller names none (muvid#190). ``looks`` Rule 22 refuses an RGB-only step
+#: (``saturation`` ...) on a clip with no declared colour space, because the
+#: RGB round trip would otherwise use whatever matrix the ffmpeg build guesses.
+#: This is a GUESS, not a fact: the assembler keeps each source's own colour tags
+#: (it neither converts nor tags), so a BT.601 clip or a JPEG still is mis-read
+#: as BT.709 on ffmpeg >= 7 (measured in the #190 review). Phone footage is
+#: mostly BT.709, and it is the best single answer until the assembler
+#: normalises its output (the real fix, filed as a follow-up). The plan keeps
+#: ``color_assumed``, but ``stylize`` does not surface it yet.
+DEFAULT_ASSUMED_COLOR_SPACE = "bt709"
+
 #: Where :func:`punch_in` zooms toward, as a fraction of the canvas. Centre.
 DEFAULT_PUNCH_ANCHOR = (0.5, 0.5)
 
@@ -397,6 +409,7 @@ def stylize(
     ffmpeg: str = "ffmpeg",
     env=None,
     policy=None,
+    assume_color_space: "Optional[str]" = DEFAULT_ASSUMED_COLOR_SPACE,
 ) -> "LookFragment":
     """A :class:`looks.Look` compiled against the binary muvid will run.
 
@@ -409,6 +422,9 @@ def stylize(
         env: a :class:`looks.FfmpegEnv` to compile against, instead of probing.
         policy: a :class:`looks.Policy` — the licence ceiling. ``looks``' default
             applies when omitted.
+        assume_color_space: the colour space to declare for the output when a step
+            needs one (``looks`` Rule 22, muvid#190); see
+            :data:`DEFAULT_ASSUMED_COLOR_SPACE`. ``None`` keeps ``looks``' refusal.
 
     Returns:
         One linear ffmpeg filter chain, ready for the ``look`` field, declaring
@@ -462,7 +478,13 @@ def stylize(
         origin_s=0.0,
     )
     try:
-        plan = looks.compile_look(look, clip=clip, env=resolved, policy=policy)
+        plan = looks.compile_look(
+            look,
+            clip=clip,
+            env=resolved,
+            policy=policy,
+            assume_color_space=assume_color_space,
+        )
         return LookFragment(
             looks.vf(plan),
             # ``None`` (a step whose implementation never declared) reads as
