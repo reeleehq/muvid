@@ -497,3 +497,136 @@ def test_face_sample_is_na_when_nothing_was_measured():
     assert _face_sample(lambda _f: 0.75, object()) == pytest.approx(0.75)
     # A real, measured zero is still a zero — only *absence* becomes NA.
     assert _face_sample(lambda _f: 0.0, object()) == 0.0
+
+
+# -- the fallback is visible to the caller (muvid#19, item 6) -------------------
+
+
+def test_weighted_selection_reports_its_fallback_through_the_context():
+    from muvid.footage.select_score import (
+        SelectionContext,
+        WeightedSelectionConfig,
+        weighted_selection,
+    )
+    from muvid.footage.select_score import selection_notice
+
+    hop, song = 0.1, 10.0
+    n = int(np.ceil(song / hop)) + 1
+    aligns = [_align("A", 0.0, 4.0, song), _align("B", 6.0, 4.0, song)]  # a gap
+    tensor = make_tensor(
+        aligns, {"A": np.full(n, 0.8), "B": np.full(n, 0.8)}, hop=hop, n=n
+    )
+    ctx = SelectionContext(
+        tensor=tensor,
+        beat_times=[1, 2, 3, 7, 8, 9],
+        config=WeightedSelectionConfig(weights={"m": 1.0}, l_min_s=1.0, l_max_s=8.0),
+    )
+    weighted_selection(aligns, song, context=ctx)
+    notice = selection_notice(ctx)
+    assert notice["fallback"] == "best_confidence" and notice["cause"] == "coverage_gap"
+    assert "not score-driven" in notice["message"]
+
+
+def test_a_clean_run_has_no_notice():
+    from muvid.footage.select_score import SelectionContext
+    from muvid.footage.select_score import selection_notice
+
+    assert selection_notice(SelectionContext(tensor=None)) is None
+    assert selection_notice(None) is None
+
+
+# -- composite + raw lanes under the caller's weights (muvid#19, item 5) --------
+
+
+class _Fp:
+    def __init__(self, aligns):
+        self._aligns = aligns
+
+    def load_alignments(self):
+        return self._aligns
+
+
+def test_the_composite_lane_follows_the_callers_weights_and_nulls_unmeasured():
+    from muvid.footage.service import _clip_scores
+
+    hop, song = 0.1, 4.0
+    n = int(np.ceil(song / hop)) + 1
+    aligns = [_align("A", 0.0, 4.0, song)]
+    comp = np.full(n, 0.6)
+    comp[:5] = np.nan  # not measurable: must read null, not 0.0
+    tensor = make_tensor(aligns, {"A": comp}, hop=hop, n=n)
+    out = _clip_scores(
+        _Fp(aligns), tensor, {}, {"n": n}, "A", None, 1000, {"m": 2.0}, raw=True
+    )
+    lane = out["composite"]["values"]
+    assert lane[:5] == [None] * 5
+    assert lane[10] == pytest.approx(
+        0.6, abs=1e-3
+    )  # renormalised: weight 2 → still 0.6
+    assert out["weights"] == {"m": 2.0}
+    assert out["metrics"]["m"]["raw"][:5] == [None] * 5
+    no_weight = _clip_scores(
+        _Fp(aligns), tensor, {}, {"n": n}, "A", None, 1000, {"other": 1.0}, raw=False
+    )
+    assert no_weight["composite"]["values"] is None
+    assert "raw" not in no_weight["metrics"]["m"]
+
+
+def test_a_reused_context_does_not_carry_the_last_runs_fallback():
+    from muvid.footage.select_score import (
+        SelectionContext,
+        WeightedSelectionConfig,
+        selection_notice,
+        weighted_selection,
+    )
+
+    hop, song = 0.1, 10.0
+    n = int(np.ceil(song / hop)) + 1
+    gappy = [_align("A", 0.0, 4.0, song), _align("B", 6.0, 4.0, song)]
+    whole = [_align("A", 0.0, 10.0, song)]
+    cfg = WeightedSelectionConfig(weights={"m": 1.0}, l_min_s=1.0, l_max_s=8.0)
+    beats = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+    bad = SelectionContext(
+        tensor=make_tensor(
+            gappy, {"A": np.full(n, 0.8), "B": np.full(n, 0.8)}, hop=hop, n=n
+        ),
+        beat_times=beats,
+        config=cfg,
+    )
+    weighted_selection(gappy, song, context=bad)
+    assert selection_notice(bad)
+    good = SelectionContext(
+        tensor=make_tensor(whole, {"A": np.full(n, 0.8)}, hop=hop, n=n),
+        beat_times=beats,
+        config=cfg,
+        report=bad.report,  # the SAME sink, as dataclasses.replace would share
+    )
+    weighted_selection(whole, song, context=good)
+    assert selection_notice(good) is None
+
+
+def test_nothing_to_select_from_is_not_a_fallback_worth_a_warning():
+    from muvid.footage.select_score import SelectionContext, selection_notice
+
+    ctx = SelectionContext(tensor=None)
+    ctx.report.update({"fallback": "empty", "cause": "no_alignments"})
+    assert selection_notice(ctx) is None
+    ctx.report.clear()
+    ctx.report.update({"cause": "dwell_relaxed"})
+    assert selection_notice(ctx)["cause"] == "dwell_relaxed"
+
+
+def test_bad_weights_and_unknown_metrics_are_refusals_not_tracebacks():
+    from muvid.footage.errors import FootageError
+    from muvid.footage.service import require_scorable
+
+    class _P:
+        def has_song(self):
+            return True
+
+        def load_alignments(self):
+            return [object()]
+
+    with pytest.raises(FootageError, match=r"unknown metric\(s\) \['bogus'\]"):
+        require_scorable(_P(), metrics=["bogus"])
+    assert require_scorable(_P(), metrics=["sharpness"])
