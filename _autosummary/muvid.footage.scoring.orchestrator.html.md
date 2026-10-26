@@ -24,8 +24,8 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 
 ### Module Attributes
 
-| [`DEFAULT_METRICS`](#muvid.footage.scoring.orchestrator.DEFAULT_METRICS)   | The torch-free CORE metric set (prod-safe).   |
-|--------------------------------------------------------------------|-----------------------------------------------|
+| [`DEFAULT_METRICS`](#muvid.footage.scoring.orchestrator.DEFAULT_METRICS)   | The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept for callers that read the constant.   |
+|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
 
 ### Functions
 
@@ -35,8 +35,10 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 
 ### muvid.footage.scoring.orchestrator.DEFAULT_METRICS *= ('sharpness', 'exposure', 'stability_shake', 'face_framing', 'motion_beat_bas', 'motion_onset_xcorr')*
 
-The torch-free CORE metric set (prod-safe). Lip-sync metrics are added only when the
-opt-in tier is enabled.
+The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept
+for callers that read the constant. A scorer registered later is picked up by the
+orchestrator through `registry.default_metrics()`, which this does not shadow.
+Lip-sync metrics are added only when the opt-in tier is enabled.
 
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 

@@ -1,4 +1,4 @@
-> built 2026-10-26 16:31 UTC from 0133c60 (main) · muvid 0.0.97. Details: build_info.json
+> built 2026-10-26 17:10 UTC from 06aac49 (main) · muvid 0.0.98. Details: build_info.json
 
 # index.html.md
 
@@ -3032,6 +3032,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`STILL_DURATION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.STILL_DURATION_S)          | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
 | [`SLIP_MAX_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SLIP_MAX_S)                | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.RATE_MAX_DEV)              | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
+| [`EDGE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EDGE_S)                    | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
 | [`NO_VOUCHED_COVERAGE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.NO_VOUCHED_COVERAGE)       | nothing the aligner vouches for covers it at all.                                                                                                                                                                                                               |
 | [`UNVOUCHED_SELECTION`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_SELECTION)       | A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.                                                                                                                          |
 | [`EXCLUSION_REASONS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EXCLUSION_REASONS)         | Every reason [`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.                                                                                                                                 |
@@ -3160,6 +3161,15 @@ recorded with its reason plus a test of the premise that reason rests on. See
 `workspace.CANVASES` by a test rather than imported from it, because
 `muvid.footage.edl` is on the import-safe path and `workspace` is not on
 it for free.
+
+### muvid.footage.edl.EDGE_S *= 0.25*
+
+phone clips start and
+stop with the shake of a thumb on the button. Lives here, with the other cut bounds,
+so the genre can publish all three without importing the cutter (numpy).
+
+* **Type:**
+  Keep this far (seconds) from a video’s first and last frame
 
 ### muvid.footage.edl.EXCLUSION_REASONS *= ('no_vouched_coverage', 'unvouched_selection')*
 
@@ -6264,6 +6274,7 @@ OOM risk on the memory-fragile prod box).
 | [`motionbeat`](_autosummary/muvid.footage.scoring.motionbeat.html.md#module-muvid.footage.scoring.motionbeat)     | Motion-to-beat tier: `motion_beat_bas` + `motion_onset_xcorr` → song-grid tracks.                                                          |
 | [`orchestrator`](_autosummary/muvid.footage.scoring.orchestrator.html.md#module-muvid.footage.scoring.orchestrator) | The scoring orchestrator: a project (song + aligned clips) → the persisted score tensor.                                                   |
 | [`quality`](_autosummary/muvid.footage.scoring.quality.html.md#module-muvid.footage.scoring.quality)           | Quality tier: sharpness / exposure / stability_shake / face_framing → song-grid tracks.                                                    |
+| [`registry`](_autosummary/muvid.footage.scoring.registry.html.md#module-muvid.footage.scoring.registry)         | The scorer registry: what a metric IS, so adding one touches no orchestrator code (muvid#19).                                              |
 | [`segment`](_autosummary/muvid.footage.scoring.segment.html.md#module-muvid.footage.scoring.segment)           | Shot boundaries (PySceneDetect) + the per-clip coverage mask.                                                                              |
 
 
@@ -6395,8 +6406,8 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 
 ### Module Attributes
 
-| [`DEFAULT_METRICS`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.DEFAULT_METRICS)   | The torch-free CORE metric set (prod-safe).   |
-|--------------------------------------------------------------------|-----------------------------------------------|
+| [`DEFAULT_METRICS`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.DEFAULT_METRICS)   | The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept for callers that read the constant.   |
+|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
 
 ### Functions
 
@@ -6406,8 +6417,10 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 
 ### muvid.footage.scoring.orchestrator.DEFAULT_METRICS *= ('sharpness', 'exposure', 'stability_shake', 'face_framing', 'motion_beat_bas', 'motion_onset_xcorr')*
 
-The torch-free CORE metric set (prod-safe). Lip-sync metrics are added only when the
-opt-in tier is enabled.
+The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept
+for callers that read the constant. A scorer registered later is picked up by the
+orchestrator through `registry.default_metrics()`, which this does not shadow.
+Lip-sync metrics are added only when the opt-in tier is enabled.
 
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 
@@ -6481,6 +6494,126 @@ Sharpness / exposure / stability_shake / face_framing tracks for one clip.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack)]
+
+
+# _autosummary/muvid.footage.scoring.registry.html.md
+
+# muvid.footage.scoring.registry
+
+The scorer registry: what a metric IS, so adding one touches no orchestrator code (muvid#19).
+
+A *scorer* turns one clip (plus the shared, compute-once-on-master artifacts) into
+[`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack)s on the song grid. The orchestrator
+used to call three extractors by name and keep a hardcoded metric tuple, so a new
+scorer meant editing four places and `metrics=` could only *filter* what those calls
+produced. Now it walks this registry — the house idiom (`register_visual`,
+`register_selection_strategy`, `register_aligner`) — and the metric axis, the
+default metric set and the wanted-set filter are all derived from the rows.
+
+A scorer is handed a [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext) and returns tracks. It declares:
+
+- `metrics` — the names it produces (a `metrics=` request is matched against them);
+- `needs_frames` — whether it reads the shared decode pass (one decode per clip,
+  however many scorers read it: the design review’s fix for the double decode);
+- `gated` — whether the optional hard quality gate is ANDed into its masks;
+- `tier` — `"core"` (the commercial-clean default) or `"lipsync"` (the opt-in,
+  off-prod tier of the licence boundary in the repo guide). A new scorer is `"core"`
+  only if every dependency it brings is MIT/BSD/Apache/ISC.
+
+**Absent is not zero.** A scorer that could not measure a frame returns the frame
+masked (`NaN` raw, `False` mask), never `0.0`: the composite renormalises over
+the weight that was available (muvid#19), and a `0.0` would count as the worst
+possible score.
+
+Import-safe: this module is stdlib-only; every built-in’s heavy import lives inside its
+`run` function. A registered metric weighs `0` in the `weighted` selector until a
+caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes what is
+*measured and shown*, never what an existing edit selects.
+
+### Module Attributes
+
+| [`CORE_TIER`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.CORE_TIER)   | The tiers.   |
+|--------------------------------------------------------------|--------------|
+
+### Functions
+
+| [`default_metrics`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])   | The metric axis order: every registered scorer's metrics, in registration order.   |
+|-------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| [`metrics_of_tier`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.metrics_of_tier)(tier)                    | Every metric a tier's scorers produce.                                             |
+| [`register_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])   | Add `scorer`.                                                                      |
+| [`scorers`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])           | Registered scorers in registration order; the opt-in tier only when asked.         |
+| [`unregister_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.unregister_scorer)(name)                  | Remove a scorer (tests, plugin teardown).                                          |
+
+### Classes
+
+| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, alignment, ...)      | What a scorer is handed for ONE clip.   |
+|--------------------------------------------------------------------------------------------------|-----------------------------------------|
+| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...]) | One row of the registry.                |
+
+### muvid.footage.scoring.registry.CORE_TIER *= 'core'*
+
+The tiers. `core` runs by default; `lipsync` only when the opt-in is enabled.
+
+### *class* muvid.footage.scoring.registry.ClipContext(clip_id, path, alignment, frames, beat, vocal_stem, grid)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+What a scorer is handed for ONE clip. Paths and primitives, never the project.
+
+`frames` is the shared decode pass (`None` when no selected scorer declares
+`needs_frames`); `beat` is the master beat grid; `vocal_stem` the master vocal
+stem path (`None` unless the lip-sync tier is running); `grid` is
+`{"t0", "hop_s", "n"}`.
+
+### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One row of the registry. `run(ctx) -> tracks` is the whole behaviour.
+
+#### available *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[Callable](https://docs.python.org/3/library/typing.html#typing.Callable)[[], [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[bool](https://docs.python.org/3/builtins/functions.html#bool), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]]]* *= None*
+
+`() -> (ok, reason)`; `None` means always available. Surfaced by
+`list_available_extractors` — a missing dependency is a recorded reason, not a crash.
+
+### muvid.footage.scoring.registry.default_metrics(, include_lipsync=False)
+
+The metric axis order: every registered scorer’s metrics, in registration order.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.scoring.registry.metrics_of_tier(tier)
+
+Every metric a tier’s scorers produce.
+
+* **Return type:**
+  [`set`](https://docs.python.org/3/builtins/stdtypes.html#set)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.scoring.registry.register_scorer(scorer, , replace=False)
+
+Add `scorer`. A name or a metric already taken is refused unless `replace`.
+
+Two scorers producing one metric would silently overwrite each other’s track in
+the tensor, so the metric names are unique across the registry, not just the scorer
+names.
+
+* **Return type:**
+  [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)
+
+### muvid.footage.scoring.registry.scorers(, include_lipsync=False)
+
+Registered scorers in registration order; the opt-in tier only when asked.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)]
+
+### muvid.footage.scoring.registry.unregister_scorer(name)
+
+Remove a scorer (tests, plugin teardown). Unknown names raise `KeyError`.
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 
 # _autosummary/muvid.footage.scoring.segment.html.md
@@ -6575,6 +6708,7 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](_auto
 |----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | [`run_weighted`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                 |
 | [`selection_margin`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                               |
+| [`selection_notice`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                           |
 | [`weighted_selection`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP). |
 
 ### Classes
@@ -6594,7 +6728,7 @@ selects cleanly on the metrics it has.
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
 
-### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig())
+### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -6604,6 +6738,13 @@ Everything the score-driven strategy needs beyond `(alignments, song_duration)`.
 strategy raises a clear “run scoring first”). `shot_boundaries` (clip_id → song-times)
 is consumed only when `config.boundary_mode == "beats+shots"`. `pins` (Phase 2) is a
 list of `(song_start, song_end, clip_id)` hard constraints.
+
+#### report *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)*
+
+A sink the strategy WRITES its run meta into (`fallback`/`cause`/`config`/
+`lambda_effective`), so the caller learns what the DP did without
+`SelectionStrategy` changing its `list[EdlEntry]` return type. The context is
+frozen; the dict is not, and it is excluded from equality (muvid#19).
 
 ### muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY *= 2.0*
 
@@ -6679,6 +6820,20 @@ DP’s global path optimality. `NaN` where fewer than 2 clips cover the frame.
 
 * **Return type:**
   `ndarray`
+
+### muvid.footage.select_score.selection_notice(context)
+
+What the `weighted` DP did that the caller must be told, or `None`.
+
+Reads the `report` sink [`weighted_selection()`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.weighted_selection) filled. A DP that deferred to
+`best_confidence` hands back a plausible edit that is NOT the score-optimal one,
+and `strategy: weighted` alone would be a lie about it (muvid#19). `fallback`
+names what ran instead; `dwell_relaxed` is the milder case where the minimum shot
+length had to be dropped to find any edit. Nothing to say when there was nothing to
+select from (`empty`: a project with no placed footage is cut to the music).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.select_score.weighted_selection(alignments, song_duration, , context=None)
 
@@ -6759,7 +6914,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`filmstrips`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.filmstrips)(fp)                                   | Every video's filmstrip — thumbnails to draw each camera's lane.                                                                                                                                                                                                        |
 | [`filmstrip`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.filmstrip)(fp, \*, clip_id)                       | One video's filmstrip (the same record `filmstrips` gives per clip, with its `clip_id` and `fps`).                                                                                                                                                                      |
 | [`score`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score)(fp, \*[, hop_s, metrics, should_cancel])   | Look at the footage: score every placed video, on the song's own timeline — picture quality and how its movement sits on the beat — and save the curves.                                                                                                                |
-| [`scores`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, max_points])   | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
+| [`scores`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, ...])          | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
 | [`strategies`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment).                                                                                                                      |
 | [`propose_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                               |
 | [`save_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
@@ -6794,7 +6949,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`frame_size`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.frame_size)(video)                                | `[width, height]` of a video as DISPLAYED (a ±90° rotation swaps them).                                                                                                                                                                                                 |
 | [`frame_rate`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.frame_rate)(video)                                | A video's average frame rate (frames per second), or `None` if unreadable.                                                                                                                                                                                              |
 | [`public_render`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.public_render)(fp, meta)                          | A render record as a HOSTED surface may return it: `video` made relative to the project (`renders/<id>/final.mp4`) — never an absolute server path; play it by its `artifact_id`.                                                                                       |
-| [`require_scorable`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.require_scorable)(fp)                             | The alignments a scoring run would use; refuses without a song or an alignment.                                                                                                                                                                                         |
+| [`require_scorable`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.require_scorable)(fp, \*[, metrics])              | The alignments a scoring run would use; refuses without a song or an alignment, or when `metrics` names one nobody registered.                                                                                                                                          |
 | [`run_scoring`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.run_scoring)(fp, \*[, hop_s, metrics, ...])       | Score every aligned clip and persist the tensor (the engine behind [`score()`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score), with the job hooks a background runner passes).                                                                                            |
 
 ### Classes
@@ -7375,9 +7530,10 @@ edit is left as it was. The previous list is not kept.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.require_scorable(fp)
+### muvid.footage.service.require_scorable(fp, , metrics=None)
 
-The alignments a scoring run would use; refuses without a song or an alignment.
+The alignments a scoring run would use; refuses without a song or an alignment,
+or when `metrics` names one nobody registered.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)
@@ -7426,14 +7582,22 @@ it. Returns what was scored and what was skipped (and why).
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.scores(fp, , clip_id='', metrics=None, max_points=1500)
+### muvid.footage.service.scores(fp, , clip_id='', metrics=None, max_points=1500, weights=None, preset='', raw=False)
 
 The saved footage curves — for the lanes under each video, and for inspection.
 
 - no `clip_id` → a SUMMARY (metrics, per-clip coverage, beats, tempo, the decimated
   `selection_margin`, grid geometry) — bounded, safe as the default;
 - `clip_id` → that clip’s curves (values as `null`-masked arrays, decimated to
-  `max_points` per metric).
+  `max_points` per metric) and its `composite` lane: the weighted blend the
+  `weighted` strategy ranks by, `null` where no metric could be measured.
+
+`weights` / `preset` choose the weighting the composite and the
+`selection_margin` are computed under — pass the ones you will cut with, so the
+margin you read is the one the edit will see (default: the strategy’s defaults);
+the reply’s `weights` says which applied. `raw` also returns each metric’s
+un-normalised values (`null` where not measured), so a tooltip can show the real
+number beside its score.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -12761,14 +12925,17 @@ terminal state — so an agent needs ~1 poll, not many.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.scoring_tools.footage_scores(project_id, , clip_id='', metrics=None, max_points=1500)
+### muvid.mcp.scoring_tools.footage_scores(project_id, , clip_id='', metrics=None, max_points=1500, weights=None, preset='', raw=False)
 
 The persisted score tracks — for the multichannel editor + inspection. Free.
 
 - No `clip_id` → a SUMMARY (metrics, per-clip coverage %, beats, tempo, the decimated
   `selection_margin`, grid geometry) — bounded, safe as the default.
 - `clip_id` → that clip’s tracks (values as `null`-masked arrays, decimated to
-  `max_points` per metric), for the editor’s lanes.
+  `max_points` per metric) plus its `composite` lane, for the editor’s lanes.
+- `weights` / `preset` pick the weighting the composite and `selection_margin`
+  are computed under (the reply’s `weights` says which applied); `raw` adds each
+  metric’s un-normalised values.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -17459,7 +17626,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-26 16:31 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/0133c6084f24808185b14af189d352976541d2e8"><code>0133c60</code></a> on branch <code>main</code>, for **muvid 0.0.97** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-26 17:10 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/06aac4904d38429b9f7dc65bc2bea59c53fe0b3b"><code>06aac49</code></a> on branch <code>main</code>, for **muvid 0.0.98** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -17468,9 +17635,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/0133c6084f24808185b14af189d352976541d2e8"><code>0133c6084f24808185b14af189d352976541d2e8</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/06aac4904d38429b9f7dc65bc2bea59c53fe0b3b"><code>06aac4904d38429b9f7dc65bc2bea59c53fe0b3b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.97</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.98</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17479,9 +17646,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40358337065">40358337065</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40364796271">40364796271</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>bb5632c484fe01c5eeff03367d8d6e7f5aecc5b0</code> (in the history of the built commit) |
+| Event commit | <code>66d32311b0fc5123fa27fdb081f712579aaaa054</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17506,13 +17673,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.97/">0.0.97</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.98/">0.0.98</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 0133c6084f24808185b14af189d352976541d2e8
+git checkout 06aac4904d38429b9f7dc65bc2bea59c53fe0b3b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

@@ -64,7 +64,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`filmstrips`](#muvid.footage.service.filmstrips)(fp)                                   | Every video's filmstrip — thumbnails to draw each camera's lane.                                                                                                                                                                                                        |
 | [`filmstrip`](#muvid.footage.service.filmstrip)(fp, \*, clip_id)                       | One video's filmstrip (the same record `filmstrips` gives per clip, with its `clip_id` and `fps`).                                                                                                                                                                      |
 | [`score`](#muvid.footage.service.score)(fp, \*[, hop_s, metrics, should_cancel])   | Look at the footage: score every placed video, on the song's own timeline — picture quality and how its movement sits on the beat — and save the curves.                                                                                                                |
-| [`scores`](#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, max_points])   | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
+| [`scores`](#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, ...])          | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
 | [`strategies`](#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment).                                                                                                                      |
 | [`propose_edit`](#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                               |
 | [`save_edit`](#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
@@ -99,7 +99,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`frame_size`](#muvid.footage.service.frame_size)(video)                                | `[width, height]` of a video as DISPLAYED (a ±90° rotation swaps them).                                                                                                                                                                                                 |
 | [`frame_rate`](#muvid.footage.service.frame_rate)(video)                                | A video's average frame rate (frames per second), or `None` if unreadable.                                                                                                                                                                                              |
 | [`public_render`](#muvid.footage.service.public_render)(fp, meta)                          | A render record as a HOSTED surface may return it: `video` made relative to the project (`renders/<id>/final.mp4`) — never an absolute server path; play it by its `artifact_id`.                                                                                       |
-| [`require_scorable`](#muvid.footage.service.require_scorable)(fp)                             | The alignments a scoring run would use; refuses without a song or an alignment.                                                                                                                                                                                         |
+| [`require_scorable`](#muvid.footage.service.require_scorable)(fp, \*[, metrics])              | The alignments a scoring run would use; refuses without a song or an alignment, or when `metrics` names one nobody registered.                                                                                                                                          |
 | [`run_scoring`](#muvid.footage.service.run_scoring)(fp, \*[, hop_s, metrics, ...])       | Score every aligned clip and persist the tensor (the engine behind [`score()`](#muvid.footage.service.score), with the job hooks a background runner passes).                                                                                            |
 
 ### Classes
@@ -680,9 +680,10 @@ edit is left as it was. The previous list is not kept.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.require_scorable(fp)
+### muvid.footage.service.require_scorable(fp, , metrics=None)
 
-The alignments a scoring run would use; refuses without a song or an alignment.
+The alignments a scoring run would use; refuses without a song or an alignment,
+or when `metrics` names one nobody registered.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)
@@ -731,14 +732,22 @@ it. Returns what was scored and what was skipped (and why).
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.scores(fp, , clip_id='', metrics=None, max_points=1500)
+### muvid.footage.service.scores(fp, , clip_id='', metrics=None, max_points=1500, weights=None, preset='', raw=False)
 
 The saved footage curves — for the lanes under each video, and for inspection.
 
 - no `clip_id` → a SUMMARY (metrics, per-clip coverage, beats, tempo, the decimated
   `selection_margin`, grid geometry) — bounded, safe as the default;
 - `clip_id` → that clip’s curves (values as `null`-masked arrays, decimated to
-  `max_points` per metric).
+  `max_points` per metric) and its `composite` lane: the weighted blend the
+  `weighted` strategy ranks by, `null` where no metric could be measured.
+
+`weights` / `preset` choose the weighting the composite and the
+`selection_margin` are computed under — pass the ones you will cut with, so the
+margin you read is the one the edit will see (default: the strategy’s defaults);
+the reply’s `weights` says which applied. `raw` also returns each metric’s
+un-normalised values (`null` where not measured), so a tooltip can show the real
+number beside its score.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

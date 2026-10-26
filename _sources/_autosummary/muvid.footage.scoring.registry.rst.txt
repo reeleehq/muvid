@@ -1,0 +1,29 @@
+muvid.footage.scoring.registry
+==============================
+
+.. automodule:: muvid.footage.scoring.registry
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      CORE_TIER
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      default_metrics
+      metrics_of_tier
+      register_scorer
+      scorers
+      unregister_scorer
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      ClipContext
+      Scorer
+   

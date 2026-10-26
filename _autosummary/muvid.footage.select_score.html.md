@@ -49,6 +49,7 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](muvid
 |----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
 | [`run_weighted`](#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                 |
 | [`selection_margin`](#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                               |
+| [`selection_notice`](#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                           |
 | [`weighted_selection`](#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP). |
 
 ### Classes
@@ -68,7 +69,7 @@ selects cleanly on the metrics it has.
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
 
-### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig())
+### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -78,6 +79,13 @@ Everything the score-driven strategy needs beyond `(alignments, song_duration)`.
 strategy raises a clear “run scoring first”). `shot_boundaries` (clip_id → song-times)
 is consumed only when `config.boundary_mode == "beats+shots"`. `pins` (Phase 2) is a
 list of `(song_start, song_end, clip_id)` hard constraints.
+
+#### report *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)*
+
+A sink the strategy WRITES its run meta into (`fallback`/`cause`/`config`/
+`lambda_effective`), so the caller learns what the DP did without
+`SelectionStrategy` changing its `list[EdlEntry]` return type. The context is
+frozen; the dict is not, and it is excluded from equality (muvid#19).
 
 ### muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY *= 2.0*
 
@@ -153,6 +161,20 @@ DP’s global path optimality. `NaN` where fewer than 2 clips cover the frame.
 
 * **Return type:**
   `ndarray`
+
+### muvid.footage.select_score.selection_notice(context)
+
+What the `weighted` DP did that the caller must be told, or `None`.
+
+Reads the `report` sink [`weighted_selection()`](#muvid.footage.select_score.weighted_selection) filled. A DP that deferred to
+`best_confidence` hands back a plausible edit that is NOT the score-optimal one,
+and `strategy: weighted` alone would be a lie about it (muvid#19). `fallback`
+names what ran instead; `dwell_relaxed` is the milder case where the minimum shot
+length had to be dropped to find any edit. Nothing to say when there was nothing to
+select from (`empty`: a project with no placed footage is cut to the music).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.select_score.weighted_selection(alignments, song_duration, , context=None)
 

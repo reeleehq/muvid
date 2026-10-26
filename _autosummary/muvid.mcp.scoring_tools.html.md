@@ -38,14 +38,17 @@ terminal state — so an agent needs ~1 poll, not many.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.scoring_tools.footage_scores(project_id, , clip_id='', metrics=None, max_points=1500)
+### muvid.mcp.scoring_tools.footage_scores(project_id, , clip_id='', metrics=None, max_points=1500, weights=None, preset='', raw=False)
 
 The persisted score tracks — for the multichannel editor + inspection. Free.
 
 - No `clip_id` → a SUMMARY (metrics, per-clip coverage %, beats, tempo, the decimated
   `selection_margin`, grid geometry) — bounded, safe as the default.
 - `clip_id` → that clip’s tracks (values as `null`-masked arrays, decimated to
-  `max_points` per metric), for the editor’s lanes.
+  `max_points` per metric) plus its `composite` lane, for the editor’s lanes.
+- `weights` / `preset` pick the weighting the composite and `selection_margin`
+  are computed under (the reply’s `weights` says which applied); `raw` adds each
+  metric’s un-normalised values.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

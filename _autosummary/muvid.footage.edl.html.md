@@ -48,6 +48,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`STILL_DURATION_S`](#muvid.footage.edl.STILL_DURATION_S)          | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
 | [`SLIP_MAX_S`](#muvid.footage.edl.SLIP_MAX_S)                | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](#muvid.footage.edl.RATE_MAX_DEV)              | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
+| [`EDGE_S`](#muvid.footage.edl.EDGE_S)                    | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
 | [`NO_VOUCHED_COVERAGE`](#muvid.footage.edl.NO_VOUCHED_COVERAGE)       | nothing the aligner vouches for covers it at all.                                                                                                                                                                                                               |
 | [`UNVOUCHED_SELECTION`](#muvid.footage.edl.UNVOUCHED_SELECTION)       | A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.                                                                                                                          |
 | [`EXCLUSION_REASONS`](#muvid.footage.edl.EXCLUSION_REASONS)         | Every reason [`exclude_unvouched()`](#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.                                                                                                                                 |
@@ -176,6 +177,15 @@ recorded with its reason plus a test of the premise that reason rests on. See
 `workspace.CANVASES` by a test rather than imported from it, because
 `muvid.footage.edl` is on the import-safe path and `workspace` is not on
 it for free.
+
+### muvid.footage.edl.EDGE_S *= 0.25*
+
+phone clips start and
+stop with the shake of a thumb on the button. Lives here, with the other cut bounds,
+so the genre can publish all three without importing the cutter (numpy).
+
+* **Type:**
+  Keep this far (seconds) from a video’s first and last frame
 
 ### muvid.footage.edl.EXCLUSION_REASONS *= ('no_vouched_coverage', 'unvouched_selection')*
 

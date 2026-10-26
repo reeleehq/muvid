@@ -23,6 +23,7 @@ muvid.footage.edl
       STILL_DURATION_S
       SLIP_MAX_S
       RATE_MAX_DEV
+      EDGE_S
       NO_VOUCHED_COVERAGE
       UNVOUCHED_SELECTION
       EXCLUSION_REASONS

@@ -213,19 +213,22 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.RATE_MAX_DEV" title="muvid.footage.edl.RATE_MAX_DEV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RATE_MAX_DEV</span></code></a></p></td>
 <td><p>8 %, a nudge that keeps a dancer looking like themselves.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.NO_VOUCHED_COVERAGE" title="muvid.footage.edl.NO_VOUCHED_COVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_VOUCHED_COVERAGE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.EDGE_S" title="muvid.footage.edl.EDGE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></p></td>
+<td><p>phone clips start and stop with the shake of a thumb on the button.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.NO_VOUCHED_COVERAGE" title="muvid.footage.edl.NO_VOUCHED_COVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_VOUCHED_COVERAGE</span></code></a></p></td>
 <td><p>nothing the aligner vouches for covers it at all.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.UNVOUCHED_SELECTION" title="muvid.footage.edl.UNVOUCHED_SELECTION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_SELECTION</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.UNVOUCHED_SELECTION" title="muvid.footage.edl.UNVOUCHED_SELECTION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_SELECTION</span></code></a></p></td>
 <td><p>A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS" title="muvid.footage.edl.EXCLUSION_REASONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS" title="muvid.footage.edl.EXCLUSION_REASONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></p></td>
 <td><p>Every reason <a class="reference internal" href="#muvid.footage.edl.exclude_unvouched" title="muvid.footage.edl.exclude_unvouched"><code class="xref py py-func docutils literal notranslate"><span class="pre">exclude_unvouched()</span></code></a> can give, for a caller matching on the value.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></p></td>
 <td><p>The filters a <code class="docutils literal notranslate"><span class="pre">look</span></code> may name.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED" title="muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED" title="muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">looks</span></code> effects muvid's gate does not offer, each with why.</p></td>
 </tr>
 </tbody>
@@ -401,6 +404,18 @@ recorded with its reason plus a test of the premise that reason rests on. See
 <code class="docutils literal notranslate"><span class="pre">workspace.CANVASES</span></code> by a test rather than imported from it, because
 <code class="docutils literal notranslate"><span class="pre">muvid.footage.edl</span></code> is on the import-safe path and <code class="docutils literal notranslate"><span class="pre">workspace</span></code> is not on
 it for free.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.edl.EDGE_S">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">EDGE_S</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.25</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.EDGE_S" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.EDGE_S'">¶</a></dt>
+<dd><p>phone clips start and
+stop with the shake of a thumb on the button. Lives here, with the other cut bounds,
+so the genre can publish all three without importing the cutter (numpy).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Keep this far (seconds) from a video’s first and last frame</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.edl.EXCLUSION_REASONS">
@@ -1449,6 +1464,7 @@ render-time window that is never stored.</p>
 </li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.CropWindow'" class="reference internal" href="#muvid.footage.edl.CropWindow"><code class="docutils literal notranslate"><span class="pre">CropWindow</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.DFLT_LOOK_CANVAS'" class="reference internal" href="#muvid.footage.edl.DFLT_LOOK_CANVAS"><code class="docutils literal notranslate"><span class="pre">DFLT_LOOK_CANVAS</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.edl.EDGE_S'" class="reference internal" href="#muvid.footage.edl.EDGE_S"><code class="docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.EXCLUSION_REASONS'" class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS"><code class="docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.EdlEntry'" class="reference internal" href="#muvid.footage.edl.EdlEntry"><code class="docutils literal notranslate"><span class="pre">EdlEntry</span></code></a><ul>
 <li><a :data-current="activeSection === '#muvid.footage.edl.EdlEntry.crop'" class="reference internal" href="#muvid.footage.edl.EdlEntry.crop"><code class="docutils literal notranslate"><span class="pre">EdlEntry.crop</span></code></a></li>
@@ -1523,7 +1539,7 @@ render-time window that is never stored.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=f329fc45"></script>
+<script src="../_static/documentation_options.js?v=1b335f87"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

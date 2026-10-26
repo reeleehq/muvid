@@ -23,4 +23,5 @@ muvid.footage.scoring
    motionbeat
    orchestrator
    quality
+   registry
    segment

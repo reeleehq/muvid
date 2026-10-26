@@ -43,6 +43,7 @@
 - [muvid.footage.scoring.motionbeat](muvid.footage.scoring.motionbeat.html.md): Motion-to-beat tier: &#96;motion_beat_bas&#96; + &#96;motion_onset_xcorr&#96; → song-grid tracks.
 - [muvid.footage.scoring.orchestrator](muvid.footage.scoring.orchestrator.html.md): The scoring orchestrator: a project (song + aligned clips) → the persisted score tensor.
 - [muvid.footage.scoring.quality](muvid.footage.scoring.quality.html.md): Quality tier: sharpness / exposure / stability_shake / face_framing → song-grid tracks.
+- [muvid.footage.scoring.registry](muvid.footage.scoring.registry.html.md): The scorer registry: what a metric IS, so adding one touches no orchestrator code (muvid#19).
 - [muvid.footage.scoring.segment](muvid.footage.scoring.segment.html.md): Shot boundaries (PySceneDetect) + the per-clip coverage mask.
 - [muvid.footage.select_score](muvid.footage.select_score.html.md): The score-driven &#96;weighted&#96; selection strategy: a beat-snapped semi-Markov Viterbi DP.
 - [muvid.footage.service](muvid.footage.service.html.md): The footage operations — one function per thing you can do to a music-video project.

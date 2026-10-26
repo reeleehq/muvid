@@ -19,6 +19,7 @@ muvid.footage.select\_score
       resolve_config
       run_weighted
       selection_margin
+      selection_notice
       weighted_selection
    
    .. rubric:: Classes
