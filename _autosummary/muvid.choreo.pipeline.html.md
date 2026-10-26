@@ -48,9 +48,6 @@ Resource bounds, env-configurable. Same defaults as the lyric video’s.
 
 Refuse any input naming more than [`MAX_INPUT_FILES`](#muvid.choreo.pipeline.MAX_INPUT_FILES) files.
 
-* **Return type:**
-  [`None`](https://docs.python.org/3/builtins/constants.html#None)
-
 ```pycon
 >>> check_input_counts({'audio': 'a.wav'})
 >>> check_input_counts({'frames': ['x'] * 65})
@@ -59,12 +56,12 @@ Traceback (most recent call last):
 ValueError: inputs['frames'] names 65 files; the bound is 64 (MUVID_CHOREO_MAX_INPUT_FILES)
 ```
 
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### muvid.choreo.pipeline.check_render_bounds(canvas, duration_s)
 
 Refuse a render that would exceed the resource bounds. Refuse, not clamp.
-
-* **Return type:**
-  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ```pycon
 >>> check_render_bounds(Canvas(width=1920, height=1080, fps=30), 200.0)
@@ -73,6 +70,9 @@ Traceback (most recent call last):
 ...
 ValueError: canvas 30000x30000 is 900000000 px/frame; the bound is 8294400 (MUVID_CHOREO_MAX_PIXELS)
 ```
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.choreo.pipeline.palette_from_cover(cover, , workdir)
 

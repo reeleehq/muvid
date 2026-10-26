@@ -73,7 +73,7 @@ an event below it makes no object.
 * **Type:**
   Strength gate per density
 
-### *class* muvid.choreo.spec.Direction(\*, mood='', palette=<factory>, background='solid', density='normal', rationale='')
+### *class* muvid.choreo.spec.Direction(, mood='', palette=Palette(), background='solid', density='normal', rationale='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -85,7 +85,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Colours as `#rrggbb`. `low`/`mid`/`high` are the band colours.
 
-### *class* muvid.choreo.spec.Scene(\*, applies_to=('\*', ), archetype='fischinger', params=<factory>)
+### *class* muvid.choreo.spec.Scene(, applies_to=('\*',), archetype='fischinger', params=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -96,7 +96,7 @@ indices as strings (`"2"`), or `"*"` for everything. A named scene wins
 its sections over a `"*"` one; sections nobody names fall back to the
 first `"*"` scene, and to the first scene if there is none.
 
-### *class* muvid.choreo.spec.TreatmentSpec(\*, spec_version='1.0', title='', direction=<factory>, scenes=<factory>)
+### *class* muvid.choreo.spec.TreatmentSpec(\*, spec_version='1.0', title='', direction=Direction(), scenes=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -114,9 +114,6 @@ True
 
 Build from a plain mapping — TOTAL over what a model or caller sends.
 
-* **Return type:**
-  [`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec)
-
 ```pycon
 >>> s = TreatmentSpec.from_dict({'scenes': [None, {'applies_to': 'high',
 ...     'archetype': 'swarm', 'params': 'nope'}],
@@ -124,6 +121,9 @@ Build from a plain mapping — TOTAL over what a model or caller sends.
 >>> s.scenes[1].applies_to, s.scenes[1].params, s.direction.palette.bg
 (('high',), {}, '#000000')
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec)
 
 ### muvid.choreo.spec.coerce(obj)
 
@@ -136,32 +136,29 @@ Whatever a caller produced -> a renderable spec plus the repair notes.
 
 A one-scene treatment for `archetype`; the CLI’s `--archetype` shortcut.
 
-* **Return type:**
-  [`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec)
-
 ```pycon
 >>> default_treatment('mclaren').scenes[0].archetype
 'mclaren'
 ```
 
+* **Return type:**
+  [`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec)
+
 ### muvid.choreo.spec.json_schema()
 
 The JSON Schema for a [`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec).
-
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ```pycon
 >>> json_schema()['properties']['scenes']['items']['properties']['archetype']['enum']
 ['fischinger', 'star_guitar', 'mclaren', 'swarm']
 ```
 
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
 ### muvid.choreo.spec.repair(spec)
 
 Project `spec` onto the valid space; return `(spec, notes)`.
-
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ```pycon
 >>> fixed, notes = repair(TreatmentSpec(scenes=(Scene(archetype='swirl',
@@ -172,17 +169,20 @@ Project `spec` onto the valid space; return `(spec, notes)`.
 ["scenes[0].archetype 'swirl' -> 'fischinger'", 'scenes[0].params.columns 99 -> 24', "scenes[0].params dropped unknown ['bogus']"]
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.choreo.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
 ### muvid.choreo.spec.validate(spec)
 
 Human-readable problems; empty means renderable.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ```pycon
 >>> validate(TreatmentSpec(scenes=(Scene(archetype='nope'),)))
 ["scenes[0].archetype 'nope' is not one of the known archetypes"]
 ```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.choreo.spec.vocabulary()
 

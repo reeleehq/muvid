@@ -83,7 +83,7 @@ The persona registry. Populated from the packaged markdown on first use;
 [`register_persona()`](#muvid.lyricvid.director.register_persona) adds more. Same idiom as `register_visual` /
 `register_selection_strategy` / `register_archetype`.
 
-### *class* muvid.lyricvid.director.Persona(\*, slug, name, doctrine='', legibility=0.5, prefers=(), mood='', palette=<factory>, typography=<factory>, motion=('fade', ), persistence='clear_on_line', quantize='word', cut_style='hard', attack_s=0.12, lead_s=0.0)
+### *class* muvid.lyricvid.director.Persona(, slug, name, doctrine='', legibility=0.5, prefers=(), mood='', palette=dict(), typography=dict(), motion=('fade',), persistence='clear_on_line', quantize='word', cut_style='hard', attack_s=0.12, lead_s=0.0)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -140,9 +140,6 @@ The context travels as a fenced JSON block, which is also how
 [`heuristic_llm()`](#muvid.lyricvid.director.heuristic_llm) reads it back: the zero-cost director and the model are
 given literally the same message rather than two views of one idea.
 
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
-
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
 >>> tt = from_words([('we', 0.0, .4), ('go', .4, .9)], duration=1.0)
@@ -159,6 +156,9 @@ True
 ['image', 'text']
 ```
 
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
+
 ### muvid.lyricvid.director.director_meta(spec)
 
 Read this module’s provenance back off a spec it produced.
@@ -169,15 +169,15 @@ also carries `fallback_reason` and appends it to the rationale, because a
 degraded result that presents as an intended one is the failure muvid keeps
 paying for elsewhere.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
 >>> tt = from_words([('go', 0.0, .5)], duration=1.0)
 >>> director_meta(propose_treatments(tt, n=1)[0])['source']
 'heuristic'
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.director.director_prompt()
 
@@ -188,9 +188,6 @@ in it is written twice: the vocabularies come from
 [`muvid.lyricvid.spec.vocabulary()`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.vocabulary) and the schema from
 [`output_schema()`](#muvid.lyricvid.director.output_schema).
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> text = director_prompt()
 >>> VOCABULARIES_MARKER in text or SCHEMA_MARKER in text
@@ -198,6 +195,9 @@ False
 >>> '`karaoke_wipe`' in text and '"one_word_centred"' in text
 True
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.lyricvid.director.heuristic_director(context, , persona=None)
 
@@ -217,9 +217,6 @@ section gets the runner-up archetype as a lift. In that case *every* section
 gets its own scene and none is `"*"`, because the compiler renders a
 `"*"` scene over the whole song and the words would double up.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
 >>> words = [(w, i * .5, i * .5 + .45) for i, w in
@@ -234,6 +231,9 @@ gets its own scene and none is `"*"`, because the compiler renders a
 []
 ```
 
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
 ### muvid.lyricvid.director.heuristic_llm()
 
 The zero-cost director, as an `llm` seam implementation.
@@ -242,9 +242,6 @@ Conforming to the seam rather than sitting beside it means the default path
 and the production path run the *same* code in [`propose_treatments()`](#muvid.lyricvid.director.propose_treatments) —
 same messages, same schema, same repair, same meta — so the free path is
 exercised by every test the paid one would be.
-
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Sequence`](https://docs.python.org/3/library/typing.html#typing.Sequence)[[`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]], [`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]], [`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
 
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
@@ -256,12 +253,12 @@ exercised by every test the paid one would be.
 'one_word_centred'
 ```
 
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Sequence`](https://docs.python.org/3/library/typing.html#typing.Sequence)[[`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]], [`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]], [`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
+
 ### muvid.lyricvid.director.list_personas()
 
 Every registered persona, packaged ones first, in file order.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Persona`](#muvid.lyricvid.director.Persona)]
 
 ```pycon
 >>> [p.slug for p in list_personas()]
@@ -270,12 +267,12 @@ Every registered persona, packaged ones first, in file order.
 True
 ```
 
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Persona`](#muvid.lyricvid.director.Persona)]
+
 ### muvid.lyricvid.director.output_schema()
 
 The JSON Schema a model generates against — a closed form of the spec’s.
-
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ```pycon
 >>> s = output_schema()
@@ -287,6 +284,9 @@ False
 'one_word_centred'
 ```
 
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
 ### muvid.lyricvid.director.prompt_context(timed_text, , song_title='', extra=None)
 
 Everything the director should see, and nothing else. No audio bytes.
@@ -296,9 +296,6 @@ times were *measured* or interpolated, and the closed vocabularies. Anything
 a caller has already measured elsewhere — tempo, key, a beat count — goes in
 through `extra` and lands under `measurements`, so the director can use
 a real number without this module growing an audio dependency.
-
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
@@ -311,6 +308,9 @@ a real number without this module growing an audio dependency.
 >>> ctx['timing']['measured'], sorted(ctx['vocabularies'])[0]
 (True, 'archetypes')
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.director.propose_treatments(timed_text, , n=3, song_title='', reference_image=None, llm=None, personas=None)
 
@@ -328,9 +328,6 @@ genuinely different rather than `n` samples of one.
 Every returned spec has been through [`coerce()`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.coerce), so
 `validate` is empty by construction; the substitutions repair made are
 recorded in [`director_meta()`](#muvid.lyricvid.director.director_meta) under `repairs`.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`TreatmentSpec`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.TreatmentSpec)]
 
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
@@ -362,6 +359,9 @@ so rather than passing off a fallback as a decision:
 True
 ```
 
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`TreatmentSpec`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.TreatmentSpec)]
+
 ### muvid.lyricvid.director.rank_treatments(specs, timed_text)
 
 Order options without a human. Deterministic, and it explains itself.
@@ -377,9 +377,6 @@ that defeat themselves).
 
 Returns `(spec, score, why)`, best first, with ties broken on the leading
 archetype so the order is stable across runs.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.TreatmentSpec), [`float`](https://docs.python.org/3/builtins/functions.html#float), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
@@ -403,6 +400,9 @@ True
 'legibility 0.70 · contrast 0.03 · coverage 1.00 · coherence 1.00 — weakest is contrast'
 ```
 
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.TreatmentSpec), [`float`](https://docs.python.org/3/builtins/functions.html#float), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
 ### muvid.lyricvid.director.register_persona(persona)
 
 Register a persona under its slug (returns it, for inline use).
@@ -414,10 +414,10 @@ Register a persona under its slug (returns it, for inline use).
 
 Resolve a slug or a [`Persona`](#muvid.lyricvid.director.Persona) to a [`Persona`](#muvid.lyricvid.director.Persona).
 
-* **Return type:**
-  [`Persona`](#muvid.lyricvid.director.Persona)
-
 ```pycon
 >>> resolve_persona('karaoke_host').name
 'The Karaoke Host'
 ```
+
+* **Return type:**
+  [`Persona`](#muvid.lyricvid.director.Persona)

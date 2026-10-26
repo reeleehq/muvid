@@ -79,7 +79,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 One picture source a montage may cut to: a video (`duration_s` its length) or a
 still (`kind="still"`, `duration_s=None` — it can be held for any span).
 
-### *class* muvid.footage.music_cut.MusicCut(entries=<factory>, report=<factory>)
+### *class* muvid.footage.music_cut.MusicCut(entries=list(), report=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -140,11 +140,11 @@ order (spans with nothing in them are simply not covered — the caller’s
 The cutting style for a song: a slow dissolve below `SLOW_TEMPO_BPM`, hard
 cuts on the beat otherwise.
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> class A: tempo_bpm = 80.0
 >>> pick_archetype(A())
 'ballad_dissolve'
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)

@@ -59,7 +59,7 @@ module produces, that multiplies the intra-frames — and the upload size — fo
 no gain, since YouTube re-encodes anyway. Two seconds is the usual compromise.
 Pass `gop_seconds=0.5` for strict compliance.
 
-### *class* muvid.visualize.video.RenderResult(path, duration, size, fps, visual, loudness=None, canvas=None, extras=<factory>)
+### *class* muvid.visualize.video.RenderResult(path, duration, size, fps, visual, loudness=None, canvas=None, extras=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -71,30 +71,51 @@ Usable anywhere a path is (it implements `os.PathLike`).
 
 The rendered mp4.
 
+* **Type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
 #### duration
 
 Its duration in seconds.
+
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 #### size
 
 Frame size.
 
+* **Type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]
+
 #### fps
 
 Frame rate.
+
+* **Type:**
+  [`int`](https://docs.python.org/3/builtins/functions.html#int)
 
 #### visual
 
 The strategy that produced it.
 
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
 #### loudness
 
 The applied loudness target and measurement, if normalized.
+
+* **Type:**
+  [`Loudness`](muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.Loudness) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 #### canvas
 
 The composed canvas image, when the strategy built one — reuse
 it as the thumbnail rather than re-deriving it.
+
+* **Type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.visualize.video.render_audio_video(audio, image=None, , visual='auto', saveas=None, size=(1920, 1080), fps=24, title=None, layout=None, title_style=None, normalize=False, loudness=None, crf=18, preset='medium', audio_bitrate='384k', gop_seconds=2.0, options=None, workdir=None)
 
@@ -109,7 +130,7 @@ of songs play back at a consistent level.
   * **audio** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)) – The song (`.wav` is preferred when you have it — YouTube
     re-encodes regardless, so give it the cleanest input).
   * **image** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – Cover art. Used for the picture, and composed onto a 16:9 canvas.
-  * **visual** (`Union`[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`VisualContext`](muvid.visualize.visuals.html.md#muvid.visualize.visuals.VisualContext)], [`VisualPlan`](muvid.visualize.visuals.html.md#muvid.visualize.visuals.VisualPlan) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]) – A registered strategy name (`"still"`, `"ken_burns"`,
+  * **visual** ([`Union`](https://docs.python.org/3/library/typing.html#typing.Union)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`VisualContext`](muvid.visualize.visuals.html.md#muvid.visualize.visuals.VisualContext)], [`VisualPlan`](muvid.visualize.visuals.html.md#muvid.visualize.visuals.VisualPlan) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]) – A registered strategy name (`"still"`, `"ken_burns"`,
     `"cqt"`, `"bars"`, `"spectrum"`, `"waves"`, `"scope"`),
     `"auto"`, or any callable (see [`muvid.visualize.visuals`](muvid.visualize.visuals.html.md#module-muvid.visualize.visuals)).
   * **saveas** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – Output path (default: `<audio-stem>.mp4`).

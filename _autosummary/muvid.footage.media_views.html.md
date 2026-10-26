@@ -57,13 +57,13 @@ rows, first_frame, n_frames}]}`.
 
 The cache directory name: the clip’s content and every parameter.
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> filmstrip_key("ab" * 32, fps=2.0, height=90, cols=10, rows=10)
 'abababababababab-f2-h90-10x10-v2'
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.media_views.song_peaks(fp, , n)
 

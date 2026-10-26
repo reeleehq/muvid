@@ -397,9 +397,6 @@ because it has no onset. Read on screen it needs a macron. Also `ン`
 before a vowel or `y` takes an apostrophe, `ッ` before `ch` is `t`,
 and glides keep their `w`/`y` (muvid#145).
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> romanize_hepburn("バス バス スタート")
 'basu basu sutāto'
@@ -424,12 +421,12 @@ Input is NFKC-normalised first, so half-width (`ﾊﾞｽ`) and decomposed
 vowels spelt with a second vowel (`とうきょう`) keep both letters: telling
 `ou` the long vowel from `o``+``u` needs a dictionary.
 
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
 ### muvid.lyricvid.glyph_align.romanize_kana(word)
 
 `(glyph, romaji)` per glyph, the romaji chunks concatenating to the word.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ```pycon
 >>> romanize_kana("バカンス")
@@ -448,6 +445,9 @@ vowels spelt with a second vowel (`とうきょう`) keep both letters: telling
 
 A glyph with an empty chunk (`ー`, punctuation) has no onset of its own;
 the aligner places it between its neighbours and marks it unmeasured.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ### muvid.lyricvid.glyph_align.squeezed(, min_glyph_s=0.04)
 

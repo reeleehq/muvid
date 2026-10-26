@@ -922,9 +922,6 @@ for by construction (it claims no sync with the song), so every containment and
 blend check below applies to it with no second code path, and the trust gate has
 nothing to refuse.
 
-* **Return type:**
-  [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)
-
 ```pycon
 >>> a = unplaced('c1', 10.0)
 >>> e = EdlEntry(song_start=30.0, song_end=34.0, clip_id='c1', source_in=2.0)
@@ -935,6 +932,9 @@ nothing to refuse.
 2.0
 ```
 
+* **Return type:**
+  [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)
+
 ### muvid.footage.edl.unplaced(clip_id, duration_s)
 
 The record of a clip with no place on the song: usable by free cuts only.
@@ -942,14 +942,14 @@ The record of a clip with no place on the song: usable by free cuts only.
 Not vouched (an anchored cut to it is refused exactly like a cut to a clip the
 aligner could not place), never overlapping, never persisted.
 
-* **Return type:**
-  [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)
-
 ```pycon
 >>> a = unplaced('c1', 12.0)
 >>> a.reliable, a.overlaps, a.source
 (False, False, 'unplaced')
 ```
+
+* **Return type:**
+  [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)
 
 ### muvid.footage.edl.validate_edl(edl, alignments, song_duration, , canvas=(1920, 1920), allow_unreliable=False)
 

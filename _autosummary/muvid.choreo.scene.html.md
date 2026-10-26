@@ -54,7 +54,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Output geometry.
 
-### *class* muvid.choreo.scene.ChoreoScene(\*, canvas, duration, backdrops, objects, meta=<factory>)
+### *class* muvid.choreo.scene.ChoreoScene(, canvas, duration, backdrops, objects, meta=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -90,9 +90,6 @@ One drawable thing with a life.
 
 Every object and backdrop for the whole song. Deterministic given `seed`.
 
-* **Return type:**
-  [`ChoreoScene`](#muvid.choreo.scene.ChoreoScene)
-
 ```pycon
 >>> from muvid.choreo.analysis import Analysis, Event, Section, Tempo
 >>> a = Analysis(duration=4.0, tempo=Tempo(bpm=120, beats=(0, .5, 1, 1.5), source='numpy'),
@@ -106,12 +103,12 @@ Every object and backdrop for the whole song. Deterministic given `seed`.
 True
 ```
 
+* **Return type:**
+  [`ChoreoScene`](#muvid.choreo.scene.ChoreoScene)
+
 ### muvid.choreo.scene.register_archetype(name)
 
 Register an archetype under `name`.
-
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Obj`](#muvid.choreo.scene.Obj)]]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Obj`](#muvid.choreo.scene.Obj)]]]
 
 ```pycon
 >>> @register_archetype('doctest-demo')
@@ -121,6 +118,9 @@ True
 >>> del ARCHETYPE_FNS['doctest-demo']
 ```
 
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Obj`](#muvid.choreo.scene.Obj)]]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Obj`](#muvid.choreo.scene.Obj)]]]
+
 ### muvid.choreo.scene.unit_hash(seed, \*keys)
 
 A float in `[0, 1)` that is a pure function of its integer arguments.
@@ -128,12 +128,12 @@ A float in `[0, 1)` that is a pure function of its integer arguments.
 splitmix64-style mixing; no state, no platform dependence, so it is the
 only “random” this package allows itself.
 
-* **Return type:**
-  [`float`](https://docs.python.org/3/builtins/functions.html#float)
-
 ```pycon
 >>> unit_hash(0, 1) == unit_hash(0, 1), 0.0 <= unit_hash(3, 4, 5) < 1.0
 (True, True)
 >>> unit_hash(0, 1) != unit_hash(1, 1)
 True
 ```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)

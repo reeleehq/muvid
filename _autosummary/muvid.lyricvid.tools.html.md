@@ -40,14 +40,14 @@ that flag will ship a video that looks subtly out of sync.
 
 Every installed subgenre, without importing any renderer.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> c = catalog()
 >>> 'lyric-video' in [s['slug'] for s in c['subgenres']]
 True
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.tools.export_captions(timed_text, output_dir, tracks, , offset_s=0.0, lead_s=None, min_s=None, tail_s=None, stem='captions', fmt='srt')
 
@@ -92,13 +92,13 @@ render before paying for it.
 
 JSON Schema for a treatment spec — also the model’s output constraint.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> treatment_schema()['type']
 'object'
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.tools.validate_treatment(treatment)
 
@@ -108,14 +108,14 @@ A treatment that is *nearly* right is repaired rather than rejected, because
 a mechanical substitution renders something good now where a retry costs a
 round trip and may fail the same way. Every substitution is reported.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> r = validate_treatment({'scenes': [{'archetype': 'swirl'}]})
 >>> r['valid'], r['repairs']
 (False, ["scenes[0].archetype 'swirl' -> 'one_word_centred'"])
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.tools.vocabulary()
 
@@ -123,11 +123,11 @@ The closed vocabularies a treatment may draw on.
 
 One copy, read by the prompt, the JSON Schema, the UI and the docs.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> v = vocabulary()
 >>> sorted(v)[:2]
 ['archetypes', 'cases']
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]

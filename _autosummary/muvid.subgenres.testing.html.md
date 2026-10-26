@@ -35,7 +35,7 @@ used by muvid’s own tests and by this module’s doctests.
 | [`ConformanceReport`](#muvid.subgenres.testing.ConformanceReport)(slug[, passed, failures, ...])   | What [`check_subgenre_conformance()`](#muvid.subgenres.testing.check_subgenre_conformance) found.   |
 |-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 
-### *class* muvid.subgenres.testing.ConformanceReport(slug, passed=<factory>, failures=<factory>, skipped=<factory>)
+### *class* muvid.subgenres.testing.ConformanceReport(slug, passed=list(), failures=list(), skipped=list())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -44,9 +44,6 @@ What [`check_subgenre_conformance()`](#muvid.subgenres.testing.check_subgenre_co
 ### muvid.subgenres.testing.check_subgenre_conformance(subgenre, , workdir, render=True, inputs=None, params=None)
 
 Check a manifest against the contract, and optionally run one render.
-
-* **Return type:**
-  [`ConformanceReport`](#muvid.subgenres.testing.ConformanceReport)
 
 ```pycon
 >>> import tempfile
@@ -58,6 +55,9 @@ Check a manifest against the contract, and optionally run one render.
 >>> rep.ok
 True
 ```
+
+* **Return type:**
+  [`ConformanceReport`](#muvid.subgenres.testing.ConformanceReport)
 
 ### muvid.subgenres.testing.echo_renderer(request)
 

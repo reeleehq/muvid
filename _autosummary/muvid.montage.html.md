@@ -38,7 +38,7 @@ Four seams, each with a default that genuinely works:
 This module is a PEP 562 lazy facade, like `muvid/__init__.py`: importing it
 pulls nothing heavy, and each attribute is resolved on first use.
 
-### *class* muvid.montage.Analysis(\*, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=<factory>)
+### *class* muvid.montage.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -52,9 +52,6 @@ Seconds per beat at the estimated tempo.
 
 The inverse of `to_dict()` (as rounded) — so a measured song can be kept.
 
-* **Return type:**
-  [`Analysis`](muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
-
 ```pycon
 >>> a = Analysis(duration=4.0, tempo_bpm=120.0, beats=(0.0, 0.5), downbeats=(0.0,),
 ...              sections=(Section(label='verse', start=0.0, end=4.0),))
@@ -62,13 +59,16 @@ The inverse of `to_dict()` (as rounded) — so a measured song can be kept.
 True
 ```
 
+* **Return type:**
+  [`Analysis`](muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
+
 ### *class* muvid.montage.Canvas(, width=1920, height=1080, fps=30)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Output geometry.
 
-### *class* muvid.montage.Plan(\*, duration, tempo_bpm, beats_per_bar, beat_source, section_source, sections, media, slots, reuse=<factory>, treatment=<factory>, notes=(), plan_version='1.0')
+### *class* muvid.montage.Plan(, duration, tempo_bpm, beats_per_bar, beat_source, section_source, sections, media, slots, reuse=dict(), treatment=dict(), notes=(), plan_version='1.0')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -81,7 +81,7 @@ Read a plan back — a hand-edited `plan.json` renders the same way.
 * **Return type:**
   [`Plan`](muvid.montage.plan.html.md#muvid.montage.plan.Plan)
 
-### *class* muvid.montage.TreatmentSpec(\*, spec_version='1.0', title='', direction=<factory>, scenes=<factory>)
+### *class* muvid.montage.TreatmentSpec(\*, spec_version='1.0', title='', direction=Direction(), scenes=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -104,9 +104,6 @@ field’s type rather than raised on; unknown keys are dropped. What
 cannot be coerced falls to the default and `repair()` reports the
 vocabulary-level substitutions afterwards.
 
-* **Return type:**
-  [`TreatmentSpec`](muvid.montage.spec.html.md#muvid.montage.spec.TreatmentSpec)
-
 ```pycon
 >>> s = TreatmentSpec.from_dict({'scenes': [None, {'applies_to': 'chorus',
 ...     'archetype': 'grid', 'params': 'fast'}],
@@ -117,6 +114,9 @@ vocabulary-level substitutions afterwards.
 >>> s.direction.palette.accent, s.direction.reuse.min_gap
 ('#00ff00', 3)
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](muvid.montage.spec.html.md#muvid.montage.spec.TreatmentSpec)
 
 #### to_dict()
 

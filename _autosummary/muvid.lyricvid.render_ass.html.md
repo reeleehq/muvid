@@ -71,9 +71,6 @@ long is unreadable to the human this file is also written for.
 
 The motion families this renderer can draw.
 
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
-
 ### Examples
 
 ```pycon
@@ -81,12 +78,12 @@ The motion families this renderer can draw.
 ['cut', 'fade', 'pop', 'rise', 'typewriter', 'wipe']
 ```
 
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
 ### muvid.lyricvid.render_ass.register_motion(name)
 
 Register how one `motion` family draws itself.
-
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`_Placed`], [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[`_Event`]]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`_Placed`], [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[`_Event`]]]
 
 ### Examples
 
@@ -97,6 +94,9 @@ Register how one `motion` family draws itself.
 True
 >>> del MOTION_FNS['doctest-demo']
 ```
+
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`_Placed`], [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[`_Event`]]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`_Placed`], [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[`_Event`]]]
 
 ### muvid.lyricvid.render_ass.render(scene, , audio, output, workdir, ass_path=None, crf=18)
 

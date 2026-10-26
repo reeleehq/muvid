@@ -91,7 +91,7 @@ positional tuple is geometry nobody can check at the call site.
     when the caller asked for `allow_rotation`; `Cue` cannot express a
     rotation, so `shape_fill` does not ask for one.
 
-### muvid.lyricvid.shape.SHAPE_KINDS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Callable](https://docs.python.org/3/library/typing.html#typing.Callable)[[...], [Any](https://docs.python.org/3/library/typing.html#typing.Any)]]* *= {'mask_image': <function \_image_ink>, 'named': <function \_named_ink>, 'svg_path': <function \_svg_ink>}*
+### muvid.lyricvid.shape.SHAPE_KINDS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Callable](https://docs.python.org/3/library/typing.html#typing.Callable)[..., [Any](https://docs.python.org/3/library/typing.html#typing.Any)]]* *= {'mask_image': <function \_image_ink>, 'named': <function \_named_ink>, 'svg_path': <function \_svg_ink>}*
 
 The three sources a shape can come from. Closed, because
 [`muvid.lyricvid.spec.ShapeRef`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.ShapeRef) is: the extension seam for a new
@@ -105,26 +105,26 @@ The LAYOUT box — the room the packer reserved, glyphs plus leading and side
 bearings — which is what a caller wants for a hit test, a debug overlay, or
 for asserting that two placements do not collide.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
-
 ```pycon
 >>> p = Placement(text='apple', x=0.5, y=0.5, size=0.1)
 >>> [round(c, 3) for c in bounding_box(p, aspect=16 / 9)]
 [0.408, 0.436, 0.592, 0.564]
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
 ### muvid.lyricvid.shape.list_shapes()
 
 Every registered outline name, sorted.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ```pycon
 >>> list_shapes()
 ['apple', 'circle', 'heart', 'square', 'star']
 ```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.lyricvid.shape.pack_words_into_shape(texts, , shape_kind='named', shape_value='circle', aspect=1.7777777777777777, base_size=0.06, grid_height=192, margin=0.04, allow_rotation=False, shrink_steps=2, mask_options=None)
 
@@ -210,9 +210,6 @@ The function receives `(u, v)` arrays in the shape box’s coordinates and
 returns a boolean array. Implicit functions and polygons both fit; see
 `polygon_shape()` for the latter.
 
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
-
 ```pycon
 >>> @register_shape('doctest-blob')
 ... def _blob(u, v): return (u - 0.5) ** 2 + (v - 0.5) ** 2 <= 0.1
@@ -221,12 +218,12 @@ True
 >>> del NAMED_SHAPES['doctest-blob']
 ```
 
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
+
 ### muvid.lyricvid.shape.resolve_shape(name)
 
 The outline function for `name`, or a ValueError naming the options.
-
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ```pycon
 >>> resolve_shape('banana')
@@ -234,6 +231,9 @@ Traceback (most recent call last):
     ...
 ValueError: unknown named shape 'banana'; known: apple, circle, heart, square, star
 ```
+
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.shape.shape_mask(kind='named', value='circle', , aspect=1.7777777777777777, grid_height=192, margin=0.04, \*\*options)
 
@@ -244,11 +244,11 @@ normalised canvas point `(x, y)` is the pixel `[int(y * H), int(x * W)]`.
 The outline is drawn into the largest centred SQUARE the canvas allows (less
 `margin`), which is what keeps a circle round on a 16:9 frame.
 
-* **Return type:**
-  [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)
-
 ```pycon
 >>> m = shape_mask('named', 'circle', aspect=1.0, grid_height=32)
 >>> m.shape, bool(m[16, 16]), bool(m[0, 0])
 ((32, 32), True, False)
 ```
+
+* **Return type:**
+  [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)

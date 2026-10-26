@@ -68,9 +68,6 @@ The muvid EDL (a list of `EdlEntry` dicts) a production’s edit document means.
 `source_sizes` maps each clip id to its DISPLAYED `(width, height)` — needed only
 for a framing document; a clip it does not name is refused rather than guessed.
 
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
-
 ```pycon
 >>> doc = {"edl": [
 ...     {"song_start": 0.0, "song_end": 2.0, "clip_id": "a",
@@ -81,6 +78,9 @@ for a framing document; a clip it does not name is refused rather than guessed.
 >>> "crop" in edl[0], edl[1]["crop"], edl[1]["crop_end"]["x"]
 (False, {'x': 0.1, 'y': 0.1, 'w': 0.5, 'h': 0.5}, 0.4)
 ```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
 
 ### muvid.importing.import_production(manifest, projects_dir, , base_dir=None, dry_run=False, caller='importer')
 

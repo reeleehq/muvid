@@ -71,9 +71,6 @@ Slot boundaries in frames, and the transition length into each slot.
 slot i (0 for a cut; slot 0’s is always 0). A transition is clamped to
 half the shorter neighbour and dropped below `MIN_TRANSITION_FRAMES`.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`int`](https://docs.python.org/3/builtins/functions.html#int)], [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`int`](https://docs.python.org/3/builtins/functions.html#int)]]
-
 ```pycon
 >>> frame_layout([0.0, 1.0, 2.0], 3.0, [0.0, 0.5, 0.05], 24)
 ([0, 24, 48, 72], [0, 12, 0])
@@ -81,15 +78,15 @@ half the shorter neighbour and dropped below `MIN_TRANSITION_FRAMES`.
 ([0, 2, 5], [0, 0])
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`int`](https://docs.python.org/3/builtins/functions.html#int)], [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`int`](https://docs.python.org/3/builtins/functions.html#int)]]
+
 ### muvid.montage.render.grade_filter(grade, accent='#e0533d', , strength=0.35)
 
 The ffmpeg fragment for a grade, or `""` for none.
 
 `tint` mixes `strength` of `luma * accent` into the frame — a closed
 form over the accent colour, never a caller-supplied filter string.
-
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ```pycon
 >>> grade_filter('none')
@@ -99,6 +96,9 @@ form over the accent colour, never a caller-supplied filter string.
 >>> grade_filter('tint', '#ff0000', strength=0.5)
 'colorchannelmixer=rr=0.6495:rg=0.2935:rb=0.057:gr=0:gg=0.5:gb=0:br=0:bg=0:bb=0.5'
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.montage.render.render_plan(plan, , canvas, audio, output, workdir, grade='none', palette=None, crf=18, preset='fast', keep_parts=False)
 
@@ -130,9 +130,6 @@ The `z`/`x`/`y` expressions for `zoompan` over a still.
 that starts mid-slot (or, negative, before the slot’s first frame on the
 incoming side of a blend) samples the slot’s own path.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
-
 ```pycon
 >>> from muvid.montage.plan import Keyframe, Window
 >>> path = (Keyframe(0.0, Window(0.0, 0.0, 1.0)), Keyframe(2.0, Window(0.1, 0.1, 0.8)))
@@ -144,3 +141,6 @@ incoming side of a blend) samples the slot’s own path.
 >>> zoompan_exprs(path[:1], frame_offset=0, fps=24)
 {'z': '1/(1)', 'x': 'iw*(0)', 'y': 'ih*(0)'}
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]

@@ -63,7 +63,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 A picture for one sung word, with the credit line its licence requires.
 
-### *class* muvid.lyricvid.pictures.Tile(picture, box, appear, beats=<factory>)
+### *class* muvid.lyricvid.pictures.Tile(picture, box, appear, beats=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 

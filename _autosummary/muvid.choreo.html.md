@@ -36,7 +36,7 @@ The pipeline is four seams, each with a default that genuinely works:
 This module is a PEP 562 lazy facade, like `muvid/__init__.py`: importing it
 pulls nothing heavy, and each attribute is resolved on first use.
 
-### *class* muvid.choreo.Analysis(\*, duration, tempo, events, sections, bands=<factory>, meta=<factory>)
+### *class* muvid.choreo.Analysis(\*, duration, tempo, events, sections, bands=<factory>, meta=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -63,13 +63,13 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Output geometry.
 
-### *class* muvid.choreo.ChoreoScene(\*, canvas, duration, backdrops, objects, meta=<factory>)
+### *class* muvid.choreo.ChoreoScene(, canvas, duration, backdrops, objects, meta=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Everything the renderer needs, and nothing it has to interpret.
 
-### *class* muvid.choreo.TreatmentSpec(\*, spec_version='1.0', title='', direction=<factory>, scenes=<factory>)
+### *class* muvid.choreo.TreatmentSpec(\*, spec_version='1.0', title='', direction=Direction(), scenes=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -87,9 +87,6 @@ True
 
 Build from a plain mapping — TOTAL over what a model or caller sends.
 
-* **Return type:**
-  [`TreatmentSpec`](muvid.choreo.spec.html.md#muvid.choreo.spec.TreatmentSpec)
-
 ```pycon
 >>> s = TreatmentSpec.from_dict({'scenes': [None, {'applies_to': 'high',
 ...     'archetype': 'swarm', 'params': 'nope'}],
@@ -97,6 +94,9 @@ Build from a plain mapping — TOTAL over what a model or caller sends.
 >>> s.scenes[1].applies_to, s.scenes[1].params, s.direction.palette.bg
 (('high',), {}, '#000000')
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](muvid.choreo.spec.html.md#muvid.choreo.spec.TreatmentSpec)
 
 ### muvid.choreo.analyze(audio, , sample_rate=22050, beat_source='auto', bands={'high': (2000.0, 11025.0), 'low': (20.0, 200.0), 'mid': (200.0, 2000.0)}, min_ioi_beats={'high': 0.25, 'low': 0.5, 'mid': 0.25})
 
@@ -112,9 +112,6 @@ grid is always the numpy one; this is the path unit tests use.
 
 Every object and backdrop for the whole song. Deterministic given `seed`.
 
-* **Return type:**
-  [`ChoreoScene`](muvid.choreo.scene.html.md#muvid.choreo.scene.ChoreoScene)
-
 ```pycon
 >>> from muvid.choreo.analysis import Analysis, Event, Section, Tempo
 >>> a = Analysis(duration=4.0, tempo=Tempo(bpm=120, beats=(0, .5, 1, 1.5), source='numpy'),
@@ -127,6 +124,9 @@ Every object and backdrop for the whole song. Deterministic given `seed`.
 >>> compile_scene(spec_mod.default_treatment('fischinger'), a, seed=1) == s
 True
 ```
+
+* **Return type:**
+  [`ChoreoScene`](muvid.choreo.scene.html.md#muvid.choreo.scene.ChoreoScene)
 
 ### muvid.choreo.render_choreo(audio, output, , cover=None, treatment=None, archetype=None, seed=0, beat_source='auto', strict=False, width=1920, height=1080, fps=30, workdir=None)
 

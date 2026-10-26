@@ -43,9 +43,6 @@ a 4K frame, 60 fps, a 15-minute song. The media bound is this subgenre’s own.
 A supplied `treatment` is coerced and repaired; otherwise a one-scene
 treatment is built from `archetype` (default `beat_cut`).
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](muvid.montage.spec.html.md#muvid.montage.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)], [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
-
 ```pycon
 >>> t, notes, source = build_treatment({'archetype': 'grid'})
 >>> t.scenes[0].archetype, notes, source
@@ -54,12 +51,12 @@ treatment is built from `archetype` (default `beat_cut`).
 (["scenes[0].archetype 'nope' -> 'beat_cut'"], 'supplied')
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](muvid.montage.spec.html.md#muvid.montage.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)], [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
 ### muvid.montage.pipeline.check_render_bounds(canvas, duration_s, , n_photos=0, n_clips=0)
 
 Refuse a render that would exceed the resource bounds. Refuse, not clamp.
-
-* **Return type:**
-  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ```pycon
 >>> check_render_bounds(Canvas(width=1920, height=1080, fps=30), 200.0, n_photos=12)
@@ -72,6 +69,9 @@ Traceback (most recent call last):
 ...
 ValueError: 65 photos; the bound is 64 per input (MUVID_MONTAGE_MAX_MEDIA)
 ```
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.montage.pipeline.render(request)
 

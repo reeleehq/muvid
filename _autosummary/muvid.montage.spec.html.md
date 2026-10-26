@@ -80,7 +80,7 @@ without the model naming a number of beats.
 
 Multiplier on beats-per-cut per cut feel. Smaller is more cuts.
 
-### *class* muvid.montage.spec.Direction(\*, mood='', palette=<factory>, cut_feel='steady', grade='none', reuse=<factory>, rationale='')
+### *class* muvid.montage.spec.Direction(, mood='', palette=Palette(), cut_feel='steady', grade='none', reuse=Reuse(), rationale='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -118,7 +118,7 @@ quarter of the pool back for the last chorus.
 
 Section labels the planner knows how to pace. Others are paced as a verse.
 
-### *class* muvid.montage.spec.Scene(\*, applies_to=('\*', ), archetype='beat_cut', params=<factory>)
+### *class* muvid.montage.spec.Scene(, applies_to=('\*',), archetype='beat_cut', params=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -134,7 +134,7 @@ How a slot arrives. A curated subset of ffmpeg’s `xfade` transitions, the
 same posture as `muvid.footage.edl.TRANSITION_CURVES`: a name outside it is
 refused here rather than discovered as an ffmpeg error three stages later.
 
-### *class* muvid.montage.spec.TreatmentSpec(\*, spec_version='1.0', title='', direction=<factory>, scenes=<factory>)
+### *class* muvid.montage.spec.TreatmentSpec(\*, spec_version='1.0', title='', direction=Direction(), scenes=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -157,9 +157,6 @@ field’s type rather than raised on; unknown keys are dropped. What
 cannot be coerced falls to the default and [`repair()`](#muvid.montage.spec.repair) reports the
 vocabulary-level substitutions afterwards.
 
-* **Return type:**
-  [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec)
-
 ```pycon
 >>> s = TreatmentSpec.from_dict({'scenes': [None, {'applies_to': 'chorus',
 ...     'archetype': 'grid', 'params': 'fast'}],
@@ -170,6 +167,9 @@ vocabulary-level substitutions afterwards.
 >>> s.direction.palette.accent, s.direction.reuse.min_gap
 ('#00ff00', 3)
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec)
 
 #### to_dict()
 
@@ -186,21 +186,18 @@ Take whatever a caller or a model produced and return a plannable spec.
 Accepts a [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec), a mapping, or a JSON string — and repairs
 it. This is the one entry point production code should use.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
-
 ```pycon
 >>> spec, notes = coerce('{"scenes": [{"archetype": "grid"}]}')
 >>> spec.scenes[0].archetype, notes
 ('grid', [])
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
 ### muvid.montage.spec.json_schema()
 
 The JSON Schema for a [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec).
-
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ```pycon
 >>> s = json_schema()
@@ -208,17 +205,20 @@ The JSON Schema for a [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec).
 'ballad_dissolve'
 ```
 
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
 ### muvid.montage.spec.one_scene(archetype='beat_cut', \*\*direction)
 
 The treatment a caller gets from `archetype=` alone.
-
-* **Return type:**
-  [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec)
 
 ```pycon
 >>> one_scene('grid', cut_feel='driving').scenes[0].archetype
 'grid'
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec)
 
 ### muvid.montage.spec.repair(spec)
 
@@ -227,9 +227,6 @@ Project `spec` onto the valid space. Returns `(spec, notes)`.
 A model that names a grade that does not exist has made a small, mechanical
 mistake; projecting it onto the default renders something good now, where a
 retry costs a round trip. Every substitution is reported.
-
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ```pycon
 >>> fixed, notes = repair(TreatmentSpec(scenes=(Scene(archetype='swirl'),)))
@@ -243,12 +240,12 @@ retry costs a round trip. Every substitution is reported.
 ({'punch': 0.3}, ['scenes[0].params.punch 9 -> 0.3', "scenes[0].params dropped unknown ['nope']"])
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
 ### muvid.montage.spec.validate(spec)
 
 Return a list of human-readable problems. Empty means plannable.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ```pycon
 >>> validate(TreatmentSpec(scenes=(Scene(archetype='nope'),)))
@@ -256,6 +253,9 @@ Return a list of human-readable problems. Empty means plannable.
 >>> validate(TreatmentSpec(scenes=(Scene(archetype='grid', params={'punch': 1}),)))
 ["scenes[0].params 'punch' is not a parameter of 'grid' (allowed: ['beats_per_swap'])"]
 ```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.montage.spec.vocabulary()
 

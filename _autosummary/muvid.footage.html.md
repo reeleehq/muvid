@@ -434,9 +434,6 @@ A plain `str` component contributes `False`, matching
 [`is_time_varying()`](#muvid.footage.is_time_varying) and the EDL field’s own default — so hand-writing one
 half of a chain quietly downgrades only that half’s claim, never the other’s.
 
-* **Return type:**
-  [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`LookFragment`](muvid.footage.look.html.md#muvid.footage.look.LookFragment)]
-
 ```pycon
 >>> chain("hue=s=0", None, "", "unsharp=5:5:1")
 'hue=s=0,unsharp=5:5:1'
@@ -447,6 +444,9 @@ True
 >>> chain("hue=s=0", "unsharp=5:5:1").time_varying
 False
 ```
+
+* **Return type:**
+  [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`LookFragment`](muvid.footage.look.html.md#muvid.footage.look.LookFragment)]
 
 ### muvid.footage.derive_cuts(edl, alignments, clip_paths)
 
@@ -518,15 +518,15 @@ Whether `fragment` declares that it reads the clock. Plain strings: no.
 The one place that default lives, so a caller reading a fragment and the EDL
 field’s own default cannot drift apart.
 
-* **Return type:**
-  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
-
 ```pycon
 >>> is_time_varying(LookFragment("zoompan=d=1", time_varying=True))
 True
 >>> is_time_varying("hue=s=0"), is_time_varying(None)
 (False, False)
 ```
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 
 ### muvid.footage.list_strategies()
 

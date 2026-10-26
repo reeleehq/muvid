@@ -35,7 +35,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Output geometry. Sizes in the scene are relative to `height`.
 
-### *class* muvid.lyricvid.scene.Cue(\*, text, x, y, size, t_in, t_full, t_out=None, t_gone=None, colour='#ffffff', dim_colour=None, dim_from=None, motion='fade', layer=0, extra=<factory>)
+### *class* muvid.lyricvid.scene.Cue(, text, x, y, size, t_in, t_full, t_out=None, t_gone=None, colour='#ffffff', dim_colour=None, dim_from=None, motion='fade', layer=0, extra=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -54,7 +54,7 @@ One piece of text, placed and timed.
 
 Free-form, for a renderer that can use it (e.g. per-word wipe fraction).
 
-### *class* muvid.lyricvid.scene.Scene(\*, canvas, duration, background, cues, typography, meta=<factory>)
+### *class* muvid.lyricvid.scene.Scene(, canvas, duration, background, cues, typography, meta=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -71,9 +71,6 @@ Turn a treatment plus timed text into a fully-resolved [`Scene`](#muvid.lyricvid
 Every number in the result was computed here, from measurement. Nothing the
 model wrote reaches a renderer as a coordinate or a time.
 
-* **Return type:**
-  [`Scene`](#muvid.lyricvid.scene.Scene)
-
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
 >>> tt = from_words([('one', 0.0, .5), ('two', .5, 1.0)], duration=1.0)
@@ -81,6 +78,9 @@ model wrote reaches a renderer as a coordinate or a time.
 >>> len(s.cues), s.cues[0].text
 (2, 'one')
 ```
+
+* **Return type:**
+  [`Scene`](#muvid.lyricvid.scene.Scene)
 
 ### muvid.lyricvid.scene.register_archetype(name)
 
@@ -91,9 +91,6 @@ Follows muvid’s house registry idiom (`register_visual`,
 function plus an entry in [`muvid.lyricvid.spec.ARCHETYPES`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.ARCHETYPES) so the
 model knows it exists.
 
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Cue`](#muvid.lyricvid.scene.Cue)]]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Cue`](#muvid.lyricvid.scene.Cue)]]]
-
 ```pycon
 >>> @register_archetype('doctest-demo')
 ... def _demo(**kw): return []
@@ -101,3 +98,6 @@ model knows it exists.
 True
 >>> del ARCHETYPE_FNS['doctest-demo']
 ```
+
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Cue`](#muvid.lyricvid.scene.Cue)]]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Cue`](#muvid.lyricvid.scene.Cue)]]]

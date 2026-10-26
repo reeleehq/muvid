@@ -29,7 +29,8 @@
 <meta content="muvid.choreo.pipeline | muvid" property="og:title"/>
 <meta content="muvid.choreo.pipeline | muvid" name="twitter:title"/>
 <link href="../_static/pygments.css?v=d75fae25" rel="stylesheet" type="text/css"/>
-<link href="../_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
+<link href="../_static/theme.css?v=009055c6" rel="stylesheet" type="text/css"/>
+<link href="../_static/sphinx_autodoc_typehints.css?v=057ac668" rel="stylesheet" type="text/css"/>
 <link href="../_static/copybutton.css?v=76b2166b" rel="stylesheet" type="text/css"/>
 <link href="../_static/epythet.css?v=f9f95642" rel="stylesheet" type="text/css"/>
 <link href="../search.html" rel="search" title="Search"/>
@@ -202,11 +203,6 @@ the bound exists so a list-valued input added later is bounded from day one.</p>
 <dt class="sig sig-object py" id="muvid.choreo.pipeline.check_input_counts">
 <span class="sig-prename descclassname"><span class="pre">muvid.choreo.pipeline.</span></span><span class="sig-name descname"><span class="pre">check_input_counts</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/choreo/pipeline.html#check_input_counts"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.choreo.pipeline.check_input_counts" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.choreo.pipeline.check_input_counts'">¶</a></dt>
 <dd><p>Refuse any input naming more than <a class="reference internal" href="#muvid.choreo.pipeline.MAX_INPUT_FILES" title="muvid.choreo.pipeline.MAX_INPUT_FILES"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_INPUT_FILES</span></code></a> files.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
-</dd>
-</dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">check_input_counts</span><span class="p">({</span><span class="s1">'audio'</span><span class="p">:</span> <span class="s1">'a.wav'</span><span class="p">})</span>
 </span><span id="line-2"><span class="gp">&gt;&gt;&gt; </span><span class="n">check_input_counts</span><span class="p">({</span><span class="s1">'frames'</span><span class="p">:</span> <span class="p">[</span><span class="s1">'x'</span><span class="p">]</span> <span class="o">*</span> <span class="mi">65</span><span class="p">})</span>
 </span><span id="line-3"><span class="gt">Traceback (most recent call last):</span>
@@ -214,16 +210,16 @@ the bound exists so a list-valued input added later is bounded from day one.</p>
 </span><span id="line-5"><span class="gr">ValueError</span>: <span class="n">inputs['frames'] names 65 files; the bound is 64 (MUVID_CHOREO_MAX_INPUT_FILES)</span>
 </span></code></pre></div>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><span class="highlight sphinx_autodoc_typehints-value"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="kc"><span class="pre">None</span></span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></span></p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.choreo.pipeline.check_render_bounds">
 <span class="sig-prename descclassname"><span class="pre">muvid.choreo.pipeline.</span></span><span class="sig-name descname"><span class="pre">check_render_bounds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">canvas</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/choreo/pipeline.html#check_render_bounds"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.choreo.pipeline.check_render_bounds" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.choreo.pipeline.check_render_bounds'">¶</a></dt>
 <dd><p>Refuse a render that would exceed the resource bounds. Refuse, not clamp.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
-</dd>
-</dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">check_render_bounds</span><span class="p">(</span><span class="n">Canvas</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1920</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1080</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">),</span> <span class="mf">200.0</span><span class="p">)</span>
 </span><span id="line-2"><span class="gp">&gt;&gt;&gt; </span><span class="n">check_render_bounds</span><span class="p">(</span><span class="n">Canvas</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">30000</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">30000</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">),</span> <span class="mf">10.0</span><span class="p">)</span>
 </span><span id="line-3"><span class="gt">Traceback (most recent call last):</span>
@@ -231,6 +227,11 @@ the bound exists so a list-valued input added later is bounded from day one.</p>
 </span><span id="line-5"><span class="gr">ValueError</span>: <span class="n">canvas 30000x30000 is 900000000 px/frame; the bound is 8294400 (MUVID_CHOREO_MAX_PIXELS)</span>
 </span></code></pre></div>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><span class="highlight sphinx_autodoc_typehints-value"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="kc"><span class="pre">None</span></span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></span></p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.choreo.pipeline.palette_from_cover">
@@ -284,11 +285,11 @@ takes <code class="docutils literal notranslate"><span class="pre">treatment</sp
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=c4d1762f"></script>
+<script src="../_static/documentation_options.js?v=60a9f236"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
 <script src="../_static/copybutton.js?v=fd10adb8"></script>
-<script defer="defer" src="../_static/theme.js?v=5db23cf8"></script>
+<script defer="defer" src="../_static/theme.js?v=49cc6205"></script>
 </body>
 </html>

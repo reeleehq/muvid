@@ -104,9 +104,6 @@ A line whose words the aligner could not match still has a `[start, end]`
 across that span and marked `measured=False`, so downstream can see the
 difference between a measured onset and a guessed one.
 
-* **Return type:**
-  [`TimedText`](#muvid.lyricvid.timed_text.TimedText)
-
 ```pycon
 >>> from types import SimpleNamespace as NS
 >>> w = NS(text='hi', start_s=0.0, end_s=0.4, token_index=0)
@@ -119,6 +116,9 @@ difference between a measured onset and a guessed one.
 >>> tt.sections[0].label
 'verse'
 ```
+
+* **Return type:**
+  [`TimedText`](#muvid.lyricvid.timed_text.TimedText)
 
 ### muvid.lyricvid.timed_text.from_alignment_store(project_root, , duration=0.0)
 

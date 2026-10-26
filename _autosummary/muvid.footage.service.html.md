@@ -135,7 +135,7 @@ Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 
 An operation refused — the message says why and what to do next.
 
-### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=<factory>)
+### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -162,7 +162,7 @@ server-side `path` and original `filename`. Never in a client’s schema.
 Count ceilings the op enforces (`max_videos`, `max_photos`), so a client can
 show “8 of 12” and refuse the extra files before sending a byte (muvid#170).
 
-#### max_upload_bytes *: [int](https://docs.python.org/3/builtins/functions.html#int) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+#### max_upload_bytes *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[int](https://docs.python.org/3/builtins/functions.html#int)]* *= None*
 
 The op’s own ceiling for a host-streamed upload (`nw.GenreOp.max_upload_bytes`).
 
@@ -341,14 +341,14 @@ The alignment record of a DECLARED offset — coverage computed, nothing measure
 `confidence` is 1.0 and `reliable` True because a person vouched for the offset;
 `support`/`margin` stay `None` because no vote was held. `source` says so.
 
-* **Return type:**
-  [`FootageAlignment`](muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)
-
 ```pycon
 >>> a = declared_alignment("c1", -8.5, clip_duration=260.0, song_duration=249.6)
 >>> a.coverage, a.overlaps, a.source
 ((0.0, 249.6), True, 'declared')
 ```
+
+* **Return type:**
+  [`FootageAlignment`](muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)
 
 ### muvid.footage.service.delete_edit(fp, , edit_id)
 

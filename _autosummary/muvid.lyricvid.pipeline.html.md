@@ -58,15 +58,15 @@ Register a renderer backend as `"module:function"`.
 The house lazy-registry idiom (cf. `muvid.footage.strategy`): the target
 is a string so adding a backend costs the import path nothing.
 
-* **Return type:**
-  [`None`](https://docs.python.org/3/builtins/constants.html#None)
-
 ```pycon
 >>> register_renderer('doctest-demo', 'muvid.lyricvid.render_ass:render')
 >>> 'doctest-demo' in RENDERERS
 True
 >>> del RENDERERS['doctest-demo']
 ```
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.lyricvid.pipeline.render(request)
 
@@ -104,12 +104,12 @@ produces something other than what was asked for is the exact shape muvid
 has been bitten by before. `auto` is the caller opting in to “whichever
 works”, and the choice it made is recorded in the result’s `meta`.
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> select_renderer('web')
 'web'
 >>> select_renderer('auto') in {'ass', 'web'}
 True
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)

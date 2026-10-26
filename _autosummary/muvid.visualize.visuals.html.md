@@ -121,7 +121,7 @@ silent video is also accepted (see [`resolve_visual()`](#muvid.visualize.visuals
 
 alias of `Callable`[[[`VisualContext`](#muvid.visualize.visuals.VisualContext)], `VisualPlan | Path | str`]
 
-### *class* muvid.visualize.visuals.VisualContext(audio, image, duration, size, fps, layout=<factory>, title=None, title_style=None, workdir=<factory>, options=<factory>)
+### *class* muvid.visualize.visuals.VisualContext(audio, image, duration, size, fps, layout=CoverLayout(), title=None, title_style=None, workdir=Path(), options=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -131,41 +131,71 @@ Everything a visual strategy needs to know about the render.
 
 The audio file (ffmpeg input 0).
 
+* **Type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
 #### image
 
 The cover art, if the caller supplied one.
+
+* **Type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 #### duration
 
 Audio duration in seconds.
 
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 #### size
 
 Canvas size (width, height).
+
+* **Type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]
 
 #### fps
 
 Output frame rate.
 
+* **Type:**
+  [`int`](https://docs.python.org/3/builtins/functions.html#int)
+
 #### layout
 
 How the cover sits on the canvas.
+
+* **Type:**
+  [`CoverLayout`](muvid.visualize.canvas.html.md#muvid.visualize.canvas.CoverLayout)
 
 #### title
 
 Title to burn in, if any.
 
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 #### title_style
 
 How to draw that title.
+
+* **Type:**
+  [`TitleStyle`](muvid.visualize.canvas.html.md#muvid.visualize.canvas.TitleStyle) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 #### workdir
 
 A directory the strategy may write intermediate files into.
 
+* **Type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
 #### options
 
 Strategy-specific knobs, passed straight through by the caller.
+
+* **Type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
 #### require_image(visual)
 
@@ -174,7 +204,7 @@ The cover image, or a [`ValueError`](https://docs.python.org/3/builtins/exceptio
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
-### *class* muvid.visualize.visuals.VisualPlan(inputs=<factory>, filters=<factory>, video='vbg', uses_audio=False, has_cover=False, has_title=False, still=None)
+### *class* muvid.visualize.visuals.VisualPlan(inputs=list(), filters=list(), video='vbg', uses_audio=False, has_cover=False, has_title=False, still=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -185,33 +215,54 @@ The ffmpeg fragments that render one strategy’s video stream.
 Extra ffmpeg input argument groups (each ends with `-i PATH`),
 numbered from input 1.
 
+* **Type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
 #### filters
 
 `filter_complex` chains, joined with `;` by the renderer.
+
+* **Type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 #### video
 
 Label of the video stream the chains emit.
 
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
 #### uses_audio
 
 The plan consumes the `[aviz]` audio copy.
+
+* **Type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 
 #### has_cover
 
 The plan already placed the cover; the renderer must not
 overlay it again.
 
+* **Type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
 #### has_title
 
 The plan already burnt in the title; the renderer must not
 draw it again.
+
+* **Type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 
 #### still
 
 When set, the video *is* this static image — the renderer takes a
 much cheaper path (encode one short segment, then loop it) and
 ignores `inputs`/`filters`.
+
+* **Type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.visualize.visuals.bars_visual(ctx)
 
@@ -235,9 +286,6 @@ trail of where it has been. The sonogram is off by default (bars only, the
 cleanest read). Give `sono_fraction` a value in (0, 1) to hand that share
 of the frame’s height to the trail — the bargraph keeps the rest.
 
-* **Return type:**
-  [`VisualPlan`](#muvid.visualize.visuals.VisualPlan)
-
 Options:
 : `sono_fraction`: share of the height given to the scrolling sonogram,
   : 0 (default, bars only) to just under 1.
@@ -258,6 +306,9 @@ True
 True
 ```
 
+* **Return type:**
+  [`VisualPlan`](#muvid.visualize.visuals.VisualPlan)
+
 ### muvid.visualize.visuals.ken_burns_visual(ctx)
 
 A slow pan/zoom across the cover, lasting exactly as long as the song.
@@ -271,11 +322,11 @@ Frames are rendered in Python (Pillow), so this is by far the slowest
 visual — budget several times the song’s duration. The ffmpeg-native
 visuals are an order of magnitude faster.
 
-* **Return type:**
-  [`VisualPlan`](#muvid.visualize.visuals.VisualPlan)
-
 Options:
 : `source`: `"canvas"` (default) or `"image"` — what to pan across.
+
+* **Return type:**
+  [`VisualPlan`](#muvid.visualize.visuals.VisualPlan)
 
 ### muvid.visualize.visuals.list_visuals()
 
@@ -288,9 +339,6 @@ The names of every registered visual strategy.
 
 Register a visual strategy under `name` (the open-closed seam).
 
-* **Return type:**
-  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`VisualContext`](#muvid.visualize.visuals.VisualContext)], [`VisualPlan`](#muvid.visualize.visuals.VisualPlan) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`VisualContext`](#muvid.visualize.visuals.VisualContext)], [`VisualPlan`](#muvid.visualize.visuals.VisualPlan) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
-
 ### Examples
 
 ```pycon
@@ -302,6 +350,9 @@ Register a visual strategy under `name` (the open-closed seam).
 True
 >>> _ = _VISUALS.pop("black")  # (keep the registry tidy for the next doctest)
 ```
+
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`VisualContext`](#muvid.visualize.visuals.VisualContext)], [`VisualPlan`](#muvid.visualize.visuals.VisualPlan) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]], [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`VisualContext`](#muvid.visualize.visuals.VisualContext)], [`VisualPlan`](#muvid.visualize.visuals.VisualPlan) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path) | [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ### muvid.visualize.visuals.resolve_visual(visual, ctx)
 

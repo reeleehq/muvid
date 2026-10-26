@@ -41,7 +41,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Output geometry. Sizes in the scene are relative to `height`.
 
-### *class* muvid.lyricvid.Scene(\*, canvas, duration, background, cues, typography, meta=<factory>)
+### *class* muvid.lyricvid.Scene(, canvas, duration, background, cues, typography, meta=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -76,7 +76,7 @@ vacuous truth that reads as reassurance in a report.
 
 Where the timing came from, for provenance and for honest reporting.
 
-### *class* muvid.lyricvid.TreatmentSpec(\*, spec_version='1.0', title='', direction=<factory>, scenes=<factory>)
+### *class* muvid.lyricvid.TreatmentSpec(\*, spec_version='1.0', title='', direction=Direction(), scenes=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -102,9 +102,6 @@ unknown key is dropped, a `None` sub-object is the default. What
 cannot be coerced falls to the default and `repair()` reports the
 enum-level substitutions afterwards.
 
-* **Return type:**
-  [`TreatmentSpec`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.TreatmentSpec)
-
 ```pycon
 >>> s = TreatmentSpec.from_dict({'scenes': [None, {'applies_to': 'chorus',
 ...     'timing': 'fast', 'shape': 'circle'}],
@@ -118,6 +115,9 @@ enum-level substitutions afterwards.
 >>> s.direction.palette.bg, s.scenes[1].shape
 ('#000000', None)
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](muvid.lyricvid.spec.html.md#muvid.lyricvid.spec.TreatmentSpec)
 
 #### to_dict()
 
@@ -134,9 +134,6 @@ Turn a treatment plus timed text into a fully-resolved [`Scene`](#muvid.lyricvid
 Every number in the result was computed here, from measurement. Nothing the
 model wrote reaches a renderer as a coordinate or a time.
 
-* **Return type:**
-  [`Scene`](muvid.lyricvid.scene.html.md#muvid.lyricvid.scene.Scene)
-
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_words
 >>> tt = from_words([('one', 0.0, .5), ('two', .5, 1.0)], duration=1.0)
@@ -144,6 +141,9 @@ model wrote reaches a renderer as a coordinate or a time.
 >>> len(s.cues), s.cues[0].text
 (2, 'one')
 ```
+
+* **Return type:**
+  [`Scene`](muvid.lyricvid.scene.html.md#muvid.lyricvid.scene.Scene)
 
 ### muvid.lyricvid.render_lyric_video(audio, output, , lyrics=None, subtitles=None, project=None, timed_text=None, treatment=None, renderer='auto', title='', persona=None, aligner=None, width=1920, height=1080, fps=30, workdir=None, captions=None)
 

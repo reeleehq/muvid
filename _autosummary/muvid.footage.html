@@ -29,7 +29,8 @@
 <meta content="muvid.footage | muvid" property="og:title"/>
 <meta content="muvid.footage | muvid" name="twitter:title"/>
 <link href="../_static/pygments.css?v=d75fae25" rel="stylesheet" type="text/css"/>
-<link href="../_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
+<link href="../_static/theme.css?v=009055c6" rel="stylesheet" type="text/css"/>
+<link href="../_static/sphinx_autodoc_typehints.css?v=057ac668" rel="stylesheet" type="text/css"/>
 <link href="../_static/copybutton.css?v=76b2166b" rel="stylesheet" type="text/css"/>
 <link href="../_static/epythet.css?v=f9f95642" rel="stylesheet" type="text/css"/>
 <link href="../search.html" rel="search" title="Search"/>
@@ -619,11 +620,6 @@ a grade.</p>
 <p>A plain <code class="docutils literal notranslate"><span class="pre">str</span></code> component contributes <code class="docutils literal notranslate"><span class="pre">False</span></code>, matching
 <a class="reference internal" href="#muvid.footage.is_time_varying" title="muvid.footage.is_time_varying"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_time_varying()</span></code></a> and the EDL field’s own default — so hand-writing one
 half of a chain quietly downgrades only that half’s claim, never the other’s.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference internal" href="muvid.footage.look.html#muvid.footage.look.LookFragment" title="muvid.footage.look.LookFragment"><code class="xref py py-class docutils literal notranslate"><span class="pre">LookFragment</span></code></a>]</span></p>
-</dd>
-</dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">chain</span><span class="p">(</span><span class="s2">"hue=s=0"</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">""</span><span class="p">,</span> <span class="s2">"unsharp=5:5:1"</span><span class="p">)</span>
 </span><span id="line-2"><span class="go">'hue=s=0,unsharp=5:5:1'</span>
 </span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">chain</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
@@ -634,6 +630,11 @@ half of a chain quietly downgrades only that half’s claim, never the other’s
 </span><span id="line-8"><span class="go">False</span>
 </span></code></pre></div>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference internal" href="muvid.footage.look.html#muvid.footage.look.LookFragment" title="muvid.footage.look.LookFragment"><code class="xref py py-class docutils literal notranslate"><span class="pre">LookFragment</span></code></a>]</span></p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.derive_cuts">
@@ -703,17 +704,17 @@ pan.</p>
 <dd><p>Whether <code class="docutils literal notranslate"><span class="pre">fragment</span></code> declares that it reads the clock. Plain strings: no.</p>
 <p>The one place that default lives, so a caller reading a fragment and the EDL
 field’s own default cannot drift apart.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
-</dd>
-</dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">is_time_varying</span><span class="p">(</span><span class="n">LookFragment</span><span class="p">(</span><span class="s2">"zoompan=d=1"</span><span class="p">,</span> <span class="n">time_varying</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
 </span><span id="line-2"><span class="go">True</span>
 </span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">is_time_varying</span><span class="p">(</span><span class="s2">"hue=s=0"</span><span class="p">),</span> <span class="n">is_time_varying</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
 </span><span id="line-4"><span class="go">(False, False)</span>
 </span></code></pre></div>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.list_strategies">
@@ -1145,11 +1146,11 @@ the loosest bound rather than an absent one.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=c4d1762f"></script>
+<script src="../_static/documentation_options.js?v=60a9f236"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
 <script src="../_static/copybutton.js?v=fd10adb8"></script>
-<script defer="defer" src="../_static/theme.js?v=5db23cf8"></script>
+<script defer="defer" src="../_static/theme.js?v=49cc6205"></script>
 </body>
 </html>

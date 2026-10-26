@@ -68,7 +68,7 @@ selects cleanly on the metrics it has.
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
 
-### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=<factory>)
+### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 

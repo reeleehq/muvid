@@ -98,7 +98,7 @@ dropped. Letters, digits, `_` and `-` only: an id names a FILE (`clips/<id>.mp4`
 `edits/<id>.json`), and a looser rule let `*` through to a glob that deleted every
 clip, and `" c1"` replace `c1`’s bytes under a different manifest key.
 
-### *class* muvid.footage.workspace.MusicVideoFootageProject(email, project_id, root, media_catalog=None, defaults=<factory>)
+### *class* muvid.footage.workspace.MusicVideoFootageProject(email, project_id, root, media_catalog=None, defaults=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -404,9 +404,6 @@ Idempotent: an existing manifest is left exactly as it is.
 `value` stripped, and refused (`ValueError`) unless it matches
 [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> normalise_id(" c01 ", label="clip_id")
 'c01'
@@ -415,6 +412,9 @@ Traceback (most recent call last):
     ...
 ValueError: invalid clip_id '*': use 1-64 letters, digits, '_' or '-'
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.workspace.replace_file(src, dest)
 

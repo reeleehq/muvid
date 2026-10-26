@@ -41,13 +41,13 @@ What each flag says, for a chip.
 
 `72.41` -> `"1:12.4"` — how a time is said.
 
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
-
 ```pycon
 >>> clock(72.41), clock(5.0)
 ('1:12.4', '0:05.0')
 ```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.explain.explain(entries, \*, analysis, song_duration, clips, alignments={}, envelope_of=<function <lambda>>, selection={}, grid_note=None, window=None, scope=None)
 

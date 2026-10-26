@@ -47,7 +47,7 @@ Module scope is stdlib-only; numpy and ffmpeg are reached inside functions.
 | [`Media`](#muvid.montage.analysis.Media)(\*, index, path, kind, width, height[, ...]) | One pool item, measured.                    |
 | [`Section`](#muvid.montage.analysis.Section)(\*, label, start, end[, energy_db])        | A labelled stretch of the song, in seconds. |
 
-### *class* muvid.montage.analysis.Analysis(\*, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=<factory>)
+### *class* muvid.montage.analysis.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -61,15 +61,15 @@ Seconds per beat at the estimated tempo.
 
 The inverse of `to_dict()` (as rounded) — so a measured song can be kept.
 
-* **Return type:**
-  [`Analysis`](#muvid.montage.analysis.Analysis)
-
 ```pycon
 >>> a = Analysis(duration=4.0, tempo_bpm=120.0, beats=(0.0, 0.5), downbeats=(0.0,),
 ...              sections=(Section(label='verse', start=0.0, end=4.0),))
 >>> Analysis.from_dict(a.to_dict()) == a
 True
 ```
+
+* **Return type:**
+  [`Analysis`](#muvid.montage.analysis.Analysis)
 
 ### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0)
 
@@ -115,9 +115,6 @@ songs) are absorbed into the longer neighbour; a leading/trailing quiet run
 of at most `MAX_INTRO_BARS` bars is an intro/outro. A dynamically
 flat song is one verse — reported as such rather than invented.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Section`](#muvid.montage.analysis.Section), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
-
 ```pycon
 >>> bars = [(i * 2.0, (i + 1) * 2.0) for i in range(8)]
 >>> e = [-20, -20, -20, -20, -10, -10, -20, -20]
@@ -127,6 +124,9 @@ flat song is one verse — reported as such rather than invented.
 ['verse']
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Section`](#muvid.montage.analysis.Section), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
+
 ### muvid.montage.analysis.downbeats_from_beats(beats, onset_at_beats, beats_per_bar)
 
 Downbeats as the beat phase carrying the most onset energy.
@@ -135,15 +135,15 @@ A closed-form vote over `beats_per_bar` candidate phases; ties go to
 phase 0 (the first beat), which is also the answer when there is nothing
 to vote with.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
-
 ```pycon
 >>> downbeats_from_beats([0, .5, 1, 1.5, 2, 2.5, 3, 3.5], [1, 0, 0, 0, 1, 0, 0, 0], 4)
 (0, 2)
 >>> downbeats_from_beats([0, .5, 1, 1.5, 2, 2.5, 3, 3.5], [0, 0, 1, 0, 0, 0, 1, 0], 4)
 (1, 3)
 ```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
 
 ### muvid.montage.analysis.probe_media(paths, , kind, start_index=0)
 
@@ -159,11 +159,11 @@ montage that silently skipped a photo would be a different montage.
 
 Caller-supplied sections, clamped to the song and gap-filled with verses.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Section`](#muvid.montage.analysis.Section), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
-
 ```pycon
 >>> [(s.label, s.start, s.end) for s in sections_from_labels(
 ...     [{'label': 'chorus', 'start': 4, 'end': 8}], 10.0)]
 [('verse', 0.0, 4.0), ('chorus', 4.0, 8.0), ('verse', 8.0, 10.0)]
 ```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Section`](#muvid.montage.analysis.Section), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]

@@ -80,13 +80,13 @@ indentation (every line indented alike) carries no shape and does not warn.
 
 True when lyric lines are indented differently: a shape a parse would lose.
 
-* **Return type:**
-  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
-
 ```pycon
 >>> indentation_varies(["", "  "]), indentation_varies(["  ", "  "])
 (True, False)
 ```
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 
 ### muvid.lyrics.layout_dropped(md)
 
@@ -95,14 +95,14 @@ What the default parse flattens, as data: `None` for ordinary lyrics.
 The same test as [`ShapedLyricsWarning`](#muvid.lyrics.ShapedLyricsWarning), for a caller that cannot see
 a Python warning (an MCP reply, a render’s meta; muvid#165). Does not warn.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`int`](https://docs.python.org/3/builtins/functions.html#int)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
-
 ```pycon
 >>> layout_dropped("one\ntwo\n")
 >>> layout_dropped("one\n  two\n    three\n")
 {'lines': 3, 'indentations': 3}
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`int`](https://docs.python.org/3/builtins/functions.html#int)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.lyrics.line_indents(md)
 
@@ -110,13 +110,13 @@ The leading whitespace of each lyric line, aligned with `parse_lyrics_md(md).lin
 
 Reads the shape the default parse strips, without changing the parse.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
-
 ```pycon
 >>> line_indents("[v]\none\n  two\n(aside)\n\tthree\n")
 ('', '  ', '\t')
 ```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
 
 ### muvid.lyrics.lyrics_from_transcript(transcript)
 
@@ -161,14 +161,14 @@ lyric-video archetype honours indentation yet; the word tokeniser skips
 whitespace, so alignment is the same either way. [`line_indents()`](#muvid.lyrics.line_indents)
 reads the indentation without changing the parse.
 
-* **Return type:**
-  [`LyricsDoc`](#muvid.lyrics.LyricsDoc)
-
 ```pycon
 >>> md = "[v]\nIl pleut\n  des voix\n"
 >>> [L.text for L in parse_lyrics_md(md, preserve_indent=True).lines]
 ['Il pleut', '  des voix']
 ```
+
+* **Return type:**
+  [`LyricsDoc`](#muvid.lyrics.LyricsDoc)
 
 ### muvid.lyrics.render_lyrics_md(doc)
 

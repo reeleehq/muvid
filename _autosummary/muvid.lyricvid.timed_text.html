@@ -29,7 +29,8 @@
 <meta content="muvid.lyricvid.timed_text | muvid" property="og:title"/>
 <meta content="muvid.lyricvid.timed_text | muvid" name="twitter:title"/>
 <link href="../_static/pygments.css?v=d75fae25" rel="stylesheet" type="text/css"/>
-<link href="../_static/theme.css?v=d6d7c91b" rel="stylesheet" type="text/css"/>
+<link href="../_static/theme.css?v=009055c6" rel="stylesheet" type="text/css"/>
+<link href="../_static/sphinx_autodoc_typehints.css?v=057ac668" rel="stylesheet" type="text/css"/>
 <link href="../_static/copybutton.css?v=76b2166b" rel="stylesheet" type="text/css"/>
 <link href="../_static/epythet.css?v=f9f95642" rel="stylesheet" type="text/css"/>
 <link href="../search.html" rel="search" title="Search"/>
@@ -286,11 +287,6 @@ document already <em>knows</em> where the lines are.</p>
 (interpolated by the aligner from its neighbours); its words are spread
 across that span and marked <code class="docutils literal notranslate"><span class="pre">measured=False</span></code>, so downstream can see the
 difference between a measured onset and a guessed one.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyricvid.timed_text.TimedText" title="muvid.lyricvid.timed_text.TimedText"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimedText</span></code></a></span></p>
-</dd>
-</dl>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">types</span><span class="w"> </span><span class="kn">import</span> <span class="n">SimpleNamespace</span> <span class="k">as</span> <span class="n">NS</span>
 </span><span id="line-2"><span class="gp">&gt;&gt;&gt; </span><span class="n">w</span> <span class="o">=</span> <span class="n">NS</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="s1">'hi'</span><span class="p">,</span> <span class="n">start_s</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">end_s</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">token_index</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
 </span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">ln</span> <span class="o">=</span> <span class="n">NS</span><span class="p">(</span><span class="n">line_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">text</span><span class="o">=</span><span class="s1">'hi there'</span><span class="p">,</span> <span class="n">start_s</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">end_s</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
@@ -303,6 +299,11 @@ difference between a measured onset and a guessed one.</p>
 </span><span id="line-10"><span class="go">'verse'</span>
 </span></code></pre></div>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.lyricvid.timed_text.TimedText" title="muvid.lyricvid.timed_text.TimedText"><code class="xref py py-class docutils literal notranslate"><span class="pre">TimedText</span></code></a></span></p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.lyricvid.timed_text.from_alignment_store">
@@ -401,11 +402,11 @@ use it instead of guessing.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=c4d1762f"></script>
+<script src="../_static/documentation_options.js?v=60a9f236"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
 <script src="../_static/copybutton.js?v=fd10adb8"></script>
-<script defer="defer" src="../_static/theme.js?v=5db23cf8"></script>
+<script defer="defer" src="../_static/theme.js?v=49cc6205"></script>
 </body>
 </html>

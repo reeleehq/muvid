@@ -52,7 +52,7 @@ Import-light: the menu is data, and `looks` is imported only to compile.
 
 The largest magnification any named move may ask for.
 
-### *class* muvid.footage.named_looks.NamedLook(name, title, description, kind, build, params=<factory>)
+### *class* muvid.footage.named_looks.NamedLook(name, title, description, kind, build, params=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 

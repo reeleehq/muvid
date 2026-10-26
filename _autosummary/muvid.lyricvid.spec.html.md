@@ -72,7 +72,7 @@ slightly-wrong model output still renders.
 How words are placed on screen. The renderer owns the geometry; the spec
 only names the family and its knobs.
 
-### *class* muvid.lyricvid.spec.Direction(\*, mood='', palette=<factory>, typography=<factory>, motion_vocabulary=('fade', ), rationale='')
+### *class* muvid.lyricvid.spec.Direction(, mood='', palette=Palette(), typography=Typography(), motion_vocabulary=('fade',), rationale='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -113,7 +113,7 @@ to point that at a host path. The spec only admits the kinds; where a
 `mask_image` value is allowed to come FROM is the caller-facing surface’s
 decision (see `MASK_IMAGE_TRUSTED`).
 
-### *class* muvid.lyricvid.spec.Scene(\*, applies_to=('\*', ), archetype='one_word_centred', motion='fade', persistence='clear_on_line', timing=<factory>, shape=None, params=<factory>)
+### *class* muvid.lyricvid.spec.Scene(, applies_to=('\*',), archetype='one_word_centred', motion='fade', persistence='clear_on_line', timing=Timing(), shape=None, params=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -148,7 +148,7 @@ Seconds a word takes to arrive. Small, or it stops reading as on-the-beat.
 
 Seconds before a word’s onset to start it. Compensates for perceived lag.
 
-### *class* muvid.lyricvid.spec.TreatmentSpec(\*, spec_version='1.0', title='', direction=<factory>, scenes=<factory>)
+### *class* muvid.lyricvid.spec.TreatmentSpec(\*, spec_version='1.0', title='', direction=Direction(), scenes=<factory>)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -174,9 +174,6 @@ unknown key is dropped, a `None` sub-object is the default. What
 cannot be coerced falls to the default and [`repair()`](#muvid.lyricvid.spec.repair) reports the
 enum-level substitutions afterwards.
 
-* **Return type:**
-  [`TreatmentSpec`](#muvid.lyricvid.spec.TreatmentSpec)
-
 ```pycon
 >>> s = TreatmentSpec.from_dict({'scenes': [None, {'applies_to': 'chorus',
 ...     'timing': 'fast', 'shape': 'circle'}],
@@ -190,6 +187,9 @@ enum-level substitutions afterwards.
 >>> s.direction.palette.bg, s.scenes[1].shape
 ('#000000', None)
 ```
+
+* **Return type:**
+  [`TreatmentSpec`](#muvid.lyricvid.spec.TreatmentSpec)
 
 #### to_dict()
 
@@ -220,14 +220,14 @@ it. This is the one entry point production code should use.
 
 The JSON Schema for a [`TreatmentSpec`](#muvid.lyricvid.spec.TreatmentSpec).
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
-
 ```pycon
 >>> s = json_schema()
 >>> s['properties']['scenes']['items']['properties']['archetype']['enum'][0]
 'one_word_centred'
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 ### muvid.lyricvid.spec.repair(spec)
 
@@ -238,9 +238,6 @@ mistake; projecting it onto the nearest legal value renders something good
 now, where a retry costs a round trip and may fail the same way. Every
 substitution is reported so the caller can show or log it.
 
-* **Return type:**
-  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.lyricvid.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
-
 ```pycon
 >>> fixed, notes = repair(TreatmentSpec(scenes=(Scene(archetype='swirl'),)))
 >>> fixed.scenes[0].archetype
@@ -249,17 +246,20 @@ substitution is reported so the caller can show or log it.
 ["scenes[0].archetype 'swirl' -> 'one_word_centred'"]
 ```
 
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TreatmentSpec`](#muvid.lyricvid.spec.TreatmentSpec), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
 ### muvid.lyricvid.spec.validate(spec)
 
 Return a list of human-readable problems. Empty means renderable.
-
-* **Return type:**
-  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ```pycon
 >>> validate(TreatmentSpec(scenes=(Scene(archetype='nope'),)))
 ["scenes[0].archetype 'nope' is not one of the known archetypes"]
 ```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.lyricvid.spec.vocabulary()
 

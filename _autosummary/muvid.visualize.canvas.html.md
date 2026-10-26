@@ -53,9 +53,15 @@ How a cover image is placed on the canvas.
 `"blur"` (a blurred, darkened copy of the cover fills the
 frame) or `"color"` (a flat [`background_color`](#muvid.visualize.canvas.CoverLayout.background_color)).
 
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
 #### blur_sigma
 
 Gaussian blur strength for the `"blur"` background.
+
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 #### dim
 
@@ -65,10 +71,16 @@ about black, so a shadow gets darker rather than being deleted. See
 [`dim_saturation_lut()`](#muvid.visualize.canvas.dim_saturation_lut); the constant is not comparable with the
 additive offset that preceded it (muvid#70).
 
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 #### saturation
 
 Background saturation (< 1 desaturates, so the sharp cover
 stays the focal point).
+
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 #### cover_fraction
 
@@ -78,15 +90,24 @@ fraction of *either* the frame width or the frame height — whichever
 it hits first (so a wide cover is width-bound, a tall one
 height-bound). `1.0` touches the edges; below 1 leaves padding.
 
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 #### cover_alpha
 
 Opacity of the sharp cover, 0 (invisible) to 1 (opaque).
 Below 1 lets whatever is behind the cover — a reactive visualizer,
 the blurred background — show through it.
 
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 #### background_color
 
 Fill colour when `background="color"`.
+
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 #### dim *: [float](https://docs.python.org/3/builtins/functions.html#float)* *= 0.65*
 
@@ -121,26 +142,44 @@ How a burnt-in title is drawn (ffmpeg `drawtext`).
 
 Font size as a fraction of canvas height.
 
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 #### color
 
 Text colour.
+
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 #### font
 
 Font file path, or `None` to auto-detect one.
 
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 #### margin_fraction
 
 Distance from the bottom edge, as a fraction of height.
+
+* **Type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 #### box
 
 Draw a translucent plate behind the text (keeps it legible over
 busy artwork).
 
+* **Type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
 #### box_color
 
 Colour (with alpha) of that plate.
+
+* **Type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.visualize.canvas.background_chain(size, layout, , src, out)
 

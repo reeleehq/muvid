@@ -69,7 +69,7 @@ This module imports nothing heavier than the standard library, so
 | [`Renderer`](#muvid.subgenres.Renderer)(\*args, \*\*kwargs)                      | `(RenderRequest) -> RenderResult`, and nothing else.   |
 | [`Subgenre`](#muvid.subgenres.Subgenre)(\*, slug, title, description, render)    | A declared kind of video, and how to render one.       |
 
-### *class* muvid.subgenres.Example(\*, description, params=<factory>, inputs=<factory>, preview=None)
+### *class* muvid.subgenres.Example(, description, params=dict(), inputs=dict(), preview=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -88,7 +88,7 @@ The conformance kit uses the first Example’s inputs for its trial render.
 
 Optional path, relative to the plugin package, of a short sample render.
 
-### *class* muvid.subgenres.RenderRequest(\*, subgenre, inputs, params=<factory>, workdir, output)
+### *class* muvid.subgenres.RenderRequest(, subgenre, inputs, params=dict(), workdir, output)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -104,7 +104,7 @@ Everything a subgenre renderer gets.
     exists, and it belongs to this render — nothing else writes there.
   * **output** ([`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)) – where the finished artifact must be written.
 
-### *class* muvid.subgenres.RenderResult(\*, output, duration_s=None, artifacts=<factory>, meta=<factory>)
+### *class* muvid.subgenres.RenderResult(, output, duration_s=None, artifacts=dict(), meta=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -124,7 +124,7 @@ Bases: [`Protocol`](https://docs.python.org/3/library/typing.html#typing.Protoco
 
 `(RenderRequest) -> RenderResult`, and nothing else.
 
-### *class* muvid.subgenres.Subgenre(\*, slug, title, description, render, inputs=<factory>, params_schema=<factory>, produces='video/mp4', examples=(), intake_kinds=(), cost_profile=None, provider=None, api_versions=())
+### *class* muvid.subgenres.Subgenre(, slug, title, description, render, inputs=dict(), params_schema=dict(), produces='video/mp4', examples=(), intake_kinds=(), cost_profile=None, provider=None, api_versions=())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -209,9 +209,6 @@ Raises [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 `on_conflict="error"`: a slug is a persisted path segment and a public
 contract value, so silently replacing one is never the kind thing to do.
 
-* **Return type:**
-  [`Subgenre`](#muvid.subgenres.Subgenre)
-
 ```pycon
 >>> from muvid.subgenres import Subgenre, register_subgenre, list_subgenres
 >>> sg = register_subgenre(Subgenre(
@@ -221,6 +218,9 @@ contract value, so silently replacing one is never the kind thing to do.
 True
 >>> unregister_subgenre('demo-doctest')
 ```
+
+* **Return type:**
+  [`Subgenre`](#muvid.subgenres.Subgenre)
 
 ### muvid.subgenres.render_subgenre(slug, , inputs, params=None, workdir, output)
 

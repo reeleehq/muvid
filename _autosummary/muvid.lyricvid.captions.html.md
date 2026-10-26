@@ -57,9 +57,6 @@ One subtitle track per language, a caption per sung line.
 Every transform is checked (unknown names, uncovered lines) before any
 track is built, so a bad request fails whole rather than half-written.
 
-* **Return type:**
-  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), `SSAFile`]
-
 ```pycon
 >>> from muvid.lyricvid.timed_text import from_word_records
 >>> tt = from_word_records([
@@ -70,6 +67,9 @@ track is built, so a bad request fails whole rather than half-written.
 >>> [(e.start, e.end, e.text) for e in tracks["ja-Latn"]]
 [(850, 1850, 'basu'), (1850, 3050, 'sutāto')]
 ```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), `SSAFile`]
 
 ### muvid.lyricvid.captions.write_caption_tracks(tracks, out_dir, , stem='captions', fmt='srt')
 
