@@ -1,4 +1,4 @@
-"""Tests for muvid.genre — the ``music-visualizer`` nw.Genre registration + factory.
+"""Tests for muvid.genre — the ``music_visualizer`` nw.Genre registration + factory.
 
 Pure (nw only, no ffmpeg): registration, the available-genre-is-ready invariant, the
 Templates, and the project-factory create/rollback contract a host connector drives via
@@ -15,13 +15,13 @@ import muvid.genre as genre_mod  # noqa: E402 — after the nw importorskip
 
 
 def test_genre_is_registered_and_available_and_ready():
-    genre = nw.get_genre("music-visualizer")
+    genre = nw.get_genre("music_visualizer")
     assert genre.status == "available"
     # The load-bearing invariant: an available genre must be ready. muvid's visuals are
     # muvid-internal ffmpeg strategies (NOT nw.renderers), so the genre carries them as
     # Templates only — setting strategy_names would make is_ready() False.
     assert genre.is_ready() is True
-    assert nw.describe_genre("music-visualizer")["ready"] is True
+    assert nw.describe_genre("music_visualizer")["ready"] is True
     assert genre.transform_names == ()
     assert genre.strategy_names == ()
     assert genre.projection_entrypoint is None
@@ -29,7 +29,7 @@ def test_genre_is_registered_and_available_and_ready():
 
 
 def test_templates_are_the_exposed_visuals_and_exclude_ken_burns():
-    genre = nw.get_genre("music-visualizer")
+    genre = nw.get_genre("music_visualizer")
     slugs = genre.list_templates()
     assert slugs == ["still", "cqt", "bars", "spectrum", "waves", "scope"]
     assert "ken_burns" not in slugs  # the slow Pillow path is not exposed by the genre
@@ -39,8 +39,8 @@ def test_templates_are_the_exposed_visuals_and_exclude_ken_burns():
 
 
 def test_resolve_genre_returns_the_visual_params_envelope():
-    env = nw.resolve_genre("music-visualizer", "waves")
-    assert env["genre"] == "music-visualizer"
+    env = nw.resolve_genre("music_visualizer", "waves")
+    assert env["genre"] == "music_visualizer"
     assert env["template"] == "waves"
     assert env["params"] == {"visual": "waves"}
 
@@ -50,7 +50,7 @@ def test_factory_creates_a_bucket_and_create_genre_project_round_trips(
 ):
     monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
     info = nw.create_genre_project(
-        "music-visualizer", "user@example.com", "proj-A", template="cqt"
+        "music_visualizer", "user@example.com", "proj-A", template="cqt"
     )
     assert info["project_id"] == "proj-A"
     assert info["template"] == "cqt"

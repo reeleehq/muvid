@@ -1,4 +1,4 @@
-"""Register muvid's ``music-visualizer`` production genre with nw.
+"""Register muvid's ``music_visualizer`` production genre with nw.
 
 The deterministic, ffmpeg-only half of muvid (:mod:`muvid.visualize`) expressed as
 an :class:`nw.Genre` so any host — the unified reelee AV-production MCP connector
@@ -48,7 +48,7 @@ import muvid.genre_subgenres  # noqa: F401,E402 — bridges third-party subgenre
 
 from muvid.visualize.visuals import list_visuals
 
-MUSIC_VISUALIZER_SLUG = "music-visualizer"
+MUSIC_VISUALIZER_SLUG = "music_visualizer"
 
 #: The visuals exposed as genre Templates (v1). ``ken_burns`` is intentionally EXCLUDED:
 #: it renders frames in Python (Pillow) at several times the song's duration — the one
@@ -143,7 +143,7 @@ MUSIC_VISUALIZER: Genre = register_genre(
 
 
 def _music_visualizer_project_factory(caller, project_id, *, title, template, params):
-    """Create a ``music-visualizer`` output bucket in the CALLER's own muvid workspace.
+    """Create a ``music_visualizer`` output bucket in the CALLER's own muvid workspace.
 
     The nw project-factory (thorwhalen/muvid#3) a host connector calls via
     ``nw.create_genre_project`` so the unified reelee connector can create visualizer

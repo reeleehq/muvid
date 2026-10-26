@@ -108,7 +108,7 @@ ai = [
     "lookbook",
 ]
 # The MCP tool surface (muvid.mcp) + the nw genre registration (muvid.genre) that
-# lets a host connector serve the ffmpeg-only `music-visualizer` genre. `import muvid`
+# lets a host connector serve the ffmpeg-only `music_visualizer` genre. `import muvid`
 # never pulls these; only serving/aggregating does (thorwhalen/muvid#3). nw>=0.0.15 has
 # the genre project-factory registry; py2mcp>=0.1.9 has the aggregation helpers.
 mcp = [

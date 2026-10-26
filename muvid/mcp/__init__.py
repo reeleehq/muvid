@@ -1,4 +1,4 @@
-"""muvid MCP server — the ``music-visualizer`` tool surface for a remote connector.
+"""muvid MCP server — the ``music_visualizer`` tool surface for a remote connector.
 
 Optional subpackage (extra ``muvid[mcp]``: ``fastmcp`` + ``py2mcp`` + ``nw``).
 ``import muvid`` never imports this. The connector references the tools by name via
@@ -41,7 +41,7 @@ LYRICVID_TOOLS = [
 #: because a host meters by tool NAME and cannot see an argument.
 LYRICVID_COSTED = ["propose_lyric_treatments_ai"]
 
-#: The ``music-visualizer`` genre tools (muvid.mcp.tools).
+#: The ``music_visualizer`` genre tools (muvid.mcp.tools).
 VISUALIZER_TOOLS = [
     "list_visuals",
     "list_projects",

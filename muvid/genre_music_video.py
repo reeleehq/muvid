@@ -3,7 +3,7 @@
 The footage-aligned music-video genre (thorwhalen/reelee#229): a user uploads several
 video clips — each a *different-device* recording of the SAME fixed song — and muvid
 aligns them to the clean song's timeline by audio cross-correlation, then assembles a
-music video. Distinct from the ffmpeg-only ``music-visualizer`` genre (looks over a song):
+music video. Distinct from the ffmpeg-only ``music_visualizer`` genre (looks over a song):
 this is real footage, chosen/auto-selected per span via a pluggable selection strategy.
 
 Import-safe: imports only ``nw`` and the import-light :mod:`muvid.footage.service` (the
