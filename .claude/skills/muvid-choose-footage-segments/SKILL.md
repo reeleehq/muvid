@@ -325,4 +325,10 @@ What to know (the list is unnumbered on purpose — the count was already wrong)
 - `mixing.audio.beat_grid` (mixing[beats]) supplies the master beat/onset grid. MCP:
   `beat_grid(project_id)` returns it on its own (cached under the project, keyed on
   `song_hash`), so nobody runs `score_footage` just to learn where the beats are
-  (muvid#18 item 5).
+  (muvid#18 item 5). **The estimate can be wrong for a song** (librosa gave 129.2 BPM on a
+  126.905 one): `set_beat_grid` (`footage_set_beat_grid`) declares the grid — `tempo_bpm` +
+  `first_beat_s`, or explicit `beats`, with `beats_per_bar`/`first_bar_beat` for the bars —
+  recorded `source: "declared"`, returned by `beat_grid` and used by the `weighted` snap, the
+  cut-to-the-music planner, `explain_edit` and `fit_to_beat`, never overwritten by an estimate (`clear_beat_grid`
+  forgets it; a song change makes it not apply). The importer takes a manifest `beat_grid`.
+  Footage scores always keep the ESTIMATOR's beat features (muvid#123).

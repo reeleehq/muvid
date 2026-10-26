@@ -651,7 +651,9 @@ def beat_grid(project_id: str) -> dict:
     cached under the project as ``scores/beat_grid.json`` keyed on ``song_hash`` so the
     second call is a file read; a project that has already been scored is served from
     that run's manifest instead. ``source`` says which (``computed`` | ``cache`` |
-    ``scores``).
+    ``scores``) — or ``declared``: a grid set by hand with ``footage_set_beat_grid``,
+    returned instead of any estimate, with its ``downbeats``, ``beats_per_bar`` and
+    ``bar_of_beat``.
 
     Needs the ``scoring`` extra (``mixing[beats]``, i.e. librosa); without it the reply
     is a clean error naming the install, never a traceback. Needs a song
@@ -668,10 +670,13 @@ def beat_grid(project_id: str) -> dict:
     # estimator MEASURED them (tests/test_beat_grid_tool.py). The derived bar
     # numbering the studio's ``beat_grid`` op adds is left off this reply until the
     # connector's contract is changed on purpose.
-    if out.pop("downbeats_source", None) != "measured":
-        out.pop("downbeats", None)
-    out.pop("beats_per_bar", None)
-    out.pop("bar_of_beat", None)
+    # A grid a person DECLARED (``set_beat_grid``) is not an estimate: its bars were
+    # stated, so they stay.
+    if out.get("source") != "declared":
+        if out.pop("downbeats_source", None) != "measured":
+            out.pop("downbeats", None)
+        out.pop("beats_per_bar", None)
+        out.pop("bar_of_beat", None)
     return out
 
 

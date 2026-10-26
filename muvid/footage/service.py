@@ -517,6 +517,11 @@ def song_analysis(fp):
     """The song's beats, bars and sections for cutting to the music
     (:func:`muvid.montage.analysis.analyze`), measured once per song and kept beside the
     other per-media measurements (``beats/``), keyed on the song's hash."""
+    return _with_declared_grid(fp, _measured_song_analysis(fp))
+
+
+def _measured_song_analysis(fp):
+    """The estimator's analysis of the song, cached; a declared grid is NOT in it."""
     from muvid.footage import music_cut
     from muvid.footage.media_views import read_json, write_json
     from muvid.montage.analysis import Analysis
@@ -531,6 +536,31 @@ def song_analysis(fp):
     analysis = music_cut._default_analysis(str(fp.song_path()))
     write_json(path, analysis.to_dict())
     return analysis
+
+
+def _with_declared_grid(fp, analysis):
+    """``analysis`` with a person's declared beats and bars in place of the estimate's
+    (never persisted: clearing the grid must bring the estimate back). The per-bar
+    energies belonged to the estimator's bars, so they are dropped."""
+    from dataclasses import replace
+
+    declared = declared_beat_grid(fp)
+    if declared is None:
+        return analysis
+    from muvid.footage.beats import fitted_tempo
+
+    beats = declared["beat_times"]
+    return replace(
+        analysis,
+        tempo_bpm=declared.get("tempo_bpm")
+        or fitted_tempo(beats)
+        or analysis.tempo_bpm,
+        beats=tuple(beats),
+        downbeats=tuple(declared["downbeat_times"]),
+        beats_per_bar=declared["beats_per_bar"],
+        beat_source=DECLARED,
+        bar_energy_db=(),
+    )
 
 
 def _warm(fn, *args) -> None:
@@ -1055,7 +1085,10 @@ def beat_grid(fp) -> dict:
     Computed once on the song (never per clip — clips map to it through their offsets)
     and cached under the project keyed on the song's content hash, so the second call is
     a file read; a project that has been scored is served from that run instead.
-    ``source`` says which (``computed`` | ``cache`` | ``scores``).
+    ``source`` says which (``computed`` | ``cache`` | ``scores``) — or ``declared``: a
+    grid set by hand with ``set_beat_grid``, which is returned instead of any estimate
+    and is never overwritten by one (estimators can be wrong on a song; a person who
+    fitted it is not guessing).
 
     Needs the ``scoring`` extra (librosa); without it the refusal names the install.
     Needs a song; no alignment is required.
@@ -1078,7 +1111,9 @@ def beat_grid(fp) -> dict:
     reply = {
         # Fitted to the beats, not the estimator's own figure (which can be biased by
         # a couple of percent — see `fitted_tempo`); the estimator's when too few.
-        "tempo_bpm": fitted_tempo(beats) or record.get("tempo_bpm"),
+        "tempo_bpm": (record.get("tempo_bpm") if source == DECLARED else None)
+        or fitted_tempo(beats)
+        or record.get("tempo_bpm"),
         "beats": beats,
         "n_beats": len(beats),
         "song_duration": fp.song_duration(),
@@ -1088,8 +1123,213 @@ def beat_grid(fp) -> dict:
     return reply
 
 
+#: Where a DECLARED beat grid lives: beside the manifest, NOT under ``scores/`` (whose
+#: lifecycle is "dropped when the song or the offsets change"). It records the song it
+#: was set for, and a record for another song is simply not served.
+_DECLARED_BEAT_GRID_NAME = "beat_grid_declared.json"
 #: Beats to a bar when the estimator does not say (4/4, as muvid.montage assumes).
 BEATS_PER_BAR = 4
+#: A tempo outside this is a typo, not a song (BPM).
+MIN_TEMPO_BPM, MAX_TEMPO_BPM = 20.0, 400.0
+MAX_BEATS_PER_BAR = 16
+#: The most beats one declared grid may hold (a 4-hour song at the top tempo).
+MAX_DECLARED_BEATS = 100_000
+#: A declared beat may sit this far (seconds) past the song's end: probed durations
+#: are rounded.
+_SONG_END_SLACK_S = 1e-3
+#: ``beat_grid``'s ``source`` for a grid a person set, and the key it is recorded under.
+DECLARED = "declared"
+
+
+def declared_beat_grid(fp) -> Optional[dict]:
+    """The beat grid a person declared for THIS song, or ``None``.
+
+    ``None`` when there is none, when it was set for another song, or when the file does
+    not have the shape :func:`set_beat_grid` writes (it is on-disk state, so it is read
+    defensively — an unreadable grid is an absent one, never a crash).
+    """
+    if not fp.has_song():
+        return None
+    try:
+        record = json.loads((fp.root / _DECLARED_BEAT_GRID_NAME).read_text())
+    except (OSError, ValueError):
+        return None
+    if not isinstance(record, dict) or record.get("song_hash") != fp.song_hash():
+        return None
+    beats, downs = record.get("beat_times"), record.get("downbeat_times")
+    per_bar = record.get("beats_per_bar")
+    if (
+        not _numbers(beats, minimum=2)
+        or not _numbers(downs, minimum=0)
+        or isinstance(per_bar, bool)
+        or not isinstance(per_bar, int)
+        or not 1 <= per_bar <= MAX_BEATS_PER_BAR
+    ):
+        return None
+    return record
+
+
+def _numbers(value, *, minimum: int) -> bool:
+    """A list of at least ``minimum`` finite non-bool numbers."""
+    return (
+        isinstance(value, list)
+        and len(value) >= minimum
+        and all(
+            isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+            for x in value
+        )
+    )
+
+
+def _finite(value, name: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise FootageError(f"{name} must be a number, got {value!r}")
+    number = float(value)
+    if not math.isfinite(number):
+        raise FootageError(f"{name} must be a finite number, got {value!r}")
+    return number
+
+
+def _whole(value, name: str, lo: int, hi: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not lo <= value <= hi:
+        raise FootageError(f"{name} must be a whole number {lo}..{hi}, got {value!r}")
+    return value
+
+
+def _declared_beats(
+    *, tempo_bpm, first_beat_s, beats, duration: float
+) -> tuple[list[float], Optional[float]]:
+    """``(beat times, declared tempo or None)`` from either spelling, validated.
+
+    Rounded FIRST and checked after, so what is stored is what was checked (two beats
+    a tenth of a millisecond apart must not become one).
+    """
+    if (tempo_bpm is None) == (beats is None):
+        raise FootageError(
+            "give either tempo_bpm (with first_beat_s) or beats, not both"
+        )
+    if tempo_bpm is not None:
+        tempo = _finite(tempo_bpm, "tempo_bpm")
+        first = _finite(0.0 if first_beat_s is None else first_beat_s, "first_beat_s")
+        if not MIN_TEMPO_BPM <= tempo <= MAX_TEMPO_BPM:
+            raise FootageError(
+                f"tempo_bpm must be {MIN_TEMPO_BPM:g}..{MAX_TEMPO_BPM:g}, got {tempo}"
+            )
+        if not 0.0 <= first < duration:
+            raise FootageError(
+                f"first_beat_s must be inside the song (0..{duration:g} s), got {first}"
+            )
+        period = 60.0 / tempo
+        count = int((duration - first) / period) + 1  # <= MAX_TEMPO_BPM * duration / 60
+        grid = [first + k * period for k in range(count)]
+        declared = tempo
+    else:
+        if first_beat_s is not None:
+            raise FootageError(
+                "first_beat_s goes with tempo_bpm; beats name their own times"
+            )
+        if not isinstance(beats, (list, tuple)):
+            raise FootageError(
+                f"beats must be a list of seconds, got {type(beats).__name__}"
+            )
+        if not 2 <= len(beats) <= MAX_DECLARED_BEATS:
+            raise FootageError(
+                f"beats needs 2..{MAX_DECLARED_BEATS} entries, got {len(beats)}"
+            )
+        grid = [_finite(b, "beats[]") for b in beats]
+        declared = None
+    grid = [round(t, _BEAT_TIME_DECIMALS) for t in grid]
+    if len(grid) < 2 or len(grid) > MAX_DECLARED_BEATS:
+        raise FootageError(
+            f"that is {len(grid)} beats; a grid needs 2..{MAX_DECLARED_BEATS}"
+        )
+    if grid[0] < 0 or grid[-1] > duration + _SONG_END_SLACK_S:
+        raise FootageError(f"beats must lie inside the song (0..{duration:g} s)")
+    if any(b <= a for a, b in zip(grid, grid[1:])):
+        raise FootageError("beats must be strictly ascending")
+    return grid, declared
+
+
+def set_beat_grid(
+    fp,
+    *,
+    tempo_bpm: Optional[float] = None,
+    first_beat_s: Optional[float] = None,
+    beats: Optional[list[float]] = None,
+    beats_per_bar: int = BEATS_PER_BAR,
+    first_bar_beat: int = 0,
+) -> dict:
+    """Tell it where the beats are, when the automatic estimate is wrong for this song.
+
+    Give EITHER ``tempo_bpm`` (with ``first_beat_s``, default 0: a steady grid, a beat every
+    ``60 / tempo_bpm`` seconds to the end of the song) OR an explicit list of ``beats``
+    (seconds, ascending) for a song that drifts. ``beats_per_bar`` (default 4) and
+    ``first_bar_beat`` (which beat, counting from 0, starts the first bar — the beats before
+    it are a pickup, bar 0) number the bars.
+
+    It is recorded as ``source: "declared"`` and returned by ``beat_grid`` from then on;
+    re-estimating never replaces it (``clear_beat_grid`` forgets it). The cut-to-the-music
+    planner, ``explain_edit``, ``fit_to_beat`` and the ``weighted`` strategy's beat snap use
+    it. **Footage scores keep the estimate:** their beat features (``motion_beat_*``) are
+    measured on the estimator's grid, also in a run made after this. A grid belongs to the
+    song it was set for: with another song set it does not apply (and comes back if that
+    song is set again). Returns the grid like ``beat_grid`` does, plus ``changed``.
+    """
+    if not fp.has_song():
+        raise FootageError("no song set — call set_song first")
+    grid, declared_tempo = _declared_beats(
+        tempo_bpm=tempo_bpm,
+        first_beat_s=first_beat_s,
+        beats=beats,
+        duration=fp.song_duration(),
+    )
+    per_bar = _whole(beats_per_bar, "beats_per_bar", 1, MAX_BEATS_PER_BAR)
+    first_bar = _whole(first_bar_beat, "first_bar_beat", 0, per_bar - 1)
+    if first_bar >= len(grid):
+        raise FootageError("first_bar_beat is past the last beat")
+    record = {
+        "song_hash": fp.song_hash(),
+        "source": DECLARED,
+        "tempo_bpm": declared_tempo,
+        "beat_times": grid,
+        "downbeat_times": grid[first_bar::per_bar],
+        "beats_per_bar": per_bar,
+        "first_bar_beat": first_bar,
+    }
+    before = declared_beat_grid(fp)
+    changed = before is None or any(before.get(k) != v for k, v in record.items())
+    if changed:
+        _write_declared(fp, {**record, "declared_at": time.time()})
+    return {**beat_grid(fp), "changed": changed}
+
+
+def _write_declared(fp, record: dict) -> None:
+    """Atomic: a unique temp beside the target, then ``os.replace``."""
+    import tempfile
+
+    path = fp.root / _DECLARED_BEAT_GRID_NAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".beat_grid.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(record, f)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def clear_beat_grid(fp) -> dict:
+    """Forget the beat grid I set, so the beat grid is estimated from the song again.
+
+    Only a grid set by hand can be forgotten; with none set it is refused. (A grid set for
+    another song is forgotten too: it is still on file.)
+    """
+    path = fp.root / _DECLARED_BEAT_GRID_NAME
+    if not path.exists():
+        raise FootageError("no beat grid was set by hand — nothing to forget")
+    path.unlink(missing_ok=True)
+    return {"cleared": True}
 
 
 def _bars(beats: list, record: dict) -> dict:
@@ -1097,19 +1337,22 @@ def _bars(beats: list, record: dict) -> dict:
     onset-energy vote over the beat phases, else the first beat (said which)."""
     import bisect
 
+    per_bar = int(record.get("beats_per_bar") or BEATS_PER_BAR)
     measured = list(record.get("downbeat_times") or [])
-    if measured:
+    if record.get("source") == DECLARED:
+        downbeats, source = measured, DECLARED
+    elif measured:
         downbeats, source = measured, "measured"
     else:
         from muvid.montage.analysis import downbeats_from_beats
 
         energy = list(record.get("onset_at_beats") or [])
-        downbeats = list(downbeats_from_beats(beats, energy, BEATS_PER_BAR))
+        downbeats = list(downbeats_from_beats(beats, energy, per_bar))
         source = "derived" if energy else "first_beat"
     return {
         "downbeats": downbeats,
         "downbeats_source": source,
-        "beats_per_bar": BEATS_PER_BAR,
+        "beats_per_bar": per_bar,
         "bar_of_beat": [bisect.bisect_right(downbeats, t + 1e-9) for t in beats],
     }
 
@@ -1120,6 +1363,7 @@ def _beat_grid_record(fp, *, song_hash: str) -> tuple[str, dict]:
 
     cache_path = scores_dir(fp.root) / _BEAT_GRID_CACHE_NAME
     sources = (
+        (DECLARED, lambda: declared_beat_grid(fp)),
         (_BEAT_GRID_FROM_CACHE, lambda: _read_beat_grid_cache(cache_path, song_hash)),
         (_BEAT_GRID_FROM_SCORES, lambda: _beat_grid_from_scores(fp, song_hash)),
         (
@@ -1781,10 +2025,17 @@ def _selection_context(fp, strat, preset, weights, config):
         song_hash=fp.song_hash() if fp.has_song() else "",
         align_fingerprint=align_fingerprint(fp.load_alignments()),
     )
+    beat_times, downbeat_times = (
+        beats.get("beat_times", []),
+        beats.get("downbeat_times", []),
+    )
+    declared = declared_beat_grid(fp)
+    if declared is not None:  # a person's grid beats the estimator's (muvid#123)
+        beat_times, downbeat_times = declared["beat_times"], declared["downbeat_times"]
     return SelectionContext(
         tensor=load_tensor(fp.root) if fresh else None,
-        beat_times=beats.get("beat_times", []),
-        downbeat_times=beats.get("downbeat_times", []),
+        beat_times=beat_times,
+        downbeat_times=downbeat_times,
         shot_boundaries=manifest.get("shot_boundaries"),
         config=resolve_config(preset=preset or None, weights=weights, config=config),
     )
@@ -3831,6 +4082,8 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
     OpSpec("beat_grid", "Find the beat", "read"),
+    OpSpec("set_beat_grid", "Set the beat by hand", "write"),
+    OpSpec("clear_beat_grid", "Forget the beat I set", "destroy"),
     OpSpec("peaks", "Show the song's waveform", "read"),
     OpSpec("beat_signals", "Show where the beat is in the song or a video", "read"),
     OpSpec("filmstrips", "Show the videos' filmstrips", "read"),
