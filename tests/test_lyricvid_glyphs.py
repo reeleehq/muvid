@@ -1781,14 +1781,22 @@ def test_span_property_never_negative_overlapping_or_over_the_cap(stem_of):
             segs.append(
                 (a, a + rng.uniform(0.02, 0.6), rng.choice([0.5, 0.15, 0.05, 0.005]))
             )
+        # some of the glyphs are sokuon, which carry no span but sit between two
+        chars = rng.choice(["カ", "カ", "ッ"], len(starts))
+        max_s = float(rng.choice([0.05, 0.2, ga.GLYPH_SPAN_MAX_S]))
         fine = _timed_words(
-            ("".join("カ" for _ in starts), [("カ", float(t)) for t in starts])
+            (
+                "".join(chars),
+                [(str(c), float(t)) for c, t in zip(chars, starts)],
+            )
         )
-        out = ga.with_spans(fine, vocals=stem_of(_stem_amps(*segs, duration=4.5)))
-        gl = [g for w in out.words() for g in w.glyphs]
+        out = ga.with_spans(
+            fine, vocals=stem_of(_stem_amps(*segs, duration=4.5)), max_span_s=max_s
+        )
+        gl = [g for w in out.words() for g in w.glyphs if g.span]
         for g in gl:
             assert g.span.start <= g.span.end
-            assert g.span.end <= g.start + ga.GLYPH_SPAN_MAX_S + frame
+            assert g.span.end <= g.start + max_s + frame
         for a, b in zip(gl, gl[1:]):
             assert a.span.end <= b.span.start
 
@@ -1820,3 +1828,63 @@ def test_span_is_a_checked_value():
         Span(2.0, 1.0, "next")
     with pytest.raises(ValueError):
         Span(1.0, float("nan"), "next")
+
+
+def test_a_sokuon_between_two_glyphs_never_makes_their_spans_overlap(stem_of):
+    """Review of #149: カ's silence cut can land past ッ, onto プ's own onset."""
+    fine = _timed_words(("カップ", [("カ", 1.0), ("ッ", 1.3), ("プ", 1.33)]))
+    got = _spans(
+        ga.with_spans(fine, vocals=stem_of(_stem((1.0, 1.35), (1.6, 2.0), (3.0, 4.0))))
+    )
+    assert got[0][1][1] <= got[2][1][0]
+
+
+def test_a_next_onset_just_inside_the_cap_is_the_boundary_not_the_cap(stem_of):
+    stem = stem_of(_stem((1.0, 2.0), (3.0, 4.0)))
+    at_cap = _timed_words(("カス", [("カ", 1.0), ("ス", 1.6)]))
+    assert _spans(ga.with_spans(at_cap, vocals=stem))[0][2] == "cap"  # >= the cap
+    inside = _timed_words(("カス", [("カ", 1.0), ("ス", 1.57)]))
+    assert _spans(ga.with_spans(inside, vocals=stem))[0][2] == "legato"
+    # a tiny max_span_s caps everything, and never goes negative or raises
+    got = _spans(ga.with_spans(inside, vocals=stem, max_span_s=0.05))
+    assert got[0] == ("カ", (1.0, 1.05), "cap")
+
+
+@pytest.mark.parametrize("gap_db, cut", [(-38, "valley"), (-42, "silence")])
+def test_span_silence_threshold_is_tight(stem_of, gap_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(gap_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+@pytest.mark.parametrize("dip_db, cut", [(-7, "legato"), (-9, "valley")])
+def test_span_valley_threshold_is_tight(stem_of, dip_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(dip_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+def test_a_valley_must_be_deep_under_both_neighbours(stem_of):
+    """-12 dB under the left syllable but only -4 under the right one: no valley."""
+    stem = stem_of(
+        _stem_amps(
+            (1.0, 1.3, 0.5),
+            (1.3, 1.4, _db_amp(-12)),
+            (1.4, 2.0, _db_amp(-8)),
+            (3.0, 4.0, 0.5),
+        )
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == "legato"
+
+
+def test_timing_overrides_clear_the_spans_they_invalidate(stem_of, onsets_at):
+    fine, coarse = _spilled_song()
+    onsets_at(*_SPILL_ONSETS)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+    out = ga.with_spans(out)
+    assert any(g.span for w in out.words() for g in w.glyphs)
+    got, _ = ga.apply_timing_overrides(out, fine, records, overrides={"1": "fine"})
+    assert all(g.span is None for w in got.words() for g in w.glyphs)

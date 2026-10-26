@@ -1834,14 +1834,16 @@ def with_spans(
     marks = [(i, g.start) for i, g in enumerate(flat) if spanned(g) or sokuon(g)]
     spans: dict[int, Span] = {}
     begin: dict[int, float] = {}  # a glyph's span start, when a cut moved it
+    last_end = -math.inf  # spans never overlap, whatever sits between two glyphs
     for (i, _), nxt in zip(marks, [*marks[1:], None]):
         g = flat[i]
         if not spanned(g):
             continue
-        s0 = begin.get(i, g.start)
+        s0 = max(begin.get(i, g.start), last_end)
         cap = g.start + max_span_s
         if nxt is None or nxt[1] >= cap:
             spans[i] = Span(round(s0, 3), round(max(cap, s0), 3), "cap")
+            last_end = max(cap, s0)
             continue
         j, t = nxt
         end, nxt_begin, how = t, t, "next"
@@ -1858,6 +1860,7 @@ def with_spans(
             end, how = cap, "cap"
         end = max(end, s0)
         spans[i] = Span(round(s0, 3), round(end, 3), how)
+        last_end = end
         if spanned(flat[j]):
             begin[j] = max(nxt_begin, end)
 
