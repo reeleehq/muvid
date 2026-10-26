@@ -691,7 +691,8 @@ def word_agreement(
 #: fall back to the coarse window shifted by the measured bias, glyphs spread
 #: evenly and marked unmeasured (the word was sung; the aligner could not place
 #: it). ``drop``: remove the word, and a line or section left empty (it was
-#: never sung, so lighting it at ANY time is wrong).
+#: never sung, so lighting it at ANY time is wrong). ``mute``: keep the word and
+#: its times, mark only the glyphs the detector names ``sung=False``.
 REMEDIES = ("replace", "drop", "mute")
 #: When several detectors flag one word, the lowest rank decides. Every remedy
 #: needs a rank AND a branch in :func:`reconcile` — a new one is never read as
@@ -740,7 +741,8 @@ class Detector:
     ``find(fine, coarse)`` gets both timings (same word sequence) and returns
     ``{word_index: reason}``, indices into ``list(fine.words())``. ``remedy``
     is one of :data:`REMEDIES`; when several detectors flag one word, ``drop``
-    wins — a word nobody sang has no window worth falling back to.
+    wins — a word nobody sang has no window worth falling back to — then
+    ``replace``, then ``mute``.
     """
 
     name: str
@@ -1264,7 +1266,11 @@ def reconcile(
     detector that flagged it) and ``used`` (the start it got; ``None`` when
     dropped). ``mute`` (see :func:`silent_glyph`) keeps the word and its times
     and sets ``sung=False`` on the glyphs the detector names (the record lists
-    their indices as ``glyphs``).
+    their indices as ``glyphs``); it ranks below ``replace``, so a word another
+    detector distrusts is re-timed and its silence verdict, measured on the
+    distrusted time, is not kept. A ``ー`` after a muted glyph keeps ``sung=True``
+    (it is never judged); and a ``fine`` timing override restores the line whole,
+    ``sung`` included.
     """
     import numpy as np
 
@@ -1282,13 +1288,19 @@ def reconcile(
             "detectors=, pass them to default_detectors(...) instead"
         )
     flags: dict[int, list[tuple[Detector, str]]] = {}
+    muted: dict[int, set[int]] = {}  # word index -> glyph indices, asked once each
     for d in detectors:
         for k, why in d.find(fine, coarse).items():
             flags.setdefault(k, []).append((d, why))
+        if d.remedy == "mute":
+            for k, idx in d.glyphs(fine, coarse).items():
+                muted.setdefault(k, set()).update(idx)
+    # the bias is measured over words whose fine time is trusted; a muted word's
+    # times are (only its sung-ness is in doubt), a replaced or dropped one's not
     good = [
         _word_start(x) - _word_start(y)
         for k, (x, y) in enumerate(zip(a, b))
-        if k not in flags
+        if all(d.remedy == "mute" for d, _ in flags.get(k, ()))
     ]
     bias = float(np.median(good)) if good else 0.0
 
@@ -1339,7 +1351,13 @@ def reconcile(
                         )
                         rec["used"] = round(shifted.start, 3)
                     elif d.remedy == "mute":
-                        idx = set(d.glyphs(fine, coarse).get(k, ()))
+                        idx = muted.get(k, set())
+                        if not idx or not idx <= set(range(len(w.glyphs))):
+                            raise ValueError(
+                                f"detector {d.name!r} flagged word {k} ({w.text!r}) "
+                                f"for 'mute' but its glyphs() named {sorted(idx)} "
+                                f"of {len(w.glyphs)} glyphs"
+                            )
                         words.append(
                             replace(
                                 w,
@@ -1627,5 +1645,5 @@ def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
                     "start": g.start,
                     "end": g.end,
                     "measured": g.measured,
-                    **({} if g.sung else {"sung": False}),
+                    "sung": g.sung,
                 }

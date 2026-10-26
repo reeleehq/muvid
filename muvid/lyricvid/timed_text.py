@@ -64,8 +64,9 @@ class Glyph:
     measured: bool = True
     #: False when the stem shows this written character was NOT sung (an elided
     #: mora: the transcript lists ハッカー, the singer sang ハッ). Its times are
-    #: whatever the aligner put there; a consumer playing or lighting per glyph
-    #: should skip it. Omitted from :meth:`TimedText.to_dict` when True, so every
+    #: whatever the aligner put there. A consumer PLAYING audio per glyph should
+    #: skip it; one LIGHTING glyphs should still light it (with its predecessor),
+    #: or the written word never completes. Omitted from :meth:`TimedText.to_dict` when True, so every
     #: existing timing file stays byte-identical (muvid#175).
     sung: bool = True
 

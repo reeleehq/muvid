@@ -1454,3 +1454,99 @@ def test_sung_false_round_trips_and_is_omitted_when_true(stem_of):
     d = muted.to_dict()
     assert [g["text"] for g in _glyph_dicts(d) if g.get("sung") is False] == ["カ"]
     assert from_dict(d) == muted
+
+
+def _two_words_two_silences():
+    # word 0: カ (1.3) silent; word 1: two silent glyphs, ス (3.0) and ト (3.2) ; word 2 sung
+    return _timed_words(
+        ("ハッカー", [("ハ", 1.0), ("ッ", 1.15), ("カ", 1.3), ("ー", 1.4)]),
+        ("スト", [("ス", 3.0), ("ト", 3.2)]),
+        ("サン", [("サ", 5.0), ("ン", 5.2)]),
+    )
+
+
+def test_mute_handles_several_words_and_several_glyphs_per_word(stem_of):
+    fine = _two_words_two_silences()
+    stem = stem_of(_stem((1.0, 1.25), (5.0, 5.5), (7.0, 8.0)))
+    out, records = ga.reconcile(
+        fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"),)
+    )
+    ws = list(out.words())
+    assert [[g.sung for g in w.glyphs] for w in ws] == [
+        [True, True, False, True],
+        [False, False],
+        [True, True],
+    ]
+    assert [(r["index"], r["glyphs"], r["used"]) for r in records] == [
+        (0, [2], 1.0),
+        (1, [0, 1], 3.0),
+    ]
+
+
+def test_drop_beats_mute_on_the_same_word(stem_of):
+    fine = _elided_song()
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    dropper = ga.Detector(name="d", find=lambda f, c: {0: "x"}, remedy="drop")
+    out, records = ga.reconcile(
+        fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"), dropper)
+    )
+    assert [w.text for w in out.words()] == ["サン"]
+    assert records[0]["remedy"] == "drop"
+    assert records[0]["flagged_by"] == ["silent_glyph", "d"]
+
+
+@pytest.mark.parametrize("named", [{}, {0: {99}}])
+def test_a_mute_detector_that_disagrees_with_its_own_find_is_refused(named):
+    fine = _elided_song()
+    bad = ga.Detector(
+        name="bad", find=lambda f, c: {0: "x"}, remedy="mute", glyphs=lambda f, c: named
+    )
+    with pytest.raises(ValueError, match="flagged word 0"):
+        ga.reconcile(fine, fine, detectors=(bad,))
+
+
+def test_a_muted_word_still_counts_toward_the_bias_a_replaced_word_gets(stem_of):
+    """Muting keeps a word's time, so it is evidence of the vendor's offset."""
+    fine = _elided_song()
+    # coarse is fine shifted -0.2 s: bias = fine - coarse = +0.2
+    from dataclasses import replace as _r
+
+    def shift(tt, dt):
+        return _r(
+            tt,
+            sections=tuple(
+                _r(
+                    s,
+                    lines=tuple(
+                        _r(
+                            l,
+                            words=tuple(
+                                _r(w, start=w.start + dt, end=w.end + dt, glyphs=())
+                                for w in l.words
+                            ),
+                        )
+                        for l in s.lines
+                    ),
+                )
+                for s in tt.sections
+            ),
+        )
+
+    coarse = shift(fine, -0.2)
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    replace_second = ga.Detector(name="r", find=lambda f, c: {1: "x"}, remedy="replace")
+    out, _ = ga.reconcile(
+        fine,
+        coarse,
+        detectors=(ga.silent_glyph(stem, remedy="mute"), replace_second),
+    )
+    assert list(out.words())[1].start == pytest.approx(3.0)  # coarse 2.8 + bias 0.2
+
+
+def test_glyph_rows_always_carry_sung(stem_of):
+    fine = _elided_song()
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    out, _ = ga.reconcile(fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"),))
+    rows = list(ga.glyph_rows(out))
+    assert all("sung" in r for r in rows)
+    assert [r["text"] for r in rows if not r["sung"]] == ["カ"]
