@@ -30,15 +30,16 @@ path of the plugin surface.
 
 ### Module Attributes
 
-| [`ARCHETYPES`](#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                       |
-|-------------------------------------------------------------------|------------------------------------------------------------------------|
-| [`ARCHETYPE_PARAMS`](#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key. |
-| [`CUT_FEELS`](#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                           |
-| [`CUT_FEEL_FACTORS`](#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                              |
-| [`GRADES`](#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                 |
-| [`MOTIONS`](#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                       |
-| [`TRANSITIONS`](#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                    |
-| [`SECTION_LABELS`](#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                          |
+| [`ARCHETYPES`](#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                                    |
+|-------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [`ARCHETYPE_PARAMS`](#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key.              |
+| [`CUT_FEELS`](#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                                        |
+| [`CUT_FEEL_FACTORS`](#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                                           |
+| [`GRADES`](#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                              |
+| [`MOTIONS`](#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                                    |
+| [`TRANSITIONS`](#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                                 |
+| [`SECTION_LABELS`](#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                                       |
+| [`REUSE_ORDERS`](#muvid.montage.spec.REUSE_ORDERS)     | The reuse orders a [`Reuse`](#muvid.montage.spec.Reuse) may name. |
 
 ### Functions
 
@@ -55,7 +56,7 @@ path of the plugin surface.
 | [`Direction`](#muvid.montage.spec.Direction)(\*[, mood, palette, cut_feel, ...])   | The song-level creative decision.                        |
 |--------------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | [`Palette`](#muvid.montage.spec.Palette)(\*[, bg, accent])                       | Colours, as `#rrggbb`.                                   |
-| [`Reuse`](#muvid.montage.spec.Reuse)(\*[, min_gap, reserve_for_finale])        | The reuse POLICY — how a small pool carries a long song. |
+| [`Reuse`](#muvid.montage.spec.Reuse)(\*[, min_gap, reserve_for_finale, order]) | The reuse POLICY — how a small pool carries a long song. |
 | [`Scene`](#muvid.montage.spec.Scene)(\*[, applies_to, archetype, params])      | One archetype, applied to part of the song.              |
 | [`TreatmentSpec`](#muvid.montage.spec.TreatmentSpec)(\*[, spec_version, title, ...])   | A complete, plannable treatment.                         |
 
@@ -103,7 +104,11 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 Colours, as `#rrggbb`. `accent` parameterises the `tint` grade;
 `bg` is the letterbox/pad colour when a tile does not fill its region.
 
-### *class* muvid.montage.spec.Reuse(, min_gap=6, reserve_for_finale=True)
+### muvid.montage.spec.REUSE_ORDERS *= ('least_used', 'chronological')*
+
+The reuse orders a [`Reuse`](#muvid.montage.spec.Reuse) may name.
+
+### *class* muvid.montage.spec.Reuse(, min_gap=6, reserve_for_finale=True, order='least_used')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -113,6 +118,18 @@ The reuse POLICY — how a small pool carries a long song.
 shrinks automatically to `pool - 1` for a small pool). Every return uses
 a different crop/move variant. `reserve_for_finale` holds the strongest
 quarter of the pool back for the last chorus.
+
+#### order *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)*
+
+pictures follow the order
+they were taken in (`Media.taken_at`; upload order for any without one) and
+`min_gap` / `reserve_for_finale` do not apply — a day told in order has no
+“strongest held for the end” (muvid#137).
+
+* **Type:**
+  `least_used`
+* **Type:**
+  the policy above. `chronological`
 
 ### muvid.montage.spec.SECTION_LABELS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= {'bridge': 'Chorus density.', 'chorus': 'Dense cuts; the last chorus gets the strongest images.', 'intro': 'Sparse cuts.', 'outro': 'Sparse cuts.', 'verse': "The archetype's verse pacing."}*
 

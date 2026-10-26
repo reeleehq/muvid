@@ -49,6 +49,7 @@ muvid.footage
    assemble
    beat_fit
    beats
+   capture_time
    edl
    errors
    explain

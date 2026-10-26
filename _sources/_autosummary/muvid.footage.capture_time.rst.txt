@@ -1,0 +1,23 @@
+muvid.footage.capture\_time
+===========================
+
+.. automodule:: muvid.footage.capture_time
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      MIN_PLAUSIBLE_YEAR
+      PROBE_TIMEOUT_S
+      EXIF_ORIGINAL
+      EXIF_DATETIME
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      photo_capture_time
+      video_capture_time
+      wall_clock_seconds
+   

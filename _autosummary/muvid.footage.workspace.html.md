@@ -104,13 +104,15 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One caller’s stateful music-video project (song + clips + alignments + renders).
 
-#### add_clip(clip_id, src_path, , ext, name='', kind='')
+#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='')
 
 Store a footage clip from a local file; returns its `clip_id`.
 
 `kind="still"` stores a photo (no sound, no duration); the default is a video,
 and writes no `kind` key, so a manifest written before photos existed reads
-the same.
+the same. `taken_at` (wall-clock seconds, see
+[`muvid.footage.capture_time`](muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)) and `taken_source` (the tag it came from)
+are recorded only when known — a manifest without them reads the same too.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)

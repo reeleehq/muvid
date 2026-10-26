@@ -101,9 +101,10 @@ limit is stated on the field rather than left to be discovered.
 
 ### Module Attributes
 
-| [`DEFAULT_PUNCH_ZOOM`](#muvid.footage.look.DEFAULT_PUNCH_ZOOM)   | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.   |
-|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`DEFAULT_PUNCH_ANCHOR`](#muvid.footage.look.DEFAULT_PUNCH_ANCHOR) | Where [`punch_in()`](#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                       |
+| [`DEFAULT_PUNCH_ZOOM`](#muvid.footage.look.DEFAULT_PUNCH_ZOOM)          | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.       |
+|------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`DEFAULT_ASSUMED_COLOR_SPACE`](#muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE) | The colour space [`stylize()`](#muvid.footage.look.stylize) ASSUMES for the assembler's output when the caller names none (muvid#190). |
+| [`DEFAULT_PUNCH_ANCHOR`](#muvid.footage.look.DEFAULT_PUNCH_ANCHOR)        | Where [`punch_in()`](#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                           |
 
 ### Functions
 
@@ -124,6 +125,19 @@ limit is stated on the field rather than left to be discovered.
 
 | [`LookError`](#muvid.footage.look.LookError)   | A look could not be compiled.   |
 |--------------------------------------------------------------|---------------------------------|
+
+### muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE *= 'bt709'*
+
+The colour space [`stylize()`](#muvid.footage.look.stylize) ASSUMES for the assembler’s output when the
+caller names none (muvid#190). `looks` Rule 22 refuses an RGB-only step
+(`saturation` …) on a clip with no declared colour space, because the
+RGB round trip would otherwise use whatever matrix the ffmpeg build guesses.
+This is a GUESS, not a fact: the assembler keeps each source’s own colour tags
+(it neither converts nor tags), so a BT.601 clip or a JPEG still is mis-read
+as BT.709 on ffmpeg >= 7 (measured in the #190 review). Phone footage is
+mostly BT.709, and it is the best single answer until the assembler
+normalises its output (the real fix, filed as a follow-up). The plan keeps
+`color_assumed`, but `stylize` does not surface it yet.
 
 ### muvid.footage.look.DEFAULT_PUNCH_ANCHOR *= (0.5, 0.5)*
 
@@ -375,7 +389,7 @@ seconds-based interval would drift off it.
   assembler cannot warn that a punch bordering a transition restarts its
   ramp (muvid#73).
 
-### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
+### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None, assume_color_space='bt709')
 
 A `looks.Look` compiled against the binary muvid will run.
 
@@ -388,6 +402,9 @@ A `looks.Look` compiled against the binary muvid will run.
   * **env** – a `looks.FfmpegEnv` to compile against, instead of probing.
   * **policy** – a `looks.Policy` — the licence ceiling. `looks`’ default
     applies when omitted.
+  * **assume_color_space** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]) – the colour space to declare for the output when a step
+    needs one (`looks` Rule 22, muvid#190); see
+    [`DEFAULT_ASSUMED_COLOR_SPACE`](#muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE). `None` keeps `looks`’ refusal.
 * **Return type:**
   [`LookFragment`](#muvid.footage.look.LookFragment)
 * **Returns:**

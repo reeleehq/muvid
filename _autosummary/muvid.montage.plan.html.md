@@ -52,7 +52,7 @@ asks for.
 | [`assign_media`](#muvid.montage.plan.assign_media)(drafts, media, reuse, \*[, ...])   | Fill every region of every draft with `(media_index, use_ordinal)`.                         |
 |--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | [`cut_times`](#muvid.montage.plan.cut_times)(section, analysis, beats_per_cut)     | Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.                            |
-| [`plan_montage`](#muvid.montage.plan.plan_montage)(analysis, media, treatment)        | Pool + measurements + treatment -> a [`Plan`](#muvid.montage.plan.Plan). |
+| [`plan_montage`](#muvid.montage.plan.plan_montage)(analysis, media, treatment, \*)    | Pool + measurements + treatment -> a [`Plan`](#muvid.montage.plan.Plan). |
 | [`register_archetype`](#muvid.montage.plan.register_archetype)(name)                        | Register an archetype planner under `name`.                                                 |
 | [`tile_path`](#muvid.montage.plan.tile_path)(variant, motion, length_s, \*[, ...]) | The window path for one still: piecewise linear, slot-relative seconds.                     |
 
@@ -136,7 +136,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 A framing: top-left `(x, y)` and visible fraction `size` of the
 fitted frame, all in `0..1`. The aspect is the canvas’s.
 
-### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None)
+### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None, active=None)
 
 Fill every region of every draft with `(media_index, use_ordinal)`.
 
@@ -189,9 +189,12 @@ its neighbour — a half-beat pickup is not a slot — and a cut within
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.montage.plan.plan_montage(analysis, media, treatment)
+### muvid.montage.plan.plan_montage(analysis, media, treatment, , active=None)
 
 Pool + measurements + treatment -> a [`Plan`](#muvid.montage.plan.Plan). Pure and deterministic.
+
+`active` says which slots will actually be shown (a caller filling only part of
+the song); the `chronological` reuse order spends the pool on those alone.
 
 * **Return type:**
   [`Plan`](#muvid.montage.plan.Plan)

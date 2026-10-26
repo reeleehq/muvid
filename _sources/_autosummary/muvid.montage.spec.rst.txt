@@ -16,6 +16,7 @@ muvid.montage.spec
       MOTIONS
       TRANSITIONS
       SECTION_LABELS
+      REUSE_ORDERS
    
    .. rubric:: Functions
 

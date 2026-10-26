@@ -34,6 +34,8 @@ muvid.footage.edl
 
    .. autosummary::
    
+      blend_lead
+      blend_trail
       clip_in_of
       clip_time_at
       derive_cuts

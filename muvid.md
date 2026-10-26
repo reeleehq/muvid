@@ -1,4 +1,4 @@
-> built 2026-10-26 17:52 UTC from bca37f4 (main) · muvid 0.0.100. Details: build_info.json
+> built 2026-10-26 21:49 UTC from 3d7c5ec (main) · muvid 0.0.101. Details: build_info.json
 
 # index.html.md
 
@@ -2980,6 +2980,89 @@ no pair fell in is `None`.
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
 
+# _autosummary/muvid.footage.capture_time.html.md
+
+# muvid.footage.capture_time
+
+When a photo or a video was taken, read from the file itself (muvid#137).
+
+“Cut to the music” should let a day read in order, as Apple Memories and GoPro Quik do, so
+each clip row carries the time its file says it was captured: EXIF `DateTimeOriginal`
+for a photo, the QuickTime `creationdate` (else `creation_time`) tag for a video.
+
+**Times are wall-clock seconds, not instants.** A camera writes the local time it showed
+and (for EXIF) no zone, so every source here is reduced to the same thing — the time on
+the wall clock, read as if it were UTC — which makes a photo and a video from one phone
+comparable. A video that only carries a UTC `creation_time` is the exception and is
+compared as is (off by the zone offset from the photos beside it); the `source` returned
+beside the time says which tag it came from so a caller can tell.
+
+**Absent is not zero.** A file with no tag, a tag that is not a date, or one before
+[`MIN_PLAUSIBLE_YEAR`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.MIN_PLAUSIBLE_YEAR) (cameras without a clock write 1904 or 1970) gives `None` —
+never a made-up time. Reading is best effort and must never fail an upload.
+
+### Module Attributes
+
+| [`MIN_PLAUSIBLE_YEAR`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.MIN_PLAUSIBLE_YEAR)   | A capture time earlier than this year is a camera with no clock set, not a date.   |
+|-----------------------------------------------------------------------|------------------------------------------------------------------------------------|
+| [`PROBE_TIMEOUT_S`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.PROBE_TIMEOUT_S)      | Seconds ffprobe may spend on one file.                                             |
+| [`EXIF_ORIGINAL`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.EXIF_ORIGINAL)        | `source` values of a returned time.                                                |
+| [`EXIF_DATETIME`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.EXIF_DATETIME)        | `source` values of a returned time.                                                |
+
+### Functions
+
+| [`photo_capture_time`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.photo_capture_time)(image)   | `(time, source)` from an open PIL image's EXIF.                                   |
+|------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [`video_capture_time`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.video_capture_time)(path)    | `(time, source)` from a video's container tags (`ffprobe`).                       |
+| [`wall_clock_seconds`](_autosummary/muvid.footage.capture_time.html.md#muvid.footage.capture_time.wall_clock_seconds)(text)    | Seconds since 1970 of the wall-clock stamp in `text`; any zone suffix is ignored. |
+
+### muvid.footage.capture_time.EXIF_DATETIME *= 'exif:DateTime'*
+
+`source` values of a returned time.
+
+### muvid.footage.capture_time.EXIF_ORIGINAL *= 'exif:DateTimeOriginal'*
+
+`source` values of a returned time.
+
+### muvid.footage.capture_time.MIN_PLAUSIBLE_YEAR *= 1990*
+
+A capture time earlier than this year is a camera with no clock set, not a date.
+
+### muvid.footage.capture_time.PROBE_TIMEOUT_S *= 20.0*
+
+Seconds ffprobe may spend on one file.
+
+### muvid.footage.capture_time.photo_capture_time(image)
+
+`(time, source)` from an open PIL image’s EXIF.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`float`](https://docs.python.org/3/builtins/functions.html#float)], [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.capture_time.video_capture_time(path)
+
+`(time, source)` from a video’s container tags (`ffprobe`).
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`float`](https://docs.python.org/3/builtins/functions.html#float)], [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.capture_time.wall_clock_seconds(text)
+
+Seconds since 1970 of the wall-clock stamp in `text`; any zone suffix is ignored.
+
+```pycon
+>>> wall_clock_seconds("2024:06:01 14:03:22")
+1717250602.0
+>>> wall_clock_seconds("2024-06-01T14:03:22-0700") == wall_clock_seconds("2024:06:01 14:03:22")
+True
+>>> wall_clock_seconds("0000:00:00 00:00:00") is None, wall_clock_seconds("nope") is None
+(True, True)
+```
+
+* **Return type:**
+  [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
+
 # _autosummary/muvid.footage.edl.html.md
 
 # muvid.footage.edl
@@ -3041,18 +3124,20 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 
 ### Functions
 
-| [`clip_in_of`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.   |
-|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`clip_time_at`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                       |
-| [`derive_cuts`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                            |
-| [`exclude_unvouched`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                |
-| [`fill_gaps`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                            |
-| [`looks_effects_offered`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                |
-| [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                          |
-| [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                      |
-| [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                               |
-| [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                 |
-| [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.               |
+| [`blend_lead`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                |
+|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`blend_trail`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                 |
+| [`clip_in_of`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part. |
+| [`clip_time_at`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                     |
+| [`derive_cuts`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                          |
+| [`exclude_unvouched`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                              |
+| [`fill_gaps`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                          |
+| [`looks_effects_offered`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                              |
+| [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                        |
+| [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                    |
+| [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                             |
+| [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                               |
+| [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.             |
 
 ### Classes
 
@@ -3802,6 +3887,20 @@ right to be cut to without the caller saying so.
 #### alignments
 
 The offending clips, in EDL order — so a caller can re-align exactly these.
+
+### muvid.footage.edl.blend_lead(t)
+
+Seconds a transition reads BEFORE its own cut’s start (in that cut’s source).
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.blend_trail(t)
+
+Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 ### muvid.footage.edl.clip_in_of(e, a)
 
@@ -4917,7 +5016,7 @@ the alignment-only built-ins ignore it. See `SelectionStrategy`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
-### muvid.footage.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
+### muvid.footage.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None, assume_color_space='bt709')
 
 A `looks.Look` compiled against the binary muvid will run.
 
@@ -4930,6 +5029,9 @@ A `looks.Look` compiled against the binary muvid will run.
   * **env** – a `looks.FfmpegEnv` to compile against, instead of probing.
   * **policy** – a `looks.Policy` — the licence ceiling. `looks`’ default
     applies when omitted.
+  * **assume_color_space** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]) – the colour space to declare for the output when a step
+    needs one (`looks` Rule 22, muvid#190); see
+    `DEFAULT_ASSUMED_COLOR_SPACE`. `None` keeps `looks`’ refusal.
 * **Return type:**
   [`LookFragment`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookFragment)
 * **Returns:**
@@ -5027,6 +5129,7 @@ Returns the normalized list of [`EdlEntry`](_autosummary/muvid.footage.html.md#m
 | [`assemble`](_autosummary/muvid.footage.assemble.html.md#module-muvid.footage.assemble)           | Assemble validated cuts into a music video, in BOUNDED memory.                                                                                                      |
 | [`beat_fit`](_autosummary/muvid.footage.beat_fit.html.md#module-muvid.footage.beat_fit)           | Fitting a cut's timing to the beat — the pure numerics behind `service.fit_to_beat`.                                                                                |
 | [`beats`](_autosummary/muvid.footage.beats.html.md#module-muvid.footage.beats)                 | Beat signals — continuous envelopes of where the beat is, in the song and in each video.                                                                            |
+| [`capture_time`](_autosummary/muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)   | When a photo or a video was taken, read from the file itself (muvid#137).                                                                                           |
 | [`edl`](_autosummary/muvid.footage.edl.html.md#module-muvid.footage.edl)                     | EDL data types + the `validate_edl` single-source-of-truth gate.                                                                                                    |
 | [`errors`](_autosummary/muvid.footage.errors.html.md#module-muvid.footage.errors)               | The refusal and cancellation types of the footage operations ([`muvid.footage.service`](_autosummary/muvid.footage.service.html.md#module-muvid.footage.service)). |
 | [`explain`](_autosummary/muvid.footage.explain.html.md#module-muvid.footage.explain)             | Why each cut is where it is — the post-mortem of an edit, in plain words.                                                                                           |
@@ -5291,9 +5394,10 @@ limit is stated on the field rather than left to be discovered.
 
 ### Module Attributes
 
-| [`DEFAULT_PUNCH_ZOOM`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ZOOM)   | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.   |
-|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`DEFAULT_PUNCH_ANCHOR`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ANCHOR) | Where [`punch_in()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                       |
+| [`DEFAULT_PUNCH_ZOOM`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ZOOM)          | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.       |
+|------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`DEFAULT_ASSUMED_COLOR_SPACE`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE) | The colour space [`stylize()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.stylize) ASSUMES for the assembler's output when the caller names none (muvid#190). |
+| [`DEFAULT_PUNCH_ANCHOR`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ANCHOR)        | Where [`punch_in()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                           |
 
 ### Functions
 
@@ -5314,6 +5418,19 @@ limit is stated on the field rather than left to be discovered.
 
 | [`LookError`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookError)   | A look could not be compiled.   |
 |--------------------------------------------------------------|---------------------------------|
+
+### muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE *= 'bt709'*
+
+The colour space [`stylize()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.stylize) ASSUMES for the assembler’s output when the
+caller names none (muvid#190). `looks` Rule 22 refuses an RGB-only step
+(`saturation` …) on a clip with no declared colour space, because the
+RGB round trip would otherwise use whatever matrix the ffmpeg build guesses.
+This is a GUESS, not a fact: the assembler keeps each source’s own colour tags
+(it neither converts nor tags), so a BT.601 clip or a JPEG still is mis-read
+as BT.709 on ffmpeg >= 7 (measured in the #190 review). Phone footage is
+mostly BT.709, and it is the best single answer until the assembler
+normalises its output (the real fix, filed as a follow-up). The plan keeps
+`color_assumed`, but `stylize` does not surface it yet.
 
 ### muvid.footage.look.DEFAULT_PUNCH_ANCHOR *= (0.5, 0.5)*
 
@@ -5565,7 +5682,7 @@ seconds-based interval would drift off it.
   assembler cannot warn that a punch bordering a transition restarts its
   ramp (muvid#73).
 
-### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
+### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None, assume_color_space='bt709')
 
 A `looks.Look` compiled against the binary muvid will run.
 
@@ -5578,6 +5695,9 @@ A `looks.Look` compiled against the binary muvid will run.
   * **env** – a `looks.FfmpegEnv` to compile against, instead of probing.
   * **policy** – a `looks.Policy` — the licence ceiling. `looks`’ default
     applies when omitted.
+  * **assume_color_space** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]) – the colour space to declare for the output when a step
+    needs one (`looks` Rule 22, muvid#190); see
+    [`DEFAULT_ASSUMED_COLOR_SPACE`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE). `None` keeps `looks`’ refusal.
 * **Return type:**
   [`LookFragment`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookFragment)
 * **Returns:**
@@ -5763,7 +5883,7 @@ envelopes, salient boxes) come in through keyword seams with working defaults.
 
 | [`Envelope`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.Envelope)(hop_s, activity, hits[, sharpness])   | A video's picture-change signal on a regular grid of its own time.                                                                                       |
 |-------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`FreeSource`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.FreeSource)(clip_id, path[, kind, duration_s])  | One picture source a montage may cut to: a video (`duration_s` its length) or a still (`kind="still"`, `duration_s=None` — it can be held for any span). |
+| [`FreeSource`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.FreeSource)(clip_id, path[, kind, ...])         | One picture source a montage may cut to: a video (`duration_s` its length) or a still (`kind="still"`, `duration_s=None` — it can be held for any span). |
 | [`MusicCut`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.MusicCut)([entries, report])                    | The result: free cuts for the requested spans, and an account of how they were chosen (tempo, style, how well each video's picture landed on the beat).  |
 
 ### muvid.footage.music_cut.ARCHETYPE_AUTO *= 'auto'*
@@ -5783,12 +5903,21 @@ From [`muvid.footage.beats.activity_signal()`](_autosummary/muvid.footage.beats.
 * **Return type:**
   [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Envelope`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.Envelope)]
 
-### *class* muvid.footage.music_cut.FreeSource(clip_id, path, kind='video', duration_s=None)
+### *class* muvid.footage.music_cut.FreeSource(clip_id, path, kind='video', duration_s=None, taken_at=None, taken_source='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One picture source a montage may cut to: a video (`duration_s` its length) or a
 still (`kind="still"`, `duration_s=None` — it can be held for any span).
+
+#### taken_at *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[float](https://docs.python.org/3/builtins/functions.html#float)]* *= None*
+
+When it was captured (wall-clock seconds, [`muvid.footage.capture_time`](_autosummary/muvid.footage.capture_time.html.md#module-muvid.footage.capture_time));
+`None` when the file does not say.
+
+#### taken_source *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)* *= ''*
+
+The tag `taken_at` came from ([`muvid.footage.capture_time`](_autosummary/muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)), for the report.
 
 ### *class* muvid.footage.music_cut.MusicCut(entries=list(), report=dict())
 
@@ -5826,7 +5955,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>)
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken')
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -5836,7 +5965,9 @@ picture-change [`Envelope`](_autosummary/muvid.footage.music_cut.html.md#muvid.f
 `anchor_of` (a still’s focal point). `archetype` is a montage archetype with one
 picture per slot, or `"auto"`; `cut_feel` a montage pace (`slow`, `steady`,
 `driving`, `frantic`). `fit` is one of `FITS`; `size_of` reads a
-picture’s displayed size (for `cover`).
+picture’s displayed size (for `cover`). `order` is one of `ORDERS`: by
+default the pictures follow the order they were TAKEN in
+(`chronological_picks()`); the report says which order applied and why.
 
 Returns [`MusicCut`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.MusicCut) whose `entries` are validated-shape
 [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) free cuts, contiguous over each span, in song
@@ -7425,7 +7556,7 @@ Returns `{duration_s, n, peaks: [0..1, ...]}`; slice `i` covers song time
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto')
+### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto', order='')
 
 Cut it for me: build an edit of the whole song — or of `span` (`[start_s,
 end_s]`, the part of the song the video covers) — from the placed videos, and (by
@@ -7452,7 +7583,11 @@ that went). With no recording of the song at all, the whole song is cut to the
 music — no `align` needed. `pace` (`slow`/`steady`/`driving`/`frantic`)
 sets how often those cuts come; `style` how the picture changes: `cuts` (hard,
 on the beat), `fades` (each starting on the beat), or `auto` (the song’s
-choice — fades for a slow song). `explain_edit` says why
+choice — fades for a slow song). `order` is how the pictures follow one another:
+`taken` (the default) in the order they were taken, so a day reads as it happened
+— by the time their files say, upload order for any that say nothing (`music`
+reports which) — or `planner`, the montage planner’s reuse order, which ignores
+chronology. `explain_edit` says why
 each cut is where it is.
 
 * **Return type:**
@@ -8028,13 +8163,15 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One caller’s stateful music-video project (song + clips + alignments + renders).
 
-#### add_clip(clip_id, src_path, , ext, name='', kind='')
+#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='')
 
 Store a footage clip from a local file; returns its `clip_id`.
 
 `kind="still"` stores a photo (no sound, no duration); the default is a video,
 and writes no `kind` key, so a manifest written before photos existed reads
-the same.
+the same. `taken_at` (wall-clock seconds, see
+[`muvid.footage.capture_time`](_autosummary/muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)) and `taken_source` (the tag it came from)
+are recorded only when known — a manifest without them reads the same too.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
@@ -12697,7 +12834,7 @@ The selection strategies available for full-auto assembly. Free.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='')
+### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='', order='')
 
 Propose an EDL **without rendering it** — the cheap half of assembly. Free, seconds.
 
@@ -12724,7 +12861,11 @@ videos, cut on the song’s beats with each video at the stretch whose picture c
 land on the beat (`music` in the reply). `roles` says how each clip was used;
 overrule one with `footage_set_has_song`. Every video must have been listened to
 (`align_footage`) or declared. `pace` (`slow`/`steady`/`driving`/
-`frantic`) sets how often the cuts to the music come.
+`frantic`) sets how often the cuts to the music come. `order` is how the pictures
+follow one another: `taken` (the default) in the order they were taken — by the time
+their files say, upload order for any that say nothing; `music.order` /
+`music.order_note` report which applied — or `planner`, the reuse order that
+ignores chronology.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -13306,7 +13447,7 @@ True
 * **Return type:**
   [`Analysis`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
 
-### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0)
+### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0, taken_at=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -13314,6 +13455,11 @@ One pool item, measured.
 
 `kind` is `photo`, `clip` or `cover`; `duration` is `None` for
 a still; `strength` is the closed-form score the reuse policy ranks on.
+
+#### taken_at *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)*
+
+When it was captured (wall-clock seconds); `None` when unknown. Read by the
+`chronological` reuse order (muvid#137).
 
 ### *class* muvid.montage.analysis.Section(, label, start, end, energy_db=None)
 
@@ -13759,7 +13905,7 @@ asks for.
 | [`assign_media`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.assign_media)(drafts, media, reuse, \*[, ...])   | Fill every region of every draft with `(media_index, use_ordinal)`.                         |
 |--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
 | [`cut_times`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.cut_times)(section, analysis, beats_per_cut)     | Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.                            |
-| [`plan_montage`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.plan_montage)(analysis, media, treatment)        | Pool + measurements + treatment -> a [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan). |
+| [`plan_montage`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.plan_montage)(analysis, media, treatment, \*)    | Pool + measurements + treatment -> a [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan). |
 | [`register_archetype`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.register_archetype)(name)                        | Register an archetype planner under `name`.                                                 |
 | [`tile_path`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.tile_path)(variant, motion, length_s, \*[, ...]) | The window path for one still: piecewise linear, slot-relative seconds.                     |
 
@@ -13843,7 +13989,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 A framing: top-left `(x, y)` and visible fraction `size` of the
 fitted frame, all in `0..1`. The aspect is the canvas’s.
 
-### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None)
+### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None, active=None)
 
 Fill every region of every draft with `(media_index, use_ordinal)`.
 
@@ -13896,9 +14042,12 @@ its neighbour — a half-beat pickup is not a slot — and a cut within
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.montage.plan.plan_montage(analysis, media, treatment)
+### muvid.montage.plan.plan_montage(analysis, media, treatment, , active=None)
 
 Pool + measurements + treatment -> a [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan). Pure and deterministic.
+
+`active` says which slots will actually be shown (a caller filling only part of
+the song); the `chronological` reuse order spends the pool on those alone.
 
 * **Return type:**
   [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan)
@@ -14119,15 +14268,16 @@ path of the plugin surface.
 
 ### Module Attributes
 
-| [`ARCHETYPES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                       |
-|-------------------------------------------------------------------|------------------------------------------------------------------------|
-| [`ARCHETYPE_PARAMS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key. |
-| [`CUT_FEELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                           |
-| [`CUT_FEEL_FACTORS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                              |
-| [`GRADES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                 |
-| [`MOTIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                       |
-| [`TRANSITIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                    |
-| [`SECTION_LABELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                          |
+| [`ARCHETYPES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                                    |
+|-------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [`ARCHETYPE_PARAMS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key.              |
+| [`CUT_FEELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                                        |
+| [`CUT_FEEL_FACTORS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                                           |
+| [`GRADES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                              |
+| [`MOTIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                                    |
+| [`TRANSITIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                                 |
+| [`SECTION_LABELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                                       |
+| [`REUSE_ORDERS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.REUSE_ORDERS)     | The reuse orders a [`Reuse`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Reuse) may name. |
 
 ### Functions
 
@@ -14144,7 +14294,7 @@ path of the plugin surface.
 | [`Direction`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Direction)(\*[, mood, palette, cut_feel, ...])   | The song-level creative decision.                        |
 |--------------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | [`Palette`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Palette)(\*[, bg, accent])                       | Colours, as `#rrggbb`.                                   |
-| [`Reuse`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Reuse)(\*[, min_gap, reserve_for_finale])        | The reuse POLICY — how a small pool carries a long song. |
+| [`Reuse`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Reuse)(\*[, min_gap, reserve_for_finale, order]) | The reuse POLICY — how a small pool carries a long song. |
 | [`Scene`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Scene)(\*[, applies_to, archetype, params])      | One archetype, applied to part of the song.              |
 | [`TreatmentSpec`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.TreatmentSpec)(\*[, spec_version, title, ...])   | A complete, plannable treatment.                         |
 
@@ -14192,7 +14342,11 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 Colours, as `#rrggbb`. `accent` parameterises the `tint` grade;
 `bg` is the letterbox/pad colour when a tile does not fill its region.
 
-### *class* muvid.montage.spec.Reuse(, min_gap=6, reserve_for_finale=True)
+### muvid.montage.spec.REUSE_ORDERS *= ('least_used', 'chronological')*
+
+The reuse orders a [`Reuse`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Reuse) may name.
+
+### *class* muvid.montage.spec.Reuse(, min_gap=6, reserve_for_finale=True, order='least_used')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -14202,6 +14356,18 @@ The reuse POLICY — how a small pool carries a long song.
 shrinks automatically to `pool - 1` for a small pool). Every return uses
 a different crop/move variant. `reserve_for_finale` holds the strongest
 quarter of the pool back for the last chorus.
+
+#### order *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)*
+
+pictures follow the order
+they were taken in (`Media.taken_at`; upload order for any without one) and
+`min_gap` / `reserve_for_finale` do not apply — a day told in order has no
+“strongest held for the end” (muvid#137).
+
+* **Type:**
+  `least_used`
+* **Type:**
+  the policy above. `chronological`
 
 ### muvid.montage.spec.SECTION_LABELS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= {'bridge': 'Chorus density.', 'chorus': 'Dense cuts; the last chorus gets the strongest images.', 'intro': 'Sparse cuts.', 'outro': 'Sparse cuts.', 'verse': "The archetype's verse pacing."}*
 
@@ -17700,7 +17866,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-26 17:52 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/bca37f40aa9643177748133175f6916b04a5c791"><code>bca37f4</code></a> on branch <code>main</code>, for **muvid 0.0.100** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-26 21:49 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/3d7c5ecdcea1fbc2335199602579e399b9a8edfd"><code>3d7c5ec</code></a> on branch <code>main</code>, for **muvid 0.0.101** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -17709,9 +17875,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/bca37f40aa9643177748133175f6916b04a5c791"><code>bca37f40aa9643177748133175f6916b04a5c791</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/3d7c5ecdcea1fbc2335199602579e399b9a8edfd"><code>3d7c5ecdcea1fbc2335199602579e399b9a8edfd</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.100</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.101</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17720,9 +17886,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40371440148">40371440148</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40406438929">40406438929</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>7d5581cf741eacfc481300ffec181f10202d7d38</code> (in the history of the built commit) |
+| Event commit | <code>40f093b213ceacab5a8d850dfff7a9684a7d139a</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17747,13 +17913,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.100/">0.0.100</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.101/">0.0.101</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout bca37f40aa9643177748133175f6916b04a5c791
+git checkout 3d7c5ecdcea1fbc2335199602579e399b9a8edfd
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

@@ -723,7 +723,7 @@ The selection strategies available for full-auto assembly. Free.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='')
+### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='', order='')
 
 Propose an EDL **without rendering it** — the cheap half of assembly. Free, seconds.
 
@@ -750,7 +750,11 @@ videos, cut on the song’s beats with each video at the stretch whose picture c
 land on the beat (`music` in the reply). `roles` says how each clip was used;
 overrule one with `footage_set_has_song`. Every video must have been listened to
 (`align_footage`) or declared. `pace` (`slow`/`steady`/`driving`/
-`frantic`) sets how often the cuts to the music come.
+`frantic`) sets how often the cuts to the music come. `order` is how the pictures
+follow one another: `taken` (the default) in the order they were taken — by the time
+their files say, upload order for any that say nothing; `music.order` /
+`music.order_note` report which applied — or `planner`, the reuse order that
+ignores chronology.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

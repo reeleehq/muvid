@@ -575,7 +575,7 @@ Returns `{duration_s, n, peaks: [0..1, ...]}`; slice `i` covers song time
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto')
+### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto', order='')
 
 Cut it for me: build an edit of the whole song — or of `span` (`[start_s,
 end_s]`, the part of the song the video covers) — from the placed videos, and (by
@@ -602,7 +602,11 @@ that went). With no recording of the song at all, the whole song is cut to the
 music — no `align` needed. `pace` (`slow`/`steady`/`driving`/`frantic`)
 sets how often those cuts come; `style` how the picture changes: `cuts` (hard,
 on the beat), `fades` (each starting on the beat), or `auto` (the song’s
-choice — fades for a slow song). `explain_edit` says why
+choice — fades for a slow song). `order` is how the pictures follow one another:
+`taken` (the default) in the order they were taken, so a day reads as it happened
+— by the time their files say, upload order for any that say nothing (`music`
+reports which) — or `planner`, the montage planner’s reuse order, which ignores
+chronology. `explain_edit` says why
 each cut is where it is.
 
 * **Return type:**

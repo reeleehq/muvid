@@ -52,7 +52,7 @@ envelopes, salient boxes) come in through keyword seams with working defaults.
 
 | [`Envelope`](#muvid.footage.music_cut.Envelope)(hop_s, activity, hits[, sharpness])   | A video's picture-change signal on a regular grid of its own time.                                                                                       |
 |-------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`FreeSource`](#muvid.footage.music_cut.FreeSource)(clip_id, path[, kind, duration_s])  | One picture source a montage may cut to: a video (`duration_s` its length) or a still (`kind="still"`, `duration_s=None` — it can be held for any span). |
+| [`FreeSource`](#muvid.footage.music_cut.FreeSource)(clip_id, path[, kind, ...])         | One picture source a montage may cut to: a video (`duration_s` its length) or a still (`kind="still"`, `duration_s=None` — it can be held for any span). |
 | [`MusicCut`](#muvid.footage.music_cut.MusicCut)([entries, report])                    | The result: free cuts for the requested spans, and an account of how they were chosen (tempo, style, how well each video's picture landed on the beat).  |
 
 ### muvid.footage.music_cut.ARCHETYPE_AUTO *= 'auto'*
@@ -72,12 +72,21 @@ From [`muvid.footage.beats.activity_signal()`](muvid.footage.beats.html.md#muvid
 * **Return type:**
   [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Envelope`](#muvid.footage.music_cut.Envelope)]
 
-### *class* muvid.footage.music_cut.FreeSource(clip_id, path, kind='video', duration_s=None)
+### *class* muvid.footage.music_cut.FreeSource(clip_id, path, kind='video', duration_s=None, taken_at=None, taken_source='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One picture source a montage may cut to: a video (`duration_s` its length) or a
 still (`kind="still"`, `duration_s=None` — it can be held for any span).
+
+#### taken_at *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[float](https://docs.python.org/3/builtins/functions.html#float)]* *= None*
+
+When it was captured (wall-clock seconds, [`muvid.footage.capture_time`](muvid.footage.capture_time.html.md#module-muvid.footage.capture_time));
+`None` when the file does not say.
+
+#### taken_source *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)* *= ''*
+
+The tag `taken_at` came from ([`muvid.footage.capture_time`](muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)), for the report.
 
 ### *class* muvid.footage.music_cut.MusicCut(entries=list(), report=dict())
 
@@ -115,7 +124,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>)
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken')
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -125,7 +134,9 @@ picture-change [`Envelope`](#muvid.footage.music_cut.Envelope); `None` falls bac
 `anchor_of` (a still’s focal point). `archetype` is a montage archetype with one
 picture per slot, or `"auto"`; `cut_feel` a montage pace (`slow`, `steady`,
 `driving`, `frantic`). `fit` is one of `FITS`; `size_of` reads a
-picture’s displayed size (for `cover`).
+picture’s displayed size (for `cover`). `order` is one of `ORDERS`: by
+default the pictures follow the order they were TAKEN in
+(`chronological_picks()`); the report says which order applied and why.
 
 Returns [`MusicCut`](#muvid.footage.music_cut.MusicCut) whose `entries` are validated-shape
 [`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) free cuts, contiguous over each span, in song

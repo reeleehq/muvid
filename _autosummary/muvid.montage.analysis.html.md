@@ -71,7 +71,7 @@ True
 * **Return type:**
   [`Analysis`](#muvid.montage.analysis.Analysis)
 
-### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0)
+### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0, taken_at=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -79,6 +79,11 @@ One pool item, measured.
 
 `kind` is `photo`, `clip` or `cover`; `duration` is `None` for
 a still; `strength` is the closed-form score the reuse policy ranks on.
+
+#### taken_at *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)*
+
+When it was captured (wall-clock seconds); `None` when unknown. Read by the
+`chronological` reuse order (muvid#137).
 
 ### *class* muvid.montage.analysis.Section(, label, start, end, energy_db=None)
 

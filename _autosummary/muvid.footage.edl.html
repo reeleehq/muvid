@@ -36,7 +36,7 @@
 <link href="../search.html" rel="search" title="Search"/>
 <link href="../genindex.html" rel="index" title="Index"/>
 <link href="muvid.footage.errors.html" rel="next" title="muvid.footage.errors"/>
-<link href="muvid.footage.beats.html" rel="prev" title="muvid.footage.beats"/>
+<link href="muvid.footage.capture_time.html" rel="prev" title="muvid.footage.capture_time"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
 <div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
@@ -236,6 +236,12 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.blend_lead" title="muvid.footage.edl.blend_lead"><code class="xref py py-obj docutils literal notranslate"><span class="pre">blend_lead</span></code></a>(t)</p></td>
+<td><p>Seconds a transition reads BEFORE its own cut's start (in that cut's source).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.blend_trail" title="muvid.footage.edl.blend_trail"><code class="xref py py-obj docutils literal notranslate"><span class="pre">blend_trail</span></code></a>(t)</p></td>
+<td><p>Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.clip_in_of" title="muvid.footage.edl.clip_in_of"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clip_in_of</span></code></a>(e, a)</p></td>
 <td><p>Where cut <code class="docutils literal notranslate"><span class="pre">e</span></code> starts in its clip <code class="docutils literal notranslate"><span class="pre">a</span></code>'s own time — THE sign convention: <code class="docutils literal notranslate"><span class="pre">song_start</span> <span class="pre">-</span> <span class="pre">offset</span> <span class="pre">+</span> <span class="pre">slip</span></code> — or, for a free cut, <code class="docutils literal notranslate"><span class="pre">source_in</span> <span class="pre">+</span> <span class="pre">slip</span></code>, the alignment playing no part.</p></td>
 </tr>
@@ -1130,6 +1136,26 @@ right to be cut to without the caller saying so.</p>
 </dd></dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.edl.blend_lead">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">blend_lead</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/edl.html#blend_lead"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.blend_lead" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.blend_lead'">¶</a></dt>
+<dd><p>Seconds a transition reads BEFORE its own cut’s start (in that cut’s source).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.edl.blend_trail">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">blend_trail</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/edl.html#blend_trail"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.blend_trail" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.blend_trail'">¶</a></dt>
+<dd><p>Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.edl.clip_in_of">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">clip_in_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/edl.html#clip_in_of"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.clip_in_of" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.clip_in_of'">¶</a></dt>
 <dd><p>Where cut <code class="docutils literal notranslate"><span class="pre">e</span></code> starts in its clip <code class="docutils literal notranslate"><span class="pre">a</span></code>’s own time — THE sign convention:
@@ -1515,6 +1541,8 @@ render-time window that is never stored.</p>
 <li><a :data-current="activeSection === '#muvid.footage.edl.UnreliableAlignmentError.alignments'" class="reference internal" href="#muvid.footage.edl.UnreliableAlignmentError.alignments"><code class="docutils literal notranslate"><span class="pre">UnreliableAlignmentError.alignments</span></code></a></li>
 </ul>
 </li>
+<li><a :data-current="activeSection === '#muvid.footage.edl.blend_lead'" class="reference internal" href="#muvid.footage.edl.blend_lead"><code class="docutils literal notranslate"><span class="pre">blend_lead()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.edl.blend_trail'" class="reference internal" href="#muvid.footage.edl.blend_trail"><code class="docutils literal notranslate"><span class="pre">blend_trail()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.clip_in_of'" class="reference internal" href="#muvid.footage.edl.clip_in_of"><code class="docutils literal notranslate"><span class="pre">clip_in_of()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.clip_time_at'" class="reference internal" href="#muvid.footage.edl.clip_time_at"><code class="docutils literal notranslate"><span class="pre">clip_time_at()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.derive_cuts'" class="reference internal" href="#muvid.footage.edl.derive_cuts"><code class="docutils literal notranslate"><span class="pre">derive_cuts()</span></code></a></li>
@@ -1539,7 +1567,7 @@ render-time window that is never stored.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=a02dbd69"></script>
+<script src="../_static/documentation_options.js?v=04553970"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

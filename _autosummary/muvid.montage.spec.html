@@ -192,6 +192,9 @@ path of the plugin surface.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.montage.spec.SECTION_LABELS" title="muvid.montage.spec.SECTION_LABELS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SECTION_LABELS</span></code></a></p></td>
 <td><p>Section labels the planner knows how to pace.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.montage.spec.REUSE_ORDERS" title="muvid.montage.spec.REUSE_ORDERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REUSE_ORDERS</span></code></a></p></td>
+<td><p>The reuse orders a <a class="reference internal" href="#muvid.montage.spec.Reuse" title="muvid.montage.spec.Reuse"><code class="xref py py-class docutils literal notranslate"><span class="pre">Reuse</span></code></a> may name.</p></td>
+</tr>
 </tbody>
 </table>
 <p class="rubric">Functions</p>
@@ -226,7 +229,7 @@ path of the plugin surface.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.montage.spec.Palette" title="muvid.montage.spec.Palette"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Palette</span></code></a>(*[, bg, accent])</p></td>
 <td><p>Colours, as <code class="docutils literal notranslate"><span class="pre">#rrggbb</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.montage.spec.Reuse" title="muvid.montage.spec.Reuse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Reuse</span></code></a>(*[, min_gap, reserve_for_finale])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.montage.spec.Reuse" title="muvid.montage.spec.Reuse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Reuse</span></code></a>(*[, min_gap, reserve_for_finale, order])</p></td>
 <td><p>The reuse POLICY — how a small pool carries a long song.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.montage.spec.Scene" title="muvid.montage.spec.Scene"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scene</span></code></a>(*[, applies_to, archetype, params])</p></td>
@@ -291,9 +294,14 @@ spec — listed here so the plan’s vocabulary is closed and documented.</p>
 <dl class="field-list simple">
 </dl>
 </dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.montage.spec.REUSE_ORDERS">
+<span class="sig-prename descclassname"><span class="pre">muvid.montage.spec.</span></span><span class="sig-name descname"><span class="pre">REUSE_ORDERS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('least_used',</span> <span class="pre">'chronological')</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.montage.spec.REUSE_ORDERS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.montage.spec.REUSE_ORDERS'">¶</a></dt>
+<dd><p>The reuse orders a <a class="reference internal" href="#muvid.montage.spec.Reuse" title="muvid.montage.spec.Reuse"><code class="xref py py-class docutils literal notranslate"><span class="pre">Reuse</span></code></a> may name.</p>
+</dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.montage.spec.Reuse">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.montage.spec.</span></span><span class="sig-name descname"><span class="pre">Reuse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_gap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reserve_for_finale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/montage/spec.html#Reuse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.montage.spec.Reuse" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.montage.spec.Reuse'">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.montage.spec.</span></span><span class="sig-name descname"><span class="pre">Reuse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_gap</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reserve_for_finale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'least_used'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/montage/spec.html#Reuse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.montage.spec.Reuse" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.montage.spec.Reuse'">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
 <p>The reuse POLICY — how a small pool carries a long song.</p>
 <p><code class="docutils literal notranslate"><span class="pre">min_gap</span></code> is how many cuts must pass before an image may return (it
@@ -302,6 +310,22 @@ a different crop/move variant. <code class="docutils literal notranslate"><span 
 quarter of the pool back for the last chorus.</p>
 <dl class="field-list simple">
 </dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="muvid.montage.spec.Reuse.order">
+<span class="sig-name descname"><span class="pre">order</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><span class="pre">str</span><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.montage.spec.Reuse.order" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.montage.spec.Reuse.order'">¶</a></dt>
+<dd><p>pictures follow the order
+they were taken in (<code class="docutils literal notranslate"><span class="pre">Media.taken_at</span></code>; upload order for any without one) and
+<code class="docutils literal notranslate"><span class="pre">min_gap</span></code> / <code class="docutils literal notranslate"><span class="pre">reserve_for_finale</span></code> do not apply — a day told in order has no
+“strongest held for the end” (muvid#137).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">least_used</span></code></p>
+</dd>
+<dt class="field-even">Type<span class="colon">:</span></dt>
+<dd class="field-even"><p>the policy above. <code class="docutils literal notranslate"><span class="pre">chronological</span></code></p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.montage.spec.SECTION_LABELS">
@@ -484,7 +508,11 @@ retry costs a round trip. Every substitution is reported.</p>
 <li><a :data-current="activeSection === '#muvid.montage.spec.GRADES'" class="reference internal" href="#muvid.montage.spec.GRADES"><code class="docutils literal notranslate"><span class="pre">GRADES</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.montage.spec.MOTIONS'" class="reference internal" href="#muvid.montage.spec.MOTIONS"><code class="docutils literal notranslate"><span class="pre">MOTIONS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.montage.spec.Palette'" class="reference internal" href="#muvid.montage.spec.Palette"><code class="docutils literal notranslate"><span class="pre">Palette</span></code></a></li>
-<li><a :data-current="activeSection === '#muvid.montage.spec.Reuse'" class="reference internal" href="#muvid.montage.spec.Reuse"><code class="docutils literal notranslate"><span class="pre">Reuse</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.montage.spec.REUSE_ORDERS'" class="reference internal" href="#muvid.montage.spec.REUSE_ORDERS"><code class="docutils literal notranslate"><span class="pre">REUSE_ORDERS</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.montage.spec.Reuse'" class="reference internal" href="#muvid.montage.spec.Reuse"><code class="docutils literal notranslate"><span class="pre">Reuse</span></code></a><ul>
+<li><a :data-current="activeSection === '#muvid.montage.spec.Reuse.order'" class="reference internal" href="#muvid.montage.spec.Reuse.order"><code class="docutils literal notranslate"><span class="pre">Reuse.order</span></code></a></li>
+</ul>
+</li>
 <li><a :data-current="activeSection === '#muvid.montage.spec.SECTION_LABELS'" class="reference internal" href="#muvid.montage.spec.SECTION_LABELS"><code class="docutils literal notranslate"><span class="pre">SECTION_LABELS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.montage.spec.Scene'" class="reference internal" href="#muvid.montage.spec.Scene"><code class="docutils literal notranslate"><span class="pre">Scene</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.montage.spec.TRANSITIONS'" class="reference internal" href="#muvid.montage.spec.TRANSITIONS"><code class="docutils literal notranslate"><span class="pre">TRANSITIONS</span></code></a></li>
@@ -512,7 +540,7 @@ retry costs a round trip. Every substitution is reported.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=a02dbd69"></script>
+<script src="../_static/documentation_options.js?v=04553970"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
