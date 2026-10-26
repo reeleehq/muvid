@@ -6,7 +6,7 @@ table before touching anything:
 
 | # | part | entry points | state | status |
 |---|---|---|---|---|
-| 1 | **Visualizer** — ffmpeg-only, deterministic, no AI, no network | `muvid/visualize/`, nw genre `music-visualizer` (`muvid/genre.py`) | stateless | shipped; `yb` publishes through it |
+| 1 | **Visualizer** — ffmpeg-only, deterministic, no AI, no network | `muvid/visualize/`, nw genre `music_visualizer` (`muvid/genre.py`) | stateless | shipped; `yb` publishes through it |
 | 2 | **Footage assembly** — align N phone recordings of ONE song, score, select, EDL, assemble | `muvid/footage/` — the operations are `muvid/footage/service.py` (the SSOT); `muvid/genre_music_video.py` (nw genre + its `nw.GenreOp` catalogue); `muvid/mcp/footage_tools.py` + `scoring_tools.py` (MCP transport); `muvid/production.py` (`muvid.Project`, host-placed); `muvid/importing/` | **stateful, on disk** | shipped; **the active workstream**; serves live connector traffic |
 | 3 | **Full-AI narrative pipeline** — transcribe → align → cast → environments → script → render → compose | `muvid/facade.py`, `muvid/renderers/`, `muvid/lyrics.py`, `muvid/align.py`, `muvid/script.py`, `muvid/compose.py` | project folder | works end to end; **not** an nw genre; the shrink-toward-nw candidate (issue #4) |
 | 4 | **Subgenre plugins** — the surface for "another kind of video", by muvid or anyone. Ships three: **`lyric-video`** (measured word times → treatment → computed scene → ASS or browser render), **`choreo`** (audio only → per-band onset events → objects with persistence, Fischinger/"Star Guitar" visual music, numpy→ffmpeg), **`montage`** (a pool of stills/clips → a planner on the beat grid with a reuse policy → one ffmpeg graph) | `muvid/subgenres/` (the surface), `muvid/lyricvid/`, `muvid/choreo/`, `muvid/montage/`, `muvid/genre_lyric_video.py` + `muvid/genre_subgenres.py` (nw bridges), `muvid/mcp/lyricvid_tools.py` + `subgenre_tools.py` | stateless | shipped; `lyric-video` has the first COSTED tool; `choreo` and `montage` are discovered purely through their entry points — nothing in muvid names them |
@@ -46,7 +46,7 @@ author runs; keep it honest, because it is the only thing standing between a
 third-party plugin and a support request.
 
 **The `lyric-video` slug is hyphenated, knowingly** (see "The slug trap" below): it
-matches the newer `music-visualizer` rather than `music_video`, and it is a persisted
+was chosen when the visualizer slug was still `music-visualizer` (renamed in #189; this one stays), and it is a persisted
 path segment and a live connector contract value from the day it ships.
 
 ### One level down, the archetypes are a registry too — `calligram` is the newest
@@ -310,11 +310,10 @@ segment**. Three facts, each verified:
 So renaming it is **a data migration plus a connector-contract break**, not a rename.
 
 **When issue #4 lands, the full-AI pipeline gets its OWN slug.** The recommended one,
-per #4's own restatement, is **`music-video-ai`** — it reads as a sibling of the other
+per #4's own restatement, is **`music_video_ai`** — it reads as a sibling of the other
 two and names the thing that distinguishes it (generation, keys, cost). Do not attempt
-to reuse or reclaim `music_video`. Note the two existing slugs disagree on separator
-(`music-visualizer` hyphen vs `music_video` underscore); pick knowingly for the new one,
-and leave both existing ones alone for the reason above.
+to reuse or reclaim `music_video`. Genre slugs are snake_case (`music_visualizer` was renamed from `music-visualizer` in
+muvid#189); `lyric-video` is the one hyphenated holdout.
 
 Also from #4: the new genre must set `cost_profile` **honestly**. The two existing
 genres are `cost_profile=None` (genuinely free). An unknown cost must force approval and
@@ -353,7 +352,7 @@ Rules:
 
 ### It is an nw plugin
 
-`muvid/genre.py` registers `music-visualizer`; line 37 imports `muvid.genre_music_video`
+`muvid/genre.py` registers `music_visualizer`; line 37 imports `muvid.genre_music_video`
 so **one** `import muvid.genre` surfaces both genres and both project factories.
 
 - Both genre modules must stay **import-safe**: `nw` at module top, everything heavy

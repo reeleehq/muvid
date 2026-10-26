@@ -1,6 +1,6 @@
 """SSRF-hardened fetch of a caller-supplied media URL (server-side, shared prod box).
 
-The ``music-visualizer`` tools fetch a user-given audio (and optional cover) URL on the
+The ``music_visualizer`` tools fetch a user-given audio (and optional cover) URL on the
 server, so an unguarded fetch is a server-side request forgery hole: a URL could point
 at localhost, cloud metadata (169.254.169.254), or a private/link-local address. This
 module is the guard — a deliberately minimal, dependency-free mirror of braidio's

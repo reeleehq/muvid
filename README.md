@@ -486,7 +486,7 @@ muvid/
     service.py        the footage operations (the SSOT every surface derives from)
     scoring/          the score tensor: grid, frames, quality, motionbeat, segment, lipsync
     lacing_bridge.py  project ⇄ lacing standoff annotations (the editor document)
-  genre.py            registers the `music-visualizer` nw genre (and imports the next)
+  genre.py            registers the `music_visualizer` nw genre (and imports the next)
   genre_music_video.py  registers the `music_video` footage genre and its operations
   production.py       muvid.Project — a production a host places and serves
   catalog.py          registers hosted media in the host's artifact catalog

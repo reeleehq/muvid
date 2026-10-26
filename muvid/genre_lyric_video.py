@@ -2,7 +2,7 @@
 
 The kinetic-typography subgenre (:mod:`muvid.lyricvid`) expressed as an
 :class:`nw.Genre`, so a host — the unified reelee AV-production connector —
-offers it alongside ``music-visualizer`` and ``music_video`` straight from
+offers it alongside ``music_visualizer`` and ``music_video`` straight from
 ``nw.genres``.
 
 Like the other two muvid genres it is **engine-less at the nw level**
@@ -17,9 +17,10 @@ Import-safe: only ``nw`` and the stdlib-only
 :mod:`muvid.lyricvid.spec` vocabulary at module top. Nothing here pulls
 pysubs2, numpy, Playwright, fastmcp or an LLM client.
 
-**The slug is ``lyric-video``, hyphenated.** muvid's two existing slugs disagree
-on separator (``music-visualizer`` vs ``music_video``) and the design record asks
-that the next one choose knowingly. It matches the newer of the two. It is a
+**The slug is ``lyric-video``, hyphenated.** The other muvid slugs
+(``music_visualizer``, ``music_video``) are snake_case (muvid#189); this one was
+chosen hyphenated before that and is left alone, since it is already a persisted
+path segment and a live contract value. It is a
 persisted path segment and a live connector contract value from the day it
 ships, so it does not get to change later.
 """

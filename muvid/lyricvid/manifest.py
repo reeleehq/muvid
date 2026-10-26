@@ -15,10 +15,9 @@ from muvid.subgenres import Example, Subgenre
 
 SLUG = "lyric-video"
 
-#: Hyphenated, matching the newer ``music-visualizer``. muvid's two existing
-#: genre slugs disagree on separator and the design record asks that the next
-#: one choose knowingly — this is the choice, and it is a persisted path
-#: segment and a public contract value from the moment it ships.
+#: Hyphenated, chosen when the visualizer slug was still ``music-visualizer`` (renamed in
+#: muvid#189; this one is left, being a persisted path segment and a public
+#: contract value since it shipped).
 
 _INPUTS = {
     "type": "object",

@@ -47,7 +47,7 @@ def _labels(email=EMAIL) -> dict:
 
 
 def test_a_lyric_video_project_gets_its_own_directory_and_id_space(data):
-    nw.create_genre_project("music-visualizer", EMAIL, "p1", template="cqt")
+    nw.create_genre_project("music_visualizer", EMAIL, "p1", template="cqt")
     # Before muvid#103 this raised FileExistsError: one id space across genres.
     nw.create_genre_project("lyric-video", EMAIL, "p1")
     root = SubgenreWorkspace.for_slug("lyric-video", EMAIL).open_project("p1").root
@@ -88,7 +88,7 @@ def test_an_old_subgenre_project_in_the_visualizer_drawer_is_labelled_by_its_ren
 def test_the_subgenre_tools_open_their_own_bucket_else_an_old_visualizer_one(data):
     old = VisualizerWorkspace.for_email(EMAIL).create_project("legacy")
     assert open_subgenre_project("lyric-video", EMAIL, "legacy").root == old.root
-    nw.create_genre_project("music-visualizer", EMAIL, "both", template="cqt")
+    nw.create_genre_project("music_visualizer", EMAIL, "both", template="cqt")
     nw.create_genre_project("lyric-video", EMAIL, "both")
     new = SubgenreWorkspace.for_slug("lyric-video", EMAIL).open_project("both")
     assert open_subgenre_project("lyric-video", EMAIL, "both").root == new.root
@@ -97,7 +97,7 @@ def test_the_subgenre_tools_open_their_own_bucket_else_an_old_visualizer_one(dat
 
 
 def test_one_id_in_two_drawers_resolves_and_organises_each_render_where_it_is(data):
-    nw.create_genre_project("music-visualizer", EMAIL, "p1", template="cqt")
+    nw.create_genre_project("music_visualizer", EMAIL, "p1", template="cqt")
     nw.create_genre_project("lyric-video", EMAIL, "p1")
     viz = VisualizerWorkspace.for_email(EMAIL).open_project("p1")
     lyr = SubgenreWorkspace.for_slug("lyric-video", EMAIL).open_project("p1")
@@ -146,7 +146,7 @@ def test_project_status_reports_the_subgenre(data):
 
 
 def _two_drawers(*, email=EMAIL):
-    nw.create_genre_project("music-visualizer", email, "p1", template="cqt")
+    nw.create_genre_project("music_visualizer", email, "p1", template="cqt")
     nw.create_genre_project("lyric-video", email, "p1")
     viz = VisualizerWorkspace.for_email(email).open_project("p1")
     lyr = SubgenreWorkspace.for_slug("lyric-video", email).open_project("p1")

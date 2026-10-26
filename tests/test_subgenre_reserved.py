@@ -100,7 +100,7 @@ def test_the_bridge_skips_a_reserved_slug_and_records_why(clean_registry):
     assert "visualizer" not in bridged
     assert "visualizer" not in genre_subgenres.BRIDGED
     # nw's own built-in is untouched and no muvid factory replaced it
-    assert getattr(nw.get_genre("music-visualizer"), "slug", None) == "music-visualizer"
+    assert getattr(nw.get_genre("music_visualizer"), "slug", None) == "music_visualizer"
     cat = reg.subgenre_catalog()
     assert "reserved" in cat["load_errors"]["visualizer"]
     assert "visualizer" not in [s["slug"] for s in cat["subgenres"]]
@@ -116,7 +116,7 @@ def test_existing_project_ids_stay_readable(tmp_path, monkeypatch):
 
     monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
     email = "u@x.com"
-    nw.create_genre_project("music-visualizer", email, "viz", template="cqt")
+    nw.create_genre_project("music_visualizer", email, "viz", template="cqt")
     nw.create_genre_project("lyric-video", email, "lv")
     for proj, rid in (
         (VisualizerWorkspace.for_email(email).open_project("viz"), "v" * 12),

@@ -1,4 +1,4 @@
-"""Tests for muvid.mcp — the ``music-visualizer`` tool surface + aggregation seam.
+"""Tests for muvid.mcp — the ``music_visualizer`` tool surface + aggregation seam.
 
 Gated on the ``[mcp]`` extra (nw + fastmcp). The end-to-end render tests also need
 ffmpeg — and, where they exercise one, the specific filter it must have been built
@@ -123,7 +123,7 @@ def _bind(tmp_path, monkeypatch):
     monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
     import nw
 
-    nw.create_genre_project("music-visualizer", "u@x.com", "p", template="cqt")
+    nw.create_genre_project("music_visualizer", "u@x.com", "p", template="cqt")
 
 
 def test_unknown_visual_is_rejected(tmp_path, monkeypatch):

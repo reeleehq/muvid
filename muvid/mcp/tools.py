@@ -1,4 +1,4 @@
-"""The ``music-visualizer`` MCP tool surface (thorwhalen/muvid#3).
+"""The ``music_visualizer`` MCP tool surface (thorwhalen/muvid#3).
 
 Module-level tool functions a host FastMCP server registers via
 :func:`muvid.mcp.register_tools` (referenced as ``muvid.mcp.tools:<name>``). Every tool
@@ -168,7 +168,7 @@ def render_visualizer(
 
     Args:
         project_id: Your project (create one with ``create_project(genre=
-            'music-visualizer')``).
+            'music_visualizer')``).
         audio: An http(s) URL to the song (a direct media link, e.g. an ``.mp3``/
             ``.wav``). Fetched server-side; SSRF-guarded and size/duration-capped.
         cover: An http(s) URL to the cover image. Required for the ``still`` look;
