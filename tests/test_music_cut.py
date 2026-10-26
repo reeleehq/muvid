@@ -490,6 +490,7 @@ def test_the_editor_decision_tier_is_what_propose_edit_builds(bath_with_photo):
     proposal = service.propose_edit(bath, save=False)["edl"]
     assert doc["decision_error"] is None
     assert [_key(e) for e in _decision(doc)] == [_key(e) for e in proposal]
+    assert _decision(doc) == proposal  # the whole cut, not just where and what
     # nothing came back anchored: every free cut keeps its in-point through the editor
     free = [e for e in _decision(doc) if e["clip_id"]]
     assert free and all(e.get("source_in") is not None for e in free)
@@ -533,7 +534,44 @@ def test_the_editor_document_can_open_a_saved_edit(bath_with_photo):
     saved = service.get_edit(bath, edit_id=out["edit_id"])["edl"]
     doc = service.editor_document(bath, edit_id=out["edit_id"])
     assert [_key(e) for e in _decision(doc)] == [_key(e) for e in saved]
+    assert _decision(doc) == saved
+    assert doc["edit_id"] == out["edit_id"]
     assert _decision(doc) != _decision(service.editor_document(bath))
+
+
+def test_an_unknown_edit_is_refused_not_swapped_for_the_proposal(bath_with_photo):
+    bath, _ = bath_with_photo
+    with pytest.raises(service.FootageError, match="unknown edit 'nope'"):
+        service.editor_document(bath, edit_id="nope")
+
+
+def _add_unreadable_clip(bath, cid="broken"):
+    """A clip whose file ffprobe cannot read and whose length was never recorded."""
+    (bath.root / "clips" / f"{cid}.mp4").write_bytes(b"not a video")
+    m = bath.manifest()
+    m["clips"].append({"clip_id": cid, "file": f"{cid}.mp4", "name": cid})
+    bath._write_manifest(m)
+    return cid
+
+
+def test_one_unreadable_clip_does_not_cost_the_others_their_lanes(bath_with_photo):
+    bath, photo = bath_with_photo
+    saved = service.propose_edit(bath)["edit_id"]
+    broken = _add_unreadable_clip(bath)
+    doc = service.editor_document(bath)
+    assert {t["name"] for t in doc["tiers"]} == {
+        "DECISION", "clip:abbey", "clip:dog", f"clip:{photo}", f"clip:{broken}",
+    }
+    assert repr(broken) in doc["decision_error"]
+    # a hosted reply names files, never the server's paths
+    assert str(bath.root) not in doc["decision_error"]
+    assert not [a for a in doc["annotations"] if a["tier"] == "DECISION"]
+    # a named edit that does not use the bad clip still opens
+    doc = service.editor_document(bath, edit_id=saved)
+    assert doc["decision_error"] is None
+    assert _decision(doc) == service.get_edit(bath, edit_id=saved)["edl"]
+    assert any(repr(broken) in w for w in doc["warnings"])
+    assert not any(str(bath.root) in w for w in doc["warnings"])
 
 
 def test_an_unlistened_video_degrades_the_decision_tier_not_the_document(bath):

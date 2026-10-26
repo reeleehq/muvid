@@ -291,10 +291,15 @@ def test_editor_document_degrades_when_the_default_proposal_cant_build(
     # fails, and that must be reported, not raised.
     proj = _fake_project(tmp_path, monkeypatch)
     proj.save_alignments(
-        [FootageAlignment("A", 0.0, 0.9, 5.0, (0.0, 20.0))]  # coverage > duration_s
+        [
+            FootageAlignment("A", 0.0, 0.9, 5.0, (0.0, 20.0)),  # coverage > duration_s
+            # B stays placed, so nothing probes its stand-in file: the failure under
+            # test is A's, not ffprobe's.
+            FootageAlignment("B", 8.0, 0.6, 20.0, (8.0, 20.0)),
+        ]
     )
     doc = editor_document(proj)
-    assert doc["decision_error"] is not None
+    assert "'A'" in doc["decision_error"]
     assert not [a for a in doc["annotations"] if a["tier"] == DECISION_TIER]
     # everything else in the document still built
     assert any(
@@ -310,10 +315,15 @@ def test_editor_document_tool_degrades_when_the_default_proposal_cant_build(
     from muvid.mcp.identity import use_email
 
     proj = _fake_project(tmp_path, monkeypatch)
-    proj.save_alignments([FootageAlignment("A", 0.0, 0.9, 5.0, (0.0, 20.0))])
+    proj.save_alignments(
+        [
+            FootageAlignment("A", 0.0, 0.9, 5.0, (0.0, 20.0)),
+            FootageAlignment("B", 8.0, 0.6, 20.0, (8.0, 20.0)),
+        ]
+    )
     with use_email("u@x.com"):
         doc = ft.footage_editor_document("p")
-    assert doc["decision_error"] is not None
+    assert "'A'" in doc["decision_error"]
 
 
 def test_edl_from_annotations_sorts_by_start():
@@ -361,6 +371,40 @@ def test_editor_document_without_scores(tmp_path, monkeypatch):
         20.0,
     )
     assert entries[0].song_start == 0.0 and entries[-1].song_end == 20.0
+
+
+def test_a_synced_clips_alignment_body_keeps_its_legacy_shape(tmp_path, monkeypatch):
+    # muvid#138 added `still` and `role`, omit-when-absent: a synced clip's body must
+    # stay byte-identical to what every document before it carried.
+    doc = editor_document(_fake_project(tmp_path, monkeypatch))
+    bodies = [
+        a["body"]
+        for a in doc["annotations"]
+        if a["body_schema_uri"] == CLIP_ALIGNMENT_SCHEMA
+    ]
+    assert {b["clip_id"] for b in bodies} == {"A", "B"}
+    for b in bodies:
+        assert set(b) == {"clip_id", "offset_s", "duration_s", "overlaps"}
+    # and a healthy default-proposal reply carries none of the additive keys
+    assert "warnings" not in doc and "edit_id" not in doc
+
+
+def test_editor_document_refuses_an_unknown_edit(tmp_path, monkeypatch):
+    proj = _fake_project(tmp_path, monkeypatch)
+    with pytest.raises(ValueError, match="unknown edit 'nope'"):
+        editor_document(proj, edit_id="nope")
+
+
+def test_editor_document_tool_passes_the_edit_through(tmp_path, monkeypatch):
+    pytest.importorskip("fastmcp")
+    from fastmcp.exceptions import ToolError
+
+    import muvid.mcp.footage_tools as ft
+    from muvid.mcp.identity import use_email
+
+    _fake_project(tmp_path, monkeypatch)
+    with use_email("u@x.com"), pytest.raises(ToolError, match="unknown edit"):
+        ft.footage_editor_document("p", edit_id="nope")
 
 
 def test_editor_document_includes_scores_when_persisted(tmp_path, monkeypatch):

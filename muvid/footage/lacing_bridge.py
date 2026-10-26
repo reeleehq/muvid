@@ -6,7 +6,9 @@ until now existed only as prose in the design docs (muvid#31): ``clip-alignment/
 the shared song-time grid), and ``music-video-edl/v1`` (the DECISION lane — one entry
 per cut, gaps included). This module is the bridge, both directions:
 
-- :func:`editor_document` — a muvid project as ``{tiers, annotations}``, everything in
+- :func:`build_document` (and :func:`editor_document`, the in-process entry point
+  whose orchestration is the service's) — a muvid project as ``{tiers, annotations}``,
+  everything in
   SONG TIME on one shared axis, referenced to the song's content hash (``MediaRef``), so
   any lacing-native surface (lacing-ui's multitrack Timeline first) renders it without
   knowing muvid exists.
@@ -39,8 +41,6 @@ MUSIC_VIDEO_EDL_SCHEMA = "annot://schema/music-video-edl/v1"
 #: Tier names. Clip lanes are per-clip (``clip:<id>``); these are the shared ones.
 DECISION_TIER = "DECISION"
 _PROVENANCE_AGENT = "processor:muvid.footage.lacing_bridge"
-#: ``service.FREE_ROLE``, spelled here so importing the bridge imports no service.
-_FREE_ROLE = "to_the_music"
 
 
 def _interval(start_s: float, end_s: float):
@@ -94,12 +94,14 @@ def alignment_annotations(
 ) -> list:
     """One ``clip-alignment/v1`` per clip, spanning the clip's coverage of the song.
 
-    ``stills`` names the clips that are photos, and ``roles`` is
-    ``service.footage_roles``: a photo has no place on the song (its record sits at
-    0, the same zero-length interval an unplaced clip gets), so the body says
-    ``"still": true``; a clip cut to the music rather than synced says
-    ``"role": "to_the_music"``. Both keys are omitted when absent (muvid#138).
+    ``stills`` names the clips that are photos: a photo has no place on the song (its
+    record sits at 0, the same zero-length interval an unplaced clip gets), so the body
+    says ``"still": true``. ``roles`` maps a clip to the ``"role"`` its body carries;
+    the caller names only the clips whose role is worth saying (the service: those cut
+    to the music), so the bridge owns no role vocabulary. Both keys are omitted when
+    absent, which keeps a synced clip's body exactly the shape it always had (muvid#138).
     """
+    roles = roles or {}
     out = []
     for a in aligns:
         lo, hi = a.coverage
@@ -119,11 +121,7 @@ def alignment_annotations(
                     "duration_s": a.duration_s,
                     "overlaps": a.overlaps,
                     **({"still": True} if a.clip_id in stills else {}),
-                    **(
-                        {"role": roles[a.clip_id]}
-                        if roles and roles.get(a.clip_id) == _FREE_ROLE
-                        else {}
-                    ),
+                    **({"role": roles[a.clip_id]} if a.clip_id in roles else {}),
                 },
                 schema=CLIP_ALIGNMENT_SCHEMA,
                 attributed_to=attributed_to,
@@ -358,102 +356,65 @@ def edl_from_annotations(
     return sorted(out, key=lambda e: e["song_start"])
 
 
-def editor_document(proj, *, attributed_to: str = "", edit_id: str = "") -> dict:
-    """The whole project as one lacing-native document for a multitrack editor.
+def build_document(
+    *,
+    project_id: str,
+    song_asset_id: str,
+    song_duration: float,
+    placements,
+    entries,
+    tensor,
+    decision_error: str | None,
+    attributed_to: str,
+    stills: Collection[str] = (),
+    roles: Mapping[str, str] | None = None,
+) -> dict:
+    """The lacing-native document from what the service already decided — pure, no
+    project access, no selection.
 
-    Tiers: one lane group per clip (alignment + its score sub-tracks) + the DECISION
-    lane. Every clip has a lane, photos and clips cut to the music included (a photo
-    has no place on the song: its alignment record sits at 0 and says ``still``).
-    The EDL rendered into DECISION is what ``propose_edit`` would build now (the
-    synced videos cut by the strategy, the rest cut to the music, with each free
-    cut's ``source_in``), or the saved edit ``edit_id`` when one is named. An editor
-    mutates that tier and exports it back through :func:`edl_from_annotations`.
+    Tiers: the DECISION lane plus one lane per placement (alignment record + its score
+    sub-tracks when ``tensor`` is given). ``entries`` is the validated EDL for the
+    DECISION lane (empty when ``decision_error`` says why there is none).
     """
-    from muvid.footage import service
-    from muvid.footage.edl import fill_gaps, validate_edl
-    from muvid.footage.scoring.grid import load_tensor
-    from muvid.footage.strategy import DEFAULT_STRATEGY
-
-    if not proj.has_song():
-        raise ValueError("no song set — call set_song first")
-    decision_error = None
-    try:
-        placements = service._placements(proj)
-    except (
-        ValueError
-    ) as e:  # a clip whose length cannot be read: lanes from what is placed
-        placements, decision_error = proj.load_alignments(), str(e)
-    song_dur = proj.song_duration()
-    song_asset_id = proj.song_hash()
-    who = attributed_to or f"user:{proj.email}"
-    stills = {
-        c["clip_id"]
-        for c in proj.manifest().get("clips", [])
-        if c.get("kind") == service.STILL_KIND
-    }
-
     annotations = alignment_annotations(
         placements,
         song_asset_id=song_asset_id,
-        attributed_to=who,
+        attributed_to=attributed_to,
         stills=stills,
-        roles=service.footage_roles(proj),
+        roles=roles,
     )
-    tensor = load_tensor(proj.root)
     if tensor is not None:
         annotations += score_track_annotations(
-            tensor, song_asset_id=song_asset_id, attributed_to=who
+            tensor, song_asset_id=song_asset_id, attributed_to=attributed_to
         )
-    if placements and decision_error is None:
-        try:
-            if edit_id:
-                _, saved = service._edit_entries(proj, edit_id)
-                proposal = fill_gaps(saved, song_dur)
-            else:
-                proposal, _, _ = service._auto_edit(
-                    proj,
-                    placements,
-                    song_dur,
-                    strategy=DEFAULT_STRATEGY,
-                    context=None,
-                    recover=True,
-                )
-            entries = validate_edl(
-                proposal,
-                placements,
-                song_dur,
-                canvas=proj.canvas(),
-                # This builds the DECISION tier an editor opens and edits; it renders
-                # nothing. An unvouched offset still has to be visible in the editor —
-                # seeing where a clip stops matching is how a human fixes it — and the
-                # refusal happens when that decision comes back to be rendered.
-                allow_unreliable=True,
-            )
-        except (ValueError, KeyError) as e:
-            # The alignment + score-track annotations below are independently good —
-            # only the proposal failed to build (e.g. a self-inconsistent persisted
-            # alignment, a video nobody has listened to yet, or a legitimate selection
-            # past MAX_EDL_ENTRIES). An editor can still open the document and place
-            # its own DECISION entries; losing the whole export over an unrelated
-            # failure would not.
-            decision_error = str(e)
-        else:
-            annotations += edl_annotations(
-                entries, song_asset_id=song_asset_id, attributed_to=who
-            )
-
+    annotations += edl_annotations(
+        entries, song_asset_id=song_asset_id, attributed_to=attributed_to
+    )
     tiers = [{"name": DECISION_TIER, "stereotype": "NONE"}] + [
         {"name": f"clip:{a.clip_id}", "stereotype": "NONE"} for a in placements
     ]
     return {
-        "project_id": proj.project_id,
+        "project_id": project_id,
         "song_asset_id": song_asset_id,
-        "song_duration": song_dur,
+        "song_duration": song_duration,
         "time_rate": TIME_RATE,
         "tiers": tiers,
         "annotations": [a.model_dump(mode="json") for a in annotations],
-        # None on the healthy path. When set, the DECISION tier has no default proposal
+        # None on the healthy path. When set, the DECISION tier has no proposal
         # (everything else in the document is still good) — an editor should say so
         # rather than silently show an empty lane.
         "decision_error": decision_error,
     }
+
+
+def editor_document(proj, *, attributed_to: str = "", edit_id: str = "") -> dict:
+    """The whole project as one lacing-native document for a multitrack editor.
+
+    A thin in-process entry point: the orchestration (placements, roles, the proposal
+    or the saved edit ``edit_id``, validation, warnings) is
+    ``muvid.footage.service.editor_document``'s, and this module only builds the
+    records (:func:`build_document`). Imported lazily, so the call chain runs one way.
+    """
+    from muvid.footage.service import _editor_document
+
+    return _editor_document(proj, edit_id=edit_id, attributed_to=attributed_to)

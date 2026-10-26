@@ -752,21 +752,25 @@ def list_strategies() -> dict:
     return service.strategies()
 
 
-def footage_editor_document(project_id: str) -> dict:
+def footage_editor_document(project_id: str, edit_id: str = "") -> dict:
     """The project as lacing-native standoff annotations, for a multitrack editor. Free.
 
-    One tier per clip (its ``clip-alignment/v1`` +, once scored, its
-    ``clip-score-track/v1`` curves) plus a ``DECISION`` tier holding the current default
-    proposal as ``music-video-edl/v1`` entries — everything referenced to the song by
-    content hash, on one shared song-time axis (thorwhalen/reelee-web#203). Needs the
-    ``editor`` extra (``lacing``); requires alignment (run ``align_footage`` first).
+    One tier per clip — photos and clips cut to the music included — with its
+    ``clip-alignment/v1`` record (+, once scored, its ``clip-score-track/v1`` curves),
+    plus a ``DECISION`` tier as ``music-video-edl/v1`` entries: what ``propose_edit``
+    would build now, or the saved edit ``edit_id`` when one is named (an unknown id is
+    refused). Everything is referenced to the song by content hash, on one shared
+    song-time axis (thorwhalen/reelee-web#203). Needs the ``editor`` extra
+    (``lacing``), a song and at least one clip. When the DECISION tier cannot be built
+    the rest of the document still is, and ``decision_error`` says why; ``warnings``
+    (present only when non-empty) lists what the proposal set aside.
 
     After a human edits the DECISION tier, feed its annotations back to
     ``assemble_music_video`` via ``footage_edl_from_annotations``.
     """
     proj = _open(project_id)
     with _refusals():
-        return service.editor_document(proj)
+        return service.editor_document(proj, edit_id=edit_id)
 
 
 def footage_edl_from_annotations(project_id: str, *, annotations: list[dict]) -> dict:
