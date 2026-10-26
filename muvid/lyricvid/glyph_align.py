@@ -25,8 +25,9 @@ the vocal stem, against a random-jitter baseline, and :func:`word_agreement`
 lists the words where two timings disagree. :func:`reconcile` then acts on
 what a list of :class:`Detector` s distrusts — each names words and a remedy
 (``replace``: fall back to the vendor window; ``drop``: it was never sung).
-:func:`unsung` is the one that drops: a line the aligner could not place over
-which the vocal stem is silent (muvid#144).
+:func:`unsung` drops a line the aligner could not place over which the vocal
+stem is silent (muvid#144); :func:`silent_glyph` flags a word with one silent
+sounded glyph inside a sung line (muvid#156).
 
 Licensing — read before shipping anything: the ``MMS_FA`` weights are
 **CC-BY-NC-4.0** and htdemucs (vocal separation) is CC-BY-NC too. So this is an
@@ -45,6 +46,10 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from muvid.lyricvid.timed_text import Glyph, Line, Section, TimedText, Word
+
+#: Glyphs that carry no sound of their own: a lengthening mark and a sokuon (the
+#: closure of a geminate is silence by definition), in both kana scripts.
+_SOUNDLESS_GLYPHS = "ーッっ"
 
 #: Seconds of audio kept either side of a line's coarse window. Vendor word
 #: times run late and miss leading consonants; too wide a window lets the
@@ -596,7 +601,7 @@ def _glyph_starts(tt: TimedText) -> list[float]:
         if g.measured
         and g.end > g.start
         and unicodedata.category(g.text)[0] == "L"
-        and g.text not in "ーッっ"
+        and g.text not in _SOUNDLESS_GLYPHS
     ]
 
 
@@ -708,6 +713,21 @@ UNSUNG_FRAME_S = 0.05
 #: The stem's "loud level" is this percentile of its frame RMS, so the threshold
 #: follows the mix rather than an absolute dBFS a quieter stem would fail.
 UNSUNG_REF_PERCENTILE = 95.0
+#: :func:`silent_glyph`'s thresholds, measured on 21 songs (muvid#156): a glyph
+#: window is silent when its PEAK is under this many dB below the stem's loud
+#: level...
+SILENT_GLYPH_PEAK_DB = -25.0
+#: ...AND its MEDIAN is under this. Both: a sung glyph's window often runs into
+#: a gap or a devoiced tail (low median, high peak), and a quiet tail can sit
+#: next to an attack (high peak). (The median never exceeds the peak, so once the
+#: peak is under its bound this only rejects windows uniformly near the threshold.)
+SILENT_GLYPH_MEDIAN_DB = -28.0
+#: A glyph's window runs to the next sounded glyph's start, clamped to this
+#: range (seconds): a glyph is never judged on less than a couple of frames,
+#: nor on the held note after it.
+SILENT_GLYPH_WINDOW_S = (0.06, 0.4)
+#: Frame length for :func:`silent_glyph`'s levels (finer than the line-level 50 ms).
+SILENT_GLYPH_FRAME_S = 0.01
 #: A stem whose loud level is below this RMS (-120 dBFS) holds no singing at all.
 _SILENT_RMS = 1e-6
 
@@ -754,7 +774,7 @@ def squeezed(*, min_glyph_s: float = MIN_GLYPH_S) -> Detector:
                     (w_idx, g.start)
                     for g in w.glyphs
                     if g.measured
-                    and g.text not in "ーッっ"
+                    and g.text not in _SOUNDLESS_GLYPHS
                     and unicodedata.east_asian_width(g.text[0]) in "WF"
                 ]
                 w_idx += 1
@@ -905,6 +925,90 @@ def unsung(
         return out
 
     return Detector(name="unsung", find=find, remedy="drop")
+
+
+def silent_glyph(
+    vocals: Path | str,
+    *,
+    peak_db: float = SILENT_GLYPH_PEAK_DB,
+    median_db: float = SILENT_GLYPH_MEDIAN_DB,
+    window_s: tuple[float, float] = SILENT_GLYPH_WINDOW_S,
+    frame_s: float = SILENT_GLYPH_FRAME_S,
+    remedy: str = "drop",
+) -> Detector:
+    """Words with a sounded glyph whose own window is silent in the stem (muvid#156).
+
+    :func:`squeezed` sees glyph starts too close together and :func:`unsung`
+    sees whole quiet lines; neither sees ONE silent mora inside a sung line.
+    That happens when the transcript lists ハッカー and the singer sang ハッ
+    (CTC must still place カ, and puts it in the ッ gap: ``measured=True``, 61 ms,
+    30-40 dB under the singing), and when an unmeasured glyph keeps a vendor
+    fallback time that lands in a gap. A consumer that plays per-glyph clips
+    plays silence or a click for these.
+
+    A glyph's window runs from its start to the next sounded glyph's start
+    (``ー`` and ``ッ`` make no sound of their own and are neither judged nor
+    ends), clamped to ``window_s``; its levels are dB under the stem's loud
+    level. It is silent when its peak is under ``peak_db`` AND its median under
+    ``median_db``. Measured on 21 songs this flagged 13 words in 8, each checked
+    against the stem envelope; sung-but-devoiced glyphs (デス ス) stay above.
+    A window running past the stem's end, or a digitally silent stem, is not
+    judged (the safe direction for a remedy that deletes words).
+
+    Remedy: ``drop`` at WORD level by default, the safe choice while
+    :class:`~muvid.lyricvid.timed_text.Glyph` has no per-glyph "not sung" flag;
+    pass ``remedy="replace"`` to fall back to the vendor window instead. Safe for
+    a consumer playing per-glyph clips; in a lyric video it deletes sung text
+    (``ハッ``), and ``drop`` outranks ``replace``, so it also turns a recoverable
+    squeezed word into a deletion. Hence opt-in, NOT part of
+    :func:`stem_detectors`. Only wide (kana, CJK) glyphs are judged; words
+    without glyphs are not judged and do not end a neighbour's window.
+    """
+    lo, hi = window_s
+    if frame_s <= 0 or not 0 < lo <= hi:
+        raise ValueError(
+            "silent_glyph needs frame_s > 0 and 0 < window_s[0] <= window_s[1]"
+        )
+    levels: list = []  # the stem is read once per detector, on first use
+
+    def judged(g: Glyph) -> bool:
+        # syllabic scripts only: the thresholds were measured on kana, and CTC
+        # places an alphabet's letters in gaps all the time (as `squeezed` does)
+        return (
+            g.text not in _SOUNDLESS_GLYPHS
+            and unicodedata.east_asian_width(g.text[:1] or " ") in "WF"
+        )
+
+    def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
+        import numpy as np
+
+        # (word index, glyph) for every glyph that makes a sound, in song order
+        sounded = [
+            (k, g) for k, w in enumerate(fine.words()) for g in w.glyphs if judged(g)
+        ]
+        if not sounded:
+            return {}
+        if not levels:
+            levels.append(_frame_levels_db(vocals, frame_s=frame_s))
+        level = levels[0]
+        out: dict[int, str] = {}
+        for n, (k, g) in enumerate(sounded):
+            nxt = sounded[n + 1][1].start if n + 1 < len(sounded) else g.start + hi
+            end = min(max(nxt, g.start + lo), g.start + hi)
+            a = max(0, int(g.start / frame_s))
+            b = max(int(end / frame_s), a + 1)
+            if b > len(level) or k in out:  # past the stem's end: nothing to judge by
+                continue
+            w = level[a:b]
+            peak, med = float(w.max()), float(np.median(w))
+            if peak < peak_db and med < median_db:
+                out[k] = (
+                    f"glyph {g.text!r} at {g.start:.2f} s: silent in the stem "
+                    f"(peak {peak:.0f} dB, median {med:.0f} dB)"
+                )
+        return out
+
+    return Detector(name="silent_glyph", find=find, remedy=remedy)
 
 
 def stem_onsets(vocals: Path | str):
