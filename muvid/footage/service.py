@@ -431,11 +431,16 @@ def _role_of(row: dict, alignment) -> str:
     return SYNCED if heard_the_song(alignment) else FREE_ROLE
 
 
-def _placements(fp) -> list:
+def _placements(fp, *, on_unreadable=None) -> list:
     """A placement for EVERY clip: its alignment where it has one, else an UNPLACED
     record (never persisted) carrying its duration — what a free cut needs to be
     validated and rendered. A photo's duration is the bound
-    :data:`~muvid.footage.edl.STILL_DURATION_S`."""
+    :data:`~muvid.footage.edl.STILL_DURATION_S`.
+
+    A video whose length cannot be read is a refusal, unless ``on_unreadable`` is given:
+    then it is called with ``(clip_id, error)`` and the clip gets a zero-length unplaced
+    record, so one bad file does not cost every other clip its place (the editor
+    document's lanes, muvid#138)."""
     from muvid.footage.edl import STILL_DURATION_S, unplaced
 
     aligns = fp.load_alignments()
@@ -447,8 +452,14 @@ def _placements(fp) -> list:
             continue
         if c.get("kind") == STILL_KIND:
             out.append(unplaced(cid, STILL_DURATION_S))
-        else:
+            continue
+        try:
             out.append(unplaced(cid, _clip_duration(fp, cid)))
+        except FootageError as e:
+            if on_unreadable is None:
+                raise
+            on_unreadable(cid, e)
+            out.append(unplaced(cid, 0.0))
     return out
 
 
@@ -3347,25 +3358,125 @@ def _ref_label(ref_n) -> dict:
 _EDITOR_EXTRA_HINT = "the lacing-native editor bridge needs the 'editor' extra (pip install 'muvid[editor]')"
 
 
-def editor_document(fp) -> dict:
+def editor_document(fp, *, edit_id: str = "") -> dict:
     """The project as lacing-native standoff annotations, for a multitrack editor.
 
-    One tier per clip (its ``clip-alignment/v1`` and, once scored, its
-    ``clip-score-track/v1`` curves) plus a ``DECISION`` tier holding the current default
-    proposal as ``music-video-edl/v1`` entries — everything referenced to the song by
-    content hash, on one shared song-time axis. Needs the ``editor`` extra (lacing) and
-    an alignment.
+    One tier per clip, photos and clips cut to the music included (its
+    ``clip-alignment/v1`` and, once scored, its ``clip-score-track/v1`` curves) plus a
+    ``DECISION`` tier holding what ``propose_edit`` would build now — or the saved edit
+    ``edit_id``, when one is named — as ``music-video-edl/v1`` entries, free cuts
+    carrying their ``source_in``; everything referenced to the song by content hash, on
+    one shared song-time axis. Needs the ``editor`` extra (lacing), a song and a clip.
+
+    When the DECISION tier cannot be built, the rest of the document still is, and
+    ``decision_error`` says why; ``warnings`` (present only when there are any) lists
+    what the proposal set aside. An unknown ``edit_id`` is a refusal, not a degrade.
     """
+    return _editor_document(fp, edit_id=edit_id)
+
+
+def _project_relative(fp, message: str) -> str:
+    """``message`` with the project's absolute root stripped (hosted replies carry
+    project-relative paths only)."""
+    root = str(fp.root)
+    return message.replace(root + os.sep, "").replace(root, ".")
+
+
+def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
+    """:func:`editor_document`, with the provenance agent open to in-process callers
+    (``lacing_bridge.editor_document``) but not to the served operation."""
     try:
-        from muvid.footage.lacing_bridge import editor_document as _document
+        import lacing  # noqa: F401 — the bridge imports it lazily; ask here, up front
+
+        from muvid.footage.lacing_bridge import build_document
     except ImportError as e:
         raise FootageError(_EDITOR_EXTRA_HINT) from e
-    if not fp.load_alignments():
-        raise FootageError("no alignment yet — call align_footage first")
+    from muvid.footage.edl import fill_gaps, validate_edl
+    from muvid.footage.scoring.grid import load_tensor
+    from muvid.footage.strategy import DEFAULT_STRATEGY
+    from muvid.visualize.ffmpeg import FfmpegError
+
+    if not fp.manifest().get("clips"):
+        raise FootageError(
+            "no footage yet — add clips (add_clip), then align_footage to place them"
+        )
+    if not fp.has_song():
+        raise FootageError("no song set — call set_song first")
+    # Read before anything can degrade: a wrong edit id is the caller's mistake, and
+    # answering it with the default proposal would show them an edit they did not ask for.
+    record, saved = _edit_entries(fp, edit_id) if edit_id else (None, None)
+
+    unreadable = []
+    placements = _placements(
+        fp, on_unreadable=lambda cid, e: unreadable.append(f"clip {cid!r}: {e}")
+    )
+    roles = footage_roles(fp)
+    song_dur = fp.song_duration()
+    warnings = [f"could not read {p}" for p in unreadable]
+    decision_error = None
+    entries = []
     try:
-        return _document(fp)
-    except ValueError as e:
-        raise FootageError(str(e)) from e
+        if saved is not None:
+            proposal = fill_gaps(saved, song_dur)
+        elif unreadable:
+            # The auto path measures every free video; it would only fail on these again.
+            raise FootageError(
+                "no proposal: " + "; ".join(warnings) + " — remove or re-add it"
+            )
+        else:
+            proposal, excluded, music = _auto_edit(
+                fp,
+                placements,
+                song_dur,
+                strategy=DEFAULT_STRATEGY,
+                context=None,
+                recover=True,
+            )
+            warnings += [exclusion_note(x) for x in excluded]
+            if music and music.get("error"):
+                warnings.append(music["error"])
+        entries = validate_edl(
+            proposal,
+            placements,
+            song_dur,
+            canvas=fp.canvas(),
+            # This builds the DECISION tier an editor opens and edits; it renders
+            # nothing, so the trust refusal happens where the encode does, when that
+            # decision comes back to be rendered (muvid#59). An unvouched offset is
+            # still visible in the clip lanes, where a human fixes it; the proposal
+            # sets its span aside (a gap, and a warning), exactly as propose_edit does.
+            allow_unreliable=True,
+        )
+    except (ValueError, KeyError, FfmpegError) as e:
+        # Everything else in the document is independently good — only the proposal
+        # failed (a self-inconsistent persisted alignment, a video nobody has listened
+        # to yet, a selection past MAX_EDL_ENTRIES, a song or clip ffprobe cannot read:
+        # an FfmpegError is a RuntimeError, not a ValueError). An editor can still open
+        # it and place its own DECISION entries.
+        decision_error, entries = _project_relative(fp, str(e)), []
+    doc = build_document(
+        project_id=fp.project_id,
+        song_asset_id=fp.song_hash(),
+        song_duration=song_dur,
+        placements=placements,
+        entries=entries,
+        tensor=load_tensor(fp.root),
+        decision_error=decision_error,
+        attributed_to=attributed_to or f"user:{fp.email}",
+        stills={
+            c["clip_id"]
+            for c in fp.manifest().get("clips", [])
+            if c.get("kind") == STILL_KIND
+        },
+        roles={cid: r for cid, r in roles.items() if r == FREE_ROLE},
+    )
+    # Additive keys, omit-when-absent: a default-proposal reply with nothing to warn
+    # about is byte-identical to one written before they existed.
+    if record is not None:
+        doc["edit_id"] = record["edit_id"]
+    if warnings:
+        doc["warnings"] = [_project_relative(fp, w) for w in warnings]
+    return doc
 
 
 def edl_from_annotations(fp, *, annotations: list[dict]) -> dict:
@@ -3424,13 +3535,17 @@ def _ext_of(ext: str, filename: str, path: Path) -> str:
 
 
 def _probe_duration(path: Path) -> float:
-    """Media duration via ffprobe; an unreadable file is a refusal, not a traceback."""
+    """Media duration via ffprobe; an unreadable file is a refusal, not a traceback.
+
+    The refusal names the file, never its absolute path: ffprobe's own message carries
+    the full server path, and a hosted reply carries project-relative paths only."""
     from muvid.visualize.ffmpeg import FfmpegError, media_duration
 
     try:
         return float(media_duration(path))
     except FfmpegError as e:
-        raise FootageError(f"could not read {path.name!r} as media: {e}") from e
+        why = str(e).replace(str(path), path.name)
+        raise FootageError(f"could not read {path.name!r} as media: {why}") from e
 
 
 def _clip_duration(fp, clip_id: str) -> float:

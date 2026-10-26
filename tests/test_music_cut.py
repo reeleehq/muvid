@@ -437,3 +437,170 @@ def test_an_iphone_heic_photo_goes_in_upright_as_jpeg(bath, tmp_path):
         assert im.format == "JPEG" and im.size == (20, 40)
         r, g, b = im.getpixel((10, 20))
         assert r > 150 and g < 80 and b < 80  # the picture, not a blank
+
+
+# -- the timeline-editor document carries the cuts to the music (muvid#138) ----------
+
+
+@pytest.fixture
+def bath_with_photo(bath, tmp_path):
+    if not HAS_FFMPEG:
+        pytest.skip("needs ffmpeg to make a photo")
+    photo = tmp_path / "abbey_road.png"
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=64x48:duration=1",
+        "-frames:v",
+        "1",
+        str(photo),
+    )
+    added = service.add_clip(bath, path=str(photo), filename="abbey_road.png")
+    assert added["kind"] == "still"
+    return bath, added["clip_id"]
+
+
+def _decision(doc):
+    from lacing.model import Annotation
+
+    from muvid.footage.lacing_bridge import DECISION_TIER, edl_from_annotations
+
+    return edl_from_annotations(
+        [
+            Annotation.model_validate(a)
+            for a in doc["annotations"]
+            if a["tier"] == DECISION_TIER
+        ]
+    )
+
+
+def _key(e):
+    return (
+        e["clip_id"],
+        round(e["song_start"], 3),
+        round(e["song_end"], 3),
+        e.get("source_in"),
+    )
+
+
+def test_the_editor_decision_tier_is_what_propose_edit_builds(bath_with_photo):
+    bath, photo = bath_with_photo
+    doc = service.editor_document(bath)
+    proposal = service.propose_edit(bath, save=False)["edl"]
+    assert doc["decision_error"] is None
+    assert [_key(e) for e in _decision(doc)] == [_key(e) for e in proposal]
+    assert _decision(doc) == proposal  # the whole cut, not just where and what
+    # nothing came back anchored: every free cut keeps its in-point through the editor
+    free = [e for e in _decision(doc) if e["clip_id"]]
+    assert free and all(e.get("source_in") is not None for e in free)
+    assert photo in {e["clip_id"] for e in free}
+
+
+def test_every_clip_gets_a_lane_and_a_photo_is_not_a_position_on_the_song(
+    bath_with_photo,
+):
+    bath, photo = bath_with_photo
+    doc = service.editor_document(bath)
+    assert {t["name"] for t in doc["tiers"]} == {
+        "DECISION",
+        "clip:abbey",
+        "clip:dog",
+        f"clip:{photo}",
+    }
+    rec = {
+        a["body"]["clip_id"]: a
+        for a in doc["annotations"]
+        if a["body_schema_uri"].endswith("clip-alignment/v1")
+    }
+    assert (
+        rec[photo]["body"]["still"] is True and rec[photo]["body"]["overlaps"] is False
+    )
+    assert rec[photo]["body"]["role"] == "to_the_music"
+    assert "still" not in rec["abbey"]["body"]
+    assert rec["abbey"]["body"]["role"] == "to_the_music"
+
+
+def test_the_editor_document_can_open_a_saved_edit(bath_with_photo):
+    bath, _ = bath_with_photo
+    out = service.propose_edit(bath)
+    edl = service.get_edit(bath, edit_id=out["edit_id"])["edl"]
+    i = next(
+        i
+        for i, e in enumerate(edl)
+        if e["clip_id"] == "abbey" and not e.get("transition")
+    )
+    service.set_cut(bath, edit_id=out["edit_id"], index=i, clip_id="dog")
+    saved = service.get_edit(bath, edit_id=out["edit_id"])["edl"]
+    doc = service.editor_document(bath, edit_id=out["edit_id"])
+    assert [_key(e) for e in _decision(doc)] == [_key(e) for e in saved]
+    assert _decision(doc) == saved
+    assert doc["edit_id"] == out["edit_id"]
+    assert _decision(doc) != _decision(service.editor_document(bath))
+
+
+def test_an_unknown_edit_is_refused_not_swapped_for_the_proposal(bath_with_photo):
+    bath, _ = bath_with_photo
+    with pytest.raises(service.FootageError, match="unknown edit 'nope'"):
+        service.editor_document(bath, edit_id="nope")
+
+
+def _add_unreadable_clip(bath, cid="broken"):
+    """A clip whose file ffprobe cannot read and whose length was never recorded."""
+    (bath.root / "clips" / f"{cid}.mp4").write_bytes(b"not a video")
+    m = bath.manifest()
+    m["clips"].append({"clip_id": cid, "file": f"{cid}.mp4", "name": cid})
+    bath._write_manifest(m)
+    return cid
+
+
+def test_one_unreadable_clip_does_not_cost_the_others_their_lanes(bath_with_photo):
+    bath, photo = bath_with_photo
+    saved = service.propose_edit(bath)["edit_id"]
+    broken = _add_unreadable_clip(bath)
+    doc = service.editor_document(bath)
+    assert {t["name"] for t in doc["tiers"]} == {
+        "DECISION", "clip:abbey", "clip:dog", f"clip:{photo}", f"clip:{broken}",
+    }
+    assert repr(broken) in doc["decision_error"]
+    # a hosted reply names files, never the server's paths
+    assert str(bath.root) not in doc["decision_error"]
+    assert not [a for a in doc["annotations"] if a["tier"] == "DECISION"]
+    # a named edit that does not use the bad clip still opens
+    doc = service.editor_document(bath, edit_id=saved)
+    assert doc["decision_error"] is None
+    assert _decision(doc) == service.get_edit(bath, edit_id=saved)["edl"]
+    assert any(repr(broken) in w for w in doc["warnings"])
+    assert not any(str(bath.root) in w for w in doc["warnings"])
+
+
+def test_an_unlistened_video_degrades_the_decision_tier_not_the_document(bath):
+    bath.save_alignments([_heard("abbey", 12.0, support=0.2)])  # dog: never listened to
+    doc = service.editor_document(bath)
+    assert "not been listened to" in doc["decision_error"]
+    assert {t["name"] for t in doc["tiers"]} == {"DECISION", "clip:abbey", "clip:dog"}
+    assert not [a for a in doc["annotations"] if a["tier"] == "DECISION"]
+
+
+def test_a_song_ffprobe_cannot_read_degrades_the_decision_tier_without_a_path(
+    bath, monkeypatch
+):
+    """The music half raises FfmpegError (a RuntimeError): the document still opens."""
+    from muvid.visualize.ffmpeg import FfmpegError
+
+    def unreadable(path):
+        raise FfmpegError(f"ffprobe could not read {path}: Invalid data")
+
+    monkeypatch.setattr(music_cut, "_default_analysis", unreadable)
+    shutil.rmtree(bath.root / "beats", ignore_errors=True)  # warmed at upload
+    doc = service.editor_document(bath)
+    assert doc["decision_error"] and "ffprobe could not read" in doc["decision_error"]
+    assert str(bath.root) not in doc["decision_error"]
+    assert {t["name"] for t in doc["tiers"]} == {"DECISION", "clip:abbey", "clip:dog"}
+
+
+def test_a_saved_edit_is_echoed_by_its_stored_id(bath_with_photo):
+    bath, _ = bath_with_photo
+    out = service.propose_edit(bath)
+    doc = service.editor_document(bath, edit_id=f" {out['edit_id']} ")
+    assert doc["edit_id"] == out["edit_id"]
