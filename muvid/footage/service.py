@@ -3394,6 +3394,7 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
     from muvid.footage.edl import fill_gaps, validate_edl
     from muvid.footage.scoring.grid import load_tensor
     from muvid.footage.strategy import DEFAULT_STRATEGY
+    from muvid.visualize.ffmpeg import FfmpegError
 
     if not fp.manifest().get("clips"):
         raise FootageError(
@@ -3403,7 +3404,7 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
         raise FootageError("no song set — call set_song first")
     # Read before anything can degrade: a wrong edit id is the caller's mistake, and
     # answering it with the default proposal would show them an edit they did not ask for.
-    saved = _edit_entries(fp, edit_id)[1] if edit_id else None
+    record, saved = _edit_entries(fp, edit_id) if edit_id else (None, None)
 
     unreadable = []
     placements = _placements(
@@ -3440,16 +3441,18 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
             song_dur,
             canvas=fp.canvas(),
             # This builds the DECISION tier an editor opens and edits; it renders
-            # nothing. An unvouched offset still has to be visible in the editor —
-            # seeing where a clip stops matching is how a human fixes it — and the
-            # refusal happens when that decision comes back to be rendered (muvid#59).
+            # nothing, so the trust refusal happens where the encode does, when that
+            # decision comes back to be rendered (muvid#59). An unvouched offset is
+            # still visible in the clip lanes, where a human fixes it; the proposal
+            # sets its span aside (a gap, and a warning), exactly as propose_edit does.
             allow_unreliable=True,
         )
-    except (ValueError, KeyError) as e:
+    except (ValueError, KeyError, FfmpegError) as e:
         # Everything else in the document is independently good — only the proposal
         # failed (a self-inconsistent persisted alignment, a video nobody has listened
-        # to yet, a selection past MAX_EDL_ENTRIES). An editor can still open it and
-        # place its own DECISION entries.
+        # to yet, a selection past MAX_EDL_ENTRIES, a song or clip ffprobe cannot read:
+        # an FfmpegError is a RuntimeError, not a ValueError). An editor can still open
+        # it and place its own DECISION entries.
         decision_error, entries = _project_relative(fp, str(e)), []
     doc = build_document(
         project_id=fp.project_id,
@@ -3469,8 +3472,8 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
     )
     # Additive keys, omit-when-absent: a default-proposal reply with nothing to warn
     # about is byte-identical to one written before they existed.
-    if edit_id:
-        doc["edit_id"] = edit_id
+    if record is not None:
+        doc["edit_id"] = record["edit_id"]
     if warnings:
         doc["warnings"] = [_project_relative(fp, w) for w in warnings]
     return doc

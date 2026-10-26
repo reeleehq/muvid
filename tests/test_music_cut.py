@@ -580,3 +580,27 @@ def test_an_unlistened_video_degrades_the_decision_tier_not_the_document(bath):
     assert "not been listened to" in doc["decision_error"]
     assert {t["name"] for t in doc["tiers"]} == {"DECISION", "clip:abbey", "clip:dog"}
     assert not [a for a in doc["annotations"] if a["tier"] == "DECISION"]
+
+
+def test_a_song_ffprobe_cannot_read_degrades_the_decision_tier_without_a_path(
+    bath, monkeypatch
+):
+    """The music half raises FfmpegError (a RuntimeError): the document still opens."""
+    from muvid.visualize.ffmpeg import FfmpegError
+
+    def unreadable(path):
+        raise FfmpegError(f"ffprobe could not read {path}: Invalid data")
+
+    monkeypatch.setattr(music_cut, "_default_analysis", unreadable)
+    shutil.rmtree(bath.root / "beats", ignore_errors=True)  # warmed at upload
+    doc = service.editor_document(bath)
+    assert doc["decision_error"] and "ffprobe could not read" in doc["decision_error"]
+    assert str(bath.root) not in doc["decision_error"]
+    assert {t["name"] for t in doc["tiers"]} == {"DECISION", "clip:abbey", "clip:dog"}
+
+
+def test_a_saved_edit_is_echoed_by_its_stored_id(bath_with_photo):
+    bath, _ = bath_with_photo
+    out = service.propose_edit(bath)
+    doc = service.editor_document(bath, edit_id=f" {out['edit_id']} ")
+    assert doc["edit_id"] == out["edit_id"]
