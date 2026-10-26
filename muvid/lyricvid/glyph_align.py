@@ -38,6 +38,7 @@ connector, and it never downloads weights unless the caller says
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import unicodedata
@@ -46,11 +47,24 @@ from pathlib import Path
 from collections.abc import Collection
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
-from muvid.lyricvid.timed_text import Glyph, Line, Section, TimedText, Word
+from muvid.lyricvid.timed_text import Glyph, Line, Section, Span, TimedText, Word
 
-#: Glyphs that carry no sound of their own: a lengthening mark and a sokuon (the
-#: closure of a geminate is silence by definition), in both kana scripts.
-_SOUNDLESS_GLYPHS = "ーッっ"
+#: The sokuon, in both kana scripts: the closure of a geminate, silence by
+#: definition.
+_SOKUON = "ッっ"
+#: Glyphs that carry no sound of their own: a lengthening mark and a sokuon.
+_SOUNDLESS_GLYPHS = "ー" + _SOKUON
+
+
+def _has_sound(g: Glyph) -> bool:
+    """A glyph that makes a sound of its own: a letter or kana (Unicode
+    category ``L*``), not ``ー``/``ッ``, and not punctuation, a digit or a space."""
+    return (
+        bool(g.text)
+        and g.text not in _SOUNDLESS_GLYPHS
+        and unicodedata.category(g.text[0]).startswith("L")
+    )
+
 
 #: Seconds of audio kept either side of a line's coarse window. Vendor word
 #: times run late and miss leading consonants; too wide a window lets the
@@ -730,6 +744,24 @@ SILENT_GLYPH_MEDIAN_DB = -28.0
 SILENT_GLYPH_WINDOW_S = (0.06, 0.4)
 #: Frame length for :func:`silent_glyph`'s levels (finer than the line-level 50 ms).
 SILENT_GLYPH_FRAME_S = 0.01
+#: :func:`with_spans` (muvid#149). A glyph's sound is taken to run at most this
+#: long (seconds) when nothing ends it sooner.
+GLYPH_SPAN_MAX_S = 0.6
+#: Seconds searched around a labelled onset for the cut to the previous
+#: glyph: (before, after).
+SPAN_SEARCH_S = (0.18, 0.08)
+#: A frame is silent below this many dB under the stem's loud level (the
+#: consumer-side re-cut this is ported from used -40 re the LOUDEST frame; ours
+#: is re the 95th percentile, see :data:`UNSUNG_REF_PERCENTILE`, so it is
+#: slightly stricter)...
+SPAN_SILENCE_DB = -40.0
+#: ...and a dip is a valley when it sits this far under both neighbouring
+#: syllables, its flat bottom being the frames within ``SPAN_VALLEY_FLAT_DB``
+#: of its minimum.
+SPAN_VALLEY_DB = 8.0
+SPAN_VALLEY_FLAT_DB = 1.0
+#: Frame length for the levels the cuts are read from.
+SPAN_FRAME_S = 0.01
 #: A stem whose loud level is below this RMS (-120 dBFS) holds no singing at all.
 _SILENT_RMS = 1e-6
 
@@ -785,7 +817,7 @@ def squeezed(*, min_glyph_s: float = MIN_GLYPH_S) -> Detector:
                     (w_idx, g.start)
                     for g in w.glyphs
                     if g.measured
-                    and g.text not in _SOUNDLESS_GLYPHS
+                    and _has_sound(g)
                     and unicodedata.east_asian_width(g.text[0]) in "WF"
                 ]
                 w_idx += 1
@@ -985,10 +1017,7 @@ def silent_glyph(
     def judged(g: Glyph) -> bool:
         # syllabic scripts only: the thresholds were measured on kana, and CTC
         # places an alphabet's letters in gaps all the time (as `squeezed` does)
-        return (
-            g.text not in _SOUNDLESS_GLYPHS
-            and unicodedata.east_asian_width(g.text[:1] or " ") in "WF"
-        )
+        return _has_sound(g) and unicodedata.east_asian_width(g.text[0]) in "WF"
 
     def scan(fine: TimedText) -> dict[int, dict[int, str]]:
         """``{word index: {glyph index: reason}}`` for every silent sounded glyph."""
@@ -1379,7 +1408,9 @@ def reconcile(
                 lines.append(replace(ln, words=tuple(words)))
         if lines:
             sections.append(replace(sec, lines=tuple(lines)))
-    return replace(fine, sections=tuple(sections)), records
+    out = replace(fine, sections=tuple(sections))
+    # a word moved, removed or muted changes its NEIGHBOURS' spans too
+    return (_without_spans(out) if records else out), records
 
 
 # --------------------------------------------------------------------------
@@ -1410,6 +1441,31 @@ def _rebuilt(tt: TimedText, lines: Iterable[Line]) -> TimedText:
             for sec in tt.sections
         ),
     )
+
+
+def _map_glyphs(tt: TimedText, fn: Callable[[int, Glyph], Glyph]) -> TimedText:
+    """``tt`` with every glyph replaced by ``fn(i, glyph)``, ``i`` its index in
+    reading order (lines, then words, then glyphs)."""
+    n = iter(range(sum(len(w.glyphs) for w in tt.words())))
+
+    def word(w: Word) -> Word:
+        return replace(w, glyphs=tuple(fn(next(n), g) for g in w.glyphs))
+
+    return _rebuilt(
+        tt, (replace(ln, words=tuple(map(word, ln.words))) for ln in tt.lines())
+    )
+
+
+def _without_spans(tt: TimedText) -> TimedText:
+    """``tt`` with every :attr:`Glyph.span` cleared (``tt`` itself if none is set).
+
+    The one invalidation: a span is cut against its NEIGHBOURS' onsets, so any
+    pass that moves, removes or mutes a glyph clears them all, and
+    :func:`with_spans` runs last.
+    """
+    if not any(g.span is not None for w in tt.words() for g in w.glyphs):
+        return tt
+    return _map_glyphs(tt, lambda i, g: replace(g, span=None))
 
 
 def check_timing_overrides(
@@ -1525,14 +1581,15 @@ def apply_timing_overrides(
         else:
             lines.append(replace(ln, words=tuple(kept[j] for j in span if j in kept)))
     restored = _rebuilt(fine, lines)
-    return replace(
+    result = replace(
         reconciled,
         sections=tuple(
             replace(sec, lines=tuple(ln for ln in sec.lines if ln.words))
             for sec in restored.sections
             if any(ln.words for ln in sec.lines)
         ),
-    ), out
+    )
+    return (_without_spans(result) if result != reconciled else result), out
 
 
 def repair_spills(
@@ -1630,7 +1687,184 @@ def repair_spills(
                 w = replace(w, start=start, end=end, glyphs=gs)
             words.append(w)
         fixed.append(replace(ln, words=tuple(words)))
-    return (_rebuilt(tt, fixed), out) if out else (tt, out)
+    return (_without_spans(_rebuilt(tt, fixed)), out) if out else (tt, out)
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class _SpanThresholds:
+    """The level thresholds :func:`with_spans` cuts by (dB under the loud level)."""
+
+    silence_db: float
+    valley_db: float
+    flat_db: float
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class _SearchWindow:
+    """The frames searched for the cut before the onset ``t`` (round-to-nearest
+    frame indices into ``level``): ``a`` to ``limit`` inclusive; a silence may
+    be walked back down to ``floor``, and sound must return by ``limit``."""
+
+    level: Any
+    t: float
+    a: int
+    limit: int
+    floor: int
+    frame_s: float
+
+
+def _search_window(
+    level, t: float, floor_t: float, *, search_s: tuple[float, float], frame_s: float
+) -> _SearchWindow | None:
+    """The window around the onset ``t``, never before ``floor_t``; None when
+    it holds fewer than three frames (no cut can be read from it)."""
+    floor = max(round(floor_t / frame_s), 0)
+    a = max(round((t - search_s[0]) / frame_s), floor)
+    limit = min(round((t + search_s[1]) / frame_s), len(level) - 1)
+    if limit - a + 1 < 3:
+        return None
+    return _SearchWindow(
+        level=level, t=t, a=a, limit=limit, floor=floor, frame_s=frame_s
+    )
+
+
+def _silence_cut(win: _SearchWindow, th: _SpanThresholds):
+    """``(end, begin, "silence")`` at the window's first quiet run, else None.
+
+    The previous sound ends where the quiet run BEGAN (walked back below the
+    window down to its floor: a silence can start before the search does), and
+    the next starts where the sound returns — or at its own onset, when it does
+    not return by the window's end.
+    """
+    lv, quiet_db = win.level, th.silence_db
+    quiet = lv[win.a : win.limit + 1] < quiet_db
+    if not quiet.any():
+        return None
+    q0 = win.a + int(quiet.argmax())
+    while q0 - 1 >= win.floor and lv[q0 - 1] < quiet_db:
+        q0 -= 1
+    q1 = q0
+    while q1 < win.limit and lv[q1 + 1] < quiet_db:
+        q1 += 1
+    end = q0 * win.frame_s
+    begin = (q1 + 1) * win.frame_s if q1 < win.limit else win.t
+    return end, max(begin, end), "silence"
+
+
+def _valley_cut(win: _SearchWindow, th: _SpanThresholds):
+    """``(at, at, "valley")`` at the flat bottom of a dip ``valley_db`` under the
+    loudest frame on BOTH sides, cut where the bottom begins (in kana the
+    consonant belongs to the NEXT mora); else None."""
+    w = win.level[win.a : win.limit + 1]
+    m = int(w.argmin())
+    if not 0 < m < len(w) - 1:
+        return None
+    if min(w[:m].max(), w[m + 1 :].max()) - w[m] < th.valley_db:
+        return None
+    flat = m
+    while flat > 0 and w[flat - 1] <= w[m] + th.flat_db:
+        flat -= 1
+    at = (win.a + flat) * win.frame_s
+    return at, at, "valley"
+
+
+#: The cuts :func:`with_spans` tries at a boundary, in order; the first that
+#: finds one wins. Without either, the boundary is ``legato`` (or ``next``
+#: before a sokuon).
+_CUTS = (_silence_cut, _valley_cut)
+
+
+def with_spans(
+    tt: TimedText,
+    *,
+    vocals: Path | str | None = None,
+    max_span_s: float = GLYPH_SPAN_MAX_S,
+    search_s: tuple[float, float] = SPAN_SEARCH_S,
+    silence_db: float = SPAN_SILENCE_DB,
+    valley_db: float = SPAN_VALLEY_DB,
+    flat_db: float = SPAN_VALLEY_FLAT_DB,
+    frame_s: float = SPAN_FRAME_S,
+) -> TimedText:
+    """Give every sung glyph a ``span``: where its sound runs (muvid#149).
+
+    A glyph's ``end`` is nominal (20-140 ms after its onset), so a consumer that
+    plays or wipes per glyph needs this. Each :class:`~muvid.lyricvid.timed_text.Span`
+    runs from the glyph's onset to the next sung glyph's onset, capped at
+    ``max_span_s`` after the glyph's ``start``; its ``cut`` says how that
+    trailing boundary was decided. ``ー`` extends the glyph before it (it is no
+    boundary and has no span); ``ッ`` ends it (its sokuon is silence) and has no
+    span; punctuation, a glyph with ``sung=False`` and one with no finite
+    ``start`` have none either and are no boundary.
+
+    With ``vocals`` (the separated vocal stem; none is needed) each boundary is
+    refined from the stem's levels, searched from ``search_s[0]`` before the
+    next onset to ``search_s[1]`` after it, never before the glyph's own span
+    start: ``silence`` (the previous span ends where the sound died and the next
+    starts where it returns, or at its own onset if it does not return within
+    the search), ``valley`` (cut at the flat bottom of a dip between the
+    syllables) or ``legato`` (no clean cut: the onset, flagged as such). Before a
+    ``ッ`` a silence or valley is used the same way, else ``next``. Without a
+    stem every boundary is ``next``. Any end clamped at ``max_span_s`` is
+    ``cap``. A span may start later than ``start`` (after a silence); ``start``
+    is not moved. Spans never overlap, and times are rounded to the ms. A burst
+    (a spectral-flux attack) is not detected: those boundaries read as
+    ``legato``.
+
+    Run it LAST, after :func:`reconcile`, :func:`apply_timing_overrides` and
+    :func:`repair_spills`: it recomputes every span from scratch (running it
+    twice changes nothing), and each of those passes clears EVERY span when it
+    changes anything, since a span depends on its neighbours.
+    """
+    if max_span_s <= 0 or frame_s <= 0:
+        raise ValueError("with_spans needs max_span_s > 0 and frame_s > 0")
+    level = _frame_levels_db(vocals, frame_s=frame_s) if vocals is not None else None
+    th = _SpanThresholds(silence_db=silence_db, valley_db=valley_db, flat_db=flat_db)
+    # a cut never lands further past an onset than a span may run
+    search = (search_s[0], min(search_s[1], max_span_s))
+
+    flat = [g for ln in tt.lines() for w in ln.words for g in w.glyphs]
+
+    def spanned(g: Glyph) -> bool:
+        return g.sung and _has_sound(g) and math.isfinite(g.start)
+
+    def sokuon(g: Glyph) -> bool:  # ends the sound before it: the closure is silence
+        return g.sung and bool(g.text) and g.text in _SOKUON and math.isfinite(g.start)
+
+    # (flat index, onset) of every glyph that has a span or ends one, in order
+    marks = [(i, g.start) for i, g in enumerate(flat) if spanned(g) or sokuon(g)]
+    spans: dict[int, Span] = {}
+    begin: dict[int, float] = {}  # a glyph's span start, when a cut moved it
+    last_end = -math.inf  # spans never overlap, whatever sits between two glyphs
+    for (i, _), nxt in zip(marks, [*marks[1:], None]):
+        g = flat[i]
+        if not spanned(g):
+            continue
+        s0 = max(begin.get(i, g.start), last_end)
+        cap = g.start + max_span_s
+        if nxt is None or nxt[1] >= cap:
+            spans[i] = Span(round(s0, 3), round(max(cap, s0), 3), "cap")
+            last_end = max(cap, s0)
+            continue
+        j, t = nxt
+        end, nxt_begin, how = t, t, "next"
+        if level is not None:
+            win = _search_window(
+                level, t, max(s0, g.start) + frame_s, search_s=search, frame_s=frame_s
+            )
+            found = win and next(filter(None, (cut(win, th) for cut in _CUTS)), None)
+            if found:
+                end, nxt_begin, how = found
+            elif spanned(flat[j]):
+                how = "legato"
+        if end > cap:
+            end, how = cap, "cap"
+        end = max(end, s0)
+        spans[i] = Span(round(s0, 3), round(end, 3), how)
+        last_end = end
+        if spanned(flat[j]):
+            begin[j] = max(nxt_begin, end)
+
+    return _map_glyphs(tt, lambda i, g: replace(g, span=spans.get(i)))
 
 
 def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
@@ -1646,4 +1880,6 @@ def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
                     "end": g.end,
                     "measured": g.measured,
                     "sung": g.sung,
+                    "span": g.span and (g.span.start, g.span.end),
+                    "cut": g.span and g.span.cut,
                 }

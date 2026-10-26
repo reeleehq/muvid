@@ -1550,3 +1550,341 @@ def test_glyph_rows_always_carry_sung(stem_of):
     rows = list(ga.glyph_rows(out))
     assert all("sung" in r for r in rows)
     assert [r["text"] for r in rows if not r["sung"]] == ["カ"]
+
+
+# ---------------------------------------------------------------------------
+# with_spans: where a glyph's sound runs (muvid#149)
+# ---------------------------------------------------------------------------
+
+
+def _spans(tt):
+    return [
+        (
+            g.text,
+            g.span and (round(g.span.start, 2), round(g.span.end, 2)),
+            g.span and g.span.cut,
+        )
+        for g in (g for w in tt.words() for g in w.glyphs)
+    ]
+
+
+def test_spans_without_a_stem_run_to_the_next_onset_capped():
+    fine = _timed_words(
+        ("ハーカッ", [("ハ", 1.0), ("ー", 1.2), ("カ", 1.5), ("ッ", 1.8)]),
+        ("トス", [("ト", 2.0), ("ス", 3.0)]),
+    )
+    got = _spans(ga.with_spans(fine))
+    assert got == [
+        ("ハ", (1.0, 1.5), "next"),  # ー extends it, it is no boundary
+        ("ー", None, None),
+        ("カ", (1.5, 1.8), "next"),  # ッ is silence: it ends カ
+        ("ッ", None, None),
+        ("ト", (2.0, 2.6), "cap"),  # the next onset is 1 s away: capped at 0.6 s
+        ("ス", (3.0, 3.6), "cap"),
+    ]
+
+
+def test_spans_skip_unsung_and_unplaced_glyphs():
+    from dataclasses import replace
+
+    fine = _timed_words(("カスタ", [("カ", 1.0), ("ス", 1.2), ("タ", 1.4)]))
+    w = next(iter(fine.words()))
+    muted = replace(
+        w, glyphs=(w.glyphs[0], replace(w.glyphs[1], sung=False), w.glyphs[2])
+    )
+    tt = ga._rebuilt(fine, [replace(next(iter(fine.lines())), words=(muted,))])
+    got = _spans(ga.with_spans(tt))
+    assert got[0] == ("カ", (1.0, 1.4), "next")  # the muted ス is not a boundary
+    assert got[1] == ("ス", None, None)
+
+
+def _two_glyphs(second_at):
+    return _timed_words(("カス", [("カ", 1.0), ("ス", second_at)]))
+
+
+def test_spans_cut_at_a_silence(stem_of):
+    stem = stem_of(_stem((1.0, 1.28), (1.34, 1.6), (3.0, 4.0)))
+    got = _spans(ga.with_spans(_two_glyphs(1.32), vocals=stem))
+    (_, ka, kcut), (_, su, scut) = got
+    assert kcut == "silence" and ka[0] == 1.0 and ka[1] == pytest.approx(1.28, abs=0.02)
+    assert su[0] == pytest.approx(1.34, abs=0.02)  # the next starts where sound returns
+    assert ka[1] <= su[0]
+
+
+def test_spans_cut_at_the_flat_bottom_of_a_valley(stem_of):
+    # a -12 dB dip (not silent) between two syllables, from 1.30 to 1.40
+    stem = stem_of(
+        _stem_amps(
+            (1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(-12)), (1.4, 2.0, 0.5), (3.0, 4.0, 0.5)
+        )
+    )
+    got = _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))
+    assert got[0][2] == "valley" and got[0][1][1] == pytest.approx(1.30, abs=0.02)
+    assert got[1][1][0] == got[0][1][1]  # one cut, shared
+
+
+def test_spans_flag_a_legato_boundary_and_keep_the_onset(stem_of):
+    stem = stem_of(_stem((1.0, 2.0), (3.0, 4.0)))
+    got = _spans(ga.with_spans(_two_glyphs(1.5), vocals=stem))
+    assert got[0] == ("カ", (1.0, 1.5), "legato")
+    assert got[1][1][0] == 1.5
+
+
+def test_spans_are_idempotent_never_overlap_and_round_trip(stem_of):
+    stem = stem_of(_stem((1.0, 1.28), (1.34, 1.6), (3.0, 4.0)))
+    once = ga.with_spans(_two_glyphs(1.32), vocals=stem)
+    assert ga.with_spans(once, vocals=stem) == once
+    assert from_dict(once.to_dict()) == once
+    gl = [g for w in once.words() for g in w.glyphs]
+    assert gl[0].span.end <= gl[1].span.start
+    # absent spans are absent from the file
+    assert all("span" not in g for g in _glyph_dicts(_two_glyphs(1.32).to_dict()))
+
+
+def test_spans_survive_a_digitally_silent_stem(stem_of):
+    stem = stem_of(_stem())
+    got = _spans(ga.with_spans(_two_glyphs(1.5), vocals=stem))
+    assert got[0][2] == "legato"
+
+
+def test_mute_clears_every_span_since_neighbours_depend_on_it(stem_of):
+    fine = ga.with_spans(_elided_song())
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    out, _ = ga.reconcile(fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"),))
+    ka = [g for w in out.words() for g in w.glyphs if g.text == "カ"][0]
+    assert ka.sung is False
+    # ハ's span ran to カ's onset, which is no longer a boundary: none is stale
+    assert all(g.span is None for w in out.words() for g in w.glyphs)
+    # reconcile changing nothing keeps them (and the same object)
+    same, recs = ga.reconcile(fine, fine, detectors=())
+    assert recs == [] and same == fine
+
+
+def test_repair_spills_clears_every_span():
+    recs = [
+        {"text": "ハット", "start": 1.0, "end": 2.0, "line_end": True},
+        {"text": "トマト", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {0: [1.0, 1.4, 2.0], 1: 2.0},  # ハット's ト sits on トマト's ト
+    )
+    spanned = ga.with_spans(tt)
+    assert any(g.span for w in spanned.words() for g in w.glyphs)
+    fixed, records = ga.repair_spills(spanned, None)
+    assert records
+    assert all(g.span is None for w in fixed.words() for g in w.glyphs)
+
+
+def test_with_spans_refuses_nonsense_config():
+    with pytest.raises(ValueError):
+        ga.with_spans(_elided_song(), max_span_s=0)
+
+
+def test_glyphs_cli_spans_flag(tmp_path, monkeypatch, capsys):
+    got = _run_glyphs_cli(tmp_path, monkeypatch, capsys, spans=True)
+    gl = _glyph_dicts(got["timing"])
+    assert gl and all("span" in g for g in gl if g["text"] not in "ーッっ")
+    assert set(got["report"]["spans"]) & {"silence", "valley", "legato"}
+    assert sum(got["report"]["spans"].values()) == sum("span" in g for g in gl)
+    plain = _run_glyphs_cli(tmp_path, monkeypatch, capsys)
+    assert not any("span" in g for g in _glyph_dicts(plain["timing"]))
+    assert "spans" not in plain["report"]
+
+
+def test_a_silence_over_the_whole_search_never_makes_a_negative_span(stem_of):
+    """B1/B3 of the #149 review: sound 1.0-1.2 then nothing until 2.4."""
+    stem = stem_of(_stem((1.0, 1.2), (2.4, 3.0)))
+    fine = _timed_words(("カスタ", [("カ", 1.0), ("ス", 1.3), ("タ", 2.5)]))
+    got = _spans(ga.with_spans(fine, vocals=stem))
+    assert got == [
+        ("カ", (1.0, 1.2), "silence"),  # ends where the sound died, before the window
+        ("ス", (1.3, 1.9), "cap"),  # sound never returned: it starts at its onset
+        ("タ", (2.5, 3.1), "cap"),
+    ]
+    # a silence that began well before the search window still ends カ there
+    got = _spans(
+        ga.with_spans(
+            _two_glyphs(1.5), vocals=stem_of(_stem((1.0, 1.2), (1.5, 2.0), (4.0, 6.0)))
+        )
+    )
+    assert got[0] == ("カ", (1.0, 1.2), "silence") and got[1][1][0] == 1.5
+
+
+def test_a_silence_before_the_onset_is_searched_further_back_than_after(stem_of):
+    # the gap sits 0.10-0.14 s before ス: inside search_s[0], outside search_s[1]
+    stem = stem_of(_stem((1.0, 1.36), (1.40, 2.0)))
+    got = _spans(ga.with_spans(_two_glyphs(1.5), vocals=stem))
+    assert got[0] == ("カ", (1.0, 1.36), "silence")
+    assert got[1][1][0] == pytest.approx(1.40)
+
+
+@pytest.mark.parametrize("gap_db, cut", [(-30, "valley"), (-50, "silence")])
+def test_span_silence_threshold_sits_at_minus_40(stem_of, gap_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(gap_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+@pytest.mark.parametrize("dip_db, cut", [(-5, "legato"), (-12, "valley")])
+def test_span_valley_threshold_sits_at_8_db(stem_of, dip_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(dip_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+def test_spans_skip_a_glyph_with_no_start_and_punctuation():
+    from dataclasses import replace
+
+    fine = _timed_words(
+        ("カス、タ", [("カ", 1.0), ("ス", 1.2), ("、", 1.3), ("タ", 1.4)])
+    )
+    w = next(iter(fine.words()))
+    nan = replace(w.glyphs[1], start=float("nan"))
+    tt = ga._rebuilt(
+        fine,
+        [
+            replace(
+                next(iter(fine.lines())),
+                words=(replace(w, glyphs=(w.glyphs[0], nan, *w.glyphs[2:])),),
+            )
+        ],
+    )
+    assert _spans(ga.with_spans(tt)) == [
+        ("カ", (1.0, 1.4), "next"),  # neither the unplaced ス nor 、 is a boundary
+        ("ス", None, None),
+        ("、", None, None),
+        ("タ", (1.4, 2.0), "cap"),
+    ]
+
+
+def test_a_sokuon_boundary_is_cut_from_the_stem_too(stem_of):
+    fine = _timed_words(("カップ", [("カ", 1.0), ("ッ", 1.3), ("プ", 1.5)]))
+    got = _spans(ga.with_spans(fine, vocals=stem_of(_stem((1.0, 1.25), (1.5, 2.0)))))
+    assert got[0] == ("カ", (1.0, 1.25), "silence") and got[1] == ("ッ", None, None)
+    assert got[2][1][0] == 1.5  # a sokuon moves no span start
+    # no cut in the stem: the sokuon's onset, as without one
+    got = _spans(ga.with_spans(fine, vocals=stem_of(_stem((1.0, 2.0)))))
+    assert got[0] == ("カ", (1.0, 1.3), "next")
+
+
+def test_span_property_never_negative_overlapping_or_over_the_cap(stem_of):
+    np = pytest.importorskip("numpy")
+    rng = np.random.default_rng(149)
+    frame = ga.SPAN_FRAME_S
+    for _ in range(60):
+        starts = np.sort(rng.uniform(0.2, 3.5, rng.integers(2, 12)))
+        segs = []
+        for a in np.sort(rng.uniform(0, 4, rng.integers(0, 8))):
+            segs.append(
+                (a, a + rng.uniform(0.02, 0.6), rng.choice([0.5, 0.15, 0.05, 0.005]))
+            )
+        # some of the glyphs are sokuon, which carry no span but sit between two
+        chars = rng.choice(["カ", "カ", "ッ"], len(starts))
+        max_s = float(rng.choice([0.05, 0.2, ga.GLYPH_SPAN_MAX_S]))
+        fine = _timed_words(
+            (
+                "".join(chars),
+                [(str(c), float(t)) for c, t in zip(chars, starts)],
+            )
+        )
+        out = ga.with_spans(
+            fine, vocals=stem_of(_stem_amps(*segs, duration=4.5)), max_span_s=max_s
+        )
+        gl = [g for w in out.words() for g in w.glyphs if g.span]
+        for g in gl:
+            assert g.span.start <= g.span.end
+            assert g.span.end <= g.start + max_s + frame
+        for a, b in zip(gl, gl[1:]):
+            assert a.span.end <= b.span.start
+
+
+def test_glyph_rows_carry_span_and_cut():
+    rows = list(ga.glyph_rows(ga.with_spans(_two_glyphs(1.3))))
+    assert [(r["span"], r["cut"]) for r in rows] == [
+        ((1.0, 1.3), "next"),
+        ((1.3, 1.9), "cap"),
+    ]
+    assert list(ga.glyph_rows(_two_glyphs(1.3)))[0]["cut"] is None
+
+
+@pytest.mark.parametrize(
+    "span, cut",
+    [([2.0, 1.0], "next"), ([1.0, 2.0], "bogus"), ("x", "next"), ([1.0, 2.0], None)],
+)
+def test_from_dict_refuses_an_invalid_span(span, cut):
+    d = _two_glyphs(1.3).to_dict()
+    _glyph_dicts(d)[0].update(span=span, cut=cut)
+    with pytest.raises(ValueError, match="span"):
+        from_dict(d)
+
+
+def test_span_is_a_checked_value():
+    from muvid.lyricvid.timed_text import Span
+
+    with pytest.raises(ValueError):
+        Span(2.0, 1.0, "next")
+    with pytest.raises(ValueError):
+        Span(1.0, float("nan"), "next")
+
+
+def test_a_sokuon_between_two_glyphs_never_makes_their_spans_overlap(stem_of):
+    """Review of #149: カ's silence cut can land past ッ, onto プ's own onset."""
+    fine = _timed_words(("カップ", [("カ", 1.0), ("ッ", 1.3), ("プ", 1.33)]))
+    got = _spans(
+        ga.with_spans(fine, vocals=stem_of(_stem((1.0, 1.35), (1.6, 2.0), (3.0, 4.0))))
+    )
+    assert got[0][1][1] <= got[2][1][0]
+
+
+def test_a_next_onset_just_inside_the_cap_is_the_boundary_not_the_cap(stem_of):
+    stem = stem_of(_stem((1.0, 2.0), (3.0, 4.0)))
+    at_cap = _timed_words(("カス", [("カ", 1.0), ("ス", 1.6)]))
+    assert _spans(ga.with_spans(at_cap, vocals=stem))[0][2] == "cap"  # >= the cap
+    inside = _timed_words(("カス", [("カ", 1.0), ("ス", 1.57)]))
+    assert _spans(ga.with_spans(inside, vocals=stem))[0][2] == "legato"
+    # a tiny max_span_s caps everything, and never goes negative or raises
+    got = _spans(ga.with_spans(inside, vocals=stem, max_span_s=0.05))
+    assert got[0] == ("カ", (1.0, 1.05), "cap")
+
+
+@pytest.mark.parametrize("gap_db, cut", [(-38, "valley"), (-42, "silence")])
+def test_span_silence_threshold_is_tight(stem_of, gap_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(gap_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+@pytest.mark.parametrize("dip_db, cut", [(-7, "legato"), (-9, "valley")])
+def test_span_valley_threshold_is_tight(stem_of, dip_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(dip_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+def test_a_valley_must_be_deep_under_both_neighbours(stem_of):
+    """-12 dB under the left syllable but only -4 under the right one: no valley."""
+    stem = stem_of(
+        _stem_amps(
+            (1.0, 1.3, 0.5),
+            (1.3, 1.4, _db_amp(-12)),
+            (1.4, 2.0, _db_amp(-8)),
+            (3.0, 4.0, 0.5),
+        )
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == "legato"
+
+
+def test_timing_overrides_clear_the_spans_they_invalidate(stem_of, onsets_at):
+    fine, coarse = _spilled_song()
+    onsets_at(*_SPILL_ONSETS)
+    stem = stem_of(_stem((0.0, 15.0), duration=15.0))
+    out, records = ga.reconcile(fine, coarse, detectors=ga.stem_detectors(stem))
+    out = ga.with_spans(out)
+    assert any(g.span for w in out.words() for g in w.glyphs)
+    got, _ = ga.apply_timing_overrides(out, fine, records, overrides={"1": "fine"})
+    assert all(g.span is None for w in got.words() for g in w.glyphs)
