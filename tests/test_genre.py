@@ -100,3 +100,11 @@ def test_publishing_the_limits_does_not_import_the_cutter():
     code = "import sys, muvid.genre_music_video; print('numpy' in sys.modules)"
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "False"
+
+
+def test_old_hyphenated_visualizer_slug_is_not_an_alias():
+    """muvid#189: renamed with no alias, so the old spelling must fail loudly."""
+    import pytest
+
+    with pytest.raises(KeyError):
+        nw.get_genre("music-visualizer")

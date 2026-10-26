@@ -15,7 +15,7 @@ from muvid.subgenres import Example, Subgenre
 
 SLUG = "lyric-video"
 
-#: Hyphenated, chosen when ``music_visualizer`` still was too (renamed in
+#: Hyphenated, chosen when the visualizer slug was still ``music-visualizer`` (renamed in
 #: muvid#189; this one is left, being a persisted path segment and a public
 #: contract value since it shipped).
 

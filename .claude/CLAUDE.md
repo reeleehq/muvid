@@ -46,7 +46,7 @@ author runs; keep it honest, because it is the only thing standing between a
 third-party plugin and a support request.
 
 **The `lyric-video` slug is hyphenated, knowingly** (see "The slug trap" below): it
-was chosen when `music_visualizer` was hyphenated too (renamed in #189; this one stays), and it is a persisted
+was chosen when the visualizer slug was still `music-visualizer` (renamed in #189; this one stays), and it is a persisted
 path segment and a live connector contract value from the day it ships.
 
 ### One level down, the archetypes are a registry too — `calligram` is the newest
@@ -310,7 +310,7 @@ segment**. Three facts, each verified:
 So renaming it is **a data migration plus a connector-contract break**, not a rename.
 
 **When issue #4 lands, the full-AI pipeline gets its OWN slug.** The recommended one,
-per #4's own restatement, is **`music-video-ai`** — it reads as a sibling of the other
+per #4's own restatement, is **`music_video_ai`** — it reads as a sibling of the other
 two and names the thing that distinguishes it (generation, keys, cost). Do not attempt
 to reuse or reclaim `music_video`. Genre slugs are snake_case (`music_visualizer` was renamed from `music-visualizer` in
 muvid#189); `lyric-video` is the one hyphenated holdout.
