@@ -1292,3 +1292,102 @@ def test_silent_glyph_does_not_judge_past_the_end_of_the_stem(stem_of):
 def test_silent_glyph_refuses_an_unknown_remedy():
     with pytest.raises(ValueError):
         ga.silent_glyph("x", remedy="mute")
+
+
+def _stem_amps(*spans, duration=11.0):
+    """Like ``_stem`` but each span is ``(a, b, amplitude)``."""
+    np = pytest.importorskip("numpy")
+    t = np.arange(int(duration * _SR)) / _SR
+    y = np.zeros_like(t, dtype="float32")
+    for a, b, amp in spans:
+        m = (t >= a) & (t < b)
+        y[m] = amp * np.sin(2 * np.pi * 220 * t[m])
+    return y
+
+
+def _db_amp(db):
+    """Amplitude of a 0.5-amplitude loud level's sine, ``db`` below it."""
+    return 0.5 * 10 ** (db / 20)
+
+
+@pytest.mark.parametrize(
+    "db, flagged",
+    [(-20, False), (-26.5, False), (-30, True), (-60, True)],
+)
+def test_silent_glyph_thresholds_sit_where_they_were_measured(stem_of, db, flagged):
+    """-26.5 dB: peak is under -25 but the median is not under -28; both are needed."""
+    fine = _elided_song()
+    stem = stem_of(
+        _stem_amps((0.0, 1.25, 0.5), (1.25, 2.9, _db_amp(db)), (3.0, 3.5, 0.5))
+    )
+    found = ga.silent_glyph(stem).find(fine, fine)
+    assert (0 in found) is flagged
+
+
+def test_silent_glyph_window_is_clamped_to_the_next_glyph_and_to_the_cap(stem_of):
+    fine = _timed_words(
+        ("カ", [("カ", 1.0)]), ("サ", [("サ", 1.01)]), ("ス", [("ス", 5.0)])
+    )
+    # カ's window is floored at 0.06 s though サ starts 10 ms on: sound at 1.05
+    # is inside it, so カ is not silent
+    stem = stem_of(_stem_amps((0.0, 0.9, 0.5), (1.04, 1.07, 0.5), (5.0, 5.5, 0.5)))
+    assert 0 not in ga.silent_glyph(stem).find(fine, fine)
+    # ス's window is capped at 0.4 s: singing resuming 0.45 s later is out of it
+    stem = stem_of(_stem_amps((0.0, 0.9, 0.5), (5.45, 6.0, 0.5)))
+    assert 2 in ga.silent_glyph(stem).find(fine, fine)
+
+
+def test_silent_glyph_geminate_closure_in_either_script_is_not_judged(stem_of):
+    fine = _timed_words(("きって", [("き", 1.0), ("っ", 1.15), ("て", 1.3)]))
+    stem = stem_of(_stem((1.0, 1.15), (1.3, 1.5)))
+    assert ga.silent_glyph(stem).find(fine, fine) == {}
+
+
+def test_silent_glyph_judges_only_wide_scripts(stem_of):
+    fine = _timed_words(("cat", [("c", 1.0), ("a", 1.1), ("t", 1.2)]))
+    stem = stem_of(_stem((1.0, 1.15)))
+    assert ga.silent_glyph(stem).find(fine, fine) == {}
+
+
+def test_silent_glyph_survives_a_glyph_before_zero(stem_of):
+    fine = _timed_words(("カ", [("カ", -0.05)]), ("サ", [("サ", 3.0)]))
+    stem = stem_of(_stem((3.0, 4.0)))
+    assert 0 in ga.silent_glyph(stem).find(fine, fine)  # silent, and no crash
+
+
+def test_silent_glyph_reads_the_stem_once(monkeypatch, stem_of):
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    reads = []
+    real = ga._read_stem
+    monkeypatch.setattr(ga, "_read_stem", lambda v: reads.append(v) or real(v))
+    det, fine = ga.silent_glyph(stem), _elided_song()
+    det.find(fine, fine)
+    det.find(fine, fine)
+    assert len(reads) == 1
+
+
+@pytest.mark.parametrize("kw", [{"frame_s": 0}, {"window_s": (0.4, 0.06)}])
+def test_silent_glyph_refuses_nonsense_config(kw):
+    with pytest.raises(ValueError):
+        ga.silent_glyph("x", **kw)
+
+
+def test_silent_glyph_window_never_runs_to_a_distant_next_glyph(stem_of):
+    """カ's window ends 0.4 s on, not at ス 4 s later; sound at 1.6 s is outside it."""
+    fine = _timed_words(("カ", [("カ", 1.0)]), ("ス", [("ス", 5.0)]))
+    stem = stem_of(_stem_amps((0.0, 0.9, 0.5), (1.6, 2.0, 0.5), (5.0, 5.5, 0.5)))
+    assert 0 in ga.silent_glyph(stem).find(fine, fine)
+
+
+def test_silent_glyph_a_loud_blip_in_a_quiet_window_is_not_silence(stem_of):
+    """Peak -20 dB (above -25) over an otherwise -40 dB window: an attack, not a gap."""
+    fine = _elided_song()
+    stem = stem_of(
+        _stem_amps(
+            (0.0, 1.25, 0.5),
+            (1.25, 2.9, _db_amp(-40)),
+            (1.35, 1.40, _db_amp(-20)),
+            (3.0, 3.5, 0.5),
+        )
+    )
+    assert ga.silent_glyph(stem).find(fine, fine) == {}

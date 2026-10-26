@@ -47,6 +47,10 @@ from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from muvid.lyricvid.timed_text import Glyph, Line, Section, TimedText, Word
 
+#: Glyphs that carry no sound of their own: a lengthening mark and a sokuon (the
+#: closure of a geminate is silence by definition), in both kana scripts.
+_SOUNDLESS_GLYPHS = "ーッっ"
+
 #: Seconds of audio kept either side of a line's coarse window. Vendor word
 #: times run late and miss leading consonants; too wide a window lets the
 #: aligner wander into the neighbouring line.
@@ -597,7 +601,7 @@ def _glyph_starts(tt: TimedText) -> list[float]:
         if g.measured
         and g.end > g.start
         and unicodedata.category(g.text)[0] == "L"
-        and g.text not in "ーッっ"
+        and g.text not in _SOUNDLESS_GLYPHS
     ]
 
 
@@ -715,7 +719,8 @@ UNSUNG_REF_PERCENTILE = 95.0
 SILENT_GLYPH_PEAK_DB = -25.0
 #: ...AND its MEDIAN is under this. Both: a sung glyph's window often runs into
 #: a gap or a devoiced tail (low median, high peak), and a quiet tail can sit
-#: next to an attack (high peak).
+#: next to an attack (high peak). (The median never exceeds the peak, so once the
+#: peak is under its bound this only rejects windows uniformly near the threshold.)
 SILENT_GLYPH_MEDIAN_DB = -28.0
 #: A glyph's window runs to the next sounded glyph's start, clamped to this
 #: range (seconds): a glyph is never judged on less than a couple of frames,
@@ -723,8 +728,6 @@ SILENT_GLYPH_MEDIAN_DB = -28.0
 SILENT_GLYPH_WINDOW_S = (0.06, 0.4)
 #: Frame length for :func:`silent_glyph`'s levels (finer than the line-level 50 ms).
 SILENT_GLYPH_FRAME_S = 0.01
-#: Glyphs that carry no sound of their own (a lengthening mark, a sokuon).
-_SOUNDLESS_GLYPHS = frozenset("ーッ")
 #: A stem whose loud level is below this RMS (-120 dBFS) holds no singing at all.
 _SILENT_RMS = 1e-6
 
@@ -771,7 +774,7 @@ def squeezed(*, min_glyph_s: float = MIN_GLYPH_S) -> Detector:
                     (w_idx, g.start)
                     for g in w.glyphs
                     if g.measured
-                    and g.text not in "ーッっ"
+                    and g.text not in _SOUNDLESS_GLYPHS
                     and unicodedata.east_asian_width(g.text[0]) in "WF"
                 ]
                 w_idx += 1
@@ -954,31 +957,47 @@ def silent_glyph(
 
     Remedy: ``drop`` at WORD level by default, the safe choice while
     :class:`~muvid.lyricvid.timed_text.Glyph` has no per-glyph "not sung" flag;
-    pass ``remedy="replace"`` to fall back to the vendor window instead.
+    pass ``remedy="replace"`` to fall back to the vendor window instead. Safe for
+    a consumer playing per-glyph clips; in a lyric video it deletes sung text
+    (``ハッ``), and ``drop`` outranks ``replace``, so it also turns a recoverable
+    squeezed word into a deletion. Hence opt-in, NOT part of
+    :func:`stem_detectors`. Only wide (kana, CJK) glyphs are judged; words
+    without glyphs are not judged and do not end a neighbour's window.
     """
     lo, hi = window_s
+    if frame_s <= 0 or not 0 < lo <= hi:
+        raise ValueError(
+            "silent_glyph needs frame_s > 0 and 0 < window_s[0] <= window_s[1]"
+        )
+    levels: list = []  # the stem is read once per detector, on first use
+
+    def judged(g: Glyph) -> bool:
+        # syllabic scripts only: the thresholds were measured on kana, and CTC
+        # places an alphabet's letters in gaps all the time (as `squeezed` does)
+        return (
+            g.text not in _SOUNDLESS_GLYPHS
+            and unicodedata.east_asian_width(g.text[:1] or " ") in "WF"
+        )
 
     def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
         import numpy as np
 
-        words = list(fine.words())
         # (word index, glyph) for every glyph that makes a sound, in song order
         sounded = [
-            (k, g)
-            for k, w in enumerate(words)
-            for g in w.glyphs
-            if g.text not in _SOUNDLESS_GLYPHS
+            (k, g) for k, w in enumerate(fine.words()) for g in w.glyphs if judged(g)
         ]
         if not sounded:
             return {}
-        level = _frame_levels_db(vocals, frame_s=frame_s)
+        if not levels:
+            levels.append(_frame_levels_db(vocals, frame_s=frame_s))
+        level = levels[0]
         out: dict[int, str] = {}
         for n, (k, g) in enumerate(sounded):
             nxt = sounded[n + 1][1].start if n + 1 < len(sounded) else g.start + hi
             end = min(max(nxt, g.start + lo), g.start + hi)
-            a = int(g.start / frame_s)
+            a = max(0, int(g.start / frame_s))
             b = max(int(end / frame_s), a + 1)
-            if b > len(level) or k in out:
+            if b > len(level) or k in out:  # past the stem's end: nothing to judge by
                 continue
             w = level[a:b]
             peak, med = float(w.max()), float(np.median(w))
