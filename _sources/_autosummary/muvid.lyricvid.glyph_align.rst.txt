@@ -19,6 +19,15 @@ muvid.lyricvid.glyph\_align
       LINE_GAP_S
       UNSUNG_FRAME_S
       UNSUNG_REF_PERCENTILE
+      SILENT_GLYPH_PEAK_DB
+      SILENT_GLYPH_MEDIAN_DB
+      SILENT_GLYPH_WINDOW_S
+      SILENT_GLYPH_FRAME_S
+      GLYPH_SPAN_MAX_S
+      SPAN_SEARCH_S
+      SPAN_SILENCE_DB
+      SPAN_VALLEY_DB
+      SPAN_FRAME_S
       TIMING_OVERRIDES
       SPILL_MIN_STEP_S
       SPILL_CLEAR_S
@@ -42,11 +51,13 @@ muvid.lyricvid.glyph\_align
       repair_spills
       romanize_hepburn
       romanize_kana
+      silent_glyph
       squeezed
       stem_detectors
       stem_onsets
       unsung
       vocal_stem
+      with_spans
       word_agreement
    
    .. rubric:: Classes

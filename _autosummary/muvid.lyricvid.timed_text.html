@@ -177,6 +177,14 @@ quantiser can then prefer <code class="docutils literal notranslate"><span class
 timing is approximate instead of discovering it in the render.</p>
 <p>Import-safe: stdlib only at module scope. The muvid alignment machinery and any
 ASR are imported inside the functions that need them.</p>
+<p class="rubric">Module Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.timed_text.SPAN_CUTS" title="muvid.lyricvid.timed_text.SPAN_CUTS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SPAN_CUTS</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">silence</span></code> (the sound died), <code class="docutils literal notranslate"><span class="pre">valley</span></code> (an energy dip to the next syllable), <code class="docutils literal notranslate"><span class="pre">legato</span></code> (no clean cut: the next onset, flagged), <code class="docutils literal notranslate"><span class="pre">next</span></code> (the next glyph's onset, no stem or no cut before a sokuon), <code class="docutils literal notranslate"><span class="pre">cap</span></code> (clamped at <code class="docutils literal notranslate"><span class="pre">max_span_s</span></code>).</p></td>
+</tr>
+</tbody>
+</table>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -209,7 +217,10 @@ ASR are imported inside the functions that need them.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.timed_text.Section" title="muvid.lyricvid.timed_text.Section"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Section</span></code></a>(*, label, lines)</p></td>
 <td><p>A labelled span — <code class="docutils literal notranslate"><span class="pre">verse</span></code>, <code class="docutils literal notranslate"><span class="pre">chorus</span></code>, whatever the lyrics document says.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.timed_text.TimedText" title="muvid.lyricvid.timed_text.TimedText"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimedText</span></code></a>(*, sections[, duration, source])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.lyricvid.timed_text.Span" title="muvid.lyricvid.timed_text.Span"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Span</span></code></a>(start, end, cut)</p></td>
+<td><p>Where a glyph's sound runs, <code class="docutils literal notranslate"><span class="pre">start</span></code> to <code class="docutils literal notranslate"><span class="pre">end</span></code> (seconds), and how its trailing boundary was decided (<code class="docutils literal notranslate"><span class="pre">cut</span></code>, one of <a class="reference internal" href="#muvid.lyricvid.timed_text.SPAN_CUTS" title="muvid.lyricvid.timed_text.SPAN_CUTS"><code class="xref py py-data docutils literal notranslate"><span class="pre">SPAN_CUTS</span></code></a>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.lyricvid.timed_text.TimedText" title="muvid.lyricvid.timed_text.TimedText"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TimedText</span></code></a>(*, sections[, duration, source])</p></td>
 <td><p>The whole song's text, timed.</p></td>
 </tr>
 </tbody>
@@ -222,11 +233,33 @@ ASR are imported inside the functions that need them.</p>
 <dl class="field-list simple">
 </dl>
 </dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.lyricvid.timed_text.SPAN_CUTS">
+<span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.timed_text.</span></span><span class="sig-name descname"><span class="pre">SPAN_CUTS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('silence',</span> <span class="pre">'valley',</span> <span class="pre">'legato',</span> <span class="pre">'next',</span> <span class="pre">'cap')</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.timed_text.SPAN_CUTS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.timed_text.SPAN_CUTS'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">silence</span></code> (the sound
+died), <code class="docutils literal notranslate"><span class="pre">valley</span></code> (an energy dip to the next syllable), <code class="docutils literal notranslate"><span class="pre">legato</span></code> (no clean
+cut: the next onset, flagged), <code class="docutils literal notranslate"><span class="pre">next</span></code> (the next glyph’s onset, no stem or no
+cut before a sokuon), <code class="docutils literal notranslate"><span class="pre">cap</span></code> (clamped at <code class="docutils literal notranslate"><span class="pre">max_span_s</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>How a <a class="reference internal" href="#muvid.lyricvid.timed_text.Span" title="muvid.lyricvid.timed_text.Span"><code class="xref py py-class docutils literal notranslate"><span class="pre">Span</span></code></a>’s trailing boundary was decided</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.lyricvid.timed_text.Section">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.timed_text.</span></span><span class="sig-name descname"><span class="pre">Section</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">label</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lines</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/timed_text.html#Section"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.timed_text.Section" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.timed_text.Section'">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
 <p>A labelled span — <code class="docutils literal notranslate"><span class="pre">verse</span></code>, <code class="docutils literal notranslate"><span class="pre">chorus</span></code>, whatever the lyrics document says.</p>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="muvid.lyricvid.timed_text.Span">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.lyricvid.timed_text.</span></span><span class="sig-name descname"><span class="pre">Span</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">start</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">end</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cut</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/lyricvid/timed_text.html#Span"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.lyricvid.timed_text.Span" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.lyricvid.timed_text.Span'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
+<p>Where a glyph’s sound runs, <code class="docutils literal notranslate"><span class="pre">start</span></code> to <code class="docutils literal notranslate"><span class="pre">end</span></code> (seconds), and how its
+trailing boundary was decided (<code class="docutils literal notranslate"><span class="pre">cut</span></code>, one of <a class="reference internal" href="#muvid.lyricvid.timed_text.SPAN_CUTS" title="muvid.lyricvid.timed_text.SPAN_CUTS"><code class="xref py py-data docutils literal notranslate"><span class="pre">SPAN_CUTS</span></code></a>).</p>
 <dl class="field-list simple">
 </dl>
 </dd></dl>
@@ -373,7 +406,9 @@ use it instead of guessing.</p>
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
 <li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.Line'" class="reference internal" href="#muvid.lyricvid.timed_text.Line"><code class="docutils literal notranslate"><span class="pre">Line</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.SPAN_CUTS'" class="reference internal" href="#muvid.lyricvid.timed_text.SPAN_CUTS"><code class="docutils literal notranslate"><span class="pre">SPAN_CUTS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.Section'" class="reference internal" href="#muvid.lyricvid.timed_text.Section"><code class="docutils literal notranslate"><span class="pre">Section</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.Span'" class="reference internal" href="#muvid.lyricvid.timed_text.Span"><code class="docutils literal notranslate"><span class="pre">Span</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.TimedText'" class="reference internal" href="#muvid.lyricvid.timed_text.TimedText"><code class="docutils literal notranslate"><span class="pre">TimedText</span></code></a><ul>
 <li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.TimedText.measured'" class="reference internal" href="#muvid.lyricvid.timed_text.TimedText.measured"><code class="docutils literal notranslate"><span class="pre">TimedText.measured</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.lyricvid.timed_text.TimedText.source'" class="reference internal" href="#muvid.lyricvid.timed_text.TimedText.source"><code class="docutils literal notranslate"><span class="pre">TimedText.source</span></code></a></li>
@@ -402,7 +437,7 @@ use it instead of guessing.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=60a9f236"></script>
+<script src="../_static/documentation_options.js?v=5751785c"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

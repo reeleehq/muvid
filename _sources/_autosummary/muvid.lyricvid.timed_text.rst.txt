@@ -4,6 +4,12 @@ muvid.lyricvid.timed\_text
 .. automodule:: muvid.lyricvid.timed_text
 
    
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      SPAN_CUTS
+   
    .. rubric:: Functions
 
    .. autosummary::
@@ -21,5 +27,6 @@ muvid.lyricvid.timed\_text
       Word
       Line
       Section
+      Span
       TimedText
    

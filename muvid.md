@@ -1,4 +1,4 @@
-> built 2026-10-26 11:18 UTC from bd05b95 (main) · muvid 0.0.95. Details: build_info.json
+> built 2026-10-26 13:17 UTC from 01aada6 (main) · muvid 0.0.96. Details: build_info.json
 
 # index.html.md
 
@@ -9254,8 +9254,9 @@ the vocal stem, against a random-jitter baseline, and [`word_agreement()`](_auto
 lists the words where two timings disagree. [`reconcile()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile) then acts on
 what a list of [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector) s distrusts — each names words and a remedy
 (`replace`: fall back to the vendor window; `drop`: it was never sung).
-[`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung) is the one that drops: a line the aligner could not place over
-which the vocal stem is silent (muvid#144).
+[`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung) drops a line the aligner could not place over which the vocal
+stem is silent (muvid#144); [`silent_glyph()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.silent_glyph) flags a word with one silent
+sounded glyph inside a sung line (muvid#156).
 
 Licensing — read before shipping anything: the `MMS_FA` weights are
 **CC-BY-NC-4.0** and htdemucs (vocal separation) is CC-BY-NC too. So this is an
@@ -9265,22 +9266,31 @@ connector, and it never downloads weights unless the caller says
 
 ### Module Attributes
 
-| [`MARGIN_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.MARGIN_S)              | Seconds of audio kept either side of a line's coarse window.                                                                                          |
-|------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`ONSET_TOL_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.ONSET_TOL_S)           | Onset tolerance for [`onset_report()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.onset_report).                                                                  |
-| [`DISAGREE_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.DISAGREE_S)            | Two timings of a word disagree when their starts differ by more than this.                                                                            |
-| [`MIN_GLYPH_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.MIN_GLYPH_S)           | Two sounded glyphs whose STARTS are closer than this were squeezed together by the aligner, not sung (a mora takes ~0.1 s or more).                   |
-| [`REMEDIES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.REMEDIES)              | What [`reconcile()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile) may do with a word a detector distrusts.                                            |
-| [`UNSUNG_QUIET_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_QUIET_DB)       | a frame is quiet below this many dB under the stem's own loud level...                                                                                |
-| [`UNSUNG_QUIET_SHARE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_QUIET_SHARE)    | ...and a line is unsung when at least this share of its window is quiet...                                                                            |
-| [`UNSUNG_MIN_QUIET_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_MIN_QUIET_S)    | ...in one unbroken stretch at least this long.                                                                                                        |
-| [`LINE_GAP_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.LINE_GAP_S)            | a line whose last glyph starts within this many seconds of the next line's first glyph (or after it) overlaps it.                                     |
-| [`UNSUNG_FRAME_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_FRAME_S)        | Frame length for the stem's RMS level.                                                                                                                |
-| [`UNSUNG_REF_PERCENTILE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE) | The stem's "loud level" is this percentile of its frame RMS, so the threshold follows the mix rather than an absolute dBFS a quieter stem would fail. |
-| [`TIMING_OVERRIDES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.TIMING_OVERRIDES)      | What a recorded per-song timing override may say about a line.                                                                                        |
-| [`SPILL_MIN_STEP_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPILL_MIN_STEP_S)      | a moved glyph starts at least this long after the glyph before it (a mora takes ~0.1 s)...                                                            |
-| [`SPILL_CLEAR_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPILL_CLEAR_S)         | ...an onset it moves to is at least this long before the next line...                                                                                 |
-| [`SPILL_MIN_TAIL_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPILL_MIN_TAIL_S)      | ...and a word whose glyph moved ends no earlier than this after its last glyph's start (CTC spans are spiky; a 0 s word would never light).           |
+| [`MARGIN_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.MARGIN_S)               | Seconds of audio kept either side of a line's coarse window.                                                                                                                                                                                                                             |
+|-------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`ONSET_TOL_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.ONSET_TOL_S)            | Onset tolerance for [`onset_report()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.onset_report).                                                                                                                                                                                                     |
+| [`DISAGREE_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.DISAGREE_S)             | Two timings of a word disagree when their starts differ by more than this.                                                                                                                                                                                                               |
+| [`MIN_GLYPH_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.MIN_GLYPH_S)            | Two sounded glyphs whose STARTS are closer than this were squeezed together by the aligner, not sung (a mora takes ~0.1 s or more).                                                                                                                                                      |
+| [`REMEDIES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.REMEDIES)               | What [`reconcile()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile) may do with a word a detector distrusts.                                                                                                                                                                               |
+| [`UNSUNG_QUIET_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_QUIET_DB)        | a frame is quiet below this many dB under the stem's own loud level...                                                                                                                                                                                                                   |
+| [`UNSUNG_QUIET_SHARE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_QUIET_SHARE)     | ...and a line is unsung when at least this share of its window is quiet...                                                                                                                                                                                                               |
+| [`UNSUNG_MIN_QUIET_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_MIN_QUIET_S)     | ...in one unbroken stretch at least this long.                                                                                                                                                                                                                                           |
+| [`LINE_GAP_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.LINE_GAP_S)             | a line whose last glyph starts within this many seconds of the next line's first glyph (or after it) overlaps it.                                                                                                                                                                        |
+| [`UNSUNG_FRAME_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_FRAME_S)         | Frame length for the stem's RMS level.                                                                                                                                                                                                                                                   |
+| [`UNSUNG_REF_PERCENTILE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE)  | The stem's "loud level" is this percentile of its frame RMS, so the threshold follows the mix rather than an absolute dBFS a quieter stem would fail.                                                                                                                                    |
+| [`SILENT_GLYPH_PEAK_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SILENT_GLYPH_PEAK_DB)   | a glyph window is silent when its PEAK is under this many dB below the stem's loud level...                                                                                                                                                                                              |
+| [`SILENT_GLYPH_MEDIAN_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SILENT_GLYPH_MEDIAN_DB) | a sung glyph's window often runs into a gap or a devoiced tail (low median, high peak), and a quiet tail can sit next to an attack (high peak).                                                                                                                                          |
+| [`SILENT_GLYPH_WINDOW_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SILENT_GLYPH_WINDOW_S)  | A glyph's window runs to the next sounded glyph's start, clamped to this range (seconds): a glyph is never judged on less than a couple of frames, nor on the held note after it.                                                                                                        |
+| [`SILENT_GLYPH_FRAME_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SILENT_GLYPH_FRAME_S)   | Frame length for [`silent_glyph()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.silent_glyph)'s levels (finer than the line-level 50 ms).                                                                                                                                                             |
+| [`GLYPH_SPAN_MAX_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.GLYPH_SPAN_MAX_S)       | [`with_spans()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.with_spans) (muvid#149).                                                                                                                                                                                                               |
+| [`SPAN_SEARCH_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPAN_SEARCH_S)          | Seconds searched around a labelled onset for the cut to the previous glyph: (before, after).                                                                                                                                                                                             |
+| [`SPAN_SILENCE_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPAN_SILENCE_DB)        | A frame is silent below this many dB under the stem's loud level (the consumer-side re-cut this is ported from used -40 re the LOUDEST frame; ours is re the 95th percentile, see [`UNSUNG_REF_PERCENTILE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE), so it is slightly stricter)... |
+| [`SPAN_VALLEY_DB`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPAN_VALLEY_DB)         | ...and a dip is a valley when it sits this far under both neighbouring syllables, its flat bottom being the frames within `SPAN_VALLEY_FLAT_DB` of its minimum.                                                                                                                          |
+| [`SPAN_FRAME_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPAN_FRAME_S)           | Frame length for the levels the cuts are read from.                                                                                                                                                                                                                                      |
+| [`TIMING_OVERRIDES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.TIMING_OVERRIDES)       | What a recorded per-song timing override may say about a line.                                                                                                                                                                                                                           |
+| [`SPILL_MIN_STEP_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPILL_MIN_STEP_S)       | a moved glyph starts at least this long after the glyph before it (a mora takes ~0.1 s)...                                                                                                                                                                                               |
+| [`SPILL_CLEAR_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPILL_CLEAR_S)          | ...an onset it moves to is at least this long before the next line...                                                                                                                                                                                                                    |
+| [`SPILL_MIN_TAIL_S`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.SPILL_MIN_TAIL_S)       | ...and a word whose glyph moved ends no earlier than this after its last glyph's start (CTC spans are spiky; a 0 s word would never light).                                                                                                                                              |
 
 ### Functions
 
@@ -9299,23 +9309,25 @@ connector, and it never downloads weights unless the caller says
 | [`repair_spills`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.repair_spills)(tt, onsets, \*[, gap_s, ...])        | Pull a line's glyphs back off the NEXT line, where they aligned (muvid#155).                                        |
 | [`romanize_hepburn`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.romanize_hepburn)(text)                             | Display romanisation (modified Hepburn) of kana text: what a learner reads.                                         |
 | [`romanize_kana`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.romanize_kana)(word)                                | `(glyph, romaji)` per glyph, the romaji chunks concatenating to the word.                                           |
+| [`silent_glyph`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.silent_glyph)(vocals, \*[, peak_db, ...])           | Words with a sounded glyph whose own window is silent in the stem (muvid#156).                                      |
 | [`squeezed`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.squeezed)(\*[, min_glyph_s])                        | Words with two sounded glyphs starting less than `min_glyph_s` apart.                                               |
 | [`stem_detectors`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_detectors)(vocals, \*[, disagree_s, ...])      | What to reconcile with when you have the vocal stem (muvid#150).                                                    |
 | [`stem_onsets`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_onsets)(vocals)                                | Acoustic onset times (seconds) of a vocal stem, as a numpy array.                                                   |
 | [`unsung`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung)(vocals, \*[, among, quiet_db, ...])         | Lines a vendor transcript lists but nobody sang.                                                                    |
 | [`vocal_stem`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.vocal_stem)(audio, \*, out_dir[, allow_download])   | The song's separated vocal stem (Demucs), raising rather than degrading.                                            |
+| [`with_spans`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.with_spans)(tt, \*[, vocals, max_span_s, ...])      | Give every sung glyph a `span`: where its sound runs (muvid#149).                                                   |
 | [`word_agreement`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.word_agreement)(fine, coarse, \*[, disagree_s])     | Compare word starts (first glyph start when present) of two timings.                                                |
 
 ### Classes
 
-| [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)(\*, name, find[, remedy])   | Names the words of a fine timing not to trust, and what to do about them.   |
-|---------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)(\*, name, find[, remedy, glyphs])   | Names the words of a fine timing not to trust, and what to do about them.   |
+|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
 
 ### muvid.lyricvid.glyph_align.DISAGREE_S *= 0.3*
 
 Two timings of a word disagree when their starts differ by more than this.
 
-### *class* muvid.lyricvid.glyph_align.Detector(, name, find, remedy='replace')
+### *class* muvid.lyricvid.glyph_align.Detector(, name, find, remedy='replace', glyphs=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -9324,7 +9336,22 @@ Names the words of a fine timing not to trust, and what to do about them.
 `find(fine, coarse)` gets both timings (same word sequence) and returns
 `{word_index: reason}`, indices into `list(fine.words())`. `remedy`
 is one of [`REMEDIES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.REMEDIES); when several detectors flag one word, `drop`
-wins — a word nobody sang has no window worth falling back to.
+wins — a word nobody sang has no window worth falling back to — then
+`replace`, then `mute`.
+
+#### glyphs *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[Callable](https://docs.python.org/3/library/typing.html#typing.Callable)[[[TimedText](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText), [TimedText](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText)], [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[int](https://docs.python.org/3/builtins/functions.html#int), [Collection](https://docs.python.org/3/library/collections.abc.html#collections.abc.Collection)[[int](https://docs.python.org/3/builtins/functions.html#int)]]]]*
+
+`glyphs(fine,
+coarse)` returns `{word_index: {glyph_index, ...}}` (indices into the
+word’s `glyphs`), and `find` still names the words (muvid#175).
+
+* **Type:**
+  `mute` acts on single glyphs, so it needs to say which
+
+### muvid.lyricvid.glyph_align.GLYPH_SPAN_MAX_S *= 0.6*
+
+[`with_spans()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.with_spans) (muvid#149). A glyph’s sound is taken to run at most this
+long (seconds) when nothing ends it sooner.
 
 ### muvid.lyricvid.glyph_align.LINE_GAP_S *= 0.05*
 
@@ -9350,13 +9377,65 @@ span length: CTC spans are spiky, so a perfectly sung `ン` can be 20 ms.
 
 Onset tolerance for [`onset_report()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.onset_report).
 
-### muvid.lyricvid.glyph_align.REMEDIES *= ('replace', 'drop')*
+### muvid.lyricvid.glyph_align.REMEDIES *= ('replace', 'drop', 'mute')*
 
 What [`reconcile()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile) may do with a word a detector distrusts. `replace`:
 fall back to the coarse window shifted by the measured bias, glyphs spread
 evenly and marked unmeasured (the word was sung; the aligner could not place
 it). `drop`: remove the word, and a line or section left empty (it was
-never sung, so lighting it at ANY time is wrong).
+never sung, so lighting it at ANY time is wrong). `mute`: keep the word and
+its times, mark only the glyphs the detector names `sung=False`.
+
+### muvid.lyricvid.glyph_align.SILENT_GLYPH_FRAME_S *= 0.01*
+
+Frame length for [`silent_glyph()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.silent_glyph)’s levels (finer than the line-level 50 ms).
+
+### muvid.lyricvid.glyph_align.SILENT_GLYPH_MEDIAN_DB *= -28.0*
+
+a sung glyph’s window often runs into
+a gap or a devoiced tail (low median, high peak), and a quiet tail can sit
+next to an attack (high peak). (The median never exceeds the peak, so once the
+peak is under its bound this only rejects windows uniformly near the threshold.)
+
+* **Type:**
+  …AND its MEDIAN is under this. Both
+
+### muvid.lyricvid.glyph_align.SILENT_GLYPH_PEAK_DB *= -25.0*
+
+a glyph
+window is silent when its PEAK is under this many dB below the stem’s loud
+level…
+
+* **Type:**
+  [`silent_glyph()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.silent_glyph)’s thresholds, measured on 21 songs (muvid#156)
+
+### muvid.lyricvid.glyph_align.SILENT_GLYPH_WINDOW_S *= (0.06, 0.4)*
+
+A glyph’s window runs to the next sounded glyph’s start, clamped to this
+range (seconds): a glyph is never judged on less than a couple of frames,
+nor on the held note after it.
+
+### muvid.lyricvid.glyph_align.SPAN_FRAME_S *= 0.01*
+
+Frame length for the levels the cuts are read from.
+
+### muvid.lyricvid.glyph_align.SPAN_SEARCH_S *= (0.18, 0.08)*
+
+Seconds searched around a labelled onset for the cut to the previous
+glyph: (before, after).
+
+### muvid.lyricvid.glyph_align.SPAN_SILENCE_DB *= -40.0*
+
+A frame is silent below this many dB under the stem’s loud level (the
+consumer-side re-cut this is ported from used -40 re the LOUDEST frame; ours
+is re the 95th percentile, see [`UNSUNG_REF_PERCENTILE`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.UNSUNG_REF_PERCENTILE), so it is
+slightly stricter)…
+
+### muvid.lyricvid.glyph_align.SPAN_VALLEY_DB *= 8.0*
+
+…and a dip is a valley when it sits this far under both neighbouring
+syllables, its flat bottom being the frames within `SPAN_VALLEY_FLAT_DB`
+of its minimum.
 
 ### muvid.lyricvid.glyph_align.SPILL_CLEAR_S *= 0.1*
 
@@ -9562,7 +9641,13 @@ and marked `measured=False`. `drop` removes it, and any line or section
 left empty. Returns the timing and one record per affected word: `why`
 (the deciding detector), `detail`, `remedy`, `flagged_by` (every
 detector that flagged it) and `used` (the start it got; `None` when
-dropped).
+dropped). `mute` (see [`silent_glyph()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.silent_glyph)) keeps the word and its times
+and sets `sung=False` on the glyphs the detector names (the record lists
+their indices as `glyphs`); it ranks below `replace`, so a word another
+detector distrusts is re-timed and its silence verdict, measured on the
+distrusted time, is not kept. A `ー` after a muted glyph keeps `sung=True`
+(it is never judged); and a `fine` timing override restores the line whole,
+`sung` included.
 
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`TimedText`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]]
@@ -9676,6 +9761,39 @@ the aligner places it between its neighbours and marks it unmeasured.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
+### muvid.lyricvid.glyph_align.silent_glyph(vocals, , peak_db=-25.0, median_db=-28.0, window_s=(0.06, 0.4), frame_s=0.01, remedy='drop')
+
+Words with a sounded glyph whose own window is silent in the stem (muvid#156).
+
+[`squeezed()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.squeezed) sees glyph starts too close together and [`unsung()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.unsung)
+sees whole quiet lines; neither sees ONE silent mora inside a sung line.
+That happens when the transcript lists ハッカー and the singer sang ハッ
+(CTC must still place カ, and puts it in the ッ gap: `measured=True`, 61 ms,
+30-40 dB under the singing), and when an unmeasured glyph keeps a vendor
+fallback time that lands in a gap. A consumer that plays per-glyph clips
+plays silence or a click for these.
+
+A glyph’s window runs from its start to the next sounded glyph’s start
+(`ー` and `ッ` make no sound of their own and are neither judged nor
+ends), clamped to `window_s`; its levels are dB under the stem’s loud
+level. It is silent when its peak is under `peak_db` AND its median under
+`median_db`. Measured on 21 songs this flagged 13 words in 8, each checked
+against the stem envelope; sung-but-devoiced glyphs (デス ス) stay above.
+A window running past the stem’s end, or a digitally silent stem, is not
+judged (the safe direction for a remedy that deletes words).
+
+Remedy: `drop` at WORD level by default (a per-glyph consumer, such as one
+playing a clip per kana, wants the word out of its timing); `mute` marks
+only the silent glyphs `sung=False` and keeps the rest of the word and its
+times (a lyric video keeps `ハッ` of `ハッカー`); `replace` falls back to
+the vendor window. `drop` deletes sung text in a lyric video and outranks
+`replace`, so it also turns a recoverable squeezed word into a deletion:
+opt-in, NOT part of [`stem_detectors()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.stem_detectors). Only wide (kana, CJK) glyphs are judged; words
+without glyphs are not judged and do not end a neighbour’s window.
+
+* **Return type:**
+  [`Detector`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.Detector)
+
 ### muvid.lyricvid.glyph_align.squeezed(, min_glyph_s=0.04)
 
 Words with two sounded glyphs starting less than `min_glyph_s` apart.
@@ -9755,6 +9873,41 @@ trustworthy glyph times, so the absence is an error.
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.lyricvid.glyph_align.with_spans(tt, , vocals=None, max_span_s=0.6, search_s=(0.18, 0.08), silence_db=-40.0, valley_db=8.0, flat_db=1.0, frame_s=0.01)
+
+Give every sung glyph a `span`: where its sound runs (muvid#149).
+
+A glyph’s `end` is nominal (20-140 ms after its onset), so a consumer that
+plays or wipes per glyph needs this. Each [`Span`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Span)
+runs from the glyph’s onset to the next sung glyph’s onset, capped at
+`max_span_s` after the glyph’s `start`; its `cut` says how that
+trailing boundary was decided. `ー` extends the glyph before it (it is no
+boundary and has no span); `ッ` ends it (its sokuon is silence) and has no
+span; punctuation, a glyph with `sung=False` and one with no finite
+`start` have none either and are no boundary.
+
+With `vocals` (the separated vocal stem; none is needed) each boundary is
+refined from the stem’s levels, searched from `search_s[0]` before the
+next onset to `search_s[1]` after it, never before the glyph’s own span
+start: `silence` (the previous span ends where the sound died and the next
+starts where it returns, or at its own onset if it does not return within
+the search), `valley` (cut at the flat bottom of a dip between the
+syllables) or `legato` (no clean cut: the onset, flagged as such). Before a
+`ッ` a silence or valley is used the same way, else `next`. Without a
+stem every boundary is `next`. Any end clamped at `max_span_s` is
+`cap`. A span may start later than `start` (after a silence); `start`
+is not moved. Spans never overlap, and times are rounded to the ms. A burst
+(a spectral-flux attack) is not detected: those boundaries read as
+`legato`.
+
+Run it LAST, after [`reconcile()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.reconcile), [`apply_timing_overrides()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.apply_timing_overrides) and
+[`repair_spills()`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.repair_spills): it recomputes every span from scratch (running it
+twice changes nothing), and each of those passes clears EVERY span when it
+changes anything, since a span depends on its neighbours.
+
+* **Return type:**
+  [`TimedText`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText)
 
 ### muvid.lyricvid.glyph_align.word_agreement(fine, coarse, , disagree_s=0.3)
 
@@ -11278,6 +11431,11 @@ timing is approximate instead of discovering it in the render.
 Import-safe: stdlib only at module scope. The muvid alignment machinery and any
 ASR are imported inside the functions that need them.
 
+### Module Attributes
+
+| [`SPAN_CUTS`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.SPAN_CUTS)   | `silence` (the sound died), `valley` (an energy dip to the next syllable), `legato` (no clean cut: the next onset, flagged), `next` (the next glyph's onset, no stem or no cut before a sokuon), `cap` (clamped at `max_span_s`).   |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
 ### Functions
 
 | [`from_alignment_store`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.from_alignment_store)(project_root, \*[, duration])   | Read muvid's own three-tier alignment (sections / lines / words).                                                                     |
@@ -11289,11 +11447,12 @@ ASR are imported inside the functions that need them.
 
 ### Classes
 
-| [`Word`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Word)(\*, text, start, end[, measured, glyphs])   | One sung word on the song timeline.                                     |
-|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| [`Line`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Line)(\*, words[, index, text])                   | One sung line.                                                          |
-| [`Section`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Section)(\*, label, lines)                        | A labelled span — `verse`, `chorus`, whatever the lyrics document says. |
-| [`TimedText`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText)(\*, sections[, duration, source])      | The whole song's text, timed.                                           |
+| [`Word`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Word)(\*, text, start, end[, measured, glyphs])   | One sung word on the song timeline.                                                                                                                                           |
+|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`Line`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Line)(\*, words[, index, text])                   | One sung line.                                                                                                                                                                |
+| [`Section`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Section)(\*, label, lines)                        | A labelled span — `verse`, `chorus`, whatever the lyrics document says.                                                                                                       |
+| [`Span`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Span)(start, end, cut)                            | Where a glyph's sound runs, `start` to `end` (seconds), and how its trailing boundary was decided (`cut`, one of [`SPAN_CUTS`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.SPAN_CUTS)). |
+| [`TimedText`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText)(\*, sections[, duration, source])      | The whole song's text, timed.                                                                                                                                                 |
 
 ### *class* muvid.lyricvid.timed_text.Line(, words, index=0, text='')
 
@@ -11301,11 +11460,28 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One sung line.
 
+### muvid.lyricvid.timed_text.SPAN_CUTS *= ('silence', 'valley', 'legato', 'next', 'cap')*
+
+`silence` (the sound
+died), `valley` (an energy dip to the next syllable), `legato` (no clean
+cut: the next onset, flagged), `next` (the next glyph’s onset, no stem or no
+cut before a sokuon), `cap` (clamped at `max_span_s`).
+
+* **Type:**
+  How a [`Span`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.Span)’s trailing boundary was decided
+
 ### *class* muvid.lyricvid.timed_text.Section(, label, lines)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 A labelled span — `verse`, `chorus`, whatever the lyrics document says.
+
+### *class* muvid.lyricvid.timed_text.Span(start, end, cut)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+Where a glyph’s sound runs, `start` to `end` (seconds), and how its
+trailing boundary was decided (`cut`, one of [`SPAN_CUTS`](_autosummary/muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.SPAN_CUTS)).
 
 ### *class* muvid.lyricvid.timed_text.TimedText(, sections, duration=0.0, source='unknown')
 
@@ -17258,7 +17434,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-26 11:18 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/bd05b9549a56b50e96c9d6235fa464dfbada714b"><code>bd05b95</code></a> on branch <code>main</code>, for **muvid 0.0.95** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-26 13:17 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/01aada612f8fddb00c532ba483250d0151901534"><code>01aada6</code></a> on branch <code>main</code>, for **muvid 0.0.96** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -17267,9 +17443,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/bd05b9549a56b50e96c9d6235fa464dfbada714b"><code>bd05b9549a56b50e96c9d6235fa464dfbada714b</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/01aada612f8fddb00c532ba483250d0151901534"><code>01aada612f8fddb00c532ba483250d0151901534</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.95</code>                                                                                                                                   |
+| Tags at this commit | <code>0.0.96</code>                                                                                                                                   |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17278,9 +17454,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40313054852">40313054852</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40328249520">40328249520</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>45ac648d83979d5eed6ec67cad87beecefa1af14</code> (in the history of the built commit) |
+| Event commit | <code>7eba1ff1cf5180c67a21bb6d5fd31c168f53a863</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17305,13 +17481,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.95/">0.0.95</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.96/">0.0.96</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout bd05b9549a56b50e96c9d6235fa464dfbada714b
+git checkout 01aada612f8fddb00c532ba483250d0151901534
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

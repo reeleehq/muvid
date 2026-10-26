@@ -22,6 +22,11 @@ timing is approximate instead of discovering it in the render.
 Import-safe: stdlib only at module scope. The muvid alignment machinery and any
 ASR are imported inside the functions that need them.
 
+### Module Attributes
+
+| [`SPAN_CUTS`](#muvid.lyricvid.timed_text.SPAN_CUTS)   | `silence` (the sound died), `valley` (an energy dip to the next syllable), `legato` (no clean cut: the next onset, flagged), `next` (the next glyph's onset, no stem or no cut before a sokuon), `cap` (clamped at `max_span_s`).   |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
 ### Functions
 
 | [`from_alignment_store`](#muvid.lyricvid.timed_text.from_alignment_store)(project_root, \*[, duration])   | Read muvid's own three-tier alignment (sections / lines / words).                                                                     |
@@ -33,11 +38,12 @@ ASR are imported inside the functions that need them.
 
 ### Classes
 
-| [`Word`](#muvid.lyricvid.timed_text.Word)(\*, text, start, end[, measured, glyphs])   | One sung word on the song timeline.                                     |
-|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| [`Line`](#muvid.lyricvid.timed_text.Line)(\*, words[, index, text])                   | One sung line.                                                          |
-| [`Section`](#muvid.lyricvid.timed_text.Section)(\*, label, lines)                        | A labelled span — `verse`, `chorus`, whatever the lyrics document says. |
-| [`TimedText`](#muvid.lyricvid.timed_text.TimedText)(\*, sections[, duration, source])      | The whole song's text, timed.                                           |
+| [`Word`](#muvid.lyricvid.timed_text.Word)(\*, text, start, end[, measured, glyphs])   | One sung word on the song timeline.                                                                                                                                           |
+|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`Line`](#muvid.lyricvid.timed_text.Line)(\*, words[, index, text])                   | One sung line.                                                                                                                                                                |
+| [`Section`](#muvid.lyricvid.timed_text.Section)(\*, label, lines)                        | A labelled span — `verse`, `chorus`, whatever the lyrics document says.                                                                                                       |
+| [`Span`](#muvid.lyricvid.timed_text.Span)(start, end, cut)                            | Where a glyph's sound runs, `start` to `end` (seconds), and how its trailing boundary was decided (`cut`, one of [`SPAN_CUTS`](#muvid.lyricvid.timed_text.SPAN_CUTS)). |
+| [`TimedText`](#muvid.lyricvid.timed_text.TimedText)(\*, sections[, duration, source])      | The whole song's text, timed.                                                                                                                                                 |
 
 ### *class* muvid.lyricvid.timed_text.Line(, words, index=0, text='')
 
@@ -45,11 +51,28 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One sung line.
 
+### muvid.lyricvid.timed_text.SPAN_CUTS *= ('silence', 'valley', 'legato', 'next', 'cap')*
+
+`silence` (the sound
+died), `valley` (an energy dip to the next syllable), `legato` (no clean
+cut: the next onset, flagged), `next` (the next glyph’s onset, no stem or no
+cut before a sokuon), `cap` (clamped at `max_span_s`).
+
+* **Type:**
+  How a [`Span`](#muvid.lyricvid.timed_text.Span)’s trailing boundary was decided
+
 ### *class* muvid.lyricvid.timed_text.Section(, label, lines)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 A labelled span — `verse`, `chorus`, whatever the lyrics document says.
+
+### *class* muvid.lyricvid.timed_text.Span(start, end, cut)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+Where a glyph’s sound runs, `start` to `end` (seconds), and how its
+trailing boundary was decided (`cut`, one of [`SPAN_CUTS`](#muvid.lyricvid.timed_text.SPAN_CUTS)).
 
 ### *class* muvid.lyricvid.timed_text.TimedText(, sections, duration=0.0, source='unknown')
 
