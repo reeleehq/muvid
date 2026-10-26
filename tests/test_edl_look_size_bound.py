@@ -50,6 +50,7 @@ from pathlib import Path
 import pytest
 
 from muvid.footage.edl import (
+    looks_effects_offered,
     DFLT_LOOK_CANVAS,
     MAX_LOOK_SCALE,
     CropWindow,
@@ -321,7 +322,7 @@ def test_every_looks_effect_muvid_compiles_passes_its_own_bound(canvas):
     from muvid.footage.look import stylize
 
     frags = []
-    for name in sorted(looks.effects()):
+    for name in looks_effects_offered():
         try:
             frags.append(
                 stylize(
