@@ -39,6 +39,8 @@ __all__ = [
     "Word",
     "Line",
     "Section",
+    "Span",
+    "SPAN_CUTS",
     "TimedText",
     "from_alignment_store",
     "from_alignment_result",
@@ -74,17 +76,39 @@ class Glyph:
     #: or the written word never completes. Omitted from :meth:`TimedText.to_dict` when True, so every
     #: existing timing file stays byte-identical (muvid#175).
     sung: bool = True
-    #: ``(from, to)``: where this glyph's SOUND runs, derived from the next onset
-    #: and, with a vocal stem, from where the sound dies or dips (muvid#149).
-    #: Absent until ``with_spans`` runs; omitted from ``to_dict`` when None. It
-    #: can start earlier or later than ``start`` (a consonant's attack, a
-    #: silence cut), which is why it is a pair and ``start`` is left alone.
-    span: tuple[float, float] | None = None
-    #: How the span's trailing boundary was decided: ``silence`` (the sound
-    #: died), ``valley`` (an energy dip to the next syllable), ``legato`` (no
-    #: clean cut: the next onset, flagged), ``next`` (the next glyph, no stem),
-    #: ``cap`` (nothing sooner than ``max_span_s``). None when ``span`` is.
-    cut: str | None = None
+    #: Where this glyph's SOUND runs (a :class:`Span`), derived from the next
+    #: onset and, with a vocal stem, from where the sound dies or dips
+    #: (muvid#149). Absent until ``with_spans`` runs; omitted from ``to_dict``
+    #: when None (written as ``"span": [from, to], "cut": how``). It can start
+    #: earlier or later than ``start`` (a silence cut), which is why it is its own
+    #: value and ``start`` is left alone. Any pass that moves or removes glyphs
+    #: clears every span, so ``with_spans`` runs last.
+    span: Span | None = None
+
+
+#: How a :class:`Span`'s trailing boundary was decided: ``silence`` (the sound
+#: died), ``valley`` (an energy dip to the next syllable), ``legato`` (no clean
+#: cut: the next onset, flagged), ``next`` (the next glyph's onset, no stem or no
+#: cut before a sokuon), ``cap`` (clamped at ``max_span_s``).
+SPAN_CUTS = ("silence", "valley", "legato", "next", "cap")
+
+
+@dataclass(frozen=True, slots=True)
+class Span:
+    """Where a glyph's sound runs, ``start`` to ``end`` (seconds), and how its
+    trailing boundary was decided (``cut``, one of :data:`SPAN_CUTS`)."""
+
+    start: float
+    end: float
+    cut: str
+
+    def __post_init__(self) -> None:
+        if not self.start <= self.end:  # NaN fails this too
+            raise ValueError(f"a span needs start <= end, not {self.start}..{self.end}")
+        if self.cut not in SPAN_CUTS:
+            raise ValueError(
+                f"a span's cut must be one of {SPAN_CUTS}, not {self.cut!r}"
+            )
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -220,8 +244,11 @@ class TimedText:
                                                     ),
                                                     **(
                                                         {
-                                                            "span": list(g.span),
-                                                            "cut": g.cut,
+                                                            "span": [
+                                                                g.span.start,
+                                                                g.span.end,
+                                                            ],
+                                                            "cut": g.span.cut,
                                                         }
                                                         if g.span is not None
                                                         else {}
@@ -265,11 +292,20 @@ def from_dict(d: Mapping[str, Any]) -> TimedText:
             end=float(g["end"]),
             measured=bool(g.get("measured", True)),
             sung=bool(g.get("sung", True)),
-            span=(
-                (float(g["span"][0]), float(g["span"][1])) if g.get("span") else None
-            ),
-            cut=g.get("cut") if g.get("span") else None,
+            span=_span(g),
         )
+
+    def _span(g: Mapping[str, Any]) -> Span | None:
+        if g.get("span") is None:
+            return None
+        try:
+            a, b = g["span"]
+            return Span(float(a), float(b), g.get("cut"))
+        except (TypeError, ValueError) as e:
+            raise ValueError(
+                f"glyph {g.get('text')!r}: invalid span {g['span']!r} "
+                f"(cut {g.get('cut')!r}): {e}"
+            ) from None
 
     def _word(w: Mapping[str, Any]) -> Word:
         return Word(

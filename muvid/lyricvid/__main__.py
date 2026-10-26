@@ -227,7 +227,8 @@ def glyphs(
 
     --spans (muvid#149) runs last and gives every sung glyph a ``span`` and a
     ``cut``: where its sound runs (a glyph's ``end`` is only the aligner's
-    nominal token end), cut from the vocal stem at silences and dips.
+    nominal token end), cut from the vocal stem at silences and dips; the
+    report then counts the cuts under ``spans``.
     """
     import tempfile
     from pathlib import Path
@@ -286,6 +287,9 @@ def glyphs(
     }
     if timing_overrides or repair_spills:  # opt-in only: the default is unchanged
         report["repaired"] = repaired
+    if spans:  # how many boundaries each cut decided (opt-in, as above)
+        cuts = [g.span.cut for w in fine.words() for g in w.glyphs if g.span]
+        report["spans"] = {c: cuts.count(c) for c in sorted(set(cuts))}
     _emit(report)
 
 

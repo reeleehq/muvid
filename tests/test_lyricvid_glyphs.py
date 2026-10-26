@@ -1559,7 +1559,11 @@ def test_glyph_rows_always_carry_sung(stem_of):
 
 def _spans(tt):
     return [
-        (g.text, g.span and tuple(round(x, 2) for x in g.span), g.cut)
+        (
+            g.text,
+            g.span and (round(g.span.start, 2), round(g.span.end, 2)),
+            g.span and g.span.cut,
+        )
         for g in (g for w in tt.words() for g in w.glyphs)
     ]
 
@@ -1632,7 +1636,7 @@ def test_spans_are_idempotent_never_overlap_and_round_trip(stem_of):
     assert ga.with_spans(once, vocals=stem) == once
     assert from_dict(once.to_dict()) == once
     gl = [g for w in once.words() for g in w.glyphs]
-    assert gl[0].span[1] <= gl[1].span[0]
+    assert gl[0].span.end <= gl[1].span.start
     # absent spans are absent from the file
     assert all("span" not in g for g in _glyph_dicts(_two_glyphs(1.32).to_dict()))
 
@@ -1643,14 +1647,33 @@ def test_spans_survive_a_digitally_silent_stem(stem_of):
     assert got[0][2] == "legato"
 
 
-def test_repair_spills_and_mute_clear_the_spans_they_invalidate(stem_of):
+def test_mute_clears_every_span_since_neighbours_depend_on_it(stem_of):
     fine = ga.with_spans(_elided_song())
     stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
     out, _ = ga.reconcile(fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"),))
     ka = [g for w in out.words() for g in w.glyphs if g.text == "カ"][0]
-    assert ka.sung is False and ka.span is None and ka.cut is None
-    other = next(iter(out.words())).glyphs[0]
-    assert other.span is not None  # untouched glyphs keep theirs
+    assert ka.sung is False
+    # ハ's span ran to カ's onset, which is no longer a boundary: none is stale
+    assert all(g.span is None for w in out.words() for g in w.glyphs)
+    # reconcile changing nothing keeps them (and the same object)
+    same, recs = ga.reconcile(fine, fine, detectors=())
+    assert recs == [] and same == fine
+
+
+def test_repair_spills_clears_every_span():
+    recs = [
+        {"text": "ハット", "start": 1.0, "end": 2.0, "line_end": True},
+        {"text": "トマト", "start": 2.0, "end": 3.0, "line_end": True},
+    ]
+    tt = _place(
+        _with_glyphs(from_word_records(recs, duration=4.0)),
+        {0: [1.0, 1.4, 2.0], 1: 2.0},  # ハット's ト sits on トマト's ト
+    )
+    spanned = ga.with_spans(tt)
+    assert any(g.span for w in spanned.words() for g in w.glyphs)
+    fixed, records = ga.repair_spills(spanned, None)
+    assert records
+    assert all(g.span is None for w in fixed.words() for g in w.glyphs)
 
 
 def test_with_spans_refuses_nonsense_config():
@@ -1662,5 +1685,138 @@ def test_glyphs_cli_spans_flag(tmp_path, monkeypatch, capsys):
     got = _run_glyphs_cli(tmp_path, monkeypatch, capsys, spans=True)
     gl = _glyph_dicts(got["timing"])
     assert gl and all("span" in g for g in gl if g["text"] not in "ーッっ")
+    assert set(got["report"]["spans"]) & {"silence", "valley", "legato"}
+    assert sum(got["report"]["spans"].values()) == sum("span" in g for g in gl)
     plain = _run_glyphs_cli(tmp_path, monkeypatch, capsys)
     assert not any("span" in g for g in _glyph_dicts(plain["timing"]))
+    assert "spans" not in plain["report"]
+
+
+def test_a_silence_over_the_whole_search_never_makes_a_negative_span(stem_of):
+    """B1/B3 of the #149 review: sound 1.0-1.2 then nothing until 2.4."""
+    stem = stem_of(_stem((1.0, 1.2), (2.4, 3.0)))
+    fine = _timed_words(("カスタ", [("カ", 1.0), ("ス", 1.3), ("タ", 2.5)]))
+    got = _spans(ga.with_spans(fine, vocals=stem))
+    assert got == [
+        ("カ", (1.0, 1.2), "silence"),  # ends where the sound died, before the window
+        ("ス", (1.3, 1.9), "cap"),  # sound never returned: it starts at its onset
+        ("タ", (2.5, 3.1), "cap"),
+    ]
+    # a silence that began well before the search window still ends カ there
+    got = _spans(
+        ga.with_spans(
+            _two_glyphs(1.5), vocals=stem_of(_stem((1.0, 1.2), (1.5, 2.0), (4.0, 6.0)))
+        )
+    )
+    assert got[0] == ("カ", (1.0, 1.2), "silence") and got[1][1][0] == 1.5
+
+
+def test_a_silence_before_the_onset_is_searched_further_back_than_after(stem_of):
+    # the gap sits 0.10-0.14 s before ス: inside search_s[0], outside search_s[1]
+    stem = stem_of(_stem((1.0, 1.36), (1.40, 2.0)))
+    got = _spans(ga.with_spans(_two_glyphs(1.5), vocals=stem))
+    assert got[0] == ("カ", (1.0, 1.36), "silence")
+    assert got[1][1][0] == pytest.approx(1.40)
+
+
+@pytest.mark.parametrize("gap_db, cut", [(-30, "valley"), (-50, "silence")])
+def test_span_silence_threshold_sits_at_minus_40(stem_of, gap_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(gap_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+@pytest.mark.parametrize("dip_db, cut", [(-5, "legato"), (-12, "valley")])
+def test_span_valley_threshold_sits_at_8_db(stem_of, dip_db, cut):
+    stem = stem_of(
+        _stem_amps((1.0, 1.3, 0.5), (1.3, 1.4, _db_amp(dip_db)), (1.4, 2.0, 0.5))
+    )
+    assert _spans(ga.with_spans(_two_glyphs(1.38), vocals=stem))[0][2] == cut
+
+
+def test_spans_skip_a_glyph_with_no_start_and_punctuation():
+    from dataclasses import replace
+
+    fine = _timed_words(
+        ("カス、タ", [("カ", 1.0), ("ス", 1.2), ("、", 1.3), ("タ", 1.4)])
+    )
+    w = next(iter(fine.words()))
+    nan = replace(w.glyphs[1], start=float("nan"))
+    tt = ga._rebuilt(
+        fine,
+        [
+            replace(
+                next(iter(fine.lines())),
+                words=(replace(w, glyphs=(w.glyphs[0], nan, *w.glyphs[2:])),),
+            )
+        ],
+    )
+    assert _spans(ga.with_spans(tt)) == [
+        ("カ", (1.0, 1.4), "next"),  # neither the unplaced ス nor 、 is a boundary
+        ("ス", None, None),
+        ("、", None, None),
+        ("タ", (1.4, 2.0), "cap"),
+    ]
+
+
+def test_a_sokuon_boundary_is_cut_from_the_stem_too(stem_of):
+    fine = _timed_words(("カップ", [("カ", 1.0), ("ッ", 1.3), ("プ", 1.5)]))
+    got = _spans(ga.with_spans(fine, vocals=stem_of(_stem((1.0, 1.25), (1.5, 2.0)))))
+    assert got[0] == ("カ", (1.0, 1.25), "silence") and got[1] == ("ッ", None, None)
+    assert got[2][1][0] == 1.5  # a sokuon moves no span start
+    # no cut in the stem: the sokuon's onset, as without one
+    got = _spans(ga.with_spans(fine, vocals=stem_of(_stem((1.0, 2.0)))))
+    assert got[0] == ("カ", (1.0, 1.3), "next")
+
+
+def test_span_property_never_negative_overlapping_or_over_the_cap(stem_of):
+    np = pytest.importorskip("numpy")
+    rng = np.random.default_rng(149)
+    frame = ga.SPAN_FRAME_S
+    for _ in range(60):
+        starts = np.sort(rng.uniform(0.2, 3.5, rng.integers(2, 12)))
+        segs = []
+        for a in np.sort(rng.uniform(0, 4, rng.integers(0, 8))):
+            segs.append(
+                (a, a + rng.uniform(0.02, 0.6), rng.choice([0.5, 0.15, 0.05, 0.005]))
+            )
+        fine = _timed_words(
+            ("".join("カ" for _ in starts), [("カ", float(t)) for t in starts])
+        )
+        out = ga.with_spans(fine, vocals=stem_of(_stem_amps(*segs, duration=4.5)))
+        gl = [g for w in out.words() for g in w.glyphs]
+        for g in gl:
+            assert g.span.start <= g.span.end
+            assert g.span.end <= g.start + ga.GLYPH_SPAN_MAX_S + frame
+        for a, b in zip(gl, gl[1:]):
+            assert a.span.end <= b.span.start
+
+
+def test_glyph_rows_carry_span_and_cut():
+    rows = list(ga.glyph_rows(ga.with_spans(_two_glyphs(1.3))))
+    assert [(r["span"], r["cut"]) for r in rows] == [
+        ((1.0, 1.3), "next"),
+        ((1.3, 1.9), "cap"),
+    ]
+    assert list(ga.glyph_rows(_two_glyphs(1.3)))[0]["cut"] is None
+
+
+@pytest.mark.parametrize(
+    "span, cut",
+    [([2.0, 1.0], "next"), ([1.0, 2.0], "bogus"), ("x", "next"), ([1.0, 2.0], None)],
+)
+def test_from_dict_refuses_an_invalid_span(span, cut):
+    d = _two_glyphs(1.3).to_dict()
+    _glyph_dicts(d)[0].update(span=span, cut=cut)
+    with pytest.raises(ValueError, match="span"):
+        from_dict(d)
+
+
+def test_span_is_a_checked_value():
+    from muvid.lyricvid.timed_text import Span
+
+    with pytest.raises(ValueError):
+        Span(2.0, 1.0, "next")
+    with pytest.raises(ValueError):
+        Span(1.0, float("nan"), "next")
