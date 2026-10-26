@@ -100,11 +100,34 @@ def _song_wav(path: Path, seconds: float = 16.0) -> Path:
 
 
 def _cover_png(path: Path) -> Path:
-    subprocess.run(
-        ["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i",
-         "gradients=s=128x128:c0=0x102040:c1=0xff7f2a:c2=0x20c080", "-frames:v", "1",
-         str(path)],
-        check=True,
+    """A deterministic cover: a dark-blue to orange left-to-right ramp.
+
+    Written by hand (stdlib ``zlib``) rather than by ffmpeg's ``gradients`` source,
+    which seeds itself randomly — a different cover each run, so a luminance
+    assertion on the palette derived from it flipped on CI (muvid#122).
+    """
+    import struct
+    import zlib
+
+    size = 128
+    dark, light = (0x10, 0x20, 0x40), (0xFF, 0x7F, 0x2A)
+
+    def pixel(x: int) -> bytes:
+        t = x / (size - 1)
+        return bytes(round(a + (b - a) * t) for a, b in zip(dark, light))
+
+    row = b"\x00" + b"".join(pixel(x) for x in range(size))
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        body = tag + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
+
+    header = struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0)
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(row * size))
+        + chunk(b"IEND", b"")
     )
     return path
 
@@ -510,6 +533,14 @@ def test_cover_seeds_the_palette(tmp_path, registered):
 
     assert lum(pal.bg) < 0.25 < 0.6 < lum(pal.fg)
     assert len({pal.low, pal.mid, pal.high}) == 3
+
+    # the cover's most saturated colour is its orange: ``low`` takes that hue
+    import colorsys
+
+    def hue(h):
+        return colorsys.rgb_to_hsv(*(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)))[0]
+
+    assert abs(hue(pal.low) - hue("#ff7f2a")) < 0.05
 
     # and through the pipeline: the render records where its palette came from
     from muvid.subgenres import render_subgenre
