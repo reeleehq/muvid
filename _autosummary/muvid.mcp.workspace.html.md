@@ -1,12 +1,12 @@
 # muvid.mcp.workspace
 
-Per-user output bucket for the muvid `music-visualizer` MCP genre.
+Per-user output bucket for the muvid `music_visualizer` MCP genre.
 
 A remote MCP connector is stateless and multi-user, so each caller must be isolated
 and address work by `project_id` (never a path). The visualizer is itself stateless
 — a render is a pure function of (audio, cover, visual) — so a “project” here is just a
 **lightweight bucket** where a caller’s renders land, not a full nw/muvid project (no
-graph, no asset store). That keeps the `music-visualizer` genre the cheapest possible
+graph, no asset store). That keeps the `music_visualizer` genre the cheapest possible
 2nd genre (thorwhalen/muvid#3); a richer per-user asset library (content-addressed
 uploads shared across genres) is a deliberate follow-up.
 

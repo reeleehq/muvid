@@ -140,12 +140,12 @@
 <div id="content" role="main">
 <section id="module-muvid.mcp.workspace">
 <span id="muvid-mcp-workspace"></span><h1>muvid.mcp.workspace<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#module-muvid.mcp.workspace">¶</a></h1>
-<p>Per-user output bucket for the muvid <code class="docutils literal notranslate"><span class="pre">music-visualizer</span></code> MCP genre.</p>
+<p>Per-user output bucket for the muvid <code class="docutils literal notranslate"><span class="pre">music_visualizer</span></code> MCP genre.</p>
 <p>A remote MCP connector is stateless and multi-user, so each caller must be isolated
 and address work by <code class="docutils literal notranslate"><span class="pre">project_id</span></code> (never a path). The visualizer is itself stateless
 — a render is a pure function of (audio, cover, visual) — so a “project” here is just a
 <strong>lightweight bucket</strong> where a caller’s renders land, not a full nw/muvid project (no
-graph, no asset store). That keeps the <code class="docutils literal notranslate"><span class="pre">music-visualizer</span></code> genre the cheapest possible
+graph, no asset store). That keeps the <code class="docutils literal notranslate"><span class="pre">music_visualizer</span></code> genre the cheapest possible
 2nd genre (thorwhalen/muvid#3); a richer per-user asset library (content-addressed
 uploads shared across genres) is a deliberate follow-up.</p>
 <p>Layout (default root <code class="docutils literal notranslate"><span class="pre">~/.local/share/muvid</span></code>; override via <code class="docutils literal notranslate"><span class="pre">MUVID_DATA_HOME</span></code>):</p>
@@ -429,7 +429,7 @@ subgenre that has since been uninstalled is still listed and downloadable.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=04553970"></script>
+<script src="../_static/documentation_options.js?v=33adb31a"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -68,11 +68,11 @@
 - [muvid.lyricvid.spec](_autosummary/muvid.lyricvid.spec.html.md): The treatment spec — what a director (human or model) decides, as data.
 - [muvid.lyricvid.timed_text](_autosummary/muvid.lyricvid.timed_text.html.md): The timed text tree — song → sections → lines → words, with measured times.
 - [muvid.lyricvid.tools](_autosummary/muvid.lyricvid.tools.html.md): The SSOT verbs for the lyric-video subgenre.
-- [muvid.mcp](_autosummary/muvid.mcp.html.md): muvid MCP server — the &#96;music-visualizer&#96; tool surface for a remote connector.
+- [muvid.mcp](_autosummary/muvid.mcp.html.md): muvid MCP server — the &#96;music_visualizer&#96; tool surface for a remote connector.
 - [muvid.mcp.footage_tools](_autosummary/muvid.mcp.footage_tools.html.md): MCP tools for the footage-aligned &#96;music_video&#96; genre (thorwhalen/reelee#229).
 - [muvid.mcp.identity](_autosummary/muvid.mcp.identity.html.md): Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed.
 - [muvid.mcp.scoring_tools](_autosummary/muvid.mcp.scoring_tools.html.md): MCP tools for the footage SCORING layer (thorwhalen/muvid#13).
-- [muvid.mcp.workspace](_autosummary/muvid.mcp.workspace.html.md): Per-user output bucket for the muvid &#96;music-visualizer&#96; MCP genre.
+- [muvid.mcp.workspace](_autosummary/muvid.mcp.workspace.html.md): Per-user output bucket for the muvid &#96;music_visualizer&#96; MCP genre.
 - [muvid.montage](_autosummary/muvid.montage.html.md): Montage — a beat-cut video from a pool of stills and clips (subgenre plugin).
 - [muvid.montage.analysis](_autosummary/muvid.montage.analysis.html.md): Measure the song and the pool: beat grid, bars, sections, and media strength.
 - [muvid.montage.manifest](_autosummary/muvid.montage.manifest.html.md): The montage subgenre’s manifest — a beat-cut montage from a pool of stills and clips.
@@ -102,7 +102,7 @@
 - [muvid.visualize.video](_autosummary/muvid.visualize.video.html.md): Render an audio file into a video: pick a visual, mux, normalize, encode.
 - [muvid.visualize.visuals](_autosummary/muvid.visualize.visuals.html.md): Visual strategies: how the &#42;picture&#42; of an audio-driven video is produced.
 - [For AI agents](ai-agents.html.md): &#96;muvid&#96; ships artifacts for coding agents alongside its code. This page lists
-- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-10-26 21:49 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
+- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-10-26 22:37 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
 
 ## Optional
 

@@ -66,11 +66,11 @@
 - [muvid.lyricvid.spec](muvid.lyricvid.spec.html.md): The treatment spec — what a director (human or model) decides, as data.
 - [muvid.lyricvid.timed_text](muvid.lyricvid.timed_text.html.md): The timed text tree — song → sections → lines → words, with measured times.
 - [muvid.lyricvid.tools](muvid.lyricvid.tools.html.md): The SSOT verbs for the lyric-video subgenre.
-- [muvid.mcp](muvid.mcp.html.md): muvid MCP server — the &#96;music-visualizer&#96; tool surface for a remote connector.
+- [muvid.mcp](muvid.mcp.html.md): muvid MCP server — the &#96;music_visualizer&#96; tool surface for a remote connector.
 - [muvid.mcp.footage_tools](muvid.mcp.footage_tools.html.md): MCP tools for the footage-aligned &#96;music_video&#96; genre (thorwhalen/reelee#229).
 - [muvid.mcp.identity](muvid.mcp.identity.html.md): Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed.
 - [muvid.mcp.scoring_tools](muvid.mcp.scoring_tools.html.md): MCP tools for the footage SCORING layer (thorwhalen/muvid#13).
-- [muvid.mcp.workspace](muvid.mcp.workspace.html.md): Per-user output bucket for the muvid &#96;music-visualizer&#96; MCP genre.
+- [muvid.mcp.workspace](muvid.mcp.workspace.html.md): Per-user output bucket for the muvid &#96;music_visualizer&#96; MCP genre.
 - [muvid.montage](muvid.montage.html.md): Montage — a beat-cut video from a pool of stills and clips (subgenre plugin).
 - [muvid.montage.analysis](muvid.montage.analysis.html.md): Measure the song and the pool: beat grid, bars, sections, and media strength.
 - [muvid.montage.manifest](muvid.montage.manifest.html.md): The montage subgenre’s manifest — a beat-cut montage from a pool of stills and clips.

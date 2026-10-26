@@ -1,6 +1,6 @@
 # muvid.mcp
 
-muvid MCP server — the `music-visualizer` tool surface for a remote connector.
+muvid MCP server — the `music_visualizer` tool surface for a remote connector.
 
 Optional subpackage (extra `muvid[mcp]`: `fastmcp` + `py2mcp` + `nw`).
 `import muvid` never imports this. The connector references the tools by name via
@@ -80,7 +80,7 @@ Open an existing visualizer bucket (raises if it doesn’t exist).
 * **Return type:**
   [`VisualizerProject`](muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerProject)
 
-### muvid.mcp.build_server(, name='muvid', instructions="muvid music-visualizer — turn a song into a 16:9, YouTube-ready visualizer video (+ thumbnail), deterministically and for free (ffmpeg only, no AI, no keys).\\n\\nWorkflow:\\n1. Create a project: create_project(genre='music-visualizer', template='<look>'). See list_visuals() for the looks (still / cqt / bars / spectrum / waves / scope) or use 'auto'.\\n2. Render: render_visualizer(project_id, audio='<https URL to the song>', cover='<https URL to the cover>', visual='<look>'). Audio/cover are direct media URLs, fetched server-side; the 'still' look needs a cover.\\n3. Inspect: project_status(project_id) lists your renders (paths + the platform-check verdict).\\n\\nAll tools are free. Renders are stored server-side in your project bucket.", auth=None, middleware=None)
+### muvid.mcp.build_server(, name='muvid', instructions="muvid music_visualizer — turn a song into a 16:9, YouTube-ready visualizer video (+ thumbnail), deterministically and for free (ffmpeg only, no AI, no keys).\\n\\nWorkflow:\\n1. Create a project: create_project(genre='music_visualizer', template='<look>'). See list_visuals() for the looks (still / cqt / bars / spectrum / waves / scope) or use 'auto'.\\n2. Render: render_visualizer(project_id, audio='<https URL to the song>', cover='<https URL to the cover>', visual='<look>'). Audio/cover are direct media URLs, fetched server-side; the 'still' look needs a cover.\\n3. Inspect: project_status(project_id) lists your renders (paths + the platform-check verdict).\\n\\nAll tools are free. Renders are stored server-side in your project bucket.", auth=None, middleware=None)
 
 Assemble a standalone FastMCP server exposing muvid’s tools (stdio dev/testing).
 
@@ -140,4 +140,4 @@ Bind the caller identity for the duration of the block (local/stdio/testing).
 |-------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
 | [`identity`](muvid.mcp.identity.html.md#module-muvid.mcp.identity)             | Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed. |
 | [`scoring_tools`](muvid.mcp.scoring_tools.html.md#module-muvid.mcp.scoring_tools)   | MCP tools for the footage SCORING layer (thorwhalen/muvid#13).                        |
-| [`workspace`](muvid.mcp.workspace.html.md#module-muvid.mcp.workspace)           | Per-user output bucket for the muvid `music-visualizer` MCP genre.                    |
+| [`workspace`](muvid.mcp.workspace.html.md#module-muvid.mcp.workspace)           | Per-user output bucket for the muvid `music_visualizer` MCP genre.                    |

@@ -261,7 +261,7 @@ tags. Returns the path to the lyrics markdown.
 | [`importing`](muvid.importing.html.md#module-muvid.importing)       | Bring a finished production into a host's projects dir as a `muvid.Project`.         |
 | [`lyrics`](muvid.lyrics.html.md#module-muvid.lyrics)             | Lyrics — transcription and markdown round-trip.                                      |
 | [`lyricvid`](muvid.lyricvid.html.md#module-muvid.lyricvid)         | Lyric video (kinetic typography) — muvid's first subgenre plugin.                    |
-| [`mcp`](muvid.mcp.html.md#module-muvid.mcp)                   | muvid MCP server — the `music-visualizer` tool surface for a remote connector.       |
+| [`mcp`](muvid.mcp.html.md#module-muvid.mcp)                   | muvid MCP server — the `music_visualizer` tool surface for a remote connector.       |
 | [`montage`](muvid.montage.html.md#module-muvid.montage)           | Montage — a beat-cut video from a pool of stills and clips (subgenre plugin).        |
 | [`paths`](muvid.paths.html.md#module-muvid.paths)               | The ONE place muvid decides where its data lives.                                    |
 | [`project`](muvid.project.html.md#module-muvid.project)           | Project facade — folder layout, persistence, and a small `dol`-backed mall.          |

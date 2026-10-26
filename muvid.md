@@ -1,4 +1,4 @@
-> built 2026-10-26 21:49 UTC from 3d7c5ec (main) · muvid 0.0.101. Details: build_info.json
+> built 2026-10-26 22:37 UTC from 82dda99 (main) · muvid 0.0.102. Details: build_info.json
 
 # index.html.md
 
@@ -492,7 +492,7 @@ muvid/
     service.py        the footage operations (the SSOT every surface derives from)
     scoring/          the score tensor: grid, frames, quality, motionbeat, segment, lipsync
     lacing_bridge.py  project ⇄ lacing standoff annotations (the editor document)
-  genre.py            registers the `music-visualizer` nw genre (and imports the next)
+  genre.py            registers the `music_visualizer` nw genre (and imports the next)
   genre_music_video.py  registers the `music_video` footage genre and its operations
   production.py       muvid.Project — a production a host places and serves
   catalog.py          registers hosted media in the host's artifact catalog
@@ -8755,7 +8755,7 @@ tags. Returns the path to the lyrics markdown.
 | [`importing`](_autosummary/muvid.importing.html.md#module-muvid.importing)       | Bring a finished production into a host's projects dir as a `muvid.Project`.         |
 | [`lyrics`](_autosummary/muvid.lyrics.html.md#module-muvid.lyrics)             | Lyrics — transcription and markdown round-trip.                                      |
 | [`lyricvid`](_autosummary/muvid.lyricvid.html.md#module-muvid.lyricvid)         | Lyric video (kinetic typography) — muvid's first subgenre plugin.                    |
-| [`mcp`](_autosummary/muvid.mcp.html.md#module-muvid.mcp)                   | muvid MCP server — the `music-visualizer` tool surface for a remote connector.       |
+| [`mcp`](_autosummary/muvid.mcp.html.md#module-muvid.mcp)                   | muvid MCP server — the `music_visualizer` tool surface for a remote connector.       |
 | [`montage`](_autosummary/muvid.montage.html.md#module-muvid.montage)           | Montage — a beat-cut video from a pool of stills and clips (subgenre plugin).        |
 | [`paths`](_autosummary/muvid.paths.html.md#module-muvid.paths)               | The ONE place muvid decides where its data lives.                                    |
 | [`project`](_autosummary/muvid.project.html.md#module-muvid.project)           | Project facade — folder layout, persistence, and a small `dol`-backed mall.          |
@@ -12908,7 +12908,7 @@ video uses. Replaces any previous song. Duration/size-capped.
 
 # muvid.mcp
 
-muvid MCP server — the `music-visualizer` tool surface for a remote connector.
+muvid MCP server — the `music_visualizer` tool surface for a remote connector.
 
 Optional subpackage (extra `muvid[mcp]`: `fastmcp` + `py2mcp` + `nw`).
 `import muvid` never imports this. The connector references the tools by name via
@@ -12988,7 +12988,7 @@ Open an existing visualizer bucket (raises if it doesn’t exist).
 * **Return type:**
   [`VisualizerProject`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerProject)
 
-### muvid.mcp.build_server(, name='muvid', instructions="muvid music-visualizer — turn a song into a 16:9, YouTube-ready visualizer video (+ thumbnail), deterministically and for free (ffmpeg only, no AI, no keys).\\n\\nWorkflow:\\n1. Create a project: create_project(genre='music-visualizer', template='<look>'). See list_visuals() for the looks (still / cqt / bars / spectrum / waves / scope) or use 'auto'.\\n2. Render: render_visualizer(project_id, audio='<https URL to the song>', cover='<https URL to the cover>', visual='<look>'). Audio/cover are direct media URLs, fetched server-side; the 'still' look needs a cover.\\n3. Inspect: project_status(project_id) lists your renders (paths + the platform-check verdict).\\n\\nAll tools are free. Renders are stored server-side in your project bucket.", auth=None, middleware=None)
+### muvid.mcp.build_server(, name='muvid', instructions="muvid music_visualizer — turn a song into a 16:9, YouTube-ready visualizer video (+ thumbnail), deterministically and for free (ffmpeg only, no AI, no keys).\\n\\nWorkflow:\\n1. Create a project: create_project(genre='music_visualizer', template='<look>'). See list_visuals() for the looks (still / cqt / bars / spectrum / waves / scope) or use 'auto'.\\n2. Render: render_visualizer(project_id, audio='<https URL to the song>', cover='<https URL to the cover>', visual='<look>'). Audio/cover are direct media URLs, fetched server-side; the 'still' look needs a cover.\\n3. Inspect: project_status(project_id) lists your renders (paths + the platform-check verdict).\\n\\nAll tools are free. Renders are stored server-side in your project bucket.", auth=None, middleware=None)
 
 Assemble a standalone FastMCP server exposing muvid’s tools (stdio dev/testing).
 
@@ -13048,7 +13048,7 @@ Bind the caller identity for the duration of the block (local/stdio/testing).
 |-------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
 | [`identity`](_autosummary/muvid.mcp.identity.html.md#module-muvid.mcp.identity)             | Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed. |
 | [`scoring_tools`](_autosummary/muvid.mcp.scoring_tools.html.md#module-muvid.mcp.scoring_tools)   | MCP tools for the footage SCORING layer (thorwhalen/muvid#13).                        |
-| [`workspace`](_autosummary/muvid.mcp.workspace.html.md#module-muvid.mcp.workspace)           | Per-user output bucket for the muvid `music-visualizer` MCP genre.                    |
+| [`workspace`](_autosummary/muvid.mcp.workspace.html.md#module-muvid.mcp.workspace)           | Per-user output bucket for the muvid `music_visualizer` MCP genre.                    |
 
 
 # _autosummary/muvid.mcp.identity.html.md
@@ -13172,13 +13172,13 @@ off-prod).
 
 # muvid.mcp.workspace
 
-Per-user output bucket for the muvid `music-visualizer` MCP genre.
+Per-user output bucket for the muvid `music_visualizer` MCP genre.
 
 A remote MCP connector is stateless and multi-user, so each caller must be isolated
 and address work by `project_id` (never a path). The visualizer is itself stateless
 — a render is a pure function of (audio, cover, visual) — so a “project” here is just a
 **lightweight bucket** where a caller’s renders land, not a full nw/muvid project (no
-graph, no asset store). That keeps the `music-visualizer` genre the cheapest possible
+graph, no asset store). That keeps the `music_visualizer` genre the cheapest possible
 2nd genre (thorwhalen/muvid#3); a richer per-user asset library (content-addressed
 uploads shared across genres) is a deliberate follow-up.
 
@@ -17866,18 +17866,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-26 21:49 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/3d7c5ecdcea1fbc2335199602579e399b9a8edfd"><code>3d7c5ec</code></a> on branch <code>main</code>, for **muvid 0.0.101** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-26 22:37 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/82dda9990889568ac59f0389ab90fdb7204a198f"><code>82dda99</code></a> on branch <code>main</code>, for **muvid 0.0.102** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.102) is ahead of the latest release on PyPI (0.0.101): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/3d7c5ecdcea1fbc2335199602579e399b9a8edfd"><code>3d7c5ecdcea1fbc2335199602579e399b9a8edfd</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/82dda9990889568ac59f0389ab90fdb7204a198f"><code>82dda9990889568ac59f0389ab90fdb7204a198f</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.101</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.102</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17886,9 +17888,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40406438929">40406438929</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40412850941">40412850941</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>40f093b213ceacab5a8d850dfff7a9684a7d139a</code> (in the history of the built commit) |
+| Event commit | <code>eaa73a617fd26a47fca9cc89d075b1dd0921ff93</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17913,13 +17915,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.101/">0.0.101</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.101/">0.0.101</a>, older than the documented version (0.0.102).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 3d7c5ecdcea1fbc2335199602579e399b9a8edfd
+git checkout 82dda9990889568ac59f0389ab90fdb7204a198f
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
