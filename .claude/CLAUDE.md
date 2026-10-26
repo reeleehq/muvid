@@ -825,6 +825,7 @@ hole the size of the rest of the document.
                                               .../song/song.<ext>
                                               .../clips/{clip_id}.<ext>
                                               .../alignments.json
+                                              .../beat_grid_declared.json  (a beat grid a person set, keyed on song_hash; muvid#123)
                                               .../scores/                (ScoreTensor .npz + manifest)
                                               .../renders/{render_id}/   (final.mp4 + meta.json)
                                               .../edits/{edit_id}.json   (a named edit: edl + name + how_made + created/modified [+ span])
