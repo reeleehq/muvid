@@ -22,6 +22,9 @@ Two kinds of manifest (paths absolute, `~`-expanded, or relative to the manifest
 ```default
 {"kind": "footage", "id": "que_calor", "title": "Que Calor", "canvas": "landscape",
  "song": {"path": "source/master.m4a"}              # or {"path": x.mp4, "extract_audio": true}
+ "beat_grid": {"tempo_bpm": 126.905, "first_beat_s": 0.52},  # a DECLARED grid (optional;
+                                                     # or {"beats": [...]}, + beats_per_bar,
+                                                     # first_bar_beat)
  "clips": [{"id": "c01", "path": "footage/01.mp4", "name": "Camera A",
             "offset_s": 28.854}],                    # offset_s = a DECLARED offset
  "edits": [{"id": "v1", "name": "V1", "edl_path": "work/edl_v1d.json",

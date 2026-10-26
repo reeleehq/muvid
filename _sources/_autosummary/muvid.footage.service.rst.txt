@@ -24,6 +24,8 @@ muvid.footage.service
       set_has_song
       timeline
       beat_grid
+      set_beat_grid
+      clear_beat_grid
       peaks
       beat_signals
       filmstrips

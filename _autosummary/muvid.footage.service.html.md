@@ -59,6 +59,8 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`set_has_song`](#muvid.footage.service.set_has_song)(fp, \*, clip_id, has_song)          | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                    |
 | [`timeline`](#muvid.footage.service.timeline)(fp)                                     | Which videos cover which spans of the song (overlaps shown), from the saved alignment — the map for choosing what to cut to.                                                                                                                                            |
 | [`beat_grid`](#muvid.footage.service.beat_grid)(fp)                                    | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                   |
+| [`set_beat_grid`](#muvid.footage.service.set_beat_grid)(fp, \*[, tempo_bpm, ...])          | Tell it where the beats are, when the automatic estimate is wrong for this song.                                                                                                                                                                                        |
+| [`clear_beat_grid`](#muvid.footage.service.clear_beat_grid)(fp)                              | Forget the beat grid I set, so the beat grid is estimated from the song again.                                                                                                                                                                                          |
 | [`peaks`](#muvid.footage.service.peaks)(fp, \*[, n])                               | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                |
 | [`beat_signals`](#muvid.footage.service.beat_signals)(fp, \*[, source, max_points])       | Where the beat is in the song or in one video — CONTINUOUS signals, to look at, threshold and bend, not only beat instants.                                                                                                                                             |
 | [`filmstrips`](#muvid.footage.service.filmstrips)(fp)                                   | Every video's filmstrip — thumbnails to draw each camera's lane.                                                                                                                                                                                                        |
@@ -263,7 +265,10 @@ looking at the footage.
 Computed once on the song (never per clip — clips map to it through their offsets)
 and cached under the project keyed on the song’s content hash, so the second call is
 a file read; a project that has been scored is served from that run instead.
-`source` says which (`computed` | `cache` | `scores`).
+`source` says which (`computed` | `cache` | `scores`) — or `declared`: a
+grid set by hand with `set_beat_grid`, which is returned instead of any estimate
+and is never overwritten by one (estimators can be wrong on a song; a person who
+fitted it is not guessing).
 
 Needs the `scoring` extra (librosa); without it the refusal names the install.
 Needs a song; no alignment is required.
@@ -304,6 +309,16 @@ measuring again). Needs the `scoring` extra.
 Returns `{source, kind: audio|video, duration_s, tempo_bpm, beats, signals:
 {name: {name, label, domain, t0, hop_s, n, min, max, p99, values}}}` — `beats`
 and `tempo_bpm` are the soundtrack’s (`[]` / `None` without one).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.service.clear_beat_grid(fp)
+
+Forget the beat grid I set, so the beat grid is estimated from the song again.
+
+Only a grid set by hand can be forgotten; with none set it is refused. (A grid set for
+another song is forgotten too: it is still on file.)
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -748,6 +763,27 @@ margin you read is the one the edit will see (default: the strategy’s defaults
 the reply’s `weights` says which applied. `raw` also returns each metric’s
 un-normalised values (`null` where not measured), so a tooltip can show the real
 number beside its score.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.service.set_beat_grid(fp, , tempo_bpm=None, first_beat_s=None, beats=None, beats_per_bar=4, first_bar_beat=0)
+
+Tell it where the beats are, when the automatic estimate is wrong for this song.
+
+Give EITHER `tempo_bpm` (with `first_beat_s`, default 0: a steady grid, a beat every
+`60 / tempo_bpm` seconds to the end of the song) OR an explicit list of `beats`
+(seconds, ascending) for a song that drifts. `beats_per_bar` (default 4) and
+`first_bar_beat` (which beat, counting from 0, starts the first bar — the beats before
+it are a pickup, bar 0) number the bars.
+
+It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
+re-estimating never replaces it (`clear_beat_grid` forgets it). The cut-to-the-music
+planner, `explain_edit`, `fit_to_beat` and the `weighted` strategy’s beat snap use
+it. **Footage scores keep the estimate:** their beat features (`motion_beat_*`) are
+measured on the estimator’s grid, also in a run made after this. A grid belongs to the
+song it was set for: with another song set it does not apply (and comes back if that
+song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

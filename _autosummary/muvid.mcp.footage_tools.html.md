@@ -35,6 +35,7 @@ alignment, exactly as `set_song` does.
 | [`assemble_music_video`](#muvid.mcp.footage_tools.assemble_music_video)(project_id, \*[, ...])        | Assemble the music video — auto (a selection `strategy`) or an explicit `edl`.                                                                                                                                                                                          |
 | [`beat_grid`](#muvid.mcp.footage_tools.beat_grid)(project_id)                              | The song's beat grid — tempo and beat instants on the song timeline — WITHOUT running the scoring job.                                                                                                                                                                  |
 | [`footage_beat_signals`](#muvid.mcp.footage_tools.footage_beat_signals)(project_id, \*[, ...])        | Where the beat is in the song or in one video — CONTINUOUS signals, to look at, threshold and bend, not only beat instants.                                                                                                                                             |
+| [`footage_clear_beat_grid`](#muvid.mcp.footage_tools.footage_clear_beat_grid)(project_id)                | Forget the beat grid I set, so the beat grid is estimated from the song again.                                                                                                                                                                                          |
 | [`footage_clear_offset`](#muvid.mcp.footage_tools.footage_clear_offset)(project_id, \*, clip_id)      | Forget where I placed this video: remove a hand-declared offset, so the next `align_footage` measures the clip by its audio instead.                                                                                                                                    |
 | [`footage_delete_edit`](#muvid.mcp.footage_tools.footage_delete_edit)(project_id, \*, edit_id)       | Delete a saved edit.                                                                                                                                                                                                                                                    |
 | [`footage_editor_document`](#muvid.mcp.footage_tools.footage_editor_document)(project_id[, edit_id])     | The project as lacing-native standoff annotations, for a multitrack editor.                                                                                                                                                                                             |
@@ -54,6 +55,7 @@ alignment, exactly as `set_song` does.
 | [`footage_renders`](#muvid.mcp.footage_tools.footage_renders)(project_id)                        | The finished videos, newest first: each one's `render_id`, speakable `ref`, the `edit_id` it was made from, its `label`, canvas, `ok`, the number of `warnings`, and `artifact_id` to play it by when the project is hosted.                                            |
 | [`footage_replace_edit`](#muvid.mcp.footage_tools.footage_replace_edit)(project_id, \*, edit_id, edl) | Replace a saved edit's whole cut list — the power tool for rewriting an edit at once.                                                                                                                                                                                   |
 | [`footage_save_edit`](#muvid.mcp.footage_tools.footage_save_edit)(project_id, \*, edl[, ...])      | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
+| [`footage_set_beat_grid`](#muvid.mcp.footage_tools.footage_set_beat_grid)(project_id, \*[, ...])       | Tell it where the beats are, when the automatic estimate is wrong for this song.                                                                                                                                                                                        |
 | [`footage_set_cut`](#muvid.mcp.footage_tools.footage_set_cut)(project_id, \*, edit_id, index)    | Change one cut of a saved edit (`index` is its position in `footage_get_edit`'s edl).                                                                                                                                                                                   |
 | [`footage_set_has_song`](#muvid.mcp.footage_tools.footage_set_has_song)(project_id, \*, clip_id, ...) | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                    |
 | [`footage_set_offset`](#muvid.mcp.footage_tools.footage_set_offset)(project_id, \*, clip_id, ...)   | Place one video on the song BY HAND: the song time at which the video's own first frame plays (negative = the video starts before the song does).                                                                                                                       |
@@ -256,7 +258,9 @@ invariant: clips map to it through their offsets, never the other way round),
 cached under the project as `scores/beat_grid.json` keyed on `song_hash` so the
 second call is a file read; a project that has already been scored is served from
 that run’s manifest instead. `source` says which (`computed` | `cache` |
-`scores`).
+`scores`) — or `declared`: a grid set by hand with `footage_set_beat_grid`,
+returned instead of any estimate, with its `downbeats`, `beats_per_bar` and
+`bar_of_beat`.
 
 Needs the `scoring` extra (`mixing[beats]`, i.e. librosa); without it the reply
 is a clean error naming the install, never a traceback. Needs a song
@@ -296,6 +300,16 @@ measuring again). Needs the `scoring` extra.
 Returns `{source, kind: audio|video, duration_s, tempo_bpm, beats, signals:
 {name: {name, label, domain, t0, hop_s, n, min, max, p99, values}}}` — `beats`
 and `tempo_bpm` are the soundtrack’s (`[]` / `None` without one).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.mcp.footage_tools.footage_clear_beat_grid(project_id)
+
+Forget the beat grid I set, so the beat grid is estimated from the song again.
+
+Only a grid set by hand can be forgotten; with none set it is refused. (A grid set for
+another song is forgotten too: it is still on file.)
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -540,6 +554,27 @@ and refused with the reason if it does not hold. `edit_id` fixes the id (an
 existing one is refused — use `footage_replace_edit`). `span` (`[start_s, end_s]`)
 makes the edit cover only that part of the song — its render is that long, the song
 cut to it; default the whole song. Returns the saved edit.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.mcp.footage_tools.footage_set_beat_grid(project_id, , tempo_bpm=None, first_beat_s=None, beats=None, beats_per_bar=4, first_bar_beat=0)
+
+Tell it where the beats are, when the automatic estimate is wrong for this song.
+
+Give EITHER `tempo_bpm` (with `first_beat_s`, default 0: a steady grid, a beat every
+`60 / tempo_bpm` seconds to the end of the song) OR an explicit list of `beats`
+(seconds, ascending) for a song that drifts. `beats_per_bar` (default 4) and
+`first_bar_beat` (which beat, counting from 0, starts the first bar — the beats before
+it are a pickup, bar 0) number the bars.
+
+It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
+re-estimating never replaces it (`footage_clear_beat_grid` forgets it). The cut-to-the-music
+planner, `footage_explain_edit`, `footage_fit_to_beat` and the `weighted` strategy’s beat snap use
+it. **Footage scores keep the estimate:** their beat features (`motion_beat_*`) are
+measured on the estimator’s grid, also in a run made after this. A grid belongs to the
+song it was set for: with another song set it does not apply (and comes back if that
+song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

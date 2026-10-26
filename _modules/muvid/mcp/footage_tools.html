@@ -870,195 +870,200 @@
 </span><span id="line-651"><span class="sd">    cached under the project as ``scores/beat_grid.json`` keyed on ``song_hash`` so the</span>
 </span><span id="line-652"><span class="sd">    second call is a file read; a project that has already been scored is served from</span>
 </span><span id="line-653"><span class="sd">    that run's manifest instead. ``source`` says which (``computed`` | ``cache`` |</span>
-</span><span id="line-654"><span class="sd">    ``scores``).</span>
-</span><span id="line-655">
-</span><span id="line-656"><span class="sd">    Needs the ``scoring`` extra (``mixing[beats]``, i.e. librosa); without it the reply</span>
-</span><span id="line-657"><span class="sd">    is a clean error naming the install, never a traceback. Needs a song</span>
-</span><span id="line-658"><span class="sd">    (``set_song``); no alignment is required.</span>
-</span><span id="line-659">
-</span><span id="line-660"><span class="sd">    Returns ``tempo_bpm``, ``beats`` (seconds, ascending), ``n_beats``,</span>
-</span><span id="line-661"><span class="sd">    ``song_duration`` (so a caller can close the last bar) and ``source``.</span>
-</span><span id="line-662"><span class="sd">    ``downbeats`` is present only when the estimator measured any — the librosa</span>
-</span><span id="line-663"><span class="sd">    backend has no downbeat tracker, and an empty list would read as "this song has</span>
-</span><span id="line-664"><span class="sd">    no downbeats", a measurement nobody made (gate, don't zero).</span>
-</span><span id="line-665"><span class="sd">    """</span>
-</span><span id="line-666">    <span class="n">out</span> <span class="o">=</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">beat_grid</span><span class="p">)</span>
-</span><span id="line-667">    <span class="c1"># The connector's reply is a pinned contract: ``downbeats`` present only when the</span>
-</span><span id="line-668">    <span class="c1"># estimator MEASURED them (tests/test_beat_grid_tool.py). The derived bar</span>
-</span><span id="line-669">    <span class="c1"># numbering the studio's ``beat_grid`` op adds is left off this reply until the</span>
-</span><span id="line-670">    <span class="c1"># connector's contract is changed on purpose.</span>
-</span><span id="line-671">    <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"downbeats_source"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"measured"</span><span class="p">:</span>
-</span><span id="line-672">        <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"downbeats"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-673">    <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"beats_per_bar"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-674">    <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"bar_of_beat"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-675">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-654"><span class="sd">    ``scores``) — or ``declared``: a grid set by hand with ``footage_set_beat_grid``,</span>
+</span><span id="line-655"><span class="sd">    returned instead of any estimate, with its ``downbeats``, ``beats_per_bar`` and</span>
+</span><span id="line-656"><span class="sd">    ``bar_of_beat``.</span>
+</span><span id="line-657">
+</span><span id="line-658"><span class="sd">    Needs the ``scoring`` extra (``mixing[beats]``, i.e. librosa); without it the reply</span>
+</span><span id="line-659"><span class="sd">    is a clean error naming the install, never a traceback. Needs a song</span>
+</span><span id="line-660"><span class="sd">    (``set_song``); no alignment is required.</span>
+</span><span id="line-661">
+</span><span id="line-662"><span class="sd">    Returns ``tempo_bpm``, ``beats`` (seconds, ascending), ``n_beats``,</span>
+</span><span id="line-663"><span class="sd">    ``song_duration`` (so a caller can close the last bar) and ``source``.</span>
+</span><span id="line-664"><span class="sd">    ``downbeats`` is present only when the estimator measured any — the librosa</span>
+</span><span id="line-665"><span class="sd">    backend has no downbeat tracker, and an empty list would read as "this song has</span>
+</span><span id="line-666"><span class="sd">    no downbeats", a measurement nobody made (gate, don't zero).</span>
+</span><span id="line-667"><span class="sd">    """</span>
+</span><span id="line-668">    <span class="n">out</span> <span class="o">=</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">beat_grid</span><span class="p">)</span>
+</span><span id="line-669">    <span class="c1"># The connector's reply is a pinned contract: ``downbeats`` present only when the</span>
+</span><span id="line-670">    <span class="c1"># estimator MEASURED them (tests/test_beat_grid_tool.py). The derived bar</span>
+</span><span id="line-671">    <span class="c1"># numbering the studio's ``beat_grid`` op adds is left off this reply until the</span>
+</span><span id="line-672">    <span class="c1"># connector's contract is changed on purpose.</span>
+</span><span id="line-673">    <span class="c1"># A grid a person DECLARED (``set_beat_grid``) is not an estimate: its bars were</span>
+</span><span id="line-674">    <span class="c1"># stated, so they stay.</span>
+</span><span id="line-675">    <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"source"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"declared"</span><span class="p">:</span>
+</span><span id="line-676">        <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"downbeats_source"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"measured"</span><span class="p">:</span>
+</span><span id="line-677">            <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"downbeats"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-678">        <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"beats_per_bar"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-679">        <span class="n">out</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"bar_of_beat"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-680">    <span class="k">return</span> <span class="n">out</span></div>
 
-</span><span id="line-676">
-</span><span id="line-677">
-</span><span id="line-678"><span class="k">def</span><span class="w"> </span><span class="nf">_alignment_covers_clips</span><span class="p">(</span><span class="n">proj</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="line-679"><span class="w">    </span><span class="sd">"""Whether a persisted alignment exists AND has a record for every current clip.</span>
-</span><span id="line-680">
-</span><span id="line-681"><span class="sd">    "Aligned" is a claim about the clip SET, not about a file: a clip added after</span>
-</span><span id="line-682"><span class="sd">    ``align_footage`` has no offset, the auto edit would silently pass it over, and the</span>
-</span><span id="line-683"><span class="sd">    file on disk would still say "aligned". Reading it this way makes the listing's next</span>
-</span><span id="line-684"><span class="sd">    action honest — false means "run align_footage", whichever way it became false.</span>
-</span><span id="line-685"><span class="sd">    """</span>
-</span><span id="line-686">    <span class="c1"># photos have no sound to listen to: they are never aligned, and need not be</span>
-</span><span id="line-687">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">c</span><span class="p">[</span><span class="s2">"clip_id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">proj</span><span class="o">.</span><span class="n">list_clips</span><span class="p">()</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"kind"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"still"</span><span class="p">}</span>
-</span><span id="line-688">    <span class="n">aligned_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="o">.</span><span class="n">clip_id</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">proj</span><span class="o">.</span><span class="n">load_alignments</span><span class="p">()}</span>
-</span><span id="line-689">    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">clip_ids</span><span class="p">)</span> <span class="ow">and</span> <span class="n">clip_ids</span> <span class="o">&lt;=</span> <span class="n">aligned_ids</span>
-</span><span id="line-690">
-</span><span id="line-691">
+</span><span id="line-681">
+</span><span id="line-682">
+</span><span id="line-683"><span class="k">def</span><span class="w"> </span><span class="nf">_alignment_covers_clips</span><span class="p">(</span><span class="n">proj</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-684"><span class="w">    </span><span class="sd">"""Whether a persisted alignment exists AND has a record for every current clip.</span>
+</span><span id="line-685">
+</span><span id="line-686"><span class="sd">    "Aligned" is a claim about the clip SET, not about a file: a clip added after</span>
+</span><span id="line-687"><span class="sd">    ``align_footage`` has no offset, the auto edit would silently pass it over, and the</span>
+</span><span id="line-688"><span class="sd">    file on disk would still say "aligned". Reading it this way makes the listing's next</span>
+</span><span id="line-689"><span class="sd">    action honest — false means "run align_footage", whichever way it became false.</span>
+</span><span id="line-690"><span class="sd">    """</span>
+</span><span id="line-691">    <span class="c1"># photos have no sound to listen to: they are never aligned, and need not be</span>
+</span><span id="line-692">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">c</span><span class="p">[</span><span class="s2">"clip_id"</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">proj</span><span class="o">.</span><span class="n">list_clips</span><span class="p">()</span> <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"kind"</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">"still"</span><span class="p">}</span>
+</span><span id="line-693">    <span class="n">aligned_ids</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="o">.</span><span class="n">clip_id</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">proj</span><span class="o">.</span><span class="n">load_alignments</span><span class="p">()}</span>
+</span><span id="line-694">    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">clip_ids</span><span class="p">)</span> <span class="ow">and</span> <span class="n">clip_ids</span> <span class="o">&lt;=</span> <span class="n">aligned_ids</span>
+</span><span id="line-695">
+</span><span id="line-696">
 <div class="viewcode-block" id="list_music_video_projects">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.list_music_video_projects">[docs]</a>
-</span><span id="line-692"><span class="k">def</span><span class="w"> </span><span class="nf">list_music_video_projects</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-693"><span class="w">    </span><span class="sd">"""List YOUR music_video (footage) projects, newest-modified first. Free.</span>
-</span><span id="line-694">
-</span><span id="line-695"><span class="sd">    The way back to a lost ``project_id`` (muvid#22): ``list_projects`` spans both</span>
-</span><span id="line-696"><span class="sd">    muvid genres but says nothing about a footage project's progress, and every other</span>
-</span><span id="line-697"><span class="sd">    footage tool needs the id first. Each row carries where the project is in the</span>
-</span><span id="line-698"><span class="sd">    workflow — ``has_song``, ``n_clips``, ``aligned``, ``n_renders`` — so the next call</span>
-</span><span id="line-699"><span class="sd">    reads off the listing without a ``footage_status`` per project:</span>
-</span><span id="line-700">
-</span><span id="line-701"><span class="sd">    - ``aligned`` is true only when the persisted alignment covers every current clip.</span>
-</span><span id="line-702"><span class="sd">      An ``add_footage`` or ``remove_footage`` after ``align_footage`` makes it false</span>
-</span><span id="line-703"><span class="sd">      again until you re-align.</span>
-</span><span id="line-704"><span class="sd">    - ``n_renders`` counts what ``footage_status`` lists under ``renders``; ``0`` is a</span>
-</span><span id="line-705"><span class="sd">      positive answer ("no cut yet"), never an omitted project.</span>
-</span><span id="line-706">
-</span><span id="line-707"><span class="sd">    ``[]`` means you have no footage projects; a visualizer project is not one and</span>
-</span><span id="line-708"><span class="sd">    shows up in ``list_projects`` instead.</span>
-</span><span id="line-709"><span class="sd">    """</span>
-</span><span id="line-710">    <span class="n">ws</span> <span class="o">=</span> <span class="n">_workspace</span><span class="p">()</span>
-</span><span id="line-711">    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-712">    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">ws</span><span class="o">.</span><span class="n">list_projects</span><span class="p">():</span>
-</span><span id="line-713">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-714">            <span class="n">proj</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">"project_id"</span><span class="p">])</span>
-</span><span id="line-715">        <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-716">            <span class="k">continue</span>  <span class="c1"># vanished mid-scan — genuinely absent</span>
-</span><span id="line-717">        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-718">            <span class="p">{</span>
-</span><span id="line-719">                <span class="s2">"project_id"</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"project_id"</span><span class="p">],</span>
-</span><span id="line-720">                <span class="s2">"title"</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">r</span><span class="p">[</span><span class="s2">"project_id"</span><span class="p">],</span>
-</span><span id="line-721">                <span class="s2">"has_song"</span><span class="p">:</span> <span class="n">proj</span><span class="o">.</span><span class="n">has_song</span><span class="p">(),</span>
-</span><span id="line-722">                <span class="s2">"n_clips"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">proj</span><span class="o">.</span><span class="n">list_clips</span><span class="p">()),</span>
-</span><span id="line-723">                <span class="s2">"aligned"</span><span class="p">:</span> <span class="n">_alignment_covers_clips</span><span class="p">(</span><span class="n">proj</span><span class="p">),</span>
-</span><span id="line-724">                <span class="s2">"n_renders"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">proj</span><span class="o">.</span><span class="n">list_renders</span><span class="p">()),</span>
-</span><span id="line-725">                <span class="s2">"created"</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"created"</span><span class="p">),</span>
-</span><span id="line-726">                <span class="s2">"modified"</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"modified"</span><span class="p">),</span>
-</span><span id="line-727">            <span class="p">}</span>
-</span><span id="line-728">        <span class="p">)</span>
-</span><span id="line-729">    <span class="k">return</span> <span class="p">{</span><span class="s2">"projects"</span><span class="p">:</span> <span class="n">rows</span><span class="p">}</span></div>
+</span><span id="line-697"><span class="k">def</span><span class="w"> </span><span class="nf">list_music_video_projects</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-698"><span class="w">    </span><span class="sd">"""List YOUR music_video (footage) projects, newest-modified first. Free.</span>
+</span><span id="line-699">
+</span><span id="line-700"><span class="sd">    The way back to a lost ``project_id`` (muvid#22): ``list_projects`` spans both</span>
+</span><span id="line-701"><span class="sd">    muvid genres but says nothing about a footage project's progress, and every other</span>
+</span><span id="line-702"><span class="sd">    footage tool needs the id first. Each row carries where the project is in the</span>
+</span><span id="line-703"><span class="sd">    workflow — ``has_song``, ``n_clips``, ``aligned``, ``n_renders`` — so the next call</span>
+</span><span id="line-704"><span class="sd">    reads off the listing without a ``footage_status`` per project:</span>
+</span><span id="line-705">
+</span><span id="line-706"><span class="sd">    - ``aligned`` is true only when the persisted alignment covers every current clip.</span>
+</span><span id="line-707"><span class="sd">      An ``add_footage`` or ``remove_footage`` after ``align_footage`` makes it false</span>
+</span><span id="line-708"><span class="sd">      again until you re-align.</span>
+</span><span id="line-709"><span class="sd">    - ``n_renders`` counts what ``footage_status`` lists under ``renders``; ``0`` is a</span>
+</span><span id="line-710"><span class="sd">      positive answer ("no cut yet"), never an omitted project.</span>
+</span><span id="line-711">
+</span><span id="line-712"><span class="sd">    ``[]`` means you have no footage projects; a visualizer project is not one and</span>
+</span><span id="line-713"><span class="sd">    shows up in ``list_projects`` instead.</span>
+</span><span id="line-714"><span class="sd">    """</span>
+</span><span id="line-715">    <span class="n">ws</span> <span class="o">=</span> <span class="n">_workspace</span><span class="p">()</span>
+</span><span id="line-716">    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-717">    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">ws</span><span class="o">.</span><span class="n">list_projects</span><span class="p">():</span>
+</span><span id="line-718">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-719">            <span class="n">proj</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">r</span><span class="p">[</span><span class="s2">"project_id"</span><span class="p">])</span>
+</span><span id="line-720">        <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-721">            <span class="k">continue</span>  <span class="c1"># vanished mid-scan — genuinely absent</span>
+</span><span id="line-722">        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-723">            <span class="p">{</span>
+</span><span id="line-724">                <span class="s2">"project_id"</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"project_id"</span><span class="p">],</span>
+</span><span id="line-725">                <span class="s2">"title"</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">r</span><span class="p">[</span><span class="s2">"project_id"</span><span class="p">],</span>
+</span><span id="line-726">                <span class="s2">"has_song"</span><span class="p">:</span> <span class="n">proj</span><span class="o">.</span><span class="n">has_song</span><span class="p">(),</span>
+</span><span id="line-727">                <span class="s2">"n_clips"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">proj</span><span class="o">.</span><span class="n">list_clips</span><span class="p">()),</span>
+</span><span id="line-728">                <span class="s2">"aligned"</span><span class="p">:</span> <span class="n">_alignment_covers_clips</span><span class="p">(</span><span class="n">proj</span><span class="p">),</span>
+</span><span id="line-729">                <span class="s2">"n_renders"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">proj</span><span class="o">.</span><span class="n">list_renders</span><span class="p">()),</span>
+</span><span id="line-730">                <span class="s2">"created"</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"created"</span><span class="p">),</span>
+</span><span id="line-731">                <span class="s2">"modified"</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"modified"</span><span class="p">),</span>
+</span><span id="line-732">            <span class="p">}</span>
+</span><span id="line-733">        <span class="p">)</span>
+</span><span id="line-734">    <span class="k">return</span> <span class="p">{</span><span class="s2">"projects"</span><span class="p">:</span> <span class="n">rows</span><span class="p">}</span></div>
 
-</span><span id="line-730">
-</span><span id="line-731">
+</span><span id="line-735">
+</span><span id="line-736">
 <div class="viewcode-block" id="remove_footage">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.remove_footage">[docs]</a>
-</span><span id="line-732"><span class="k">def</span><span class="w"> </span><span class="nf">remove_footage</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-733"><span class="w">    </span><span class="sd">"""Remove one footage clip from the project — its stored file and its entry. Free.</span>
-</span><span id="line-734">
-</span><span id="line-735"><span class="sd">    Irreversible for the clip (re-add it from its URL if it was a mistake); existing</span>
-</span><span id="line-736"><span class="sd">    renders are untouched. Removal INVALIDATES the alignment and every persisted score</span>
-</span><span id="line-737"><span class="sd">    track, exactly as ``set_song`` does (muvid#22) — the alignment describes the clip set</span>
-</span><span id="line-738"><span class="sd">    it was measured on, and a removed clip's offset must not outlive the clip. So run</span>
-</span><span id="line-739"><span class="sd">    ``align_footage`` again before ``propose_edit`` / ``assemble_music_video``; until</span>
-</span><span id="line-740"><span class="sd">    then ``footage_status`` reports the project unaligned and this project's</span>
-</span><span id="line-741"><span class="sd">    ``aligned`` flag in ``list_music_video_projects`` is false.</span>
-</span><span id="line-742">
-</span><span id="line-743"><span class="sd">    An unknown ``clip_id`` is refused, naming the clip ids the project holds, and a</span>
-</span><span id="line-744"><span class="sd">    refusal changes nothing on disk. Returns what was removed, the clips that remain,</span>
-</span><span id="line-745"><span class="sd">    and whether an alignment / score tracks were actually dropped.</span>
-</span><span id="line-746"><span class="sd">    """</span>
-</span><span id="line-747">    <span class="k">return</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">remove_clip</span><span class="p">,</span> <span class="n">clip_id</span><span class="o">=</span><span class="n">clip_id</span><span class="p">)</span></div>
-
-</span><span id="line-748">
-</span><span id="line-749">
-<div class="viewcode-block" id="list_strategies">
-<a class="viewcode-back" href="../../../_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.list_strategies">[docs]</a>
-</span><span id="line-750"><span class="k">def</span><span class="w"> </span><span class="nf">list_strategies</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-751"><span class="w">    </span><span class="sd">"""The selection strategies available for full-auto assembly. Free."""</span>
-</span><span id="line-752">    <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">strategies</span><span class="p">()</span></div>
+</span><span id="line-737"><span class="k">def</span><span class="w"> </span><span class="nf">remove_footage</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-738"><span class="w">    </span><span class="sd">"""Remove one footage clip from the project — its stored file and its entry. Free.</span>
+</span><span id="line-739">
+</span><span id="line-740"><span class="sd">    Irreversible for the clip (re-add it from its URL if it was a mistake); existing</span>
+</span><span id="line-741"><span class="sd">    renders are untouched. Removal INVALIDATES the alignment and every persisted score</span>
+</span><span id="line-742"><span class="sd">    track, exactly as ``set_song`` does (muvid#22) — the alignment describes the clip set</span>
+</span><span id="line-743"><span class="sd">    it was measured on, and a removed clip's offset must not outlive the clip. So run</span>
+</span><span id="line-744"><span class="sd">    ``align_footage`` again before ``propose_edit`` / ``assemble_music_video``; until</span>
+</span><span id="line-745"><span class="sd">    then ``footage_status`` reports the project unaligned and this project's</span>
+</span><span id="line-746"><span class="sd">    ``aligned`` flag in ``list_music_video_projects`` is false.</span>
+</span><span id="line-747">
+</span><span id="line-748"><span class="sd">    An unknown ``clip_id`` is refused, naming the clip ids the project holds, and a</span>
+</span><span id="line-749"><span class="sd">    refusal changes nothing on disk. Returns what was removed, the clips that remain,</span>
+</span><span id="line-750"><span class="sd">    and whether an alignment / score tracks were actually dropped.</span>
+</span><span id="line-751"><span class="sd">    """</span>
+</span><span id="line-752">    <span class="k">return</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">remove_clip</span><span class="p">,</span> <span class="n">clip_id</span><span class="o">=</span><span class="n">clip_id</span><span class="p">)</span></div>
 
 </span><span id="line-753">
 </span><span id="line-754">
+<div class="viewcode-block" id="list_strategies">
+<a class="viewcode-back" href="../../../_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.list_strategies">[docs]</a>
+</span><span id="line-755"><span class="k">def</span><span class="w"> </span><span class="nf">list_strategies</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-756"><span class="w">    </span><span class="sd">"""The selection strategies available for full-auto assembly. Free."""</span>
+</span><span id="line-757">    <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">strategies</span><span class="p">()</span></div>
+
+</span><span id="line-758">
+</span><span id="line-759">
 <div class="viewcode-block" id="footage_editor_document">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_editor_document">[docs]</a>
-</span><span id="line-755"><span class="k">def</span><span class="w"> </span><span class="nf">footage_editor_document</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">edit_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-756"><span class="w">    </span><span class="sd">"""The project as lacing-native standoff annotations, for a multitrack editor. Free.</span>
-</span><span id="line-757">
-</span><span id="line-758"><span class="sd">    One tier per clip — photos and clips cut to the music included — with its</span>
-</span><span id="line-759"><span class="sd">    ``clip-alignment/v1`` record (+, once scored, its ``clip-score-track/v1`` curves),</span>
-</span><span id="line-760"><span class="sd">    plus a ``DECISION`` tier as ``music-video-edl/v1`` entries: what ``propose_edit``</span>
-</span><span id="line-761"><span class="sd">    would build now, or the saved edit ``edit_id`` when one is named (an unknown id is</span>
-</span><span id="line-762"><span class="sd">    refused). Everything is referenced to the song by content hash, on one shared</span>
-</span><span id="line-763"><span class="sd">    song-time axis (thorwhalen/reelee-web#203). Needs the ``editor`` extra</span>
-</span><span id="line-764"><span class="sd">    (``lacing``), a song and at least one clip. When the DECISION tier cannot be built</span>
-</span><span id="line-765"><span class="sd">    the rest of the document still is, and ``decision_error`` says why; ``warnings``</span>
-</span><span id="line-766"><span class="sd">    (present only when non-empty) lists what the proposal set aside.</span>
-</span><span id="line-767">
-</span><span id="line-768"><span class="sd">    After a human edits the DECISION tier, feed its annotations back to</span>
-</span><span id="line-769"><span class="sd">    ``assemble_music_video`` via ``footage_edl_from_annotations``.</span>
-</span><span id="line-770"><span class="sd">    """</span>
-</span><span id="line-771">    <span class="n">proj</span> <span class="o">=</span> <span class="n">_open</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-772">    <span class="k">with</span> <span class="n">_refusals</span><span class="p">():</span>
-</span><span id="line-773">        <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">editor_document</span><span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">edit_id</span><span class="o">=</span><span class="n">edit_id</span><span class="p">)</span></div>
+</span><span id="line-760"><span class="k">def</span><span class="w"> </span><span class="nf">footage_editor_document</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">edit_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-761"><span class="w">    </span><span class="sd">"""The project as lacing-native standoff annotations, for a multitrack editor. Free.</span>
+</span><span id="line-762">
+</span><span id="line-763"><span class="sd">    One tier per clip — photos and clips cut to the music included — with its</span>
+</span><span id="line-764"><span class="sd">    ``clip-alignment/v1`` record (+, once scored, its ``clip-score-track/v1`` curves),</span>
+</span><span id="line-765"><span class="sd">    plus a ``DECISION`` tier as ``music-video-edl/v1`` entries: what ``propose_edit``</span>
+</span><span id="line-766"><span class="sd">    would build now, or the saved edit ``edit_id`` when one is named (an unknown id is</span>
+</span><span id="line-767"><span class="sd">    refused). Everything is referenced to the song by content hash, on one shared</span>
+</span><span id="line-768"><span class="sd">    song-time axis (thorwhalen/reelee-web#203). Needs the ``editor`` extra</span>
+</span><span id="line-769"><span class="sd">    (``lacing``), a song and at least one clip. When the DECISION tier cannot be built</span>
+</span><span id="line-770"><span class="sd">    the rest of the document still is, and ``decision_error`` says why; ``warnings``</span>
+</span><span id="line-771"><span class="sd">    (present only when non-empty) lists what the proposal set aside.</span>
+</span><span id="line-772">
+</span><span id="line-773"><span class="sd">    After a human edits the DECISION tier, feed its annotations back to</span>
+</span><span id="line-774"><span class="sd">    ``assemble_music_video`` via ``footage_edl_from_annotations``.</span>
+</span><span id="line-775"><span class="sd">    """</span>
+</span><span id="line-776">    <span class="n">proj</span> <span class="o">=</span> <span class="n">_open</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-777">    <span class="k">with</span> <span class="n">_refusals</span><span class="p">():</span>
+</span><span id="line-778">        <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">editor_document</span><span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">edit_id</span><span class="o">=</span><span class="n">edit_id</span><span class="p">)</span></div>
 
-</span><span id="line-774">
-</span><span id="line-775">
+</span><span id="line-779">
+</span><span id="line-780">
 <div class="viewcode-block" id="footage_edl_from_annotations">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_edl_from_annotations">[docs]</a>
-</span><span id="line-776"><span class="k">def</span><span class="w"> </span><span class="nf">footage_edl_from_annotations</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">annotations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-777"><span class="w">    </span><span class="sd">"""The DECISION tier's annotations, turned back into an ``edl=`` argument. Free.</span>
-</span><span id="line-778">
-</span><span id="line-779"><span class="sd">    The timeline-to-EDL half: pass ``footage_editor_document``'s ``DECISION`` tier</span>
-</span><span id="line-780"><span class="sd">    (after whatever an editor did to it) and get back plain</span>
-</span><span id="line-781"><span class="sd">    ``{song_start, song_end, clip_id}`` dicts, ready for ``assemble_music_video(edl=...)``</span>
-</span><span id="line-782"><span class="sd">    or ``propose_edit`` — a faithful read, not a re-selection. Annotations referencing a</span>
-</span><span id="line-783"><span class="sd">    song other than this project's are refused, not read (muvid#35), so a clipboard from</span>
-</span><span id="line-784"><span class="sd">    another project fails saying so instead of splicing in the wrong spans.</span>
-</span><span id="line-785"><span class="sd">    """</span>
-</span><span id="line-786">    <span class="k">return</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">edl_from_annotations</span><span class="p">,</span> <span class="n">annotations</span><span class="o">=</span><span class="n">annotations</span><span class="p">)</span></div>
+</span><span id="line-781"><span class="k">def</span><span class="w"> </span><span class="nf">footage_edl_from_annotations</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">annotations</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-782"><span class="w">    </span><span class="sd">"""The DECISION tier's annotations, turned back into an ``edl=`` argument. Free.</span>
+</span><span id="line-783">
+</span><span id="line-784"><span class="sd">    The timeline-to-EDL half: pass ``footage_editor_document``'s ``DECISION`` tier</span>
+</span><span id="line-785"><span class="sd">    (after whatever an editor did to it) and get back plain</span>
+</span><span id="line-786"><span class="sd">    ``{song_start, song_end, clip_id}`` dicts, ready for ``assemble_music_video(edl=...)``</span>
+</span><span id="line-787"><span class="sd">    or ``propose_edit`` — a faithful read, not a re-selection. Annotations referencing a</span>
+</span><span id="line-788"><span class="sd">    song other than this project's are refused, not read (muvid#35), so a clipboard from</span>
+</span><span id="line-789"><span class="sd">    another project fails saying so instead of splicing in the wrong spans.</span>
+</span><span id="line-790"><span class="sd">    """</span>
+</span><span id="line-791">    <span class="k">return</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">service</span><span class="o">.</span><span class="n">edl_from_annotations</span><span class="p">,</span> <span class="n">annotations</span><span class="o">=</span><span class="n">annotations</span><span class="p">)</span></div>
 
-</span><span id="line-787">
-</span><span id="line-788">
-</span><span id="line-789"><span class="c1"># -- generated tools: one per catalogue operation with no hand-written tool ----------</span>
-</span><span id="line-790">
-</span><span id="line-791">
-</span><span id="line-792"><span class="k">def</span><span class="w"> </span><span class="nf">_op_tool</span><span class="p">(</span><span class="n">op_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="line-793"><span class="w">    </span><span class="sd">"""A tool ``footage_&lt;op&gt;(project_id, **params)`` over :mod:`muvid.footage.service`.</span>
-</span><span id="line-794">
-</span><span id="line-795"><span class="sd">    Its signature is the operation's own minus the project (and minus what the catalogue</span>
-</span><span id="line-796"><span class="sd">    hides), its docstring the operation's — so the tool cannot drift from the operation</span>
-</span><span id="line-797"><span class="sd">    it serves.</span>
-</span><span id="line-798"><span class="sd">    """</span>
-</span><span id="line-799">    <span class="n">spec</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">service</span><span class="o">.</span><span class="n">FOOTAGE_OP_SPECS</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">op_name</span><span class="p">)</span>
-</span><span id="line-800">    <span class="n">op</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="n">op_name</span><span class="p">)</span>
-</span><span id="line-801">    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">eval_str</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-802">    <span class="n">params</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">spec</span><span class="o">.</span><span class="n">hide</span><span class="p">]</span>
-</span><span id="line-803">    <span class="n">project_param</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
-</span><span id="line-804">        <span class="s2">"project_id"</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">,</span> <span class="n">annotation</span><span class="o">=</span><span class="nb">str</span>
-</span><span id="line-805">    <span class="p">)</span>
-</span><span id="line-806">
-</span><span id="line-807">    <span class="k">def</span><span class="w"> </span><span class="nf">tool</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-808">        <span class="k">return</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-</span><span id="line-809">
-</span><span id="line-810">    <span class="n">tool</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="vm">__qualname__</span> <span class="o">=</span> <span class="n">op_tool_name</span><span class="p">(</span><span class="n">op_name</span><span class="p">)</span>
-</span><span id="line-811">    <span class="n">tool</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">=</span> <span class="vm">__name__</span>
-</span><span id="line-812">    <span class="n">tool</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">_as_tool_names</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
-</span><span id="line-813">    <span class="n">tool</span><span class="o">.</span><span class="n">__signature__</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-</span><span id="line-814">        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">project_param</span><span class="p">,</span> <span class="o">*</span><span class="n">params</span><span class="p">],</span> <span class="n">return_annotation</span><span class="o">=</span><span class="nb">dict</span>
-</span><span id="line-815">    <span class="p">)</span>
-</span><span id="line-816">    <span class="n">tool</span><span class="o">.</span><span class="vm">__annotations__</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-817">        <span class="s2">"project_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-818">        <span class="o">**</span><span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">annotation</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">},</span>
-</span><span id="line-819">        <span class="s2">"return"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-</span><span id="line-820">    <span class="p">}</span>
-</span><span id="line-821">    <span class="k">return</span> <span class="n">tool</span>
-</span><span id="line-822">
-</span><span id="line-823">
-</span><span id="line-824"><span class="k">for</span> <span class="n">_op_name</span> <span class="ow">in</span> <span class="n">GENERATED_OPS</span><span class="p">:</span>
-</span><span id="line-825">    <span class="nb">globals</span><span class="p">()[</span><span class="n">op_tool_name</span><span class="p">(</span><span class="n">_op_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">_op_tool</span><span class="p">(</span><span class="n">_op_name</span><span class="p">)</span>
-</span><span id="line-826"><span class="k">del</span> <span class="n">_op_name</span>
+</span><span id="line-792">
+</span><span id="line-793">
+</span><span id="line-794"><span class="c1"># -- generated tools: one per catalogue operation with no hand-written tool ----------</span>
+</span><span id="line-795">
+</span><span id="line-796">
+</span><span id="line-797"><span class="k">def</span><span class="w"> </span><span class="nf">_op_tool</span><span class="p">(</span><span class="n">op_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="line-798"><span class="w">    </span><span class="sd">"""A tool ``footage_&lt;op&gt;(project_id, **params)`` over :mod:`muvid.footage.service`.</span>
+</span><span id="line-799">
+</span><span id="line-800"><span class="sd">    Its signature is the operation's own minus the project (and minus what the catalogue</span>
+</span><span id="line-801"><span class="sd">    hides), its docstring the operation's — so the tool cannot drift from the operation</span>
+</span><span id="line-802"><span class="sd">    it serves.</span>
+</span><span id="line-803"><span class="sd">    """</span>
+</span><span id="line-804">    <span class="n">spec</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">service</span><span class="o">.</span><span class="n">FOOTAGE_OP_SPECS</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="n">op_name</span><span class="p">)</span>
+</span><span id="line-805">    <span class="n">op</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">service</span><span class="p">,</span> <span class="n">op_name</span><span class="p">)</span>
+</span><span id="line-806">    <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">eval_str</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-807">    <span class="n">params</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">())[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">spec</span><span class="o">.</span><span class="n">hide</span><span class="p">]</span>
+</span><span id="line-808">    <span class="n">project_param</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+</span><span id="line-809">        <span class="s2">"project_id"</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="o">.</span><span class="n">POSITIONAL_OR_KEYWORD</span><span class="p">,</span> <span class="n">annotation</span><span class="o">=</span><span class="nb">str</span>
+</span><span id="line-810">    <span class="p">)</span>
+</span><span id="line-811">
+</span><span id="line-812">    <span class="k">def</span><span class="w"> </span><span class="nf">tool</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-813">        <span class="k">return</span> <span class="n">_call</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">op</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</span><span id="line-814">
+</span><span id="line-815">    <span class="n">tool</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">=</span> <span class="n">tool</span><span class="o">.</span><span class="vm">__qualname__</span> <span class="o">=</span> <span class="n">op_tool_name</span><span class="p">(</span><span class="n">op_name</span><span class="p">)</span>
+</span><span id="line-816">    <span class="n">tool</span><span class="o">.</span><span class="vm">__module__</span> <span class="o">=</span> <span class="vm">__name__</span>
+</span><span id="line-817">    <span class="n">tool</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">=</span> <span class="n">_as_tool_names</span><span class="p">(</span><span class="n">op</span><span class="o">.</span><span class="vm">__doc__</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+</span><span id="line-818">    <span class="n">tool</span><span class="o">.</span><span class="n">__signature__</span> <span class="o">=</span> <span class="n">sig</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+</span><span id="line-819">        <span class="n">parameters</span><span class="o">=</span><span class="p">[</span><span class="n">project_param</span><span class="p">,</span> <span class="o">*</span><span class="n">params</span><span class="p">],</span> <span class="n">return_annotation</span><span class="o">=</span><span class="nb">dict</span>
+</span><span id="line-820">    <span class="p">)</span>
+</span><span id="line-821">    <span class="n">tool</span><span class="o">.</span><span class="vm">__annotations__</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-822">        <span class="s2">"project_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-823">        <span class="o">**</span><span class="p">{</span><span class="n">p</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">annotation</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">},</span>
+</span><span id="line-824">        <span class="s2">"return"</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+</span><span id="line-825">    <span class="p">}</span>
+</span><span id="line-826">    <span class="k">return</span> <span class="n">tool</span>
+</span><span id="line-827">
+</span><span id="line-828">
+</span><span id="line-829"><span class="k">for</span> <span class="n">_op_name</span> <span class="ow">in</span> <span class="n">GENERATED_OPS</span><span class="p">:</span>
+</span><span id="line-830">    <span class="nb">globals</span><span class="p">()[</span><span class="n">op_tool_name</span><span class="p">(</span><span class="n">_op_name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">_op_tool</span><span class="p">(</span><span class="n">_op_name</span><span class="p">)</span>
+</span><span id="line-831"><span class="k">del</span> <span class="n">_op_name</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -1072,7 +1077,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=bf4bdb9e"></script>
+    <script src="../../../_static/documentation_options.js?v=a02dbd69"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
