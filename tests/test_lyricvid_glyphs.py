@@ -1217,9 +1217,7 @@ def _timed_words(*words):
         out.append(
             {"text": text, "start": starts[0], "end": glyphs[-1].end, "glyphs": glyphs}
         )
-    recs = [
-        {"text": w["text"], "start": w["start"], "end": w["end"]} for w in out
-    ]
+    recs = [{"text": w["text"], "start": w["start"], "end": w["end"]} for w in out]
     recs[-1]["line_end"] = True
     tt = from_word_records(recs, duration=8.0)
     it = iter(out)
@@ -1230,7 +1228,10 @@ def _timed_words(*words):
                 s,
                 lines=tuple(
                     replace(
-                        l, words=tuple(replace(w, glyphs=next(it)["glyphs"]) for w in l.words)
+                        l,
+                        words=tuple(
+                            replace(w, glyphs=next(it)["glyphs"]) for w in l.words
+                        ),
                     )
                     for l in s.lines
                 ),
@@ -1291,7 +1292,7 @@ def test_silent_glyph_does_not_judge_past_the_end_of_the_stem(stem_of):
 
 def test_silent_glyph_refuses_an_unknown_remedy():
     with pytest.raises(ValueError):
-        ga.silent_glyph("x", remedy="mute")
+        ga.silent_glyph("x", remedy="wipe")
 
 
 def _stem_amps(*spans, duration=11.0):
@@ -1391,3 +1392,65 @@ def test_silent_glyph_a_loud_blip_in_a_quiet_window_is_not_silence(stem_of):
         )
     )
     assert ga.silent_glyph(stem).find(fine, fine) == {}
+
+
+# ---------------------------------------------------------------------------
+# the per-glyph 'mute' remedy and Glyph.sung (muvid#175)
+# ---------------------------------------------------------------------------
+
+
+def _glyph_dicts(d):
+    return [
+        g
+        for s in d["sections"]
+        for l in s["lines"]
+        for w in l["words"]
+        for g in w.get("glyphs", ())
+    ]
+
+
+def test_mute_marks_only_the_silent_glyph_and_keeps_the_word(stem_of):
+    fine = _elided_song()
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    out, records = ga.reconcile(
+        fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"),)
+    )
+    word = next(iter(out.words()))
+    assert word.text == "ハッカー" and word.start == next(iter(fine.words())).start
+    assert [(g.text, g.sung) for g in word.glyphs] == [
+        ("ハ", True),
+        ("ッ", True),
+        ("カ", False),
+        ("ー", True),
+    ]
+    assert [g.start for g in word.glyphs] == [1.0, 1.15, 1.3, 1.4]  # times untouched
+    assert [g.sung for g in list(out.words())[1].glyphs] == [True, True]
+    assert records[0]["remedy"] == "mute" and records[0]["glyphs"] == [2]
+
+
+def test_mute_loses_to_replace(stem_of):
+    fine = _elided_song()
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    always = ga.Detector(name="always", find=lambda f, c: {0: "x"}, remedy="replace")
+    out, records = ga.reconcile(
+        fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"), always)
+    )
+    assert records[0]["remedy"] == "replace"
+    assert all(g.sung for g in next(iter(out.words())).glyphs)
+
+
+def test_a_mute_detector_must_say_which_glyphs():
+    with pytest.raises(ValueError, match="glyphs="):
+        ga.Detector(name="m", find=lambda f, c: {}, remedy="mute")
+
+
+def test_sung_false_round_trips_and_is_omitted_when_true(stem_of):
+    fine = _elided_song()
+    assert all("sung" not in g for g in _glyph_dicts(fine.to_dict()))
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    muted, _ = ga.reconcile(
+        fine, fine, detectors=(ga.silent_glyph(stem, remedy="mute"),)
+    )
+    d = muted.to_dict()
+    assert [g["text"] for g in _glyph_dicts(d) if g.get("sung") is False] == ["カ"]
+    assert from_dict(d) == muted
