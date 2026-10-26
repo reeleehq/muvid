@@ -110,9 +110,12 @@ class Media:
     height: int
     duration: float | None = None
     strength: float = 0.0
+    #: When it was captured (wall-clock seconds); ``None`` when unknown. Read by the
+    #: ``chronological`` reuse order (muvid#137).
+    taken_at: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out = {
             "index": self.index,
             "path": self.path,
             "kind": self.kind,
@@ -121,6 +124,9 @@ class Media:
             "duration": self.duration,
             "strength": round(self.strength, 4),
         }
+        if self.taken_at is not None:  # omit-when-absent: old records read the same
+            out["taken_at"] = self.taken_at
+        return out
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
