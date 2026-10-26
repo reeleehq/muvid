@@ -188,7 +188,7 @@ alignment, exactly as <code class="docutils literal notranslate"><span class="pr
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.footage_tools.footage_delete_edit" title="muvid.mcp.footage_tools.footage_delete_edit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">footage_delete_edit</span></code></a>(project_id, *, edit_id)</p></td>
 <td><p>Delete a saved edit.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.footage_tools.footage_editor_document" title="muvid.mcp.footage_tools.footage_editor_document"><code class="xref py py-obj docutils literal notranslate"><span class="pre">footage_editor_document</span></code></a>(project_id)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.mcp.footage_tools.footage_editor_document" title="muvid.mcp.footage_tools.footage_editor_document"><code class="xref py py-obj docutils literal notranslate"><span class="pre">footage_editor_document</span></code></a>(project_id[, edit_id])</p></td>
 <td><p>The project as lacing-native standoff annotations, for a multitrack editor.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.mcp.footage_tools.footage_edits" title="muvid.mcp.footage_tools.footage_edits"><code class="xref py py-obj docutils literal notranslate"><span class="pre">footage_edits</span></code></a>(project_id)</p></td>
@@ -543,13 +543,17 @@ the edit they came from). An unknown <code class="docutils literal notranslate">
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.mcp.footage_tools.footage_editor_document">
-<span class="sig-prename descclassname"><span class="pre">muvid.mcp.footage_tools.</span></span><span class="sig-name descname"><span class="pre">footage_editor_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/footage_tools.html#footage_editor_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.footage_tools.footage_editor_document" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.footage_tools.footage_editor_document'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.mcp.footage_tools.</span></span><span class="sig-name descname"><span class="pre">footage_editor_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edit_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/footage_tools.html#footage_editor_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.footage_tools.footage_editor_document" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.footage_tools.footage_editor_document'">¶</a></dt>
 <dd><p>The project as lacing-native standoff annotations, for a multitrack editor. Free.</p>
-<p>One tier per clip (its <code class="docutils literal notranslate"><span class="pre">clip-alignment/v1</span></code> +, once scored, its
-<code class="docutils literal notranslate"><span class="pre">clip-score-track/v1</span></code> curves) plus a <code class="docutils literal notranslate"><span class="pre">DECISION</span></code> tier holding the current default
-proposal as <code class="docutils literal notranslate"><span class="pre">music-video-edl/v1</span></code> entries — everything referenced to the song by
-content hash, on one shared song-time axis (thorwhalen/reelee-web#203). Needs the
-<code class="docutils literal notranslate"><span class="pre">editor</span></code> extra (<code class="docutils literal notranslate"><span class="pre">lacing</span></code>); requires alignment (run <code class="docutils literal notranslate"><span class="pre">align_footage</span></code> first).</p>
+<p>One tier per clip — photos and clips cut to the music included — with its
+<code class="docutils literal notranslate"><span class="pre">clip-alignment/v1</span></code> record (+, once scored, its <code class="docutils literal notranslate"><span class="pre">clip-score-track/v1</span></code> curves),
+plus a <code class="docutils literal notranslate"><span class="pre">DECISION</span></code> tier as <code class="docutils literal notranslate"><span class="pre">music-video-edl/v1</span></code> entries: what <code class="docutils literal notranslate"><span class="pre">propose_edit</span></code>
+would build now, or the saved edit <code class="docutils literal notranslate"><span class="pre">edit_id</span></code> when one is named (an unknown id is
+refused). Everything is referenced to the song by content hash, on one shared
+song-time axis (thorwhalen/reelee-web#203). Needs the <code class="docutils literal notranslate"><span class="pre">editor</span></code> extra
+(<code class="docutils literal notranslate"><span class="pre">lacing</span></code>), a song and at least one clip. When the DECISION tier cannot be built
+the rest of the document still is, and <code class="docutils literal notranslate"><span class="pre">decision_error</span></code> says why; <code class="docutils literal notranslate"><span class="pre">warnings</span></code>
+(present only when non-empty) lists what the proposal set aside.</p>
 <p>After a human edits the DECISION tier, feed its annotations back to
 <code class="docutils literal notranslate"><span class="pre">assemble_music_video</span></code> via <code class="docutils literal notranslate"><span class="pre">footage_edl_from_annotations</span></code>.</p>
 <dl class="field-list simple">
@@ -1085,7 +1089,7 @@ video uses. Replaces any previous song. Duration/size-capped.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5751785c"></script>
+<script src="../_static/documentation_options.js?v=f329fc45"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -17,6 +17,7 @@ muvid.footage.lacing\_bridge
    .. autosummary::
    
       alignment_annotations
+      build_document
       editor_document
       edl_annotations
       edl_from_annotations

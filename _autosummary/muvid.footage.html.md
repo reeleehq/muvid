@@ -712,14 +712,16 @@ A `looks.Look` compiled against the binary muvid will run.
   whether it is time-varying **from the compiled plan** rather than by
   assumption. A grade, a LUT, a posterise is static; two shapes are not,
   and both are reachable from here:
-  - a step naming a `TIME_VARYING_EFFECTS` member — `motion` is one
-    of `looks`’ registered effects, so `stylize` can emit exactly the
-    `zoompan` ramp [`punch_in()`](#muvid.footage.punch_in) does (verified by compiling it);
+  - a step whose implementation reads the filter clock — `motion`
+    and `grain` are such effects (verified by compiling them);
   - a step with an `at` `looks.Span`, which compiles to
     `enable='between(t,…)'` — measured: `Effect("blur", at=Span(0.5,
     1.5))` becomes `gblur=sigma=2:enable='between(t,0.5,1.5)'`. Reading
-    the clock to decide *whether* to apply is the same restart, and the
-    effect is not on any list of moving ones.
+    the clock to decide *whether* to apply is the same restart.
+
+  Both are read off `LookPlan.time_varying` (looks#17), the property of
+  the compiled plan, not off a list of effect names kept here. It is
+  tri-state upstream; an undeclared step (`None`) is treated as moving.
 
   A blanket `False` here — the obvious reading, since `stylize` is the
   grade-shaped door — would have been wrong for both.

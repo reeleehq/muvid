@@ -226,9 +226,6 @@ limit is stated on the field rather than left to be discovered.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.look.DEFAULT_PUNCH_ANCHOR" title="muvid.footage.look.DEFAULT_PUNCH_ANCHOR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DEFAULT_PUNCH_ANCHOR</span></code></a></p></td>
 <td><p>Where <a class="reference internal" href="#muvid.footage.look.punch_in" title="muvid.footage.look.punch_in"><code class="xref py py-func docutils literal notranslate"><span class="pre">punch_in()</span></code></a> zooms toward, as a fraction of the canvas.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.look.TIME_VARYING_EFFECTS" title="muvid.footage.look.TIME_VARYING_EFFECTS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TIME_VARYING_EFFECTS</span></code></a></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">looks</span></code> effects whose compiled fragment READS THE FILTER CLOCK, so a cut carrying one is affected by muvid#73's restart on a blended boundary.</p></td>
-</tr>
 </tbody>
 </table>
 <p class="rubric">Functions</p>
@@ -337,22 +334,6 @@ An <code class="docutils literal notranslate"><span class="pre">EdlEntry</span><
 </div>
 <dl class="field-list simple">
 </dl>
-</dd></dl>
-<dl class="py data">
-<dt class="sig sig-object py" id="muvid.footage.look.TIME_VARYING_EFFECTS">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.look.</span></span><span class="sig-name descname"><span class="pre">TIME_VARYING_EFFECTS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">frozenset({'motion'})</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.look.TIME_VARYING_EFFECTS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.look.TIME_VARYING_EFFECTS'">¶</a></dt>
-<dd><p><code class="docutils literal notranslate"><span class="pre">looks</span></code> effects whose compiled fragment READS THE FILTER CLOCK, so a cut
-carrying one is affected by muvid#73’s restart on a blended boundary.</p>
-<p>**Pinned here rather than derived from <code class="docutils literal notranslate"><span class="pre">looks</span></code>, for the same reason
-<a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-data docutils literal notranslate"><span class="pre">muvid.footage.edl.LOOK_FILTERS</span></code></a> is** — a new <code class="docutils literal notranslate"><span class="pre">looks</span></code> effect must be a
-decision someone records, not a silent change to what muvid warns about. The
-drift test in <code class="docutils literal notranslate"><span class="pre">tests/test_look_time_varying.py</span></code> fails when
-<code class="docutils literal notranslate"><span class="pre">looks.effects()</span></code> grows,
-which is what forces the classification.</p>
-<p><code class="docutils literal notranslate"><span class="pre">ImplRef.timeline</span></code> is NOT this property and must not be mistaken for it: it
-says the implementation supports ffmpeg’s <code class="docutils literal notranslate"><span class="pre">enable=</span></code> option. <code class="docutils literal notranslate"><span class="pre">motion</span></code> — the
-one genuinely moving effect — declares <code class="docutils literal notranslate"><span class="pre">timeline=False</span></code>, and every static
-grade declares <code class="docutils literal notranslate"><span class="pre">True</span></code>, so reading it would get every row backwards.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.look.chain">
@@ -582,15 +563,16 @@ whether it is time-varying <strong>from the compiled plan</strong> rather than b
 assumption. A grade, a LUT, a posterise is static; two shapes are not,
 and both are reachable from here:</p>
 <ul class="simple">
-<li><p>a step naming a <a class="reference internal" href="#muvid.footage.look.TIME_VARYING_EFFECTS" title="muvid.footage.look.TIME_VARYING_EFFECTS"><code class="xref py py-data docutils literal notranslate"><span class="pre">TIME_VARYING_EFFECTS</span></code></a> member — <code class="docutils literal notranslate"><span class="pre">motion</span></code> is one
-of <code class="docutils literal notranslate"><span class="pre">looks</span></code>’ registered effects, so <code class="docutils literal notranslate"><span class="pre">stylize</span></code> can emit exactly the
-<code class="docutils literal notranslate"><span class="pre">zoompan</span></code> ramp <a class="reference internal" href="#muvid.footage.look.punch_in" title="muvid.footage.look.punch_in"><code class="xref py py-func docutils literal notranslate"><span class="pre">punch_in()</span></code></a> does (verified by compiling it);</p></li>
+<li><p>a step whose implementation reads the filter clock — <code class="docutils literal notranslate"><span class="pre">motion</span></code>
+and <code class="docutils literal notranslate"><span class="pre">grain</span></code> are such effects (verified by compiling them);</p></li>
 <li><p>a step with an <code class="docutils literal notranslate"><span class="pre">at</span></code> <code class="xref py py-class docutils literal notranslate"><span class="pre">looks.Span</span></code>, which compiles to
 <code class="docutils literal notranslate"><span class="pre">enable='between(t,…)'</span></code> — measured: <code class="docutils literal notranslate"><span class="pre">Effect("blur",</span> <span class="pre">at=Span(0.5,</span>
 <span class="pre">1.5))</span></code> becomes <code class="docutils literal notranslate"><span class="pre">gblur=sigma=2:enable='between(t,0.5,1.5)'</span></code>. Reading
-the clock to decide <em>whether</em> to apply is the same restart, and the
-effect is not on any list of moving ones.</p></li>
+the clock to decide <em>whether</em> to apply is the same restart.</p></li>
 </ul>
+<p>Both are read off <code class="docutils literal notranslate"><span class="pre">LookPlan.time_varying</span></code> (looks#17), the property of
+the compiled plan, not off a list of effect names kept here. It is
+tri-state upstream; an undeclared step (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is treated as moving.</p>
 <p>A blanket <code class="docutils literal notranslate"><span class="pre">False</span></code> here — the obvious reading, since <code class="docutils literal notranslate"><span class="pre">stylize</span></code> is the
 grade-shaped door — would have been wrong for both.</p>
 </p>
@@ -628,7 +610,6 @@ a laptop and quietly raising the licence tier of a shipped product.</p>
 <li><a :data-current="activeSection === '#muvid.footage.look.DEFAULT_PUNCH_ZOOM'" class="reference internal" href="#muvid.footage.look.DEFAULT_PUNCH_ZOOM"><code class="docutils literal notranslate"><span class="pre">DEFAULT_PUNCH_ZOOM</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.look.LookError'" class="reference internal" href="#muvid.footage.look.LookError"><code class="docutils literal notranslate"><span class="pre">LookError</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.look.LookFragment'" class="reference internal" href="#muvid.footage.look.LookFragment"><code class="docutils literal notranslate"><span class="pre">LookFragment</span></code></a></li>
-<li><a :data-current="activeSection === '#muvid.footage.look.TIME_VARYING_EFFECTS'" class="reference internal" href="#muvid.footage.look.TIME_VARYING_EFFECTS"><code class="docutils literal notranslate"><span class="pre">TIME_VARYING_EFFECTS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.look.chain'" class="reference internal" href="#muvid.footage.look.chain"><code class="docutils literal notranslate"><span class="pre">chain()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.look.is_time_varying'" class="reference internal" href="#muvid.footage.look.is_time_varying"><code class="docutils literal notranslate"><span class="pre">is_time_varying()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.look.motion'" class="reference internal" href="#muvid.footage.look.motion"><code class="docutils literal notranslate"><span class="pre">motion()</span></code></a></li>
@@ -648,7 +629,7 @@ a laptop and quietly raising the licence tier of a shipped product.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5751785c"></script>
+<script src="../_static/documentation_options.js?v=f329fc45"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

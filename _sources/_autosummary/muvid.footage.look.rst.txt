@@ -10,7 +10,6 @@ muvid.footage.look
    
       DEFAULT_PUNCH_ZOOM
       DEFAULT_PUNCH_ANCHOR
-      TIME_VARYING_EFFECTS
    
    .. rubric:: Functions
 

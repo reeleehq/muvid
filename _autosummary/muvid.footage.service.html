@@ -293,7 +293,7 @@ trust refusal belongs where the encode does, in <a class="reference internal" hr
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.renders" title="muvid.footage.service.renders"><code class="xref py py-obj docutils literal notranslate"><span class="pre">renders</span></code></a>(fp)</p></td>
 <td><p>The finished videos, newest first: each one's <code class="docutils literal notranslate"><span class="pre">render_id</span></code>, speakable <code class="docutils literal notranslate"><span class="pre">ref</span></code>, the <code class="docutils literal notranslate"><span class="pre">edit_id</span></code> it was made from, its <code class="docutils literal notranslate"><span class="pre">label</span></code>, canvas, <code class="docutils literal notranslate"><span class="pre">ok</span></code>, the number of <code class="docutils literal notranslate"><span class="pre">warnings</span></code>, and <code class="docutils literal notranslate"><span class="pre">artifact_id</span></code> to play it by when the project is hosted.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.editor_document" title="muvid.footage.service.editor_document"><code class="xref py py-obj docutils literal notranslate"><span class="pre">editor_document</span></code></a>(fp)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.editor_document" title="muvid.footage.service.editor_document"><code class="xref py py-obj docutils literal notranslate"><span class="pre">editor_document</span></code></a>(fp, *[, edit_id])</p></td>
 <td><p>The project as lacing-native standoff annotations, for a multitrack editor.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.assemble" title="muvid.footage.service.assemble"><code class="xref py py-obj docutils literal notranslate"><span class="pre">assemble</span></code></a>(fp, *[, strategy, edl, preset, ...])</p></td>
@@ -631,13 +631,17 @@ the edit they came from). An unknown <code class="docutils literal notranslate">
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.service.editor_document">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">editor_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#editor_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.editor_document" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.editor_document'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">editor_document</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">edit_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#editor_document"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.editor_document" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.editor_document'">¶</a></dt>
 <dd><p>The project as lacing-native standoff annotations, for a multitrack editor.</p>
-<p>One tier per clip (its <code class="docutils literal notranslate"><span class="pre">clip-alignment/v1</span></code> and, once scored, its
-<code class="docutils literal notranslate"><span class="pre">clip-score-track/v1</span></code> curves) plus a <code class="docutils literal notranslate"><span class="pre">DECISION</span></code> tier holding the current default
-proposal as <code class="docutils literal notranslate"><span class="pre">music-video-edl/v1</span></code> entries — everything referenced to the song by
-content hash, on one shared song-time axis. Needs the <code class="docutils literal notranslate"><span class="pre">editor</span></code> extra (lacing) and
-an alignment.</p>
+<p>One tier per clip, photos and clips cut to the music included (its
+<code class="docutils literal notranslate"><span class="pre">clip-alignment/v1</span></code> and, once scored, its <code class="docutils literal notranslate"><span class="pre">clip-score-track/v1</span></code> curves) plus a
+<code class="docutils literal notranslate"><span class="pre">DECISION</span></code> tier holding what <code class="docutils literal notranslate"><span class="pre">propose_edit</span></code> would build now — or the saved edit
+<code class="docutils literal notranslate"><span class="pre">edit_id</span></code>, when one is named — as <code class="docutils literal notranslate"><span class="pre">music-video-edl/v1</span></code> entries, free cuts
+carrying their <code class="docutils literal notranslate"><span class="pre">source_in</span></code>; everything referenced to the song by content hash, on
+one shared song-time axis. Needs the <code class="docutils literal notranslate"><span class="pre">editor</span></code> extra (lacing), a song and a clip.</p>
+<p>When the DECISION tier cannot be built, the rest of the document still is, and
+<code class="docutils literal notranslate"><span class="pre">decision_error</span></code> says why; <code class="docutils literal notranslate"><span class="pre">warnings</span></code> (present only when there are any) lists
+what the proposal set aside. An unknown <code class="docutils literal notranslate"><span class="pre">edit_id</span></code> is a refusal, not a degrade.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -1331,7 +1335,7 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5751785c"></script>
+<script src="../_static/documentation_options.js?v=f329fc45"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -84,7 +84,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`delete_edit`](#muvid.footage.service.delete_edit)(fp, \*, edit_id)                     | Delete a saved edit.                                                                                                                                                                                                                                                    |
 | [`render`](#muvid.footage.service.render)(fp, \*, edit_id[, canvas, ...])           | Make the video: render a saved edit onto the canvas, over the clean song.                                                                                                                                                                                               |
 | [`renders`](#muvid.footage.service.renders)(fp)                                      | The finished videos, newest first: each one's `render_id`, speakable `ref`, the `edit_id` it was made from, its `label`, canvas, `ok`, the number of `warnings`, and `artifact_id` to play it by when the project is hosted.                                            |
-| [`editor_document`](#muvid.footage.service.editor_document)(fp)                              | The project as lacing-native standoff annotations, for a multitrack editor.                                                                                                                                                                                             |
+| [`editor_document`](#muvid.footage.service.editor_document)(fp, \*[, edit_id])               | The project as lacing-native standoff annotations, for a multitrack editor.                                                                                                                                                                                             |
 | [`assemble`](#muvid.footage.service.assemble)(fp, \*[, strategy, edl, preset, ...])   | Assemble and render a music video — auto (a `strategy`) or an explicit `edl`.                                                                                                                                                                                           |
 | [`declared_alignment`](#muvid.footage.service.declared_alignment)(clip_id, offset_s, \*, ...)   | The alignment record of a DECLARED offset — coverage computed, nothing measured.                                                                                                                                                                                        |
 | [`edl_from_annotations`](#muvid.footage.service.edl_from_annotations)(fp, \*, annotations)        | The editor's DECISION-tier annotations turned back into a cut list (`edl`), ready for `save_edit` / `replace_edit` — a faithful read, not a re-selection.                                                                                                               |
@@ -358,15 +358,20 @@ the edit they came from). An unknown `edit_id` is refused, naming the edits.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.editor_document(fp)
+### muvid.footage.service.editor_document(fp, , edit_id='')
 
 The project as lacing-native standoff annotations, for a multitrack editor.
 
-One tier per clip (its `clip-alignment/v1` and, once scored, its
-`clip-score-track/v1` curves) plus a `DECISION` tier holding the current default
-proposal as `music-video-edl/v1` entries — everything referenced to the song by
-content hash, on one shared song-time axis. Needs the `editor` extra (lacing) and
-an alignment.
+One tier per clip, photos and clips cut to the music included (its
+`clip-alignment/v1` and, once scored, its `clip-score-track/v1` curves) plus a
+`DECISION` tier holding what `propose_edit` would build now — or the saved edit
+`edit_id`, when one is named — as `music-video-edl/v1` entries, free cuts
+carrying their `source_in`; everything referenced to the song by content hash, on
+one shared song-time axis. Needs the `editor` extra (lacing), a song and a clip.
+
+When the DECISION tier cannot be built, the rest of the document still is, and
+`decision_error` says why; `warnings` (present only when there are any) lists
+what the proposal set aside. An unknown `edit_id` is a refusal, not a degrade.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

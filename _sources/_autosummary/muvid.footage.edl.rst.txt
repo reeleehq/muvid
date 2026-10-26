@@ -27,6 +27,7 @@ muvid.footage.edl
       UNVOUCHED_SELECTION
       EXCLUSION_REASONS
       LOOK_FILTERS
+      LOOKS_EFFECTS_NOT_OFFERED
    
    .. rubric:: Functions
 
@@ -37,6 +38,7 @@ muvid.footage.edl
       derive_cuts
       exclude_unvouched
       fill_gaps
+      looks_effects_offered
       placed_as
       unplaced
       validate_edl

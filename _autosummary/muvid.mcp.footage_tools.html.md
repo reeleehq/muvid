@@ -37,7 +37,7 @@ alignment, exactly as `set_song` does.
 | [`footage_beat_signals`](#muvid.mcp.footage_tools.footage_beat_signals)(project_id, \*[, ...])        | Where the beat is in the song or in one video — CONTINUOUS signals, to look at, threshold and bend, not only beat instants.                                                                                                                                             |
 | [`footage_clear_offset`](#muvid.mcp.footage_tools.footage_clear_offset)(project_id, \*, clip_id)      | Forget where I placed this video: remove a hand-declared offset, so the next `align_footage` measures the clip by its audio instead.                                                                                                                                    |
 | [`footage_delete_edit`](#muvid.mcp.footage_tools.footage_delete_edit)(project_id, \*, edit_id)       | Delete a saved edit.                                                                                                                                                                                                                                                    |
-| [`footage_editor_document`](#muvid.mcp.footage_tools.footage_editor_document)(project_id)                | The project as lacing-native standoff annotations, for a multitrack editor.                                                                                                                                                                                             |
+| [`footage_editor_document`](#muvid.mcp.footage_tools.footage_editor_document)(project_id[, edit_id])     | The project as lacing-native standoff annotations, for a multitrack editor.                                                                                                                                                                                             |
 | [`footage_edits`](#muvid.mcp.footage_tools.footage_edits)(project_id)                          | The saved edits, oldest first: each one's `edit_id`, `name`, how it was made, how many cuts it has, and `problem` — why it would not validate against the current alignment (`null` when it does).                                                                      |
 | [`footage_edl_from_annotations`](#muvid.mcp.footage_tools.footage_edl_from_annotations)(project_id, \*, ...)  | The DECISION tier's annotations, turned back into an `edl=` argument.                                                                                                                                                                                                   |
 | [`footage_explain_edit`](#muvid.mcp.footage_tools.footage_explain_edit)(project_id, \*, edit_id)      | Why each cut of an edit is where it is — the post-mortem, in plain words.                                                                                                                                                                                               |
@@ -321,15 +321,19 @@ the edit they came from). An unknown `edit_id` is refused, naming the edits.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.footage_editor_document(project_id)
+### muvid.mcp.footage_tools.footage_editor_document(project_id, edit_id='')
 
 The project as lacing-native standoff annotations, for a multitrack editor. Free.
 
-One tier per clip (its `clip-alignment/v1` +, once scored, its
-`clip-score-track/v1` curves) plus a `DECISION` tier holding the current default
-proposal as `music-video-edl/v1` entries — everything referenced to the song by
-content hash, on one shared song-time axis (thorwhalen/reelee-web#203). Needs the
-`editor` extra (`lacing`); requires alignment (run `align_footage` first).
+One tier per clip — photos and clips cut to the music included — with its
+`clip-alignment/v1` record (+, once scored, its `clip-score-track/v1` curves),
+plus a `DECISION` tier as `music-video-edl/v1` entries: what `propose_edit`
+would build now, or the saved edit `edit_id` when one is named (an unknown id is
+refused). Everything is referenced to the song by content hash, on one shared
+song-time axis (thorwhalen/reelee-web#203). Needs the `editor` extra
+(`lacing`), a song and at least one clip. When the DECISION tier cannot be built
+the rest of the document still is, and `decision_error` says why; `warnings`
+(present only when non-empty) lists what the proposal set aside.
 
 After a human edits the DECISION tier, feed its annotations back to
 `assemble_music_video` via `footage_edl_from_annotations`.

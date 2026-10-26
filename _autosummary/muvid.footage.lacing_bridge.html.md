@@ -8,7 +8,9 @@ until now existed only as prose in the design docs (muvid#31): `clip-alignment/v
 the shared song-time grid), and `music-video-edl/v1` (the DECISION lane — one entry
 per cut, gaps included). This module is the bridge, both directions:
 
-- [`editor_document()`](#muvid.footage.lacing_bridge.editor_document) — a muvid project as `{tiers, annotations}`, everything in
+- [`build_document()`](#muvid.footage.lacing_bridge.build_document) (and [`editor_document()`](#muvid.footage.lacing_bridge.editor_document), the in-process entry point
+  whose orchestration is the service’s) — a muvid project as `{tiers, annotations}`,
+  everything in
   SONG TIME on one shared axis, referenced to the song’s content hash (`MediaRef`), so
   any lacing-native surface (lacing-ui’s multitrack Timeline first) renders it without
   knowing muvid exists.
@@ -31,12 +33,13 @@ they move behind a ContentRef when they outgrow JSON — a body-schema major bum
 
 ### Functions
 
-| [`alignment_annotations`](#muvid.footage.lacing_bridge.alignment_annotations)(aligns, \*, ...)           | One `clip-alignment/v1` per clip, spanning the clip's coverage of the song.   |
-|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
-| [`editor_document`](#muvid.footage.lacing_bridge.editor_document)(proj, \*[, attributed_to])       | The whole project as one lacing-native document for a multitrack editor.      |
-| [`edl_annotations`](#muvid.footage.lacing_bridge.edl_annotations)(entries, \*, song_asset_id, ...) | The DECISION lane: one `music-video-edl/v1` per EDL entry, gaps included.     |
-| [`edl_from_annotations`](#muvid.footage.lacing_bridge.edl_from_annotations)(annotations, \*[, ...])     | DECISION-tier annotations → the `edl=` argument, verbatim.                    |
-| [`score_track_annotations`](#muvid.footage.lacing_bridge.score_track_annotations)(tensor, \*, ...)         | One `clip-score-track/v1` per (clip, metric): the whole curve as one record.  |
+| [`alignment_annotations`](#muvid.footage.lacing_bridge.alignment_annotations)(aligns, \*, ...[, ...])      | One `clip-alignment/v1` per clip, spanning the clip's coverage of the song.                               |
+|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| [`build_document`](#muvid.footage.lacing_bridge.build_document)(\*, project_id, song_asset_id, ...) | The lacing-native document from what the service already decided — pure, no project access, no selection. |
+| [`editor_document`](#muvid.footage.lacing_bridge.editor_document)(proj, \*[, attributed_to, ...])    | The whole project as one lacing-native document for a multitrack editor.                                  |
+| [`edl_annotations`](#muvid.footage.lacing_bridge.edl_annotations)(entries, \*, song_asset_id, ...)   | The DECISION lane: one `music-video-edl/v1` per EDL entry, gaps included.                                 |
+| [`edl_from_annotations`](#muvid.footage.lacing_bridge.edl_from_annotations)(annotations, \*[, ...])       | DECISION-tier annotations → the `edl=` argument, verbatim.                                                |
+| [`score_track_annotations`](#muvid.footage.lacing_bridge.score_track_annotations)(tensor, \*, ...)           | One `clip-score-track/v1` per (clip, metric): the whole curve as one record.                              |
 
 ### muvid.footage.lacing_bridge.CLIP_ALIGNMENT_SCHEMA *= 'annot://schema/clip-alignment/v1'*
 
@@ -53,20 +56,40 @@ microseconds.
 * **Type:**
   Rational-time rate for all bridge annotations
 
-### muvid.footage.lacing_bridge.alignment_annotations(aligns, , song_asset_id, attributed_to)
+### muvid.footage.lacing_bridge.alignment_annotations(aligns, , song_asset_id, attributed_to, stills=(), roles=None)
 
 One `clip-alignment/v1` per clip, spanning the clip’s coverage of the song.
+
+`stills` names the clips that are photos: a photo has no place on the song (its
+record sits at 0, the same zero-length interval an unplaced clip gets), so the body
+says `"still": true`. `roles` maps a clip to the `"role"` its body carries;
+the caller names only the clips whose role is worth saying (the service: those cut
+to the music), so the bridge owns no role vocabulary. Both keys are omitted when
+absent, which keeps a synced clip’s body exactly the shape it always had (muvid#138).
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)
 
-### muvid.footage.lacing_bridge.editor_document(proj, , attributed_to='')
+### muvid.footage.lacing_bridge.build_document(, project_id, song_asset_id, song_duration, placements, entries, tensor, decision_error, attributed_to, stills=(), roles=None)
+
+The lacing-native document from what the service already decided — pure, no
+project access, no selection.
+
+Tiers: the DECISION lane plus one lane per placement (alignment record + its score
+sub-tracks when `tensor` is given). `entries` is the validated EDL for the
+DECISION lane (empty when `decision_error` says why there is none).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.lacing_bridge.editor_document(proj, , attributed_to='', edit_id='')
 
 The whole project as one lacing-native document for a multitrack editor.
 
-Tiers: one lane group per clip (alignment + its score sub-tracks) + the DECISION
-lane. The EDL rendered into DECISION is the current default proposal; an editor
-mutates that tier and exports it back through [`edl_from_annotations()`](#muvid.footage.lacing_bridge.edl_from_annotations).
+A thin in-process entry point: the orchestration (placements, roles, the proposal
+or the saved edit `edit_id`, validation, warnings) is
+`muvid.footage.service.editor_document`’s, and this module only builds the
+records ([`build_document()`](#muvid.footage.lacing_bridge.build_document)). Imported lazily, so the call chain runs one way.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

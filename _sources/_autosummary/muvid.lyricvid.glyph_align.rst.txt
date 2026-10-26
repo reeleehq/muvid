@@ -12,7 +12,6 @@ muvid.lyricvid.glyph\_align
       ONSET_TOL_S
       DISAGREE_S
       MIN_GLYPH_S
-      REMEDIES
       UNSUNG_QUIET_DB
       UNSUNG_QUIET_SHARE
       UNSUNG_MIN_QUIET_S

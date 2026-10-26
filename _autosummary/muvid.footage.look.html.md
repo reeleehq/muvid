@@ -104,7 +104,6 @@ limit is stated on the field rather than left to be discovered.
 | [`DEFAULT_PUNCH_ZOOM`](#muvid.footage.look.DEFAULT_PUNCH_ZOOM)   | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.   |
 |-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`DEFAULT_PUNCH_ANCHOR`](#muvid.footage.look.DEFAULT_PUNCH_ANCHOR) | Where [`punch_in()`](#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                       |
-| [`TIME_VARYING_EFFECTS`](#muvid.footage.look.TIME_VARYING_EFFECTS) | `looks` effects whose compiled fragment READS THE FILTER CLOCK, so a cut carrying one is affected by muvid#73's restart on a blended boundary.     |
 
 ### Functions
 
@@ -193,23 +192,6 @@ An `EdlEntry` carrying one is an ordinary dataclass a caller may well copy.
 >>> copy.deepcopy(frag).time_varying, pickle.loads(pickle.dumps(frag)) == frag
 (True, True)
 ```
-
-### muvid.footage.look.TIME_VARYING_EFFECTS *= frozenset({'motion'})*
-
-`looks` effects whose compiled fragment READS THE FILTER CLOCK, so a cut
-carrying one is affected by muvid#73’s restart on a blended boundary.
-
-\*\*Pinned here rather than derived from `looks`, for the same reason
-[`muvid.footage.edl.LOOK_FILTERS`](muvid.footage.edl.html.md#muvid.footage.edl.LOOK_FILTERS) is\*\* — a new `looks` effect must be a
-decision someone records, not a silent change to what muvid warns about. The
-drift test in `tests/test_look_time_varying.py` fails when
-`looks.effects()` grows,
-which is what forces the classification.
-
-`ImplRef.timeline` is NOT this property and must not be mistaken for it: it
-says the implementation supports ffmpeg’s `enable=` option. `motion` — the
-one genuinely moving effect — declares `timeline=False`, and every static
-grade declares `True`, so reading it would get every row backwards.
 
 ### muvid.footage.look.chain(\*fragments)
 
@@ -413,14 +395,16 @@ A `looks.Look` compiled against the binary muvid will run.
   whether it is time-varying **from the compiled plan** rather than by
   assumption. A grade, a LUT, a posterise is static; two shapes are not,
   and both are reachable from here:
-  - a step naming a [`TIME_VARYING_EFFECTS`](#muvid.footage.look.TIME_VARYING_EFFECTS) member — `motion` is one
-    of `looks`’ registered effects, so `stylize` can emit exactly the
-    `zoompan` ramp [`punch_in()`](#muvid.footage.look.punch_in) does (verified by compiling it);
+  - a step whose implementation reads the filter clock — `motion`
+    and `grain` are such effects (verified by compiling them);
   - a step with an `at` `looks.Span`, which compiles to
     `enable='between(t,…)'` — measured: `Effect("blur", at=Span(0.5,
     1.5))` becomes `gblur=sigma=2:enable='between(t,0.5,1.5)'`. Reading
-    the clock to decide *whether* to apply is the same restart, and the
-    effect is not on any list of moving ones.
+    the clock to decide *whether* to apply is the same restart.
+
+  Both are read off `LookPlan.time_varying` (looks#17), the property of
+  the compiled plan, not off a list of effect names kept here. It is
+  tri-state upstream; an undeclared step (`None`) is treated as moving.
 
   A blanket `False` here — the obvious reading, since `stylize` is the
   grade-shaped door — would have been wrong for both.

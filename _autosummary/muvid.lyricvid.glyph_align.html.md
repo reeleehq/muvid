@@ -44,7 +44,6 @@ connector, and it never downloads weights unless the caller says
 | [`ONSET_TOL_S`](#muvid.lyricvid.glyph_align.ONSET_TOL_S)            | Onset tolerance for [`onset_report()`](#muvid.lyricvid.glyph_align.onset_report).                                                                                                                                                                                                     |
 | [`DISAGREE_S`](#muvid.lyricvid.glyph_align.DISAGREE_S)             | Two timings of a word disagree when their starts differ by more than this.                                                                                                                                                                                                               |
 | [`MIN_GLYPH_S`](#muvid.lyricvid.glyph_align.MIN_GLYPH_S)            | Two sounded glyphs whose STARTS are closer than this were squeezed together by the aligner, not sung (a mora takes ~0.1 s or more).                                                                                                                                                      |
-| [`REMEDIES`](#muvid.lyricvid.glyph_align.REMEDIES)               | What [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile) may do with a word a detector distrusts.                                                                                                                                                                               |
 | [`UNSUNG_QUIET_DB`](#muvid.lyricvid.glyph_align.UNSUNG_QUIET_DB)        | a frame is quiet below this many dB under the stem's own loud level...                                                                                                                                                                                                                   |
 | [`UNSUNG_QUIET_SHARE`](#muvid.lyricvid.glyph_align.UNSUNG_QUIET_SHARE)     | ...and a line is unsung when at least this share of its window is quiet...                                                                                                                                                                                                               |
 | [`UNSUNG_MIN_QUIET_S`](#muvid.lyricvid.glyph_align.UNSUNG_MIN_QUIET_S)     | ...in one unbroken stretch at least this long.                                                                                                                                                                                                                                           |
@@ -108,9 +107,9 @@ Names the words of a fine timing not to trust, and what to do about them.
 
 `find(fine, coarse)` gets both timings (same word sequence) and returns
 `{word_index: reason}`, indices into `list(fine.words())`. `remedy`
-is one of [`REMEDIES`](#muvid.lyricvid.glyph_align.REMEDIES); when several detectors flag one word, `drop`
-wins — a word nobody sang has no window worth falling back to — then
-`replace`, then `mute`.
+is one of `REMEDIES`; when several detectors flag one word, the
+remedy with the lowest rank wins: `drop` — a word nobody sang has no
+window worth falling back to — then `replace`, then `mute`.
 
 #### glyphs *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[Callable](https://docs.python.org/3/library/typing.html#typing.Callable)[[[TimedText](muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText), [TimedText](muvid.lyricvid.timed_text.html.md#muvid.lyricvid.timed_text.TimedText)], [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[int](https://docs.python.org/3/builtins/functions.html#int), [Collection](https://docs.python.org/3/library/collections.abc.html#collections.abc.Collection)[[int](https://docs.python.org/3/builtins/functions.html#int)]]]]*
 
@@ -149,15 +148,6 @@ span length: CTC spans are spiky, so a perfectly sung `ン` can be 20 ms.
 ### muvid.lyricvid.glyph_align.ONSET_TOL_S *= 0.08*
 
 Onset tolerance for [`onset_report()`](#muvid.lyricvid.glyph_align.onset_report).
-
-### muvid.lyricvid.glyph_align.REMEDIES *= ('replace', 'drop', 'mute')*
-
-What [`reconcile()`](#muvid.lyricvid.glyph_align.reconcile) may do with a word a detector distrusts. `replace`:
-fall back to the coarse window shifted by the measured bias, glyphs spread
-evenly and marked unmeasured (the word was sung; the aligner could not place
-it). `drop`: remove the word, and a line or section left empty (it was
-never sung, so lighting it at ANY time is wrong). `mute`: keep the word and
-its times, mark only the glyphs the detector names `sung=False`.
 
 ### muvid.lyricvid.glyph_align.SILENT_GLYPH_FRAME_S *= 0.01*
 
@@ -579,14 +569,16 @@ legitimately ~30 ms apart — and only between neighbours in the same line
 * **Return type:**
   [`Detector`](#muvid.lyricvid.glyph_align.Detector)
 
-### muvid.lyricvid.glyph_align.stem_detectors(vocals, , disagree_s=0.3, min_glyph_s=0.04, tol_s=0.08, drop_unsung=True)
+### muvid.lyricvid.glyph_align.stem_detectors(vocals, , disagree_s=0.3, min_glyph_s=0.04, tol_s=0.08, drop_unsung=True, silent_glyph_remedy=None)
 
 What to reconcile with when you have the vocal stem (muvid#150).
 
 [`squeezed()`](#muvid.lyricvid.glyph_align.squeezed), [`misplaced()`](#muvid.lyricvid.glyph_align.misplaced) (in place of [`disagrees()`](#muvid.lyricvid.glyph_align.disagrees), which
 trusts the vendor even when its time is impossible), [`unsung()`](#muvid.lyricvid.glyph_align.unsung) with
 `among=`[`lost()`](#muvid.lyricvid.glyph_align.lost) (left out when `drop_unsung` is false), and
-[`disordered()`](#muvid.lyricvid.glyph_align.disordered) over the rest. Measured on five songs, this reproduced
+[`disordered()`](#muvid.lyricvid.glyph_align.disordered) over the rest. [`silent_glyph()`](#muvid.lyricvid.glyph_align.silent_glyph) joins them, with the
+given remedy, only when `silent_glyph_remedy` is set (default: not run;
+its `drop` deletes sung text, so it stays opt-in, muvid#177). Measured on five songs, this reproduced
 both hand fixes the first one needed.
 
 * **Return type:**

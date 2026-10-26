@@ -936,15 +936,16 @@ whether it is time-varying <strong>from the compiled plan</strong> rather than b
 assumption. A grade, a LUT, a posterise is static; two shapes are not,
 and both are reachable from here:</p>
 <ul class="simple">
-<li><p>a step naming a <code class="xref py py-data docutils literal notranslate"><span class="pre">TIME_VARYING_EFFECTS</span></code> member — <code class="docutils literal notranslate"><span class="pre">motion</span></code> is one
-of <code class="docutils literal notranslate"><span class="pre">looks</span></code>’ registered effects, so <code class="docutils literal notranslate"><span class="pre">stylize</span></code> can emit exactly the
-<code class="docutils literal notranslate"><span class="pre">zoompan</span></code> ramp <a class="reference internal" href="#muvid.footage.punch_in" title="muvid.footage.punch_in"><code class="xref py py-func docutils literal notranslate"><span class="pre">punch_in()</span></code></a> does (verified by compiling it);</p></li>
+<li><p>a step whose implementation reads the filter clock — <code class="docutils literal notranslate"><span class="pre">motion</span></code>
+and <code class="docutils literal notranslate"><span class="pre">grain</span></code> are such effects (verified by compiling them);</p></li>
 <li><p>a step with an <code class="docutils literal notranslate"><span class="pre">at</span></code> <code class="xref py py-class docutils literal notranslate"><span class="pre">looks.Span</span></code>, which compiles to
 <code class="docutils literal notranslate"><span class="pre">enable='between(t,…)'</span></code> — measured: <code class="docutils literal notranslate"><span class="pre">Effect("blur",</span> <span class="pre">at=Span(0.5,</span>
 <span class="pre">1.5))</span></code> becomes <code class="docutils literal notranslate"><span class="pre">gblur=sigma=2:enable='between(t,0.5,1.5)'</span></code>. Reading
-the clock to decide <em>whether</em> to apply is the same restart, and the
-effect is not on any list of moving ones.</p></li>
+the clock to decide <em>whether</em> to apply is the same restart.</p></li>
 </ul>
+<p>Both are read off <code class="docutils literal notranslate"><span class="pre">LookPlan.time_varying</span></code> (looks#17), the property of
+the compiled plan, not off a list of effect names kept here. It is
+tri-state upstream; an undeclared step (<code class="docutils literal notranslate"><span class="pre">None</span></code>) is treated as moving.</p>
 <p>A blanket <code class="docutils literal notranslate"><span class="pre">False</span></code> here — the obvious reading, since <code class="docutils literal notranslate"><span class="pre">stylize</span></code> is the
 grade-shaped door — would have been wrong for both.</p>
 </p>
@@ -1146,7 +1147,7 @@ the loosest bound rather than an absent one.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5751785c"></script>
+<script src="../_static/documentation_options.js?v=f329fc45"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

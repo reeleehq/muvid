@@ -288,485 +288,470 @@
 </span><span id="line-101"><span class="c1">#: Where :func:`punch_in` zooms toward, as a fraction of the canvas. Centre.</span>
 </span><span id="line-102"><span class="n">DEFAULT_PUNCH_ANCHOR</span> <span class="o">=</span> <span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
 </span><span id="line-103">
-</span><span id="line-104"><span class="c1">#: ``looks`` effects whose compiled fragment READS THE FILTER CLOCK, so a cut</span>
-</span><span id="line-105"><span class="c1">#: carrying one is affected by muvid#73's restart on a blended boundary.</span>
-</span><span id="line-106"><span class="c1">#:</span>
-</span><span id="line-107"><span class="c1">#: **Pinned here rather than derived from ``looks``, for the same reason</span>
-</span><span id="line-108"><span class="c1">#: :data:`muvid.footage.edl.LOOK_FILTERS` is** — a new ``looks`` effect must be a</span>
-</span><span id="line-109"><span class="c1">#: decision someone records, not a silent change to what muvid warns about. The</span>
-</span><span id="line-110"><span class="c1">#: drift test in ``tests/test_look_time_varying.py`` fails when</span>
-</span><span id="line-111"><span class="c1">#: ``looks.effects()`` grows,</span>
-</span><span id="line-112"><span class="c1">#: which is what forces the classification.</span>
-</span><span id="line-113"><span class="c1">#:</span>
-</span><span id="line-114"><span class="c1">#: ``ImplRef.timeline`` is NOT this property and must not be mistaken for it: it</span>
-</span><span id="line-115"><span class="c1">#: says the implementation supports ffmpeg's ``enable=`` option. ``motion`` — the</span>
-</span><span id="line-116"><span class="c1">#: one genuinely moving effect — declares ``timeline=False``, and every static</span>
-</span><span id="line-117"><span class="c1">#: grade declares ``True``, so reading it would get every row backwards.</span>
-</span><span id="line-118"><span class="n">TIME_VARYING_EFFECTS</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">({</span><span class="s2">"motion"</span><span class="p">})</span>
-</span><span id="line-119">
-</span><span id="line-120">
+</span><span id="line-104">
 <div class="viewcode-block" id="LookError">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.LookError">[docs]</a>
-</span><span id="line-121"><span class="k">class</span><span class="w"> </span><span class="nc">LookError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-122"><span class="w">    </span><span class="sd">"""A look could not be compiled. Carries what to do about it."""</span></div>
+</span><span id="line-105"><span class="k">class</span><span class="w"> </span><span class="nc">LookError</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-106"><span class="w">    </span><span class="sd">"""A look could not be compiled. Carries what to do about it."""</span></div>
 
-</span><span id="line-123">
-</span><span id="line-124">
+</span><span id="line-107">
+</span><span id="line-108">
 <div class="viewcode-block" id="LookFragment">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.LookFragment">[docs]</a>
-</span><span id="line-125"><span class="k">class</span><span class="w"> </span><span class="nc">LookFragment</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
-</span><span id="line-126"><span class="w">    </span><span class="sd">"""A compiled filter chain that remembers whether it READS THE CLOCK.</span>
-</span><span id="line-127">
-</span><span id="line-128"><span class="sd">    A plain ``str`` in every way that matters — it splices, compares, serialises</span>
-</span><span id="line-129"><span class="sd">    and JSON-encodes identically, so nothing downstream needs to know it exists —</span>
-</span><span id="line-130"><span class="sd">    that additionally answers :attr:`time_varying`. That is what lets</span>
-</span><span id="line-131"><span class="sd">    :func:`punch_in_cuts` set</span>
-</span><span id="line-132"><span class="sd">    :attr:`muvid.footage.edl.EdlEntry.look_time_varying` *from the fragment*</span>
-</span><span id="line-133"><span class="sd">    instead of hardcoding a value beside the call that produced it, and what lets</span>
-</span><span id="line-134"><span class="sd">    :func:`chain` combine two fragments without either caller re-deriving the</span>
-</span><span id="line-135"><span class="sd">    answer.</span>
-</span><span id="line-136">
-</span><span id="line-137"><span class="sd">    A subclass rather than a ``(str, bool)`` pair because the fragment is already</span>
-</span><span id="line-138"><span class="sd">    a wire value: the EDL field is a string, the MCP reply is a string, and the</span>
-</span><span id="line-139"><span class="sd">    ``looks`` API returns a string. Changing that shape would push a rename table</span>
-</span><span id="line-140"><span class="sd">    into every consumer to carry one bit that only muvid's own compilers can</span>
-</span><span id="line-141"><span class="sd">    know.</span>
-</span><span id="line-142">
-</span><span id="line-143"><span class="sd">    **The bit does not survive a round trip, and is not meant to.** ``str``</span>
-</span><span id="line-144"><span class="sd">    operations return plain ``str``, and JSON has no place to put it — the</span>
-</span><span id="line-145"><span class="sd">    durable home is the EDL entry's own field, which is exactly why muvid#73 put</span>
-</span><span id="line-146"><span class="sd">    it there. :func:`is_time_varying` reads a fragment of either kind, treating a</span>
-</span><span id="line-147"><span class="sd">    plain string as static, which is the same default the field has.</span>
-</span><span id="line-148">
-</span><span id="line-149"><span class="sd">    &gt;&gt;&gt; frag = LookFragment("zoompan=d=1:s=64x48:fps=25", time_varying=True)</span>
-</span><span id="line-150"><span class="sd">    &gt;&gt;&gt; frag.time_varying, frag == "zoompan=d=1:s=64x48:fps=25"</span>
-</span><span id="line-151"><span class="sd">    (True, True)</span>
-</span><span id="line-152"><span class="sd">    &gt;&gt;&gt; is_time_varying("hue=s=0")</span>
-</span><span id="line-153"><span class="sd">    False</span>
+</span><span id="line-109"><span class="k">class</span><span class="w"> </span><span class="nc">LookFragment</span><span class="p">(</span><span class="nb">str</span><span class="p">):</span>
+</span><span id="line-110"><span class="w">    </span><span class="sd">"""A compiled filter chain that remembers whether it READS THE CLOCK.</span>
+</span><span id="line-111">
+</span><span id="line-112"><span class="sd">    A plain ``str`` in every way that matters — it splices, compares, serialises</span>
+</span><span id="line-113"><span class="sd">    and JSON-encodes identically, so nothing downstream needs to know it exists —</span>
+</span><span id="line-114"><span class="sd">    that additionally answers :attr:`time_varying`. That is what lets</span>
+</span><span id="line-115"><span class="sd">    :func:`punch_in_cuts` set</span>
+</span><span id="line-116"><span class="sd">    :attr:`muvid.footage.edl.EdlEntry.look_time_varying` *from the fragment*</span>
+</span><span id="line-117"><span class="sd">    instead of hardcoding a value beside the call that produced it, and what lets</span>
+</span><span id="line-118"><span class="sd">    :func:`chain` combine two fragments without either caller re-deriving the</span>
+</span><span id="line-119"><span class="sd">    answer.</span>
+</span><span id="line-120">
+</span><span id="line-121"><span class="sd">    A subclass rather than a ``(str, bool)`` pair because the fragment is already</span>
+</span><span id="line-122"><span class="sd">    a wire value: the EDL field is a string, the MCP reply is a string, and the</span>
+</span><span id="line-123"><span class="sd">    ``looks`` API returns a string. Changing that shape would push a rename table</span>
+</span><span id="line-124"><span class="sd">    into every consumer to carry one bit that only muvid's own compilers can</span>
+</span><span id="line-125"><span class="sd">    know.</span>
+</span><span id="line-126">
+</span><span id="line-127"><span class="sd">    **The bit does not survive a round trip, and is not meant to.** ``str``</span>
+</span><span id="line-128"><span class="sd">    operations return plain ``str``, and JSON has no place to put it — the</span>
+</span><span id="line-129"><span class="sd">    durable home is the EDL entry's own field, which is exactly why muvid#73 put</span>
+</span><span id="line-130"><span class="sd">    it there. :func:`is_time_varying` reads a fragment of either kind, treating a</span>
+</span><span id="line-131"><span class="sd">    plain string as static, which is the same default the field has.</span>
+</span><span id="line-132">
+</span><span id="line-133"><span class="sd">    &gt;&gt;&gt; frag = LookFragment("zoompan=d=1:s=64x48:fps=25", time_varying=True)</span>
+</span><span id="line-134"><span class="sd">    &gt;&gt;&gt; frag.time_varying, frag == "zoompan=d=1:s=64x48:fps=25"</span>
+</span><span id="line-135"><span class="sd">    (True, True)</span>
+</span><span id="line-136"><span class="sd">    &gt;&gt;&gt; is_time_varying("hue=s=0")</span>
+</span><span id="line-137"><span class="sd">    False</span>
+</span><span id="line-138">
+</span><span id="line-139"><span class="sd">    Copyable and picklable, which needs saying because it is not free: ``str``</span>
+</span><span id="line-140"><span class="sd">    subclasses are reconstructed through ``__new__``, and without</span>
+</span><span id="line-141"><span class="sd">    ``__getnewargs_ex__`` both ``copy.deepcopy`` and ``pickle`` raise</span>
+</span><span id="line-142"><span class="sd">    ``TypeError: __new__() missing 1 required keyword-only argument`` — measured.</span>
+</span><span id="line-143"><span class="sd">    An ``EdlEntry`` carrying one is an ordinary dataclass a caller may well copy.</span>
+</span><span id="line-144">
+</span><span id="line-145"><span class="sd">    &gt;&gt;&gt; import copy, pickle</span>
+</span><span id="line-146"><span class="sd">    &gt;&gt;&gt; copy.deepcopy(frag).time_varying, pickle.loads(pickle.dumps(frag)) == frag</span>
+</span><span id="line-147"><span class="sd">    (True, True)</span>
+</span><span id="line-148"><span class="sd">    """</span>
+</span><span id="line-149">
+</span><span id="line-150">    <span class="k">def</span><span class="w"> </span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">time_varying</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+</span><span id="line-151">        <span class="n">obj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fragment</span><span class="p">)</span>
+</span><span id="line-152">        <span class="n">obj</span><span class="o">.</span><span class="n">time_varying</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">time_varying</span><span class="p">)</span>
+</span><span id="line-153">        <span class="k">return</span> <span class="n">obj</span>
 </span><span id="line-154">
-</span><span id="line-155"><span class="sd">    Copyable and picklable, which needs saying because it is not free: ``str``</span>
-</span><span id="line-156"><span class="sd">    subclasses are reconstructed through ``__new__``, and without</span>
-</span><span id="line-157"><span class="sd">    ``__getnewargs_ex__`` both ``copy.deepcopy`` and ``pickle`` raise</span>
-</span><span id="line-158"><span class="sd">    ``TypeError: __new__() missing 1 required keyword-only argument`` — measured.</span>
-</span><span id="line-159"><span class="sd">    An ``EdlEntry`` carrying one is an ordinary dataclass a caller may well copy.</span>
-</span><span id="line-160">
-</span><span id="line-161"><span class="sd">    &gt;&gt;&gt; import copy, pickle</span>
-</span><span id="line-162"><span class="sd">    &gt;&gt;&gt; copy.deepcopy(frag).time_varying, pickle.loads(pickle.dumps(frag)) == frag</span>
-</span><span id="line-163"><span class="sd">    (True, True)</span>
-</span><span id="line-164"><span class="sd">    """</span>
-</span><span id="line-165">
-</span><span id="line-166">    <span class="k">def</span><span class="w"> </span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fragment</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">time_varying</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
-</span><span id="line-167">        <span class="n">obj</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">fragment</span><span class="p">)</span>
-</span><span id="line-168">        <span class="n">obj</span><span class="o">.</span><span class="n">time_varying</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">time_varying</span><span class="p">)</span>
-</span><span id="line-169">        <span class="k">return</span> <span class="n">obj</span>
-</span><span id="line-170">
-</span><span id="line-171">    <span class="k">def</span><span class="w"> </span><span class="nf">__getnewargs_ex__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="line-172">        <span class="k">return</span> <span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">),),</span> <span class="p">{</span><span class="s2">"time_varying"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_varying</span><span class="p">})</span></div>
+</span><span id="line-155">    <span class="k">def</span><span class="w"> </span><span class="nf">__getnewargs_ex__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="line-156">        <span class="k">return</span> <span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="p">),),</span> <span class="p">{</span><span class="s2">"time_varying"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_varying</span><span class="p">})</span></div>
 
-</span><span id="line-173">
-</span><span id="line-174">
+</span><span id="line-157">
+</span><span id="line-158">
 <div class="viewcode-block" id="is_time_varying">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.is_time_varying">[docs]</a>
-</span><span id="line-175"><span class="k">def</span><span class="w"> </span><span class="nf">is_time_varying</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="line-176"><span class="w">    </span><span class="sd">"""Whether ``fragment`` declares that it reads the clock. Plain strings: no.</span>
-</span><span id="line-177">
-</span><span id="line-178"><span class="sd">    The one place that default lives, so a caller reading a fragment and the EDL</span>
-</span><span id="line-179"><span class="sd">    field's own default cannot drift apart.</span>
-</span><span id="line-180">
-</span><span id="line-181"><span class="sd">    &gt;&gt;&gt; is_time_varying(LookFragment("zoompan=d=1", time_varying=True))</span>
-</span><span id="line-182"><span class="sd">    True</span>
-</span><span id="line-183"><span class="sd">    &gt;&gt;&gt; is_time_varying("hue=s=0"), is_time_varying(None)</span>
-</span><span id="line-184"><span class="sd">    (False, False)</span>
-</span><span id="line-185"><span class="sd">    """</span>
-</span><span id="line-186">    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">fragment</span><span class="p">,</span> <span class="s2">"time_varying"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span></div>
+</span><span id="line-159"><span class="k">def</span><span class="w"> </span><span class="nf">is_time_varying</span><span class="p">(</span><span class="n">fragment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-160"><span class="w">    </span><span class="sd">"""Whether ``fragment`` declares that it reads the clock. Plain strings: no.</span>
+</span><span id="line-161">
+</span><span id="line-162"><span class="sd">    The one place that default lives, so a caller reading a fragment and the EDL</span>
+</span><span id="line-163"><span class="sd">    field's own default cannot drift apart.</span>
+</span><span id="line-164">
+</span><span id="line-165"><span class="sd">    &gt;&gt;&gt; is_time_varying(LookFragment("zoompan=d=1", time_varying=True))</span>
+</span><span id="line-166"><span class="sd">    True</span>
+</span><span id="line-167"><span class="sd">    &gt;&gt;&gt; is_time_varying("hue=s=0"), is_time_varying(None)</span>
+</span><span id="line-168"><span class="sd">    (False, False)</span>
+</span><span id="line-169"><span class="sd">    """</span>
+</span><span id="line-170">    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">fragment</span><span class="p">,</span> <span class="s2">"time_varying"</span><span class="p">,</span> <span class="kc">False</span><span class="p">))</span></div>
 
-</span><span id="line-187">
-</span><span id="line-188">
-</span><span id="line-189"><span class="k">def</span><span class="w"> </span><span class="nf">_require_looks</span><span class="p">():</span>
-</span><span id="line-190"><span class="w">    </span><span class="sd">"""Import ``looks``, translating its absence into an actionable error.</span>
-</span><span id="line-191">
-</span><span id="line-192"><span class="sd">    ``looks`` is a declared dependency and stdlib-only, so this practically</span>
-</span><span id="line-193"><span class="sd">    always succeeds; the branch exists because an ``ImportError`` from three</span>
-</span><span id="line-194"><span class="sd">    frames down names a module and not a remedy.</span>
-</span><span id="line-195"><span class="sd">    """</span>
-</span><span id="line-196">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-197">        <span class="kn">import</span><span class="w"> </span><span class="nn">looks</span>
-</span><span id="line-198">    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover - a declared dependency</span>
-</span><span id="line-199">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
-</span><span id="line-200">            <span class="s2">"the `looks` package is needed to compile a look, and it is not "</span>
-</span><span id="line-201">            <span class="s2">"importable. It is a declared muvid dependency and has no "</span>
-</span><span id="line-202">            <span class="s2">"dependencies of its own: `pip install looks`."</span>
-</span><span id="line-203">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-</span><span id="line-204">    <span class="k">return</span> <span class="n">looks</span>
-</span><span id="line-205">
-</span><span id="line-206">
-</span><span id="line-207"><span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
-</span><span id="line-208"><span class="k">def</span><span class="w"> </span><span class="nf">_probe</span><span class="p">(</span><span class="n">ffmpeg</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="line-209"><span class="w">    </span><span class="sd">"""Probe one ffmpeg binary, once per process.</span>
-</span><span id="line-210">
-</span><span id="line-211"><span class="sd">    Cached because a probe is a subprocess and a score-driven edit compiles a</span>
-</span><span id="line-212"><span class="sd">    look per cut — 30-70 of them. Keyed on the binary NAME as given, which is</span>
-</span><span id="line-213"><span class="sd">    the same key muvid runs under; ``looks`` caches again on the resolved path.</span>
-</span><span id="line-214"><span class="sd">    """</span>
-</span><span id="line-215">    <span class="k">return</span> <span class="n">_require_looks</span><span class="p">()</span><span class="o">.</span><span class="n">probe</span><span class="p">(</span><span class="n">ffmpeg</span><span class="p">)</span>
-</span><span id="line-216">
-</span><span id="line-217">
-</span><span id="line-218"><span class="k">def</span><span class="w"> </span><span class="nf">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"tuple[int, int]"</span><span class="p">:</span>
-</span><span id="line-219">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">canvas</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">canvas</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="line-220">    <span class="k">if</span> <span class="n">w</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">h</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-221">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"canvas must be positive, got </span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
-</span><span id="line-222">    <span class="k">return</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span>
-</span><span id="line-223">
-</span><span id="line-224">
+</span><span id="line-171">
+</span><span id="line-172">
+</span><span id="line-173"><span class="k">def</span><span class="w"> </span><span class="nf">_require_looks</span><span class="p">():</span>
+</span><span id="line-174"><span class="w">    </span><span class="sd">"""Import ``looks``, translating its absence into an actionable error.</span>
+</span><span id="line-175">
+</span><span id="line-176"><span class="sd">    ``looks`` is a declared dependency and stdlib-only, so this practically</span>
+</span><span id="line-177"><span class="sd">    always succeeds; the branch exists because an ``ImportError`` from three</span>
+</span><span id="line-178"><span class="sd">    frames down names a module and not a remedy.</span>
+</span><span id="line-179"><span class="sd">    """</span>
+</span><span id="line-180">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-181">        <span class="kn">import</span><span class="w"> </span><span class="nn">looks</span>
+</span><span id="line-182">    <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>  <span class="c1"># pragma: no cover - a declared dependency</span>
+</span><span id="line-183">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
+</span><span id="line-184">            <span class="s2">"the `looks` package is needed to compile a look, and it is not "</span>
+</span><span id="line-185">            <span class="s2">"importable. It is a declared muvid dependency and has no "</span>
+</span><span id="line-186">            <span class="s2">"dependencies of its own: `pip install looks`."</span>
+</span><span id="line-187">        <span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+</span><span id="line-188">    <span class="k">return</span> <span class="n">looks</span>
+</span><span id="line-189">
+</span><span id="line-190">
+</span><span id="line-191"><span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+</span><span id="line-192"><span class="k">def</span><span class="w"> </span><span class="nf">_probe</span><span class="p">(</span><span class="n">ffmpeg</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="line-193"><span class="w">    </span><span class="sd">"""Probe one ffmpeg binary, once per process.</span>
+</span><span id="line-194">
+</span><span id="line-195"><span class="sd">    Cached because a probe is a subprocess and a score-driven edit compiles a</span>
+</span><span id="line-196"><span class="sd">    look per cut — 30-70 of them. Keyed on the binary NAME as given, which is</span>
+</span><span id="line-197"><span class="sd">    the same key muvid runs under; ``looks`` caches again on the resolved path.</span>
+</span><span id="line-198"><span class="sd">    """</span>
+</span><span id="line-199">    <span class="k">return</span> <span class="n">_require_looks</span><span class="p">()</span><span class="o">.</span><span class="n">probe</span><span class="p">(</span><span class="n">ffmpeg</span><span class="p">)</span>
+</span><span id="line-200">
+</span><span id="line-201">
+</span><span id="line-202"><span class="k">def</span><span class="w"> </span><span class="nf">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"tuple[int, int]"</span><span class="p">:</span>
+</span><span id="line-203">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">canvas</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">canvas</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-204">    <span class="k">if</span> <span class="n">w</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">h</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-205">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"canvas must be positive, got </span><span class="si">{</span><span class="n">w</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+</span><span id="line-206">    <span class="k">return</span> <span class="n">w</span><span class="p">,</span> <span class="n">h</span>
+</span><span id="line-207">
+</span><span id="line-208">
 <div class="viewcode-block" id="chain">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.chain">[docs]</a>
-</span><span id="line-225"><span class="k">def</span><span class="w"> </span><span class="nf">chain</span><span class="p">(</span><span class="o">*</span><span class="n">fragments</span><span class="p">:</span> <span class="s2">"Optional[str]"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"Optional[LookFragment]"</span><span class="p">:</span>
-</span><span id="line-226"><span class="w">    </span><span class="sd">"""Join look fragments into one, dropping the empty ones.</span>
+</span><span id="line-209"><span class="k">def</span><span class="w"> </span><span class="nf">chain</span><span class="p">(</span><span class="o">*</span><span class="n">fragments</span><span class="p">:</span> <span class="s2">"Optional[str]"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"Optional[LookFragment]"</span><span class="p">:</span>
+</span><span id="line-210"><span class="w">    </span><span class="sd">"""Join look fragments into one, dropping the empty ones.</span>
+</span><span id="line-211">
+</span><span id="line-212"><span class="sd">    A cut carries at most one look, so two effects on one cut are one chain.</span>
+</span><span id="line-213"><span class="sd">    Returns ``None`` when nothing survives, which is the value the EDL field</span>
+</span><span id="line-214"><span class="sd">    wants for "no look" — an empty string is refused by ``validate_edl``</span>
+</span><span id="line-215"><span class="sd">    deliberately, so this does not produce one.</span>
+</span><span id="line-216">
+</span><span id="line-217"><span class="sd">    **The result is time-varying if ANY component is** — the OR, not the AND and</span>
+</span><span id="line-218"><span class="sd">    not the last one's answer. A chain runs every link on every frame, so one</span>
+</span><span id="line-219"><span class="sd">    moving link makes the whole fragment move, and muvid#73's restart hits it.</span>
+</span><span id="line-220"><span class="sd">    Getting this wrong in the safe-looking direction (AND) would silence the</span>
+</span><span id="line-221"><span class="sd">    warning on exactly the chains most likely to have one: a punch composed with</span>
+</span><span id="line-222"><span class="sd">    a grade.</span>
+</span><span id="line-223">
+</span><span id="line-224"><span class="sd">    A plain ``str`` component contributes ``False``, matching</span>
+</span><span id="line-225"><span class="sd">    :func:`is_time_varying` and the EDL field's own default — so hand-writing one</span>
+</span><span id="line-226"><span class="sd">    half of a chain quietly downgrades only that half's claim, never the other's.</span>
 </span><span id="line-227">
-</span><span id="line-228"><span class="sd">    A cut carries at most one look, so two effects on one cut are one chain.</span>
-</span><span id="line-229"><span class="sd">    Returns ``None`` when nothing survives, which is the value the EDL field</span>
-</span><span id="line-230"><span class="sd">    wants for "no look" — an empty string is refused by ``validate_edl``</span>
-</span><span id="line-231"><span class="sd">    deliberately, so this does not produce one.</span>
-</span><span id="line-232">
-</span><span id="line-233"><span class="sd">    **The result is time-varying if ANY component is** — the OR, not the AND and</span>
-</span><span id="line-234"><span class="sd">    not the last one's answer. A chain runs every link on every frame, so one</span>
-</span><span id="line-235"><span class="sd">    moving link makes the whole fragment move, and muvid#73's restart hits it.</span>
-</span><span id="line-236"><span class="sd">    Getting this wrong in the safe-looking direction (AND) would silence the</span>
-</span><span id="line-237"><span class="sd">    warning on exactly the chains most likely to have one: a punch composed with</span>
-</span><span id="line-238"><span class="sd">    a grade.</span>
-</span><span id="line-239">
-</span><span id="line-240"><span class="sd">    A plain ``str`` component contributes ``False``, matching</span>
-</span><span id="line-241"><span class="sd">    :func:`is_time_varying` and the EDL field's own default — so hand-writing one</span>
-</span><span id="line-242"><span class="sd">    half of a chain quietly downgrades only that half's claim, never the other's.</span>
-</span><span id="line-243">
-</span><span id="line-244"><span class="sd">    &gt;&gt;&gt; chain("hue=s=0", None, "", "unsharp=5:5:1")</span>
-</span><span id="line-245"><span class="sd">    'hue=s=0,unsharp=5:5:1'</span>
-</span><span id="line-246"><span class="sd">    &gt;&gt;&gt; chain(None, "") is None</span>
-</span><span id="line-247"><span class="sd">    True</span>
-</span><span id="line-248"><span class="sd">    &gt;&gt;&gt; chain("hue=s=0", LookFragment("zoompan=d=1", time_varying=True)).time_varying</span>
-</span><span id="line-249"><span class="sd">    True</span>
-</span><span id="line-250"><span class="sd">    &gt;&gt;&gt; chain("hue=s=0", "unsharp=5:5:1").time_varying</span>
-</span><span id="line-251"><span class="sd">    False</span>
-</span><span id="line-252"><span class="sd">    """</span>
-</span><span id="line-253">    <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fragments</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
-</span><span id="line-254">    <span class="k">if</span> <span class="ow">not</span> <span class="n">kept</span><span class="p">:</span>
-</span><span id="line-255">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-256">    <span class="k">return</span> <span class="n">LookFragment</span><span class="p">(</span>
-</span><span id="line-257">        <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">),</span>
-</span><span id="line-258">        <span class="n">time_varying</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span><span class="n">is_time_varying</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">),</span>
-</span><span id="line-259">    <span class="p">)</span></div>
+</span><span id="line-228"><span class="sd">    &gt;&gt;&gt; chain("hue=s=0", None, "", "unsharp=5:5:1")</span>
+</span><span id="line-229"><span class="sd">    'hue=s=0,unsharp=5:5:1'</span>
+</span><span id="line-230"><span class="sd">    &gt;&gt;&gt; chain(None, "") is None</span>
+</span><span id="line-231"><span class="sd">    True</span>
+</span><span id="line-232"><span class="sd">    &gt;&gt;&gt; chain("hue=s=0", LookFragment("zoompan=d=1", time_varying=True)).time_varying</span>
+</span><span id="line-233"><span class="sd">    True</span>
+</span><span id="line-234"><span class="sd">    &gt;&gt;&gt; chain("hue=s=0", "unsharp=5:5:1").time_varying</span>
+</span><span id="line-235"><span class="sd">    False</span>
+</span><span id="line-236"><span class="sd">    """</span>
+</span><span id="line-237">    <span class="n">kept</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fragments</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">and</span> <span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">()]</span>
+</span><span id="line-238">    <span class="k">if</span> <span class="ow">not</span> <span class="n">kept</span><span class="p">:</span>
+</span><span id="line-239">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-240">    <span class="k">return</span> <span class="n">LookFragment</span><span class="p">(</span>
+</span><span id="line-241">        <span class="s2">","</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">),</span>
+</span><span id="line-242">        <span class="n">time_varying</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span><span class="n">is_time_varying</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">),</span>
+</span><span id="line-243">    <span class="p">)</span></div>
 
-</span><span id="line-260">
-</span><span id="line-261">
+</span><span id="line-244">
+</span><span id="line-245">
 <div class="viewcode-block" id="motion">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.motion">[docs]</a>
-</span><span id="line-262"><span class="k">def</span><span class="w"> </span><span class="nf">motion</span><span class="p">(</span><span class="n">keyframes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"LookFragment"</span><span class="p">:</span>
-</span><span id="line-263"><span class="w">    </span><span class="sd">"""A camera path over the cut, as a filter fragment. ``looks`` picks the filter.</span>
-</span><span id="line-264">
-</span><span id="line-265"><span class="sd">    Args:</span>
-</span><span id="line-266"><span class="sd">        keyframes: ``(t_seconds, window)`` pairs, or :class:`looks.Keyframe`s.</span>
-</span><span id="line-267"><span class="sd">            The window is anything with ``x``/``y``/``w``/``h`` as fractions —</span>
-</span><span id="line-268"><span class="sd">            :class:`muvid.footage.edl.CropWindow` satisfies that structurally,</span>
-</span><span id="line-269"><span class="sd">            with no adapter, because both packages use ``burns.Rect``'s</span>
-</span><span id="line-270"><span class="sd">            convention on purpose.</span>
-</span><span id="line-271"><span class="sd">        canvas: ``(width, height)`` — the assembler's delivery canvas.</span>
-</span><span id="line-272"><span class="sd">        fps: the assembler's delivery frame rate.</span>
-</span><span id="line-273">
-</span><span id="line-274"><span class="sd">    Returns:</span>
-</span><span id="line-275"><span class="sd">        One linear ffmpeg filter chain, ready for the ``look`` field, declaring</span>
-</span><span id="line-276"><span class="sd">        itself **time-varying** — a camera path is a ramp in the filter's own</span>
-</span><span id="line-277"><span class="sd">        clock (``in_time`` under ``zoompan``, ``t`` under ``crop``), whichever</span>
-</span><span id="line-278"><span class="sd">        filter ``looks`` picks, so it is muvid#73's affected kind. A path whose</span>
-</span><span id="line-279"><span class="sd">        keyframes happen to hold still is still declared moving: the fragment</span>
-</span><span id="line-280"><span class="sd">        reads the clock either way, and that is the property the warning is</span>
-</span><span id="line-281"><span class="sd">        about.</span>
-</span><span id="line-282">
-</span><span id="line-283"><span class="sd">    **The windows are fractions of the CANVAS, not of the source.** That follows</span>
-</span><span id="line-284"><span class="sd">    from where the fragment is spliced: after ``scale``/``pad``, so the frame it</span>
-</span><span id="line-285"><span class="sd">    sees is the canvas with the source letterboxed into it. It is also what makes</span>
-</span><span id="line-286"><span class="sd">    the move well-defined across a mixed-device edit — the same punch reads the</span>
-</span><span id="line-287"><span class="sd">    same on a portrait phone clip and a landscape one, where a source-relative</span>
-</span><span id="line-288"><span class="sd">    window would not. Use ``crop``/``crop_end`` on the EDL entry for the</span>
-</span><span id="line-289"><span class="sd">    source-relative framing decision; the two compose, crop first.</span>
-</span><span id="line-290">
-</span><span id="line-291"><span class="sd">    Which ffmpeg filter this becomes is ``looks``' decision and not a matter of</span>
-</span><span id="line-292"><span class="sd">    taste: a constant-size window is ``crop``, a resizing one is ``zoompan``, and</span>
-</span><span id="line-293"><span class="sd">    ``crop`` cannot resize at all (its ``w``/``h`` are evaluated once, at</span>
-</span><span id="line-294"><span class="sd">    configure time, when ``t`` is NAN — it either refuses to configure or, worse,</span>
-</span><span id="line-295"><span class="sd">    exits 0 having rendered every frame at one wrong size).</span>
-</span><span id="line-296">
-</span><span id="line-297"><span class="sd">    Raises:</span>
-</span><span id="line-298"><span class="sd">        LookError: If the path needs something that was not supplied.</span>
-</span><span id="line-299"><span class="sd">    """</span>
-</span><span id="line-300">    <span class="n">looks</span> <span class="o">=</span> <span class="n">_require_looks</span><span class="p">()</span>
-</span><span id="line-301">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span>
-</span><span id="line-302">    <span class="n">frames</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-303">        <span class="n">k</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">looks</span><span class="o">.</span><span class="n">Keyframe</span><span class="p">)</span> <span class="k">else</span> <span class="n">looks</span><span class="o">.</span><span class="n">Keyframe</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="line-304">        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keyframes</span>
-</span><span id="line-305">    <span class="p">]</span>
-</span><span id="line-306">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-307">        <span class="n">frag</span> <span class="o">=</span> <span class="n">looks</span><span class="o">.</span><span class="n">compile_motion</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">looks</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">),</span> <span class="n">fps</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">fps</span><span class="p">))</span>
-</span><span id="line-308">    <span class="k">except</span> <span class="n">looks</span><span class="o">.</span><span class="n">MotionError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-309">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
-</span><span id="line-310">    <span class="k">return</span> <span class="n">LookFragment</span><span class="p">(</span><span class="n">frag</span><span class="p">,</span> <span class="n">time_varying</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+</span><span id="line-246"><span class="k">def</span><span class="w"> </span><span class="nf">motion</span><span class="p">(</span><span class="n">keyframes</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"LookFragment"</span><span class="p">:</span>
+</span><span id="line-247"><span class="w">    </span><span class="sd">"""A camera path over the cut, as a filter fragment. ``looks`` picks the filter.</span>
+</span><span id="line-248">
+</span><span id="line-249"><span class="sd">    Args:</span>
+</span><span id="line-250"><span class="sd">        keyframes: ``(t_seconds, window)`` pairs, or :class:`looks.Keyframe`s.</span>
+</span><span id="line-251"><span class="sd">            The window is anything with ``x``/``y``/``w``/``h`` as fractions —</span>
+</span><span id="line-252"><span class="sd">            :class:`muvid.footage.edl.CropWindow` satisfies that structurally,</span>
+</span><span id="line-253"><span class="sd">            with no adapter, because both packages use ``burns.Rect``'s</span>
+</span><span id="line-254"><span class="sd">            convention on purpose.</span>
+</span><span id="line-255"><span class="sd">        canvas: ``(width, height)`` — the assembler's delivery canvas.</span>
+</span><span id="line-256"><span class="sd">        fps: the assembler's delivery frame rate.</span>
+</span><span id="line-257">
+</span><span id="line-258"><span class="sd">    Returns:</span>
+</span><span id="line-259"><span class="sd">        One linear ffmpeg filter chain, ready for the ``look`` field, declaring</span>
+</span><span id="line-260"><span class="sd">        itself **time-varying** — a camera path is a ramp in the filter's own</span>
+</span><span id="line-261"><span class="sd">        clock (``in_time`` under ``zoompan``, ``t`` under ``crop``), whichever</span>
+</span><span id="line-262"><span class="sd">        filter ``looks`` picks, so it is muvid#73's affected kind. A path whose</span>
+</span><span id="line-263"><span class="sd">        keyframes happen to hold still is still declared moving: the fragment</span>
+</span><span id="line-264"><span class="sd">        reads the clock either way, and that is the property the warning is</span>
+</span><span id="line-265"><span class="sd">        about.</span>
+</span><span id="line-266">
+</span><span id="line-267"><span class="sd">    **The windows are fractions of the CANVAS, not of the source.** That follows</span>
+</span><span id="line-268"><span class="sd">    from where the fragment is spliced: after ``scale``/``pad``, so the frame it</span>
+</span><span id="line-269"><span class="sd">    sees is the canvas with the source letterboxed into it. It is also what makes</span>
+</span><span id="line-270"><span class="sd">    the move well-defined across a mixed-device edit — the same punch reads the</span>
+</span><span id="line-271"><span class="sd">    same on a portrait phone clip and a landscape one, where a source-relative</span>
+</span><span id="line-272"><span class="sd">    window would not. Use ``crop``/``crop_end`` on the EDL entry for the</span>
+</span><span id="line-273"><span class="sd">    source-relative framing decision; the two compose, crop first.</span>
+</span><span id="line-274">
+</span><span id="line-275"><span class="sd">    Which ffmpeg filter this becomes is ``looks``' decision and not a matter of</span>
+</span><span id="line-276"><span class="sd">    taste: a constant-size window is ``crop``, a resizing one is ``zoompan``, and</span>
+</span><span id="line-277"><span class="sd">    ``crop`` cannot resize at all (its ``w``/``h`` are evaluated once, at</span>
+</span><span id="line-278"><span class="sd">    configure time, when ``t`` is NAN — it either refuses to configure or, worse,</span>
+</span><span id="line-279"><span class="sd">    exits 0 having rendered every frame at one wrong size).</span>
+</span><span id="line-280">
+</span><span id="line-281"><span class="sd">    Raises:</span>
+</span><span id="line-282"><span class="sd">        LookError: If the path needs something that was not supplied.</span>
+</span><span id="line-283"><span class="sd">    """</span>
+</span><span id="line-284">    <span class="n">looks</span> <span class="o">=</span> <span class="n">_require_looks</span><span class="p">()</span>
+</span><span id="line-285">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span>
+</span><span id="line-286">    <span class="n">frames</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-287">        <span class="n">k</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">looks</span><span class="o">.</span><span class="n">Keyframe</span><span class="p">)</span> <span class="k">else</span> <span class="n">looks</span><span class="o">.</span><span class="n">Keyframe</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">k</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-288">        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keyframes</span>
+</span><span id="line-289">    <span class="p">]</span>
+</span><span id="line-290">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-291">        <span class="n">frag</span> <span class="o">=</span> <span class="n">looks</span><span class="o">.</span><span class="n">compile_motion</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">output</span><span class="o">=</span><span class="n">looks</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">),</span> <span class="n">fps</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">fps</span><span class="p">))</span>
+</span><span id="line-292">    <span class="k">except</span> <span class="n">looks</span><span class="o">.</span><span class="n">MotionError</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-293">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span>
+</span><span id="line-294">    <span class="k">return</span> <span class="n">LookFragment</span><span class="p">(</span><span class="n">frag</span><span class="p">,</span> <span class="n">time_varying</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
 
-</span><span id="line-311">
-</span><span id="line-312">
+</span><span id="line-295">
+</span><span id="line-296">
 <div class="viewcode-block" id="punch_in">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.punch_in">[docs]</a>
-</span><span id="line-313"><span class="k">def</span><span class="w"> </span><span class="nf">punch_in</span><span class="p">(</span>
-</span><span id="line-314">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-315">    <span class="n">canvas</span><span class="p">,</span>
-</span><span id="line-316">    <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-317">    <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-318">    <span class="n">zoom</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ZOOM</span><span class="p">,</span>
-</span><span id="line-319">    <span class="n">anchor</span><span class="p">:</span> <span class="s2">"tuple[float, float]"</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ANCHOR</span><span class="p">,</span>
-</span><span id="line-320">    <span class="n">start_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
-</span><span id="line-321">    <span class="n">end_s</span><span class="p">:</span> <span class="s2">"Optional[float]"</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-322"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"LookFragment"</span><span class="p">:</span>
-</span><span id="line-323"><span class="w">    </span><span class="sd">"""An in-shot punch-in: hold, then push in, WITHOUT leaving the shot (muvid#66).</span>
-</span><span id="line-324">
-</span><span id="line-325"><span class="sd">    The design partner asked for "roughly 2N" of these and was explicit that it</span>
-</span><span id="line-326"><span class="sd">    is **not** a transition between two clips — it stays on the same shot. Before</span>
-</span><span id="line-327"><span class="sd">    this there was no punch-in, zoom or Ken Burns move anywhere in the footage</span>
-</span><span id="line-328"><span class="sd">    path; the only two mentions of ``zoom`` under ``footage/`` were comments</span>
-</span><span id="line-329"><span class="sd">    explaining why ``zoompan`` was unusable, and that reading has since been</span>
-</span><span id="line-330"><span class="sd">    measured wrong: ``t`` is undefined inside ``zoompan``, but ``in_time`` works</span>
-</span><span id="line-331"><span class="sd">    and ``d=1`` is exactly 1:1 rather than the frame-duplicating default. Both</span>
-</span><span id="line-332"><span class="sd">    corrections live in ``looks.compile_motion``, which is why this function is</span>
-</span><span id="line-333"><span class="sd">    six lines of geometry and no ffmpeg.</span>
-</span><span id="line-334">
-</span><span id="line-335"><span class="sd">    Args:</span>
-</span><span id="line-336"><span class="sd">        canvas: ``(width, height)`` — the assembler's delivery canvas.</span>
-</span><span id="line-337"><span class="sd">        fps: the assembler's delivery frame rate.</span>
-</span><span id="line-338"><span class="sd">        duration_s: the cut's length in seconds. The move ends here by default.</span>
-</span><span id="line-339"><span class="sd">        zoom: final magnification. ``1.12`` shows ~89% of the frame.</span>
-</span><span id="line-340"><span class="sd">        anchor: what stays put, as a fraction of the canvas. ``(0.5, 0.5)``</span>
-</span><span id="line-341"><span class="sd">            centres it; ``(0.5, 0.35)`` pushes toward a face in the upper third.</span>
-</span><span id="line-342"><span class="sd">        start_s: hold the full frame until here, then move.</span>
-</span><span id="line-343"><span class="sd">        end_s: reach the final framing here and hold. Defaults to ``duration_s``.</span>
-</span><span id="line-344">
-</span><span id="line-345"><span class="sd">    Returns:</span>
-</span><span id="line-346"><span class="sd">        One linear ffmpeg filter chain, ready for the ``look`` field, declaring</span>
-</span><span id="line-347"><span class="sd">        itself **time-varying** (it goes through :func:`motion`). Put that on the</span>
-</span><span id="line-348"><span class="sd">        entry as ``look_time_varying`` — :func:`punch_in_cuts` does — or the</span>
-</span><span id="line-349"><span class="sd">        assembler cannot warn you when the cut borders a transition and the move</span>
-</span><span id="line-350"><span class="sd">        restarts (muvid#73).</span>
-</span><span id="line-351">
-</span><span id="line-352"><span class="sd">    A move is a ramp between two windows, and the windows are fractions of the</span>
-</span><span id="line-353"><span class="sd">    canvas (see :func:`motion`). The end window keeps the canvas's aspect ratio,</span>
-</span><span id="line-354"><span class="sd">    which is what lets ``zoompan`` deliver at the canvas size with no stretch and</span>
-</span><span id="line-355"><span class="sd">    no reframing crop.</span>
-</span><span id="line-356">
-</span><span id="line-357"><span class="sd">    &gt;&gt;&gt; frag = punch_in(canvas=(640, 360), fps=25, duration_s=3.0)</span>
-</span><span id="line-358"><span class="sd">    &gt;&gt;&gt; frag.startswith("zoompan=d=1:s=640x360:fps=25:")</span>
-</span><span id="line-359"><span class="sd">    True</span>
-</span><span id="line-360"><span class="sd">    &gt;&gt;&gt; frag.time_varying</span>
-</span><span id="line-361"><span class="sd">    True</span>
-</span><span id="line-362">
-</span><span id="line-363"><span class="sd">    A pull-out is this move backwards, so it goes through :func:`motion` with the</span>
-</span><span id="line-364"><span class="sd">    windows in the order you want them, rather than a boolean here.</span>
-</span><span id="line-365">
-</span><span id="line-366"><span class="sd">    Raises:</span>
-</span><span id="line-367"><span class="sd">        LookError: If ``zoom``, the timings or the anchor are out of range.</span>
-</span><span id="line-368"><span class="sd">    """</span>
-</span><span id="line-369">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropWindow</span>
-</span><span id="line-370">
-</span><span id="line-371">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span>
-</span><span id="line-372">    <span class="k">if</span> <span class="n">zoom</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
-</span><span id="line-373">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
-</span><span id="line-374">            <span class="sa">f</span><span class="s2">"punch_in needs zoom &gt; 1 (got </span><span class="si">{</span><span class="n">zoom</span><span class="si">}</span><span class="s2">); it magnifies. A move that "</span>
-</span><span id="line-375">            <span class="s2">"pulls OUT starts zoomed and ends full, which is motion() with the "</span>
-</span><span id="line-376">            <span class="s2">"windows in that order — a direction, not a flag."</span>
+</span><span id="line-297"><span class="k">def</span><span class="w"> </span><span class="nf">punch_in</span><span class="p">(</span>
+</span><span id="line-298">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-299">    <span class="n">canvas</span><span class="p">,</span>
+</span><span id="line-300">    <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-301">    <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-302">    <span class="n">zoom</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ZOOM</span><span class="p">,</span>
+</span><span id="line-303">    <span class="n">anchor</span><span class="p">:</span> <span class="s2">"tuple[float, float]"</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ANCHOR</span><span class="p">,</span>
+</span><span id="line-304">    <span class="n">start_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-305">    <span class="n">end_s</span><span class="p">:</span> <span class="s2">"Optional[float]"</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-306"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"LookFragment"</span><span class="p">:</span>
+</span><span id="line-307"><span class="w">    </span><span class="sd">"""An in-shot punch-in: hold, then push in, WITHOUT leaving the shot (muvid#66).</span>
+</span><span id="line-308">
+</span><span id="line-309"><span class="sd">    The design partner asked for "roughly 2N" of these and was explicit that it</span>
+</span><span id="line-310"><span class="sd">    is **not** a transition between two clips — it stays on the same shot. Before</span>
+</span><span id="line-311"><span class="sd">    this there was no punch-in, zoom or Ken Burns move anywhere in the footage</span>
+</span><span id="line-312"><span class="sd">    path; the only two mentions of ``zoom`` under ``footage/`` were comments</span>
+</span><span id="line-313"><span class="sd">    explaining why ``zoompan`` was unusable, and that reading has since been</span>
+</span><span id="line-314"><span class="sd">    measured wrong: ``t`` is undefined inside ``zoompan``, but ``in_time`` works</span>
+</span><span id="line-315"><span class="sd">    and ``d=1`` is exactly 1:1 rather than the frame-duplicating default. Both</span>
+</span><span id="line-316"><span class="sd">    corrections live in ``looks.compile_motion``, which is why this function is</span>
+</span><span id="line-317"><span class="sd">    six lines of geometry and no ffmpeg.</span>
+</span><span id="line-318">
+</span><span id="line-319"><span class="sd">    Args:</span>
+</span><span id="line-320"><span class="sd">        canvas: ``(width, height)`` — the assembler's delivery canvas.</span>
+</span><span id="line-321"><span class="sd">        fps: the assembler's delivery frame rate.</span>
+</span><span id="line-322"><span class="sd">        duration_s: the cut's length in seconds. The move ends here by default.</span>
+</span><span id="line-323"><span class="sd">        zoom: final magnification. ``1.12`` shows ~89% of the frame.</span>
+</span><span id="line-324"><span class="sd">        anchor: what stays put, as a fraction of the canvas. ``(0.5, 0.5)``</span>
+</span><span id="line-325"><span class="sd">            centres it; ``(0.5, 0.35)`` pushes toward a face in the upper third.</span>
+</span><span id="line-326"><span class="sd">        start_s: hold the full frame until here, then move.</span>
+</span><span id="line-327"><span class="sd">        end_s: reach the final framing here and hold. Defaults to ``duration_s``.</span>
+</span><span id="line-328">
+</span><span id="line-329"><span class="sd">    Returns:</span>
+</span><span id="line-330"><span class="sd">        One linear ffmpeg filter chain, ready for the ``look`` field, declaring</span>
+</span><span id="line-331"><span class="sd">        itself **time-varying** (it goes through :func:`motion`). Put that on the</span>
+</span><span id="line-332"><span class="sd">        entry as ``look_time_varying`` — :func:`punch_in_cuts` does — or the</span>
+</span><span id="line-333"><span class="sd">        assembler cannot warn you when the cut borders a transition and the move</span>
+</span><span id="line-334"><span class="sd">        restarts (muvid#73).</span>
+</span><span id="line-335">
+</span><span id="line-336"><span class="sd">    A move is a ramp between two windows, and the windows are fractions of the</span>
+</span><span id="line-337"><span class="sd">    canvas (see :func:`motion`). The end window keeps the canvas's aspect ratio,</span>
+</span><span id="line-338"><span class="sd">    which is what lets ``zoompan`` deliver at the canvas size with no stretch and</span>
+</span><span id="line-339"><span class="sd">    no reframing crop.</span>
+</span><span id="line-340">
+</span><span id="line-341"><span class="sd">    &gt;&gt;&gt; frag = punch_in(canvas=(640, 360), fps=25, duration_s=3.0)</span>
+</span><span id="line-342"><span class="sd">    &gt;&gt;&gt; frag.startswith("zoompan=d=1:s=640x360:fps=25:")</span>
+</span><span id="line-343"><span class="sd">    True</span>
+</span><span id="line-344"><span class="sd">    &gt;&gt;&gt; frag.time_varying</span>
+</span><span id="line-345"><span class="sd">    True</span>
+</span><span id="line-346">
+</span><span id="line-347"><span class="sd">    A pull-out is this move backwards, so it goes through :func:`motion` with the</span>
+</span><span id="line-348"><span class="sd">    windows in the order you want them, rather than a boolean here.</span>
+</span><span id="line-349">
+</span><span id="line-350"><span class="sd">    Raises:</span>
+</span><span id="line-351"><span class="sd">        LookError: If ``zoom``, the timings or the anchor are out of range.</span>
+</span><span id="line-352"><span class="sd">    """</span>
+</span><span id="line-353">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropWindow</span>
+</span><span id="line-354">
+</span><span id="line-355">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span>
+</span><span id="line-356">    <span class="k">if</span> <span class="n">zoom</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">:</span>
+</span><span id="line-357">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
+</span><span id="line-358">            <span class="sa">f</span><span class="s2">"punch_in needs zoom &gt; 1 (got </span><span class="si">{</span><span class="n">zoom</span><span class="si">}</span><span class="s2">); it magnifies. A move that "</span>
+</span><span id="line-359">            <span class="s2">"pulls OUT starts zoomed and ends full, which is motion() with the "</span>
+</span><span id="line-360">            <span class="s2">"windows in that order — a direction, not a flag."</span>
+</span><span id="line-361">        <span class="p">)</span>
+</span><span id="line-362">    <span class="n">ax</span><span class="p">,</span> <span class="n">ay</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-363">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">ax</span> <span class="o">&lt;=</span> <span class="mf">1.0</span> <span class="ow">and</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">ay</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
+</span><span id="line-364">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
+</span><span id="line-365">            <span class="sa">f</span><span class="s2">"punch_in anchor </span><span class="si">{</span><span class="n">anchor</span><span class="si">!r}</span><span class="s2"> is outside the canvas. It is the point "</span>
+</span><span id="line-366">            <span class="s2">"that stays put, as fractions: 0 &lt;= x, y &lt;= 1."</span>
+</span><span id="line-367">        <span class="p">)</span>
+</span><span id="line-368">    <span class="n">end</span> <span class="o">=</span> <span class="n">duration_s</span> <span class="k">if</span> <span class="n">end_s</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">end_s</span>
+</span><span id="line-369">    <span class="k">if</span> <span class="n">duration_s</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-370">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"punch_in needs a positive duration_s (got </span><span class="si">{</span><span class="n">duration_s</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+</span><span id="line-371">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">start_s</span> <span class="o">&lt;</span> <span class="n">end</span> <span class="o">&lt;=</span> <span class="n">duration_s</span><span class="p">):</span>
+</span><span id="line-372">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
+</span><span id="line-373">            <span class="sa">f</span><span class="s2">"punch_in needs 0 &lt;= start_s &lt; end_s &lt;= duration_s (got start_s="</span>
+</span><span id="line-374">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">start_s</span><span class="si">}</span><span class="s2">, end_s=</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">, duration_s=</span><span class="si">{</span><span class="n">duration_s</span><span class="si">}</span><span class="s2">). A move with no "</span>
+</span><span id="line-375">            <span class="s2">"span is a request that renders nothing, which is the silent no-op "</span>
+</span><span id="line-376">            <span class="s2">"muvid refuses elsewhere too."</span>
 </span><span id="line-377">        <span class="p">)</span>
-</span><span id="line-378">    <span class="n">ax</span><span class="p">,</span> <span class="n">ay</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">anchor</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">anchor</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="line-379">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">ax</span> <span class="o">&lt;=</span> <span class="mf">1.0</span> <span class="ow">and</span> <span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">ay</span> <span class="o">&lt;=</span> <span class="mf">1.0</span><span class="p">):</span>
-</span><span id="line-380">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
-</span><span id="line-381">            <span class="sa">f</span><span class="s2">"punch_in anchor </span><span class="si">{</span><span class="n">anchor</span><span class="si">!r}</span><span class="s2"> is outside the canvas. It is the point "</span>
-</span><span id="line-382">            <span class="s2">"that stays put, as fractions: 0 &lt;= x, y &lt;= 1."</span>
-</span><span id="line-383">        <span class="p">)</span>
-</span><span id="line-384">    <span class="n">end</span> <span class="o">=</span> <span class="n">duration_s</span> <span class="k">if</span> <span class="n">end_s</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">end_s</span>
-</span><span id="line-385">    <span class="k">if</span> <span class="n">duration_s</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-386">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"punch_in needs a positive duration_s (got </span><span class="si">{</span><span class="n">duration_s</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
-</span><span id="line-387">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mf">0.0</span> <span class="o">&lt;=</span> <span class="n">start_s</span> <span class="o">&lt;</span> <span class="n">end</span> <span class="o">&lt;=</span> <span class="n">duration_s</span><span class="p">):</span>
-</span><span id="line-388">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span>
-</span><span id="line-389">            <span class="sa">f</span><span class="s2">"punch_in needs 0 &lt;= start_s &lt; end_s &lt;= duration_s (got start_s="</span>
-</span><span id="line-390">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">start_s</span><span class="si">}</span><span class="s2">, end_s=</span><span class="si">{</span><span class="n">end</span><span class="si">}</span><span class="s2">, duration_s=</span><span class="si">{</span><span class="n">duration_s</span><span class="si">}</span><span class="s2">). A move with no "</span>
-</span><span id="line-391">            <span class="s2">"span is a request that renders nothing, which is the silent no-op "</span>
-</span><span id="line-392">            <span class="s2">"muvid refuses elsewhere too."</span>
-</span><span id="line-393">        <span class="p">)</span>
-</span><span id="line-394">    <span class="n">side</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">zoom</span>
-</span><span id="line-395">    <span class="c1"># The anchor is the fixed point: it keeps the same canvas fraction before and</span>
-</span><span id="line-396">    <span class="c1"># after, which for a window of side `side` puts the window's origin at</span>
-</span><span id="line-397">    <span class="c1"># anchor * (1 - side). Centre anchor =&gt; a centred window, corner anchor =&gt; a</span>
-</span><span id="line-398">    <span class="c1"># window pinned to that corner, both without a special case.</span>
-</span><span id="line-399">    <span class="n">tight</span> <span class="o">=</span> <span class="n">CropWindow</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">ax</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">y</span><span class="o">=</span><span class="n">ay</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">w</span><span class="o">=</span><span class="n">side</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">side</span><span class="p">)</span>
-</span><span id="line-400">    <span class="k">return</span> <span class="n">motion</span><span class="p">(</span>
-</span><span id="line-401">        <span class="p">[(</span><span class="n">start_s</span><span class="p">,</span> <span class="n">CropWindow</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)),</span> <span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">tight</span><span class="p">)],</span>
-</span><span id="line-402">        <span class="n">canvas</span><span class="o">=</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">),</span>
-</span><span id="line-403">        <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-404">    <span class="p">)</span></div>
+</span><span id="line-378">    <span class="n">side</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">zoom</span>
+</span><span id="line-379">    <span class="c1"># The anchor is the fixed point: it keeps the same canvas fraction before and</span>
+</span><span id="line-380">    <span class="c1"># after, which for a window of side `side` puts the window's origin at</span>
+</span><span id="line-381">    <span class="c1"># anchor * (1 - side). Centre anchor =&gt; a centred window, corner anchor =&gt; a</span>
+</span><span id="line-382">    <span class="c1"># window pinned to that corner, both without a special case.</span>
+</span><span id="line-383">    <span class="n">tight</span> <span class="o">=</span> <span class="n">CropWindow</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">ax</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">y</span><span class="o">=</span><span class="n">ay</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">w</span><span class="o">=</span><span class="n">side</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">side</span><span class="p">)</span>
+</span><span id="line-384">    <span class="k">return</span> <span class="n">motion</span><span class="p">(</span>
+</span><span id="line-385">        <span class="p">[(</span><span class="n">start_s</span><span class="p">,</span> <span class="n">CropWindow</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)),</span> <span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="n">tight</span><span class="p">)],</span>
+</span><span id="line-386">        <span class="n">canvas</span><span class="o">=</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">),</span>
+</span><span id="line-387">        <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-388">    <span class="p">)</span></div>
 
-</span><span id="line-405">
-</span><span id="line-406">
+</span><span id="line-389">
+</span><span id="line-390">
 <div class="viewcode-block" id="stylize">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.stylize">[docs]</a>
-</span><span id="line-407"><span class="k">def</span><span class="w"> </span><span class="nf">stylize</span><span class="p">(</span>
-</span><span id="line-408">    <span class="n">look</span><span class="p">,</span>
-</span><span id="line-409">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-410">    <span class="n">canvas</span><span class="p">,</span>
-</span><span id="line-411">    <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-412">    <span class="n">duration_s</span><span class="p">:</span> <span class="s2">"Optional[float]"</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-413">    <span class="n">ffmpeg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"ffmpeg"</span><span class="p">,</span>
-</span><span id="line-414">    <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-415">    <span class="n">policy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-416"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"LookFragment"</span><span class="p">:</span>
-</span><span id="line-417"><span class="w">    </span><span class="sd">"""A :class:`looks.Look` compiled against the binary muvid will run.</span>
+</span><span id="line-391"><span class="k">def</span><span class="w"> </span><span class="nf">stylize</span><span class="p">(</span>
+</span><span id="line-392">    <span class="n">look</span><span class="p">,</span>
+</span><span id="line-393">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-394">    <span class="n">canvas</span><span class="p">,</span>
+</span><span id="line-395">    <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-396">    <span class="n">duration_s</span><span class="p">:</span> <span class="s2">"Optional[float]"</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-397">    <span class="n">ffmpeg</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"ffmpeg"</span><span class="p">,</span>
+</span><span id="line-398">    <span class="n">env</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-399">    <span class="n">policy</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-400"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"LookFragment"</span><span class="p">:</span>
+</span><span id="line-401"><span class="w">    </span><span class="sd">"""A :class:`looks.Look` compiled against the binary muvid will run.</span>
+</span><span id="line-402">
+</span><span id="line-403"><span class="sd">    Args:</span>
+</span><span id="line-404"><span class="sd">        look: a :class:`looks.Look` — an ordered stack of named effects.</span>
+</span><span id="line-405"><span class="sd">        canvas: ``(width, height)`` — the assembler's delivery canvas.</span>
+</span><span id="line-406"><span class="sd">        fps: the assembler's delivery frame rate.</span>
+</span><span id="line-407"><span class="sd">        duration_s: the cut's length, when a step needs to know it.</span>
+</span><span id="line-408"><span class="sd">        ffmpeg: which binary to probe. Defaults to the bare name muvid runs.</span>
+</span><span id="line-409"><span class="sd">        env: a :class:`looks.FfmpegEnv` to compile against, instead of probing.</span>
+</span><span id="line-410"><span class="sd">        policy: a :class:`looks.Policy` — the licence ceiling. ``looks``' default</span>
+</span><span id="line-411"><span class="sd">            applies when omitted.</span>
+</span><span id="line-412">
+</span><span id="line-413"><span class="sd">    Returns:</span>
+</span><span id="line-414"><span class="sd">        One linear ffmpeg filter chain, ready for the ``look`` field, declaring</span>
+</span><span id="line-415"><span class="sd">        whether it is time-varying **from the compiled plan** rather than by</span>
+</span><span id="line-416"><span class="sd">        assumption. A grade, a LUT, a posterise is static; two shapes are not,</span>
+</span><span id="line-417"><span class="sd">        and both are reachable from here:</span>
 </span><span id="line-418">
-</span><span id="line-419"><span class="sd">    Args:</span>
-</span><span id="line-420"><span class="sd">        look: a :class:`looks.Look` — an ordered stack of named effects.</span>
-</span><span id="line-421"><span class="sd">        canvas: ``(width, height)`` — the assembler's delivery canvas.</span>
-</span><span id="line-422"><span class="sd">        fps: the assembler's delivery frame rate.</span>
-</span><span id="line-423"><span class="sd">        duration_s: the cut's length, when a step needs to know it.</span>
-</span><span id="line-424"><span class="sd">        ffmpeg: which binary to probe. Defaults to the bare name muvid runs.</span>
-</span><span id="line-425"><span class="sd">        env: a :class:`looks.FfmpegEnv` to compile against, instead of probing.</span>
-</span><span id="line-426"><span class="sd">        policy: a :class:`looks.Policy` — the licence ceiling. ``looks``' default</span>
-</span><span id="line-427"><span class="sd">            applies when omitted.</span>
-</span><span id="line-428">
-</span><span id="line-429"><span class="sd">    Returns:</span>
-</span><span id="line-430"><span class="sd">        One linear ffmpeg filter chain, ready for the ``look`` field, declaring</span>
-</span><span id="line-431"><span class="sd">        whether it is time-varying **from the compiled plan** rather than by</span>
-</span><span id="line-432"><span class="sd">        assumption. A grade, a LUT, a posterise is static; two shapes are not,</span>
-</span><span id="line-433"><span class="sd">        and both are reachable from here:</span>
-</span><span id="line-434">
-</span><span id="line-435"><span class="sd">        - a step naming a :data:`TIME_VARYING_EFFECTS` member — ``motion`` is one</span>
-</span><span id="line-436"><span class="sd">          of ``looks``' registered effects, so ``stylize`` can emit exactly the</span>
-</span><span id="line-437"><span class="sd">          ``zoompan`` ramp :func:`punch_in` does (verified by compiling it);</span>
-</span><span id="line-438"><span class="sd">        - a step with an ``at`` :class:`looks.Span`, which compiles to</span>
-</span><span id="line-439"><span class="sd">          ``enable='between(t,…)'`` — measured: ``Effect("blur", at=Span(0.5,</span>
-</span><span id="line-440"><span class="sd">          1.5))`` becomes ``gblur=sigma=2:enable='between(t,0.5,1.5)'``. Reading</span>
-</span><span id="line-441"><span class="sd">          the clock to decide *whether* to apply is the same restart, and the</span>
-</span><span id="line-442"><span class="sd">          effect is not on any list of moving ones.</span>
-</span><span id="line-443">
-</span><span id="line-444"><span class="sd">        A blanket ``False`` here — the obvious reading, since ``stylize`` is the</span>
-</span><span id="line-445"><span class="sd">        grade-shaped door — would have been wrong for both.</span>
-</span><span id="line-446">
-</span><span id="line-447"><span class="sd">    **The clip is declared, not measured.** ``looks`` compiles against a</span>
-</span><span id="line-448"><span class="sd">    *declared* clip, and at this splice point muvid knows the geometry and the</span>
-</span><span id="line-449"><span class="sd">    rate exactly — they are the canvas and the delivery rate the assembler is</span>
-</span><span id="line-450"><span class="sd">    about to impose, not properties of whichever source is underneath. That is</span>
-</span><span id="line-451"><span class="sd">    the payoff of splicing after ``scale``/``pad``/``fps`` rather than before it.</span>
-</span><span id="line-452">
-</span><span id="line-453"><span class="sd">    ``origin_s=0.0`` is declared for the same kind of reason and is true for a</span>
-</span><span id="line-454"><span class="sd">    stated cause rather than by default: ``looks`` treats a span as being in the</span>
-</span><span id="line-455"><span class="sd">    host's decoder time, and *input-side* ``-ss`` rebases the filter timeline to</span>
-</span><span id="line-456"><span class="sd">    0 where output-side ``-ss`` does not. :func:`muvid.footage.assemble._render_part`</span>
-</span><span id="line-457"><span class="sd">    seeks input-side. Move that seek and this declaration becomes false.</span>
-</span><span id="line-458">
-</span><span id="line-459"><span class="sd">    **A refusal is the feature.** ``looks`` resolves each step's licence tier</span>
-</span><span id="line-460"><span class="sd">    against the probed binary, so a look reaching a GPL-only filter on an</span>
-</span><span id="line-461"><span class="sd">    LGPL build is either substituted or refused by name — rather than working on</span>
-</span><span id="line-462"><span class="sd">    a laptop and quietly raising the licence tier of a shipped product.</span>
-</span><span id="line-463">
-</span><span id="line-464"><span class="sd">    Raises:</span>
-</span><span id="line-465"><span class="sd">        LookError: If the look cannot be compiled for this binary, this ceiling</span>
-</span><span id="line-466"><span class="sd">            or this clip. The message is ``looks``', which names the remedy.</span>
-</span><span id="line-467"><span class="sd">    """</span>
-</span><span id="line-468">    <span class="n">looks</span> <span class="o">=</span> <span class="n">_require_looks</span><span class="p">()</span>
-</span><span id="line-469">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span>
-</span><span id="line-470">    <span class="n">resolved</span> <span class="o">=</span> <span class="n">_probe</span><span class="p">(</span><span class="n">ffmpeg</span><span class="p">)</span> <span class="k">if</span> <span class="n">env</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">env</span>
-</span><span id="line-471">    <span class="n">clip</span> <span class="o">=</span> <span class="n">looks</span><span class="o">.</span><span class="n">ClipSpec</span><span class="p">(</span>
-</span><span id="line-472">        <span class="n">width</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
-</span><span id="line-473">        <span class="n">height</span><span class="o">=</span><span class="n">h</span><span class="p">,</span>
-</span><span id="line-474">        <span class="n">fps</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">fps</span><span class="p">),</span>
-</span><span id="line-475">        <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span>
-</span><span id="line-476">        <span class="n">origin_s</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-</span><span id="line-477">    <span class="p">)</span>
-</span><span id="line-478">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-479">        <span class="n">plan</span> <span class="o">=</span> <span class="n">looks</span><span class="o">.</span><span class="n">compile_look</span><span class="p">(</span><span class="n">look</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="n">clip</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">resolved</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="n">policy</span><span class="p">)</span>
-</span><span id="line-480">        <span class="k">return</span> <span class="n">LookFragment</span><span class="p">(</span>
-</span><span id="line-481">            <span class="n">looks</span><span class="o">.</span><span class="n">vf</span><span class="p">(</span><span class="n">plan</span><span class="p">),</span>
-</span><span id="line-482">            <span class="n">time_varying</span><span class="o">=</span><span class="nb">any</span><span class="p">(</span>
-</span><span id="line-483">                <span class="n">step</span><span class="o">.</span><span class="n">at</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">step</span><span class="o">.</span><span class="n">effect</span> <span class="ow">in</span> <span class="n">TIME_VARYING_EFFECTS</span>
-</span><span id="line-484">                <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">plan</span><span class="o">.</span><span class="n">steps</span>
-</span><span id="line-485">            <span class="p">),</span>
-</span><span id="line-486">        <span class="p">)</span>
-</span><span id="line-487">    <span class="k">except</span> <span class="p">(</span>
-</span><span id="line-488">        <span class="n">looks</span><span class="o">.</span><span class="n">CompileError</span><span class="p">,</span>
-</span><span id="line-489">        <span class="n">looks</span><span class="o">.</span><span class="n">LooksLicenceError</span><span class="p">,</span>
-</span><span id="line-490">        <span class="n">looks</span><span class="o">.</span><span class="n">SpecError</span><span class="p">,</span>
-</span><span id="line-491">        <span class="n">looks</span><span class="o">.</span><span class="n">FfmpegBackendError</span><span class="p">,</span>
-</span><span id="line-492">    <span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
-</span><span id="line-493">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
+</span><span id="line-419"><span class="sd">        - a step whose implementation reads the filter clock — ``motion``</span>
+</span><span id="line-420"><span class="sd">          and ``grain`` are such effects (verified by compiling them);</span>
+</span><span id="line-421"><span class="sd">        - a step with an ``at`` :class:`looks.Span`, which compiles to</span>
+</span><span id="line-422"><span class="sd">          ``enable='between(t,…)'`` — measured: ``Effect("blur", at=Span(0.5,</span>
+</span><span id="line-423"><span class="sd">          1.5))`` becomes ``gblur=sigma=2:enable='between(t,0.5,1.5)'``. Reading</span>
+</span><span id="line-424"><span class="sd">          the clock to decide *whether* to apply is the same restart.</span>
+</span><span id="line-425">
+</span><span id="line-426"><span class="sd">        Both are read off ``LookPlan.time_varying`` (looks#17), the property of</span>
+</span><span id="line-427"><span class="sd">        the compiled plan, not off a list of effect names kept here. It is</span>
+</span><span id="line-428"><span class="sd">        tri-state upstream; an undeclared step (``None``) is treated as moving.</span>
+</span><span id="line-429">
+</span><span id="line-430"><span class="sd">        A blanket ``False`` here — the obvious reading, since ``stylize`` is the</span>
+</span><span id="line-431"><span class="sd">        grade-shaped door — would have been wrong for both.</span>
+</span><span id="line-432">
+</span><span id="line-433"><span class="sd">    **The clip is declared, not measured.** ``looks`` compiles against a</span>
+</span><span id="line-434"><span class="sd">    *declared* clip, and at this splice point muvid knows the geometry and the</span>
+</span><span id="line-435"><span class="sd">    rate exactly — they are the canvas and the delivery rate the assembler is</span>
+</span><span id="line-436"><span class="sd">    about to impose, not properties of whichever source is underneath. That is</span>
+</span><span id="line-437"><span class="sd">    the payoff of splicing after ``scale``/``pad``/``fps`` rather than before it.</span>
+</span><span id="line-438">
+</span><span id="line-439"><span class="sd">    ``origin_s=0.0`` is declared for the same kind of reason and is true for a</span>
+</span><span id="line-440"><span class="sd">    stated cause rather than by default: ``looks`` treats a span as being in the</span>
+</span><span id="line-441"><span class="sd">    host's decoder time, and *input-side* ``-ss`` rebases the filter timeline to</span>
+</span><span id="line-442"><span class="sd">    0 where output-side ``-ss`` does not. :func:`muvid.footage.assemble._render_part`</span>
+</span><span id="line-443"><span class="sd">    seeks input-side. Move that seek and this declaration becomes false.</span>
+</span><span id="line-444">
+</span><span id="line-445"><span class="sd">    **A refusal is the feature.** ``looks`` resolves each step's licence tier</span>
+</span><span id="line-446"><span class="sd">    against the probed binary, so a look reaching a GPL-only filter on an</span>
+</span><span id="line-447"><span class="sd">    LGPL build is either substituted or refused by name — rather than working on</span>
+</span><span id="line-448"><span class="sd">    a laptop and quietly raising the licence tier of a shipped product.</span>
+</span><span id="line-449">
+</span><span id="line-450"><span class="sd">    Raises:</span>
+</span><span id="line-451"><span class="sd">        LookError: If the look cannot be compiled for this binary, this ceiling</span>
+</span><span id="line-452"><span class="sd">            or this clip. The message is ``looks``', which names the remedy.</span>
+</span><span id="line-453"><span class="sd">    """</span>
+</span><span id="line-454">    <span class="n">looks</span> <span class="o">=</span> <span class="n">_require_looks</span><span class="p">()</span>
+</span><span id="line-455">    <span class="n">w</span><span class="p">,</span> <span class="n">h</span> <span class="o">=</span> <span class="n">_canvas</span><span class="p">(</span><span class="n">canvas</span><span class="p">)</span>
+</span><span id="line-456">    <span class="n">resolved</span> <span class="o">=</span> <span class="n">_probe</span><span class="p">(</span><span class="n">ffmpeg</span><span class="p">)</span> <span class="k">if</span> <span class="n">env</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">env</span>
+</span><span id="line-457">    <span class="n">clip</span> <span class="o">=</span> <span class="n">looks</span><span class="o">.</span><span class="n">ClipSpec</span><span class="p">(</span>
+</span><span id="line-458">        <span class="n">width</span><span class="o">=</span><span class="n">w</span><span class="p">,</span>
+</span><span id="line-459">        <span class="n">height</span><span class="o">=</span><span class="n">h</span><span class="p">,</span>
+</span><span id="line-460">        <span class="n">fps</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">fps</span><span class="p">),</span>
+</span><span id="line-461">        <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span>
+</span><span id="line-462">        <span class="n">origin_s</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-463">    <span class="p">)</span>
+</span><span id="line-464">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-465">        <span class="n">plan</span> <span class="o">=</span> <span class="n">looks</span><span class="o">.</span><span class="n">compile_look</span><span class="p">(</span><span class="n">look</span><span class="p">,</span> <span class="n">clip</span><span class="o">=</span><span class="n">clip</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">resolved</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="n">policy</span><span class="p">)</span>
+</span><span id="line-466">        <span class="k">return</span> <span class="n">LookFragment</span><span class="p">(</span>
+</span><span id="line-467">            <span class="n">looks</span><span class="o">.</span><span class="n">vf</span><span class="p">(</span><span class="n">plan</span><span class="p">),</span>
+</span><span id="line-468">            <span class="c1"># ``None`` (a step whose implementation never declared) reads as</span>
+</span><span id="line-469">            <span class="c1"># moving: the warning it feeds is cheap, a silent restart is not</span>
+</span><span id="line-470">            <span class="n">time_varying</span><span class="o">=</span><span class="n">plan</span><span class="o">.</span><span class="n">time_varying</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="line-471">        <span class="p">)</span>
+</span><span id="line-472">    <span class="k">except</span> <span class="p">(</span>
+</span><span id="line-473">        <span class="n">looks</span><span class="o">.</span><span class="n">CompileError</span><span class="p">,</span>
+</span><span id="line-474">        <span class="n">looks</span><span class="o">.</span><span class="n">LooksLicenceError</span><span class="p">,</span>
+</span><span id="line-475">        <span class="n">looks</span><span class="o">.</span><span class="n">SpecError</span><span class="p">,</span>
+</span><span id="line-476">        <span class="n">looks</span><span class="o">.</span><span class="n">FfmpegBackendError</span><span class="p">,</span>
+</span><span id="line-477">    <span class="p">)</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+</span><span id="line-478">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span> <span class="kn">from</span><span class="w"> </span><span class="nn">exc</span></div>
 
-</span><span id="line-494">
-</span><span id="line-495">
+</span><span id="line-479">
+</span><span id="line-480">
 <div class="viewcode-block" id="punch_in_cuts">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.look.html#muvid.footage.punch_in_cuts">[docs]</a>
-</span><span id="line-496"><span class="k">def</span><span class="w"> </span><span class="nf">punch_in_cuts</span><span class="p">(</span>
-</span><span id="line-497">    <span class="n">entries</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span>
-</span><span id="line-498">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-499">    <span class="n">canvas</span><span class="p">,</span>
-</span><span id="line-500">    <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-501">    <span class="n">every</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
-</span><span id="line-502">    <span class="n">zoom</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ZOOM</span><span class="p">,</span>
-</span><span id="line-503">    <span class="n">anchor</span><span class="p">:</span> <span class="s2">"tuple[float, float]"</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ANCHOR</span><span class="p">,</span>
-</span><span id="line-504">    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
-</span><span id="line-505"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"list[Any]"</span><span class="p">:</span>
-</span><span id="line-506"><span class="w">    </span><span class="sd">"""Put a punch-in on every ``every``-th footage entry — muvid#66's other half.</span>
-</span><span id="line-507">
-</span><span id="line-508"><span class="sd">    The request was for *roughly 2N* punch-ins "evenly redistributed so they</span>
-</span><span id="line-509"><span class="sd">    occur about twice as often", explicitly **not** two extra tacked on the end.</span>
-</span><span id="line-510"><span class="sd">    Redistribution is therefore the whole job, and it is a stride over the cuts</span>
-</span><span id="line-511"><span class="sd">    rather than a wall-clock interval: cuts are already beat-snapped by the</span>
-</span><span id="line-512"><span class="sd">    selector, so a stride lands the moves on musical time for free, where a</span>
-</span><span id="line-513"><span class="sd">    seconds-based interval would drift off it.</span>
-</span><span id="line-514">
-</span><span id="line-515"><span class="sd">    Args:</span>
-</span><span id="line-516"><span class="sd">        entries: validated :class:`~muvid.footage.edl.EdlEntry` objects.</span>
-</span><span id="line-517"><span class="sd">        canvas: ``(width, height)`` — the delivery canvas.</span>
-</span><span id="line-518"><span class="sd">        fps: the delivery frame rate.</span>
-</span><span id="line-519"><span class="sd">        every: stride. ``2`` punches every other footage cut; ``1`` punches all.</span>
-</span><span id="line-520"><span class="sd">        zoom: passed to :func:`punch_in`.</span>
-</span><span id="line-521"><span class="sd">        anchor: passed to :func:`punch_in`.</span>
-</span><span id="line-522"><span class="sd">        offset: which footage cut in each stride gets the move.</span>
-</span><span id="line-523">
-</span><span id="line-524"><span class="sd">    Returns:</span>
-</span><span id="line-525"><span class="sd">        A NEW list of entries. Gaps are skipped (they have no footage to punch</span>
-</span><span id="line-526"><span class="sd">        into, and ``validate_edl`` refuses a look on one), and an entry that</span>
-</span><span id="line-527"><span class="sd">        already carries a look keeps it — this composes with hand-authoring</span>
-</span><span id="line-528"><span class="sd">        rather than overwriting it, because silently replacing an authored</span>
-</span><span id="line-529"><span class="sd">        direction is the failure this package guards against elsewhere.</span>
-</span><span id="line-530">
-</span><span id="line-531"><span class="sd">        Each punched entry also carries ``look_time_varying``, taken FROM the</span>
-</span><span id="line-532"><span class="sd">        fragment via :func:`is_time_varying` rather than written as a literal</span>
-</span><span id="line-533"><span class="sd">        ``True`` beside the ``punch_in`` call. The two would agree today and the</span>
-</span><span id="line-534"><span class="sd">        literal is the one that would stop agreeing — this is the same reason</span>
-</span><span id="line-535"><span class="sd">        ``_edl_json`` is a table rather than four ``if``\\ s. Without it the</span>
-</span><span id="line-536"><span class="sd">        assembler cannot warn that a punch bordering a transition restarts its</span>
-</span><span id="line-537"><span class="sd">        ramp (muvid#73).</span>
-</span><span id="line-538"><span class="sd">    """</span>
-</span><span id="line-539">    <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
-</span><span id="line-540">
-</span><span id="line-541">    <span class="k">if</span> <span class="n">every</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
-</span><span id="line-542">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"`every` must be &gt;= 1 (got </span><span class="si">{</span><span class="n">every</span><span class="si">}</span><span class="s2">); it is a stride."</span><span class="p">)</span>
-</span><span id="line-543">    <span class="n">out</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
-</span><span id="line-544">    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
-</span><span id="line-545">        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">is_gap</span> <span class="ow">or</span> <span class="n">e</span><span class="o">.</span><span class="n">look</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-546">            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-</span><span id="line-547">            <span class="k">continue</span>
-</span><span id="line-548">        <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="n">every</span> <span class="o">==</span> <span class="n">offset</span> <span class="o">%</span> <span class="n">every</span><span class="p">:</span>
-</span><span id="line-549">            <span class="n">frag</span> <span class="o">=</span> <span class="n">punch_in</span><span class="p">(</span>
-</span><span id="line-550">                <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
-</span><span id="line-551">                <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-552">                <span class="n">duration_s</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_end</span> <span class="o">-</span> <span class="n">e</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span>
-</span><span id="line-553">                <span class="n">zoom</span><span class="o">=</span><span class="n">zoom</span><span class="p">,</span>
-</span><span id="line-554">                <span class="n">anchor</span><span class="o">=</span><span class="n">anchor</span><span class="p">,</span>
-</span><span id="line-555">            <span class="p">)</span>
-</span><span id="line-556">            <span class="n">e</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">look</span><span class="o">=</span><span class="n">frag</span><span class="p">,</span> <span class="n">look_time_varying</span><span class="o">=</span><span class="n">is_time_varying</span><span class="p">(</span><span class="n">frag</span><span class="p">))</span>
-</span><span id="line-557">        <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
-</span><span id="line-558">        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-</span><span id="line-559">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-481"><span class="k">def</span><span class="w"> </span><span class="nf">punch_in_cuts</span><span class="p">(</span>
+</span><span id="line-482">    <span class="n">entries</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">,</span>
+</span><span id="line-483">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-484">    <span class="n">canvas</span><span class="p">,</span>
+</span><span id="line-485">    <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-486">    <span class="n">every</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+</span><span id="line-487">    <span class="n">zoom</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ZOOM</span><span class="p">,</span>
+</span><span id="line-488">    <span class="n">anchor</span><span class="p">:</span> <span class="s2">"tuple[float, float]"</span> <span class="o">=</span> <span class="n">DEFAULT_PUNCH_ANCHOR</span><span class="p">,</span>
+</span><span id="line-489">    <span class="n">offset</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+</span><span id="line-490"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"list[Any]"</span><span class="p">:</span>
+</span><span id="line-491"><span class="w">    </span><span class="sd">"""Put a punch-in on every ``every``-th footage entry — muvid#66's other half.</span>
+</span><span id="line-492">
+</span><span id="line-493"><span class="sd">    The request was for *roughly 2N* punch-ins "evenly redistributed so they</span>
+</span><span id="line-494"><span class="sd">    occur about twice as often", explicitly **not** two extra tacked on the end.</span>
+</span><span id="line-495"><span class="sd">    Redistribution is therefore the whole job, and it is a stride over the cuts</span>
+</span><span id="line-496"><span class="sd">    rather than a wall-clock interval: cuts are already beat-snapped by the</span>
+</span><span id="line-497"><span class="sd">    selector, so a stride lands the moves on musical time for free, where a</span>
+</span><span id="line-498"><span class="sd">    seconds-based interval would drift off it.</span>
+</span><span id="line-499">
+</span><span id="line-500"><span class="sd">    Args:</span>
+</span><span id="line-501"><span class="sd">        entries: validated :class:`~muvid.footage.edl.EdlEntry` objects.</span>
+</span><span id="line-502"><span class="sd">        canvas: ``(width, height)`` — the delivery canvas.</span>
+</span><span id="line-503"><span class="sd">        fps: the delivery frame rate.</span>
+</span><span id="line-504"><span class="sd">        every: stride. ``2`` punches every other footage cut; ``1`` punches all.</span>
+</span><span id="line-505"><span class="sd">        zoom: passed to :func:`punch_in`.</span>
+</span><span id="line-506"><span class="sd">        anchor: passed to :func:`punch_in`.</span>
+</span><span id="line-507"><span class="sd">        offset: which footage cut in each stride gets the move.</span>
+</span><span id="line-508">
+</span><span id="line-509"><span class="sd">    Returns:</span>
+</span><span id="line-510"><span class="sd">        A NEW list of entries. Gaps are skipped (they have no footage to punch</span>
+</span><span id="line-511"><span class="sd">        into, and ``validate_edl`` refuses a look on one), and an entry that</span>
+</span><span id="line-512"><span class="sd">        already carries a look keeps it — this composes with hand-authoring</span>
+</span><span id="line-513"><span class="sd">        rather than overwriting it, because silently replacing an authored</span>
+</span><span id="line-514"><span class="sd">        direction is the failure this package guards against elsewhere.</span>
+</span><span id="line-515">
+</span><span id="line-516"><span class="sd">        Each punched entry also carries ``look_time_varying``, taken FROM the</span>
+</span><span id="line-517"><span class="sd">        fragment via :func:`is_time_varying` rather than written as a literal</span>
+</span><span id="line-518"><span class="sd">        ``True`` beside the ``punch_in`` call. The two would agree today and the</span>
+</span><span id="line-519"><span class="sd">        literal is the one that would stop agreeing — this is the same reason</span>
+</span><span id="line-520"><span class="sd">        ``_edl_json`` is a table rather than four ``if``\\ s. Without it the</span>
+</span><span id="line-521"><span class="sd">        assembler cannot warn that a punch bordering a transition restarts its</span>
+</span><span id="line-522"><span class="sd">        ramp (muvid#73).</span>
+</span><span id="line-523"><span class="sd">    """</span>
+</span><span id="line-524">    <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+</span><span id="line-525">
+</span><span id="line-526">    <span class="k">if</span> <span class="n">every</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+</span><span id="line-527">        <span class="k">raise</span> <span class="n">LookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"`every` must be &gt;= 1 (got </span><span class="si">{</span><span class="n">every</span><span class="si">}</span><span class="s2">); it is a stride."</span><span class="p">)</span>
+</span><span id="line-528">    <span class="n">out</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+</span><span id="line-529">    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+</span><span id="line-530">        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">is_gap</span> <span class="ow">or</span> <span class="n">e</span><span class="o">.</span><span class="n">look</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-531">            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</span><span id="line-532">            <span class="k">continue</span>
+</span><span id="line-533">        <span class="k">if</span> <span class="n">n</span> <span class="o">%</span> <span class="n">every</span> <span class="o">==</span> <span class="n">offset</span> <span class="o">%</span> <span class="n">every</span><span class="p">:</span>
+</span><span id="line-534">            <span class="n">frag</span> <span class="o">=</span> <span class="n">punch_in</span><span class="p">(</span>
+</span><span id="line-535">                <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
+</span><span id="line-536">                <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-537">                <span class="n">duration_s</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_end</span> <span class="o">-</span> <span class="n">e</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span>
+</span><span id="line-538">                <span class="n">zoom</span><span class="o">=</span><span class="n">zoom</span><span class="p">,</span>
+</span><span id="line-539">                <span class="n">anchor</span><span class="o">=</span><span class="n">anchor</span><span class="p">,</span>
+</span><span id="line-540">            <span class="p">)</span>
+</span><span id="line-541">            <span class="n">e</span> <span class="o">=</span> <span class="n">replace</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">look</span><span class="o">=</span><span class="n">frag</span><span class="p">,</span> <span class="n">look_time_varying</span><span class="o">=</span><span class="n">is_time_varying</span><span class="p">(</span><span class="n">frag</span><span class="p">))</span>
+</span><span id="line-542">        <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+</span><span id="line-543">        <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+</span><span id="line-544">    <span class="k">return</span> <span class="n">out</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -781,7 +766,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=5751785c"></script>
+    <script src="../../../_static/documentation_options.js?v=f329fc45"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
