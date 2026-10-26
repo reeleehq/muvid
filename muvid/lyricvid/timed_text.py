@@ -56,6 +56,11 @@ class Glyph:
     aligner, e.g. :mod:`muvid.lyricvid.glyph_align`). For a script written in
     syllables (kana), this is where "highlight the character as it is sung"
     gets its times; for an alphabet it is rarely meaningful.
+
+    ``start`` is an onset (median 42 ms from an audio onset on a real song).
+    ``end`` is NOT the end of the sung syllable: it is the aligner's nominal
+    token end, 20-140 ms after ``start``. A consumer that needs the sound's
+    extent reads :attr:`span` (see :func:`muvid.lyricvid.glyph_align.with_spans`).
     """
 
     text: str
@@ -69,6 +74,17 @@ class Glyph:
     #: or the written word never completes. Omitted from :meth:`TimedText.to_dict` when True, so every
     #: existing timing file stays byte-identical (muvid#175).
     sung: bool = True
+    #: ``(from, to)``: where this glyph's SOUND runs, derived from the next onset
+    #: and, with a vocal stem, from where the sound dies or dips (muvid#149).
+    #: Absent until ``with_spans`` runs; omitted from ``to_dict`` when None. It
+    #: can start earlier or later than ``start`` (a consonant's attack, a
+    #: silence cut), which is why it is a pair and ``start`` is left alone.
+    span: tuple[float, float] | None = None
+    #: How the span's trailing boundary was decided: ``silence`` (the sound
+    #: died), ``valley`` (an energy dip to the next syllable), ``legato`` (no
+    #: clean cut: the next onset, flagged), ``next`` (the next glyph, no stem),
+    #: ``cap`` (nothing sooner than ``max_span_s``). None when ``span`` is.
+    cut: str | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -202,6 +218,14 @@ class TimedText:
                                                         if g.sung
                                                         else {"sung": False}
                                                     ),
+                                                    **(
+                                                        {
+                                                            "span": list(g.span),
+                                                            "cut": g.cut,
+                                                        }
+                                                        if g.span is not None
+                                                        else {}
+                                                    ),
                                                 }
                                                 for g in w.glyphs
                                             ]
@@ -241,6 +265,10 @@ def from_dict(d: Mapping[str, Any]) -> TimedText:
             end=float(g["end"]),
             measured=bool(g.get("measured", True)),
             sung=bool(g.get("sung", True)),
+            span=(
+                (float(g["span"][0]), float(g["span"][1])) if g.get("span") else None
+            ),
+            cut=g.get("cut") if g.get("span") else None,
         )
 
     def _word(w: Mapping[str, Any]) -> Word:

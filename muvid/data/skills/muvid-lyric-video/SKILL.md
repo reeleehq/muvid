@@ -258,6 +258,11 @@ python -m muvid.lyricvid render song.mp3 out.mp4 --timed-text glyphs.json --trea
   are CC-BY-NC-4.0** and are never downloaded unless you pass
   `--allow-download`. Romanisation is a strategy slot (`romanize=`); kana is
   built in.
+- **A glyph's `end` is nominal** (20-140 ms after its onset, NOT the end of the
+  sung syllable). If you play or wipe per glyph, add `--spans`: each sung glyph
+  gets a `span` (where its sound runs) and a `cut` (`silence` / `valley` /
+  `legato` / `next` / `cap`: how its trailing boundary was decided; `legato` is
+  the one with no clean cut). Never read `end` as a span.
 - **Read the report.** `onsets.near_onset` against `random_baseline` is the
   evidence (measured: 0.70 vs 0.41, median 43 ms from an onset); `reconciled`
   lists words the aligner squeezed or that disagree with the vendor, which fall

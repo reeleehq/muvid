@@ -206,6 +206,7 @@ def glyphs(
     keep_unsung: bool = False,
     timing_overrides: str = "",
     repair_spills: bool = False,
+    spans: bool = False,
 ) -> None:
     """Refine word TIMING (TimedText JSON) to per-glyph times; write OUTPUT JSON.
 
@@ -223,6 +224,10 @@ def glyphs(
     key) or inline JSON, and gives those lines the aligner's times back.
     --repair-spills pulls glyphs that aligned onto the NEXT line back onto a
     stem onset before it. Both are listed under ``repaired``.
+
+    --spans (muvid#149) runs last and gives every sung glyph a ``span`` and a
+    ``cut``: where its sound runs (a glyph's ``end`` is only the aligner's
+    nominal token end), cut from the vocal stem at silences and dips.
     """
     import tempfile
     from pathlib import Path
@@ -267,6 +272,8 @@ def glyphs(
     if repair_spills:
         fine, spilled = ga.repair_spills(fine, ga.stem_onsets(stem))
         repaired = [*repaired, *spilled]
+    if spans:
+        fine = ga.with_spans(fine, vocals=stem)
     Path(output).write_text(
         _json.dumps(fine.to_dict(), ensure_ascii=False, indent=1), encoding="utf-8"
     )

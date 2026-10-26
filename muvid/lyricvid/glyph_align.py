@@ -38,6 +38,7 @@ connector, and it never downloads weights unless the caller says
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import unicodedata
@@ -730,6 +731,24 @@ SILENT_GLYPH_MEDIAN_DB = -28.0
 SILENT_GLYPH_WINDOW_S = (0.06, 0.4)
 #: Frame length for :func:`silent_glyph`'s levels (finer than the line-level 50 ms).
 SILENT_GLYPH_FRAME_S = 0.01
+#: :func:`with_spans` (muvid#149). A glyph's sound is taken to run at most this
+#: long (seconds) when nothing ends it sooner.
+GLYPH_SPAN_MAX_S = 0.6
+#: Seconds searched around a labelled onset for the cut to the previous
+#: glyph: (before, after).
+SPAN_SEARCH_S = (0.18, 0.08)
+#: A frame is silent below this many dB under the stem's loud level (the
+#: consumer-side re-cut this is ported from used -40 re the LOUDEST frame; ours
+#: is re the 95th percentile, see :data:`UNSUNG_REF_PERCENTILE`, so it is
+#: slightly stricter)...
+SPAN_SILENCE_DB = -40.0
+#: ...and a dip is a valley when it sits this far under both neighbouring
+#: syllables, its flat bottom being the frames within ``SPAN_VALLEY_FLAT_DB``
+#: of its minimum.
+SPAN_VALLEY_DB = 8.0
+SPAN_VALLEY_FLAT_DB = 1.0
+#: Frame length for the levels the cuts are read from.
+SPAN_FRAME_S = 0.01
 #: A stem whose loud level is below this RMS (-120 dBFS) holds no singing at all.
 _SILENT_RMS = 1e-6
 
@@ -1362,7 +1381,9 @@ def reconcile(
                             replace(
                                 w,
                                 glyphs=tuple(
-                                    replace(g, sung=False) if i in idx else g
+                                    replace(g, sung=False, span=None, cut=None)
+                                    if i in idx
+                                    else g
                                     for i, g in enumerate(w.glyphs)
                                 ),
                             )
@@ -1612,13 +1633,15 @@ def repair_spills(
                     "used": round(new, 3),
                 }
             )
-            flat[i] = replace(g, start=new, measured=False)
+            flat[i] = replace(g, start=new, measured=False, span=None, cut=None)
         # in this line, nothing lit over the glyph after it, nor into the
         # next line — an EARLIER glyph's long span included (review of #157)
         for i in range(len(flat)):
             g = flat[i]
             stop = flat[i + 1].start if i + 1 < len(flat) else t_next
-            flat[i] = replace(g, end=max(g.start, min(g.end, stop)))
+            flat[i] = replace(
+                g, end=max(g.start, min(g.end, stop)), span=None, cut=None
+            )
         it = iter(flat)
         words = []
         for w in ln.words:
@@ -1631,6 +1654,152 @@ def repair_spills(
             words.append(w)
         fixed.append(replace(ln, words=tuple(words)))
     return (_rebuilt(tt, fixed), out) if out else (tt, out)
+
+
+def _cut_between(
+    level,
+    t: float,
+    floor_t: float,
+    *,
+    search_s: tuple[float, float],
+    silence_db: float,
+    valley_db: float,
+    flat_db: float,
+    frame_s: float,
+) -> tuple[float, float, str]:
+    """``(previous glyph's end, next glyph's start, how)`` at the onset ``t``.
+
+    Searches the frames from ``t - search_s[0]`` (but not before ``floor_t``,
+    the previous glyph's own start) to ``t + search_s[1]``. ``silence``: the
+    previous sound ends where the quiet run begins and the next starts where it
+    ends. ``valley``: a dip ``valley_db`` under the louder frame on BOTH sides,
+    cut where its flat bottom begins (in kana the consonant belongs to the
+    NEXT mora). Otherwise ``legato``: no clean cut, so ``t`` itself.
+    """
+    n = len(level)
+    a = max(int(max(t - search_s[0], floor_t) / frame_s), 0)
+    b = min(int((t + search_s[1]) / frame_s) + 1, n)
+    if b - a < 3:
+        return t, t, "legato"
+    w = level[a:b]
+    quiet = w < silence_db
+    if quiet.any():
+        q0 = int(quiet.argmax())
+        q1 = q0
+        while a + q1 + 1 < n and level[a + q1 + 1] < silence_db:
+            q1 += 1
+        return (a + q0) * frame_s, (a + q1 + 1) * frame_s, "silence"
+    m = int(w.argmin())
+    if 0 < m < len(w) - 1 and min(w[:m].max(), w[m + 1 :].max()) - w[m] >= valley_db:
+        flat = m
+        while flat > 0 and w[flat - 1] <= w[m] + flat_db:
+            flat -= 1
+        return (a + flat) * frame_s, (a + flat) * frame_s, "valley"
+    return t, t, "legato"
+
+
+def with_spans(
+    tt: TimedText,
+    *,
+    vocals: Path | str | None = None,
+    max_span_s: float = GLYPH_SPAN_MAX_S,
+    search_s: tuple[float, float] = SPAN_SEARCH_S,
+    silence_db: float = SPAN_SILENCE_DB,
+    valley_db: float = SPAN_VALLEY_DB,
+    flat_db: float = SPAN_VALLEY_FLAT_DB,
+    frame_s: float = SPAN_FRAME_S,
+) -> TimedText:
+    """Give every sung glyph a ``span``: where its sound runs (muvid#149).
+
+    A glyph's ``end`` is nominal (20-140 ms after its onset), so a consumer that
+    plays or wipes per glyph needs this. Each span runs from the glyph's onset
+    to the next sung glyph's onset, capped at ``max_span_s``; ``cut`` says how
+    that trailing boundary was decided. ``ー`` extends the glyph before it (it
+    is no boundary and has no span); ``ッ`` ends it (its sokuon is silence) and
+    has no span; a glyph with ``sung=False`` has none either.
+
+    With ``vocals`` (the separated vocal stem; none is needed) each boundary
+    between two glyphs is refined from the stem's levels, as a consumer would
+    otherwise do for itself: ``silence`` (the previous span ends where the sound
+    dies and the next starts where it returns), ``valley`` (cut at the flat
+    bottom of a dip between the syllables) or ``legato`` (no clean cut: the
+    onset, flagged as such). Without it every boundary is ``next``, or ``cap``.
+    A span may therefore start earlier or later than ``start``; ``start`` is not
+    moved. Spans never overlap. A burst (a spectral-flux attack) is not
+    detected: those boundaries read as ``legato``.
+
+    Run it LAST, after :func:`reconcile`, :func:`apply_timing_overrides` and
+    :func:`repair_spills`: it recomputes every span from scratch (running it
+    twice changes nothing), and those passes clear spans they invalidate.
+    """
+    if max_span_s <= 0 or frame_s <= 0:
+        raise ValueError("with_spans needs max_span_s > 0 and frame_s > 0")
+    level = _frame_levels_db(vocals, frame_s=frame_s) if vocals is not None else None
+
+    flat = [(w, g) for ln in tt.lines() for w in ln.words for g in w.glyphs]
+
+    def spanned(g: Glyph) -> bool:
+        return g.sung and g.text not in _SOUNDLESS_GLYPHS and math.isfinite(g.start)
+
+    def ends_sound(g: Glyph) -> bool:  # a sokuon: the closure is silence
+        return g.sung and g.text in "ッっ" and math.isfinite(g.start)
+
+    # (onset, kind) of everything that can end a glyph's sound, in order
+    marks = [
+        (i, g.start) for i, (_, g) in enumerate(flat) if spanned(g) or ends_sound(g)
+    ]
+    out: dict[int, tuple[tuple[float, float], str]] = {}
+    begin: dict[int, float] = {}  # a glyph's span start, when a cut moved it
+    for (i, t0), nxt in zip(marks, [*marks[1:], None]):
+        g = flat[i][1]
+        if not spanned(g):
+            continue
+        t0 = begin.get(i, t0)
+        cap = g.start + max_span_s
+        if nxt is None or nxt[1] >= cap:
+            out[i] = ((t0, cap), "cap")
+            continue
+        j, t = nxt
+        if level is None or not spanned(flat[j][1]):
+            out[i] = ((t0, max(t, t0)), "next")
+            continue
+        end, nxt_begin, how = _cut_between(
+            level,
+            t,
+            g.start + frame_s,
+            search_s=search_s,
+            silence_db=silence_db,
+            valley_db=valley_db,
+            flat_db=flat_db,
+            frame_s=frame_s,
+        )
+        end = min(max(end, t0), cap)
+        out[i] = ((t0, end), how)
+        begin[j] = max(nxt_begin, end)
+
+    it = iter(range(len(flat)))
+
+    def regrade(w: Word) -> Word:
+        gs = []
+        for g in w.glyphs:
+            i = next(it)
+            span, how = out.get(i, (None, None))
+            gs.append(replace(g, span=span, cut=how))
+        return replace(w, glyphs=tuple(gs))
+
+    return replace(
+        tt,
+        sections=tuple(
+            replace(
+                sec,
+                lines=tuple(
+                    replace(ln, words=tuple(regrade(w) for w in ln.words))
+                    for ln in sec.lines
+                ),
+            )
+            for sec in tt.sections
+        ),
+    )
 
 
 def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
@@ -1646,4 +1815,6 @@ def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
                     "end": g.end,
                     "measured": g.measured,
                     "sung": g.sung,
+                    "span": g.span,
+                    "cut": g.cut,
                 }
