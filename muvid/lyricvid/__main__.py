@@ -204,6 +204,7 @@ def glyphs(
     allow_download: bool = False,
     no_reconcile: bool = False,
     keep_unsung: bool = False,
+    silent_glyph: str = "",
     timing_overrides: str = "",
     repair_spills: bool = False,
     spans: bool = False,
@@ -214,6 +215,9 @@ def glyphs(
     agreement reports: read them before trusting the result (muvid#142).
     Lines the transcript lists but the stem shows nobody sang are DROPPED and
     listed under ``reconciled`` with ``remedy: drop`` (muvid#144);
+    --silent-glyph {drop,mute,replace} also flags a word holding one sounded
+    glyph that is silent in the stem (muvid#156) and applies that remedy; off
+    by default, since ``drop`` deletes sung text (muvid#177).
     --keep-unsung falls back to their vendor windows instead. Words whose fine time is off every onset while
     the vendor's is on one, and lines left overlapping or out of order, go
     back to their vendor windows (muvid#150); --no-reconcile skips all of it.
@@ -247,6 +251,14 @@ def glyphs(
         ga.check_timing_overrides(overrides, len(list(coarse.lines())))
     except ValueError as e:
         raise SystemExit(f"--timing-overrides: {e}") from None
+    if silent_glyph and silent_glyph not in ga.REMEDIES:
+        raise SystemExit(
+            f"--silent-glyph must be one of {', '.join(ga.REMEDIES)}, not {silent_glyph!r}"
+        )
+    if silent_glyph and no_reconcile:
+        raise SystemExit(
+            "--silent-glyph is a reconcile detector; --no-reconcile skips it"
+        )
     ga._mms_weights(
         allow_download=allow_download
     )  # refuse BEFORE separating, not after
@@ -264,7 +276,11 @@ def glyphs(
     replaced: list = []
     repaired: list = []
     if not no_reconcile:
-        detectors = ga.stem_detectors(stem, drop_unsung=not keep_unsung)
+        detectors = ga.stem_detectors(
+            stem,
+            drop_unsung=not keep_unsung,
+            silent_glyph_remedy=silent_glyph or None,
+        )
         refined = fine
         fine, replaced = ga.reconcile(refined, coarse, detectors=detectors)
         fine, repaired = ga.apply_timing_overrides(

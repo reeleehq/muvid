@@ -391,6 +391,12 @@ def _fold(ch: str) -> str:
     return unicodedata.normalize("NFD", ch)[0]
 
 
+def _word_lit(word: Word, *, line: Line) -> list[tuple[Glyph, float]]:
+    """``(glyph, when it lights)`` for each glyph of ``word`` (see :func:`_lit_starts`)."""
+    gs = _word_glyphs(word, line=line)
+    return list(zip(gs, _lit_starts(gs)))
+
+
 def _word_glyphs(word: Word, *, line: Line) -> tuple[Glyph, ...]:
     """Measured glyphs if any, else the word's characters spread over it, unmeasured."""
     if word.glyphs:
@@ -405,6 +411,24 @@ def _word_glyphs(word: Word, *, line: Line) -> tuple[Glyph, ...]:
         )
         for i, c in enumerate(chars)
     )
+
+
+def _lit_starts(glyphs: Sequence[Glyph]) -> list[float]:
+    """When each glyph of ONE word lights: its own start, except a glyph the
+    stem shows was not sung (``sung=False``, muvid#177), whose time is whatever
+    the aligner left there. It lights with the glyph before it in the word, else
+    with the word's first sung glyph, so the written word completes without
+    anything lighting before its word is sung."""
+    first_sung = next((g.start for g in glyphs if g.sung), None)
+    out: list[float] = []
+    for g in glyphs:
+        if g.sung:
+            out.append(g.start)
+        else:
+            out.append(
+                out[-1] if out else (g.start if first_sung is None else first_sung)
+            )
+    return out
 
 
 #: Seconds a glyph takes to go from grey to lit in ``glyph_pages``. Short on
@@ -425,7 +449,9 @@ def _glyph_pages(*, sc, direction, lines, tt, canvas, **_) -> list[Cue]:
     ``fold_marks``, so ``ハ`` covers ``バ`` and ``パ``) use the palette's
     ``dim``/``accent``; the rest a milder grey and highlight
     (``params.mild_dim``/``mild_fg``, derived from the palette by default).
-    With no ``emphasis`` every glyph is a target.
+    With no ``emphasis`` every glyph is a target. A glyph with ``sung=False``
+    lights with the glyph before it in its word (see :func:`_lit_starts`), and
+    never moves a page turn (muvid#177).
     """
     p = sc.params
     pal = direction.palette
@@ -452,10 +478,10 @@ def _glyph_pages(*, sc, direction, lines, tt, canvas, **_) -> list[Cue]:
     # word end) would otherwise keep the old page up while the next is sung.
     page_glyphs = [
         [
-            g
+            (g, t)
             for line in pg
             for w in line.words
-            for g in _word_glyphs(w, line=line)
+            for g, t in _word_lit(w, line=line)
             if g.text.strip()
         ]
         for pg in pages
@@ -463,8 +489,8 @@ def _glyph_pages(*, sc, direction, lines, tt, canvas, **_) -> list[Cue]:
     keep = [i for i, gs in enumerate(page_glyphs) if gs]  # a page with nothing to light
     pages = [pages[i] for i in keep]
     page_glyphs = [page_glyphs[i] for i in keep]
-    firsts = [min(g.start for g in gs) - lead for gs in page_glyphs]
-    lasts = [max(g.start for g in gs) - lead for gs in page_glyphs]
+    firsts = [min(t for _, t in gs) - lead for gs in page_glyphs]
+    lasts = [max(t for _, t in gs) - lead for gs in page_glyphs]
 
     def _turn(n: int) -> float:
         """When page ``n`` gives way: after its last glyph has been lit a
@@ -486,14 +512,14 @@ def _glyph_pages(*, sc, direction, lines, tt, canvas, **_) -> list[Cue]:
         # lay out every line of the page at one size: the widest line decides
         rows = []
         for line in page:
-            items = []  # (glyph, x-offset in em, width in em)
+            items = []  # (glyph, lights at, x-offset in em, width in em)
             x = 0.0
             for wi, w in enumerate(line.words):
                 if wi:
                     x += word_gap
-                for g in _word_glyphs(w, line=line):
+                for g, t in _word_lit(w, line=line):
                     cw = sum(_char_w(c) for c in g.text)
-                    items.append((g, x, cw))
+                    items.append((g, t, x, cw))
                     x += cw
             rows.append((items, x))
         widest = max((wd for _, wd in rows), default=1.0) or 1.0
@@ -502,14 +528,14 @@ def _glyph_pages(*, sc, direction, lines, tt, canvas, **_) -> list[Cue]:
         for r, (items, width) in enumerate(rows):
             y = 0.5 + (r - (len(rows) - 1) / 2) * gap
             x0 = 0.5 - (width * size / canvas.aspect) / 2
-            for g, off, cw in items:
+            for g, lit_at, off, cw in items:
                 if not g.text.strip():
                     continue
                 x = x0 + (off + cw / 2) * size / canvas.aspect
                 ghost, ink = (
                     strong if (not emphasis or key(g.text[0]) in emphasis) else mild
                 )
-                ignite = min(max(shown, g.start - lead), turn)  # stays on its page
+                ignite = min(max(shown, lit_at - lead), turn)  # stays on its page
                 cues.append(
                     Cue(
                         text=g.text,

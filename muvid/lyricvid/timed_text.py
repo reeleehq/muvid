@@ -277,6 +277,14 @@ class TimedText:
 # --------------------------------------------------------------------------
 
 
+def _strict_bool(d: Mapping[str, Any], key: str, *, default: bool) -> bool:
+    """``d[key]`` as a bool; a non-bool (``"false"`` is truthy) is refused."""
+    v = d.get(key, default)
+    if not isinstance(v, bool):
+        raise ValueError(f"{key!r} must be true or false, not {v!r}")
+    return v
+
+
 def from_dict(d: Mapping[str, Any]) -> TimedText:
     """Inverse of :meth:`TimedText.to_dict` — a saved timing file, reloaded.
 
@@ -290,8 +298,8 @@ def from_dict(d: Mapping[str, Any]) -> TimedText:
             text=g["text"],
             start=float(g["start"]),
             end=float(g["end"]),
-            measured=bool(g.get("measured", True)),
-            sung=bool(g.get("sung", True)),
+            measured=_strict_bool(g, "measured", default=True),
+            sung=_strict_bool(g, "sung", default=True),
             span=_span(g),
         )
 
@@ -312,7 +320,7 @@ def from_dict(d: Mapping[str, Any]) -> TimedText:
             text=w["text"],
             start=float(w["start"]),
             end=float(w["end"]),
-            measured=bool(w.get("measured", True)),
+            measured=_strict_bool(w, "measured", default=True),
             glyphs=tuple(_glyph(g) for g in w.get("glyphs", ())),
         )
 
