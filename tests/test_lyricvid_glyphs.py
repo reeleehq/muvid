@@ -1196,3 +1196,99 @@ def _rebuilt_first_word(tt, word):
     return replace(
         tt, sections=(replace(sec, lines=(ln, *sec.lines[1:])), *tt.sections[1:])
     )
+
+
+# ---------------------------------------------------------------------------
+# silent_glyph: one silent mora inside a sung line (muvid#156)
+# ---------------------------------------------------------------------------
+
+
+def _timed_words(*words):
+    """``words``: ``(text, [(glyph, start), ...])``; one line, glyph ends at the next start."""
+    from dataclasses import replace
+
+    out = []
+    for text, gl in words:
+        starts = [s for _, s in gl]
+        glyphs = tuple(
+            Glyph(text=c, start=s, end=(starts[i + 1] if i + 1 < len(gl) else s + 0.1))
+            for i, (c, s) in enumerate(gl)
+        )
+        out.append(
+            {"text": text, "start": starts[0], "end": glyphs[-1].end, "glyphs": glyphs}
+        )
+    recs = [
+        {"text": w["text"], "start": w["start"], "end": w["end"]} for w in out
+    ]
+    recs[-1]["line_end"] = True
+    tt = from_word_records(recs, duration=8.0)
+    it = iter(out)
+    return replace(
+        tt,
+        sections=tuple(
+            replace(
+                s,
+                lines=tuple(
+                    replace(
+                        l, words=tuple(replace(w, glyphs=next(it)["glyphs"]) for w in l.words)
+                    )
+                    for l in s.lines
+                ),
+            )
+            for s in tt.sections
+        ),
+    )
+
+
+def _elided_song():
+    # ハッカー sung as ハッ: カ (1.3) and ー (1.4) fall in silence; サンプル is sung
+    return _timed_words(
+        ("ハッカー", [("ハ", 1.0), ("ッ", 1.15), ("カ", 1.3), ("ー", 1.4)]),
+        ("サン", [("サ", 3.0), ("ン", 3.2)]),
+    )
+
+
+def test_silent_glyph_flags_the_elided_mora_and_not_the_sung_ones(stem_of):
+    fine = _elided_song()
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    found = ga.silent_glyph(stem).find(fine, fine)
+    assert list(found) == [0] and "'カ'" in found[0]
+
+
+def test_silent_glyph_drops_the_word_by_default_and_can_replace(stem_of):
+    fine = _elided_song()
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    out, records = ga.reconcile(fine, fine, detectors=(ga.silent_glyph(stem),))
+    assert [w.text for w in out.words()] == ["サン"]
+    assert records[0]["why"] == "silent_glyph" and records[0]["remedy"] == "drop"
+    out, records = ga.reconcile(
+        fine, fine, detectors=(ga.silent_glyph(stem, remedy="replace"),)
+    )
+    assert [w.text for w in out.words()] == ["ハッカー", "サン"]
+
+
+def test_silent_glyph_wants_both_peak_and_median_quiet(stem_of):
+    """A quiet tail next to an attack (high peak) is not silence."""
+    fine = _elided_song()
+    # the singing resumes 50 ms into カ's 0.4 s window: peak is loud, median quiet
+    stem = stem_of(_stem((1.0, 1.25), (1.35, 1.4), (3.0, 3.5)))
+    assert ga.silent_glyph(stem).find(fine, fine) == {}
+
+
+def test_silent_glyph_ignores_soundless_glyphs_and_a_silent_stem(stem_of):
+    fine = _timed_words(("ハー", [("ハ", 1.0), ("ー", 1.3)]), ("ス", [("ス", 3.0)]))
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    assert ga.silent_glyph(stem).find(fine, fine) == {}  # ー is never judged
+    stem = stem_of(_stem())
+    assert ga.silent_glyph(stem).find(_elided_song(), _elided_song()) == {}
+
+
+def test_silent_glyph_does_not_judge_past_the_end_of_the_stem(stem_of):
+    fine = _timed_words(("ハ", [("ハ", 10.9)]))
+    stem = stem_of(_stem((1.0, 2.0), duration=11.0))
+    assert ga.silent_glyph(stem).find(fine, fine) == {}
+
+
+def test_silent_glyph_refuses_an_unknown_remedy():
+    with pytest.raises(ValueError):
+        ga.silent_glyph("x", remedy="mute")
