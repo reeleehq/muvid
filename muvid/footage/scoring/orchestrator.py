@@ -27,19 +27,17 @@ import os
 import threading
 from typing import Callable, Sequence
 
+from muvid.footage.scoring import registry
 from muvid.footage.scoring.grid import DEFAULT_HOP_S, grid_len, save_scores
 
-#: The torch-free CORE metric set (prod-safe). Lip-sync metrics are added only when the
-#: opt-in tier is enabled.
-DEFAULT_METRICS = (
-    "sharpness",
-    "exposure",
-    "stability_shake",
-    "face_framing",
-    "motion_beat_bas",
-    "motion_onset_xcorr",
-)
-_LIPSYNC_METRICS = ("lip_sync_lse_c", "lse_d_offset")
+#: The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept
+#: for callers that read the constant. A scorer registered later is picked up by the
+#: orchestrator through :func:`registry.default_metrics`, which this does not shadow.
+#: Lip-sync metrics are added only when the opt-in tier is enabled.
+DEFAULT_METRICS = tuple(registry.default_metrics())
+_LIPSYNC_METRICS = tuple(
+    sorted(registry.metrics_of_tier(registry.LIPSYNC_TIER))
+)  # snapshot
 
 #: Process-wide serialization of scoring runs (bounds peak memory on the fragile box).
 _MAX_CONCURRENT = max(1, int(os.environ.get("MUVID_SCORING_MAX_CONCURRENT", "1")))
@@ -74,6 +72,11 @@ def list_available_extractors() -> dict:
         "motion_beat": _has("cv2") and _has("librosa"),
         "segment": _has("scenedetect"),
         "lipsync": {"available": ok, "reason": reason},
+        # every registered scorer, built-in or not (muvid#19)
+        "scorers": {
+            s.name: {"metrics": list(s.metrics), "tier": s.tier}
+            for s in registry.scorers(include_lipsync=True)
+        },
     }
 
 
@@ -131,8 +134,7 @@ def _score(
     project, *, metrics, hop_s, sample_fps, enable_lipsync, progress_cb, should_cancel
 ):
     from muvid.footage.scoring import frames as F
-    from muvid.footage.scoring.motionbeat import motionbeat_tracks
-    from muvid.footage.scoring.quality import quality_gate_mask, quality_tracks
+    from muvid.footage.scoring.quality import quality_gate_mask
     from muvid.footage.scoring.segment import shot_boundaries
 
     aligns = project.load_alignments()
@@ -146,7 +148,11 @@ def _score(
     want_lipsync = _lipsync_enabled(enable_lipsync)
     # If the caller explicitly asks for lip-sync metrics, requesting them must ENABLE the tier
     # (honoring availability) rather than silently returning an empty result.
-    requested_lipsync = set(metrics) & set(_LIPSYNC_METRICS) if metrics else set()
+    requested_lipsync = (
+        set(metrics) & registry.metrics_of_tier(registry.LIPSYNC_TIER)
+        if metrics
+        else set()
+    )
     if requested_lipsync and not want_lipsync:
         from muvid.footage.scoring.lipsync import lipsync_available
 
@@ -157,11 +163,30 @@ def _score(
                 f"unavailable: {reason} (install muvid[scoring-lipsync] + set weights)"
             )
         want_lipsync = True
+    if metrics:
+        unknown = sorted(
+            set(metrics) - set(registry.default_metrics(include_lipsync=True))
+        )
+        if unknown:
+            raise ValueError(
+                f"unknown metric(s) {unknown}; registered: "
+                f"{registry.default_metrics(include_lipsync=True)}"
+            )
     wanted = (
         set(metrics)
         if metrics
-        else set(DEFAULT_METRICS) | (set(_LIPSYNC_METRICS) if want_lipsync else set())
+        else set(registry.default_metrics(include_lipsync=want_lipsync))
     )
+    # Only the scorers that can produce a wanted metric run; the frame decode (the
+    # expensive shared pass) happens iff one of them reads it.
+    active = [
+        sc
+        for sc in registry.scorers(include_lipsync=want_lipsync)
+        if wanted & set(sc.metrics)
+    ]
+    # the hard quality gate is read off the decode pass, so a gated scorer needs it too
+    # (else the same metric would differ by what else was requested)
+    needs_frames = any(sc.needs_frames or sc.gated for sc in active)
 
     total_stages = 1 + (1 if want_lipsync else 0) + len(aligns)
     stage = 0
@@ -194,8 +219,9 @@ def _score(
         if _cancelled(should_cancel):
             return {"status": "cancelled", "stage": "separate_vocals"}
 
-    face_fn = F.make_face_scorer()
+    face_fn = F.make_face_scorer() if needs_frames else None
     fps_kw = {} if sample_fps is None else {"sample_fps": sample_fps}
+    grid_kw = {"t0": t0, "hop_s": hop_s, "n": n}
 
     tracks_by_clip: dict[str, list] = {}
     shots_by_clip: dict[str, list] = {}
@@ -210,64 +236,50 @@ def _score(
         if not path:
             skipped[a.clip_id] = "no file"
             continue
-        clip_tracks = []
-        try:
-            fp = F.sample_clip_frames(
-                str(path), face_fn=face_fn, should_cancel=should_cancel, **fps_kw
-            )
-        except Exception as e:  # a bad clip must not sink the whole job
-            skipped[a.clip_id] = f"decode failed: {e}"
-            continue
+        fp = None
+        if needs_frames:
+            try:
+                fp = F.sample_clip_frames(
+                    str(path), face_fn=face_fn, should_cancel=should_cancel, **fps_kw
+                )
+            except Exception as e:  # a bad clip must not sink the whole job
+                skipped[a.clip_id] = f"decode failed: {e}"
+                continue
 
-        qt = quality_tracks(
-            fp, clip_id=a.clip_id, offset_s=a.offset_s, t0=t0, hop_s=hop_s, n=n
-        )
-        mt = motionbeat_tracks(
-            fp,
+        ctx = registry.ClipContext(
             clip_id=a.clip_id,
-            offset_s=a.offset_s,
-            beat_times=bg.beat_times,
-            onset_env=bg.onset_env,
-            onset_hop_s=bg.onset_hop_s,
-            t0=t0,
-            hop_s=hop_s,
-            n=n,
+            path=str(path),
+            alignment=a,
+            frames=fp,
+            beat=bg,
+            vocal_stem=str(vocal_stem) if vocal_stem is not None else None,
+            grid=grid_kw,
         )
-        clip_tracks.extend(qt)
-        clip_tracks.extend(mt)
-
-        # Optional hard quality gate → AND into every metric's mask for this clip.
-        gate = quality_gate_mask(fp, offset_s=a.offset_s, t0=t0, hop_s=hop_s, n=n)
-        if not gate.all():
-            clip_tracks = [_and_mask(tr, gate) for tr in clip_tracks]
+        # Optional hard quality gate → AND into the mask of every GATED scorer's tracks.
+        gate = None
+        if fp is not None:
+            g = quality_gate_mask(fp, offset_s=a.offset_s, **grid_kw)
+            gate = None if g.all() else g
+        clip_tracks = []
+        for sc in active:
+            # only what the scorer DECLARED: a track under another scorer's metric
+            # name would overwrite it in the tensor
+            produced_tracks = [tr for tr in sc.run(ctx) if tr.metric in sc.metrics]
+            if gate is not None and sc.gated:
+                produced_tracks = [_and_mask(tr, gate) for tr in produced_tracks]
+            clip_tracks.extend(produced_tracks)
 
         # Shot boundaries (for the selector's beats+shots mode).
         shots_by_clip[a.clip_id] = shot_boundaries(str(path), offset_s=a.offset_s)
-
-        # Opt-in lip-sync tier.
-        if want_lipsync and vocal_stem is not None:
-            from muvid.footage.scoring.lipsync import lipsync_tracks
-
-            clip_tracks.extend(
-                lipsync_tracks(
-                    str(path),
-                    clip_id=a.clip_id,
-                    offset_s=a.offset_s,
-                    duration_s=a.duration_s,
-                    coverage=a.coverage,
-                    vocal_stem_path=str(vocal_stem),
-                    t0=t0,
-                    hop_s=hop_s,
-                    n=n,
-                )
-            )
 
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 
     # Metric axis = the wanted metrics actually produced by ≥1 clip.
     produced = {tr.metric for trs in tracks_by_clip.values() for tr in trs}
     metric_axis = [
-        m for m in _ordered_metrics(want_lipsync) if m in produced and m in wanted
+        m
+        for m in registry.default_metrics(include_lipsync=want_lipsync)
+        if m in produced and m in wanted
     ]
 
     import math
@@ -304,13 +316,6 @@ def _score(
         "beats": int(len(bg.beat_times)),
         "lipsync_enabled": want_lipsync,
     }
-
-
-def _ordered_metrics(want_lipsync: bool) -> list[str]:
-    ms = list(DEFAULT_METRICS)
-    if want_lipsync:
-        ms += list(_LIPSYNC_METRICS)
-    return ms
 
 
 def _and_mask(track, gate):

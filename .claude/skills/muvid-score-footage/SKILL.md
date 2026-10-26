@@ -38,8 +38,17 @@ master**; map to each clip via its known offset.
 - `mixing.audio.beat_grid` (mixing[beats], librosa) — the master beat/onset grid, computed ONCE.
 - `muvid/footage/scoring/`: `grid.py` (ScoreTrack + resample + robust-normalize + tensor +
   atomic/NaN-safe persistence), `frames.py` (ONE decode pass → shared per-clip artifacts),
-  `quality.py`, `motionbeat.py`, `segment.py`, `lipsync.py` (opt-in), `orchestrator.py`
-  (`score_project`). The selector is `muvid/footage/select_score.py` (`weighted` strategy).
+  `quality.py`, `motionbeat.py`, `segment.py`, `lipsync.py` (opt-in), `registry.py`
+  (the scorer registry), `orchestrator.py` (`score_project`). The selector is
+  `muvid/footage/select_score.py` (`weighted` strategy).
+- **Adding a metric is `register_scorer(Scorer(name, metrics, run))`** — `run(ClipContext)`
+  returns `ScoreTrack`s, masked (never `0.0`) where it could not measure. No orchestrator or
+  selector edit; the metric weighs 0 in `weighted` until a caller passes `weights=`. Core-tier
+  scorers must be MIT/BSD/Apache/ISC; anything else is `tier="lipsync"`-style opt-in.
+- `footage_scores` takes `weights`/`preset` (the weighting its composite lane and
+  `selection_margin` use; the reply says which applied) and `raw=true` for un-normalised values.
+  A `weighted` edit that fell back to `best_confidence` says so under `selection_report`
+  (propose/assemble) and in `warnings`.
 
 ## Lip-sync (`lip_sync_lse_c` + `lse_d_offset` + `face_gate`) — OPT-IN TIER (off-prod)
 

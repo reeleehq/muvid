@@ -80,7 +80,7 @@ def score_footage(
 
     proj = _open(project_id)
     with _refusals():
-        aligns = service.require_scorable(proj)
+        aligns = service.require_scorable(proj, metrics=metrics)
 
     # Input-only idempotency: song content + offsets + metric set + hop. A re-align changes
     # the fingerprint → a fresh job (never a dedup onto the stale offsets).
@@ -164,16 +164,28 @@ def footage_scores(
     clip_id: str = "",
     metrics: list | None = None,
     max_points: int = _MAX_POINTS,
+    weights: dict | None = None,
+    preset: str = "",
+    raw: bool = False,
 ) -> dict:
     """The persisted score tracks — for the multichannel editor + inspection. Free.
 
     - No ``clip_id`` → a SUMMARY (metrics, per-clip coverage %, beats, tempo, the decimated
       ``selection_margin``, grid geometry) — bounded, safe as the default.
     - ``clip_id`` → that clip's tracks (values as ``null``-masked arrays, decimated to
-      ``max_points`` per metric), for the editor's lanes.
+      ``max_points`` per metric) plus its ``composite`` lane, for the editor's lanes.
+    - ``weights`` / ``preset`` pick the weighting the composite and ``selection_margin``
+      are computed under (the reply's ``weights`` says which applied); ``raw`` adds each
+      metric's un-normalised values.
     """
     proj = _open(project_id)
     with _refusals():
         return service.scores(
-            proj, clip_id=clip_id, metrics=metrics, max_points=max_points
+            proj,
+            clip_id=clip_id,
+            metrics=metrics,
+            max_points=max_points,
+            weights=weights,
+            preset=preset,
+            raw=raw,
         )

@@ -170,6 +170,11 @@ class SelectionContext:
     shot_boundaries: Mapping[str, Sequence[float]] | None = None
     pins: Sequence[tuple] | None = None
     config: WeightedSelectionConfig = field(default_factory=WeightedSelectionConfig)
+    #: A sink the strategy WRITES its run meta into (``fallback``/``cause``/``config``/
+    #: ``lambda_effective``), so the caller learns what the DP did without
+    #: ``SelectionStrategy`` changing its ``list[EdlEntry]`` return type. The context is
+    #: frozen; the dict is not, and it is excluded from equality (muvid#19).
+    report: dict = field(default_factory=dict, compare=False, repr=False)
 
 
 # ---------------------------------------------------------------------------
@@ -193,8 +198,38 @@ def weighted_selection(
             "the 'weighted' strategy needs score tracks — run scoring first "
             "(muvid_score_footage), then assemble with strategy='weighted'"
         )
-    entries, _meta = run_weighted(alignments, song_duration, context)
+    entries, meta = run_weighted(alignments, song_duration, context)
+    context.report.clear()  # a reused context must not carry the last run's fallback
+    context.report.update(meta)
     return entries
+
+
+def selection_notice(context) -> dict | None:
+    """What the ``weighted`` DP did that the caller must be told, or ``None``.
+
+    Reads the ``report`` sink :func:`weighted_selection` filled. A DP that deferred to
+    ``best_confidence`` hands back a plausible edit that is NOT the score-optimal one,
+    and ``strategy: weighted`` alone would be a lie about it (muvid#19). ``fallback``
+    names what ran instead; ``dwell_relaxed`` is the milder case where the minimum shot
+    length had to be dropped to find any edit. Nothing to say when there was nothing to
+    select from (``empty``: a project with no placed footage is cut to the music).
+    """
+    report = getattr(context, "report", None) or {}
+    if report.get("fallback") and report["fallback"] != "empty":
+        return {
+            "fallback": report["fallback"],
+            "cause": report.get("cause"),
+            "message": f"the weighted strategy could not optimise this edit "
+            f"({report.get('cause')}) and used {report['fallback']} instead — "
+            "the cuts are not score-driven",
+        }
+    if report.get("cause") == "dwell_relaxed":
+        return {
+            "cause": "dwell_relaxed",
+            "message": "no edit satisfied the minimum shot length; it was dropped "
+            "(l_min_s=0) to find one",
+        }
+    return None
 
 
 def run_weighted(

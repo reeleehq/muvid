@@ -1224,8 +1224,16 @@ def _write_json_quietly(path: Path, record: dict) -> None:
 # =============================================================================
 
 
-def require_scorable(fp) -> list:
-    """The alignments a scoring run would use; refuses without a song or an alignment."""
+def require_scorable(fp, *, metrics: Optional[list] = None) -> list:
+    """The alignments a scoring run would use; refuses without a song or an alignment,
+    or when ``metrics`` names one nobody registered."""
+    if metrics:
+        from muvid.footage.scoring.registry import default_metrics
+
+        known = default_metrics(include_lipsync=True)
+        unknown = sorted(set(metrics) - set(known))
+        if unknown:
+            raise FootageError(f"unknown metric(s) {unknown}; registered: {known}")
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
     aligns = fp.load_alignments()
@@ -1272,7 +1280,7 @@ def score(
     re-weighting never re-scores. The lip-sync tier is off unless the operator enabled
     it. Returns what was scored and what was skipped (and why).
     """
-    require_scorable(fp)
+    require_scorable(fp, metrics=metrics)
     out = run_scoring(fp, hop_s=hop_s, metrics=metrics, should_cancel=should_cancel)
     if out.get("status") == "cancelled":  # score_project polls between clips/stages
         raise FootageCancelled(f"scoring stopped at {out.get('stage')}")
@@ -1285,13 +1293,24 @@ def scores(
     clip_id: str = "",
     metrics: Optional[list[str]] = None,
     max_points: int = MAX_WIRE_POINTS,
+    weights: Optional[dict[str, float]] = None,
+    preset: str = "",
+    raw: bool = False,
 ) -> dict:
     """The saved footage curves — for the lanes under each video, and for inspection.
 
     - no ``clip_id`` → a SUMMARY (metrics, per-clip coverage, beats, tempo, the decimated
       ``selection_margin``, grid geometry) — bounded, safe as the default;
     - ``clip_id`` → that clip's curves (values as ``null``-masked arrays, decimated to
-      ``max_points`` per metric).
+      ``max_points`` per metric) and its ``composite`` lane: the weighted blend the
+      ``weighted`` strategy ranks by, ``null`` where no metric could be measured.
+
+    ``weights`` / ``preset`` choose the weighting the composite and the
+    ``selection_margin`` are computed under — pass the ones you will cut with, so the
+    margin you read is the one the edit will see (default: the strategy's defaults);
+    the reply's ``weights`` says which applied. ``raw`` also returns each metric's
+    un-normalised values (``null`` where not measured), so a tooltip can show the real
+    number beside its score.
     """
     from muvid.footage.scoring.grid import (
         align_fingerprint,
@@ -1320,15 +1339,30 @@ def scores(
         "n": manifest["n"],
         "song_duration": round(manifest["n"] * manifest["hop_s"], 3),
     }
+    from muvid.footage.select_score import resolve_config
+
+    try:
+        applied = {
+            m: float(w)
+            for m, w in resolve_config(
+                preset=preset or None, weights=weights
+            ).weights.items()
+        }
+        if not all(math.isfinite(w) for w in applied.values()):
+            raise ValueError("weights must be finite numbers")
+    except (TypeError, ValueError) as e:
+        raise FootageError(f"bad weights/preset: {e}") from e
     if not clip_id:
-        return _scores_summary(fp, tensor, manifest, grid, max_points)
-    return _clip_scores(tensor, manifest, grid, clip_id, metrics, max_points)
+        return _scores_summary(fp, tensor, manifest, grid, max_points, applied)
+    return _clip_scores(
+        fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
+    )
 
 
-def _scores_summary(fp, tensor, manifest, grid, max_points) -> dict:
+def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
     from muvid.footage.select_score import selection_margin
 
-    margin = selection_margin(fp.load_alignments(), tensor)
+    margin = selection_margin(fp.load_alignments(), tensor, weights=weights)
     beats = manifest.get("beats", {}).get("beat_times", [])
     return {
         "project_id": fp.project_id,
@@ -1346,12 +1380,15 @@ def _scores_summary(fp, tensor, manifest, grid, max_points) -> dict:
         "beats": {"count": len(beats), "times": _decimate_list(beats, max_points)},
         "tempo_bpm": manifest.get("tempo_bpm"),
         "selection_margin": _decimate_values(margin, max_points, pool="min"),
+        "weights": weights,
         "grid": grid,
         "lipsync_enabled": manifest.get("lipsync_enabled", False),
     }
 
 
-def _clip_scores(tensor, manifest, grid, clip_id, metrics, max_points) -> dict:
+def _clip_scores(
+    fp, tensor, manifest, grid, clip_id, metrics, max_points, weights, raw
+) -> dict:
     if clip_id not in tensor.clip_ids:
         raise FootageError(f"unknown clip {clip_id!r}; scored: {tensor.clip_ids}")
     ci = tensor.clip_index(clip_id)
@@ -1365,7 +1402,39 @@ def _clip_scores(tensor, manifest, grid, clip_id, metrics, max_points) -> dict:
             "direction": manifest.get("directions", {}).get(m, "higher_better"),
             "norm": manifest.get("norms", {}).get(m),
         }
-    return {"clip_id": clip_id, "metrics": out_metrics, "grid": grid}
+        if raw:
+            out_metrics[m]["raw"] = _decimate_values(tensor.raw[ci, :, mi], max_points)
+    return {
+        "clip_id": clip_id,
+        "metrics": out_metrics,
+        "composite": _composite_lane(fp, tensor, clip_id, weights, max_points),
+        "weights": weights,
+        "grid": grid,
+    }
+
+
+def _composite_lane(fp, tensor, clip_id, weights, max_points) -> dict:
+    """The clip's weighted composite — what ``weighted`` ranks it by — as a lane.
+
+    Before the unvouched-clip demotion the DP applies on top. ``null`` where no weighted
+    metric could be measured for the frame: the selector uses 0 there (a cumulative sum cannot hold a NaN), but a lane that drew it as a
+    real low score would be the muvid#19 defect again, one layer up.
+    """
+    import numpy as np
+
+    from muvid.footage.select_score import _composite
+
+    aligns = [a for a in fp.load_alignments() if a.clip_id == clip_id]
+    if not aligns:
+        return {"values": None, "reason": "clip has no placement"}
+    g, total = _composite(tensor, weights, aligns)
+    if total <= 0:
+        return {"values": None, "reason": "no weighted metric is in the scores"}
+    ci = tensor.clip_index(clip_id)
+    w = np.array([max(0.0, float(weights.get(m, 0.0))) for m in tensor.metrics])
+    measured = (tensor.M[ci].astype(float) @ w) > 0
+    lane = np.where(measured, g[0], np.nan)
+    return {"values": _decimate_values(lane, max_points)}
 
 
 def _stride(n: int, max_points: int) -> int:
@@ -1834,10 +1903,18 @@ def propose_edit(
         ),
         "warnings": [exclusion_note(x) for x in excluded],
     }
+    from muvid.footage.select_score import selection_notice
+
+    notice = selection_notice(context)
+    if notice:
+        out["selection_report"] = notice
+        out["warnings"].append(notice["message"])
     if span is not None:
         out["span"] = list(span)
     if save:
         selection = {"strategy": strat}
+        if notice:
+            selection.update({k: v for k, v in notice.items() if k != "message"})
         for key, value in (
             ("preset", preset),
             ("weights", weights),
@@ -3050,6 +3127,7 @@ def assemble(
                 allow_unreliable=allow_unreliable,
             )
             used_strategy = None
+            selection_report = None
             excluded = []  # the caller named these clips; nothing is set aside for them
         else:
             strat = strategy or (
@@ -3077,6 +3155,9 @@ def assemble(
                 allow_unreliable=allow_unreliable,
             )
             used_strategy = strat
+            from muvid.footage.select_score import selection_notice
+
+            selection_report = selection_notice(context)
     except UnreliableAlignmentError as e:
         # A different remedy in kind from a malformed EDL: the OFFSETS are not
         # trustworthy — re-align, drop those clips, or say you want them anyway.
@@ -3091,6 +3172,8 @@ def assemble(
     render_dir = fp.new_render_dir(render_id)
     # The render-plan findings, on their way to the CALLER (who has no stderr).
     notes: list[str] = [exclusion_note(x) for x in excluded]
+    if selection_report:
+        notes.append(selection_report["message"])
     # A render that covers only part of the song is that part's length, and its music
     # stops early — so the check is told the length, and the song fades out. Neither
     # argument is passed for a whole-song render, which is byte-for-byte what it was.
@@ -3153,6 +3236,8 @@ def assemble(
     }
     if annotate is not None:
         meta.update(annotate(render_id, ref_n))
+    if selection_report:  # omit-when-absent: a clean run's record is unchanged
+        meta["selection_report"] = selection_report
     if edit_id:
         meta["edit_id"] = edit_id
     if label:
