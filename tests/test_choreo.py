@@ -99,7 +99,7 @@ def _song_wav(path: Path, seconds: float = 16.0) -> Path:
     return path
 
 
-def _cover_png(path: Path, *, size: int = 128) -> Path:
+def _cover_png(path: Path) -> Path:
     """A deterministic cover: a dark-blue to orange left-to-right ramp.
 
     Written by hand (stdlib ``zlib``) rather than by ffmpeg's ``gradients`` source,
@@ -109,6 +109,7 @@ def _cover_png(path: Path, *, size: int = 128) -> Path:
     import struct
     import zlib
 
+    size = 128
     dark, light = (0x10, 0x20, 0x40), (0xFF, 0x7F, 0x2A)
 
     def pixel(x: int) -> bytes:
@@ -116,6 +117,7 @@ def _cover_png(path: Path, *, size: int = 128) -> Path:
         return bytes(round(a + (b - a) * t) for a, b in zip(dark, light))
 
     row = b"\x00" + b"".join(pixel(x) for x in range(size))
+
     def chunk(tag: bytes, data: bytes) -> bytes:
         body = tag + data
         return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
@@ -531,6 +533,14 @@ def test_cover_seeds_the_palette(tmp_path, registered):
 
     assert lum(pal.bg) < 0.25 < 0.6 < lum(pal.fg)
     assert len({pal.low, pal.mid, pal.high}) == 3
+
+    # the cover's most saturated colour is its orange: ``low`` takes that hue
+    import colorsys
+
+    def hue(h):
+        return colorsys.rgb_to_hsv(*(int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)))[0]
+
+    assert abs(hue(pal.low) - hue("#ff7f2a")) < 0.05
 
     # and through the pipeline: the render records where its palette came from
     from muvid.subgenres import render_subgenre
