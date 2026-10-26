@@ -941,6 +941,11 @@ SLIP_MAX_S = 0.5
 #: effect, a different tool.
 RATE_MAX_DEV = 0.08
 
+#: Keep this far (seconds) from a video's first and last frame: phone clips start and
+#: stop with the shake of a thumb on the button. Lives here, with the other cut bounds,
+#: so the genre can publish all three without importing the cutter (numpy).
+EDGE_S = 0.25
+
 
 def clip_in_of(e: "EdlEntry", a: "FootageAlignment") -> float:
     """Where cut ``e`` starts in its clip ``a``'s own time — THE sign convention:

@@ -77,3 +77,17 @@ def test_factory_rollback_target_is_the_bucket_root(tmp_path, monkeypatch):
 
     shutil.rmtree(proj.root, ignore_errors=True)  # what rollback would do
     assert not proj.root.exists()
+
+
+def test_music_video_publishes_the_cut_bounds_its_operations_enforce():
+    import nw
+
+    import muvid.genre_music_video  # noqa: F401 - registers on import
+    from muvid.footage import edl, music_cut
+
+    assert nw.genre_limits("music_video") == {
+        "edge_s": edl.EDGE_S,
+        "slip_max_s": edl.SLIP_MAX_S,
+        "rate_max_dev": edl.RATE_MAX_DEV,
+    }
+    assert music_cut.EDGE_S is edl.EDGE_S  # one definition, not a copy
