@@ -1882,7 +1882,11 @@ _LOOK_GEOMETRY_FILTERS = {
             "s": "size",
             "size": "size",
         },
-        free=frozenset({"flags"}),
+        # ``in_color_matrix``/``out_color_matrix``: ``looks`` Rule 22 wraps every
+        # RGB-domain step in ``scale=in_color_matrix=M:out_color_matrix=M`` once a
+        # colour space is declared (muvid#190). They pick the YUV<->RGB matrix and
+        # never touch the frame size.
+        free=frozenset({"flags", "in_color_matrix", "out_color_matrix"}),
         positional=("w", "h"),
     ),
     "pad": _FilterOptions(
