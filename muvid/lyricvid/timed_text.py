@@ -62,6 +62,13 @@ class Glyph:
     start: float
     end: float
     measured: bool = True
+    #: False when the stem shows this written character was NOT sung (an elided
+    #: mora: the transcript lists ハッカー, the singer sang ハッ). Its times are
+    #: whatever the aligner put there. A consumer PLAYING audio per glyph should
+    #: skip it; one LIGHTING glyphs should still light it (with its predecessor),
+    #: or the written word never completes. Omitted from :meth:`TimedText.to_dict` when True, so every
+    #: existing timing file stays byte-identical (muvid#175).
+    sung: bool = True
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -190,6 +197,11 @@ class TimedText:
                                                     "start": g.start,
                                                     "end": g.end,
                                                     "measured": g.measured,
+                                                    **(
+                                                        {}
+                                                        if g.sung
+                                                        else {"sung": False}
+                                                    ),
                                                 }
                                                 for g in w.glyphs
                                             ]
@@ -228,6 +240,7 @@ def from_dict(d: Mapping[str, Any]) -> TimedText:
             start=float(g["start"]),
             end=float(g["end"]),
             measured=bool(g.get("measured", True)),
+            sung=bool(g.get("sung", True)),
         )
 
     def _word(w: Mapping[str, Any]) -> Word:

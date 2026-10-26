@@ -43,6 +43,7 @@ import re
 import unicodedata
 from dataclasses import dataclass, replace
 from pathlib import Path
+from collections.abc import Collection
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from muvid.lyricvid.timed_text import Glyph, Line, Section, TimedText, Word
@@ -690,12 +691,13 @@ def word_agreement(
 #: fall back to the coarse window shifted by the measured bias, glyphs spread
 #: evenly and marked unmeasured (the word was sung; the aligner could not place
 #: it). ``drop``: remove the word, and a line or section left empty (it was
-#: never sung, so lighting it at ANY time is wrong).
-REMEDIES = ("replace", "drop")
+#: never sung, so lighting it at ANY time is wrong). ``mute``: keep the word and
+#: its times, mark only the glyphs the detector names ``sung=False``.
+REMEDIES = ("replace", "drop", "mute")
 #: When several detectors flag one word, the lowest rank decides. Every remedy
 #: needs a rank AND a branch in :func:`reconcile` — a new one is never read as
 #: an old one (a remedy falling through to ``drop`` would delete words).
-_REMEDY_RANK = {"drop": 0, "replace": 1}
+_REMEDY_RANK = {"drop": 0, "replace": 1, "mute": 2}
 #: :func:`unsung`'s thresholds, measured on a real song (muvid#144): a frame is
 #: quiet below this many dB under the stem's own loud level...
 UNSUNG_QUIET_DB = -40.0
@@ -739,16 +741,25 @@ class Detector:
     ``find(fine, coarse)`` gets both timings (same word sequence) and returns
     ``{word_index: reason}``, indices into ``list(fine.words())``. ``remedy``
     is one of :data:`REMEDIES`; when several detectors flag one word, ``drop``
-    wins — a word nobody sang has no window worth falling back to.
+    wins — a word nobody sang has no window worth falling back to — then
+    ``replace``, then ``mute``.
     """
 
     name: str
     find: Callable[[TimedText, TimedText], Mapping[int, str]]
     remedy: str = "replace"
+    #: ``mute`` acts on single glyphs, so it needs to say which: ``glyphs(fine,
+    #: coarse)`` returns ``{word_index: {glyph_index, ...}}`` (indices into the
+    #: word's ``glyphs``), and ``find`` still names the words (muvid#175).
+    glyphs: Callable[[TimedText, TimedText], Mapping[int, Collection[int]]] | None = (
+        None
+    )
 
     def __post_init__(self) -> None:
         if self.remedy not in REMEDIES:
             raise ValueError(f"remedy must be one of {REMEDIES}, not {self.remedy!r}")
+        if self.remedy == "mute" and self.glyphs is None:
+            raise ValueError("a 'mute' detector must say which glyphs (glyphs=)")
 
 
 def _word_start(w: Word) -> float:
@@ -955,13 +966,13 @@ def silent_glyph(
     A window running past the stem's end, or a digitally silent stem, is not
     judged (the safe direction for a remedy that deletes words).
 
-    Remedy: ``drop`` at WORD level by default, the safe choice while
-    :class:`~muvid.lyricvid.timed_text.Glyph` has no per-glyph "not sung" flag;
-    pass ``remedy="replace"`` to fall back to the vendor window instead. Safe for
-    a consumer playing per-glyph clips; in a lyric video it deletes sung text
-    (``ハッ``), and ``drop`` outranks ``replace``, so it also turns a recoverable
-    squeezed word into a deletion. Hence opt-in, NOT part of
-    :func:`stem_detectors`. Only wide (kana, CJK) glyphs are judged; words
+    Remedy: ``drop`` at WORD level by default (a per-glyph consumer, such as one
+    playing a clip per kana, wants the word out of its timing); ``mute`` marks
+    only the silent glyphs ``sung=False`` and keeps the rest of the word and its
+    times (a lyric video keeps ``ハッ`` of ``ハッカー``); ``replace`` falls back to
+    the vendor window. ``drop`` deletes sung text in a lyric video and outranks
+    ``replace``, so it also turns a recoverable squeezed word into a deletion:
+    opt-in, NOT part of :func:`stem_detectors`. Only wide (kana, CJK) glyphs are judged; words
     without glyphs are not judged and do not end a neighbour's window.
     """
     lo, hi = window_s
@@ -979,36 +990,46 @@ def silent_glyph(
             and unicodedata.east_asian_width(g.text[:1] or " ") in "WF"
         )
 
-    def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
+    def scan(fine: TimedText) -> dict[int, dict[int, str]]:
+        """``{word index: {glyph index: reason}}`` for every silent sounded glyph."""
         import numpy as np
 
-        # (word index, glyph) for every glyph that makes a sound, in song order
+        # (word index, glyph index, glyph) for every glyph that makes a sound
         sounded = [
-            (k, g) for k, w in enumerate(fine.words()) for g in w.glyphs if judged(g)
+            (k, gi, g)
+            for k, w in enumerate(fine.words())
+            for gi, g in enumerate(w.glyphs)
+            if judged(g)
         ]
         if not sounded:
             return {}
         if not levels:
             levels.append(_frame_levels_db(vocals, frame_s=frame_s))
         level = levels[0]
-        out: dict[int, str] = {}
-        for n, (k, g) in enumerate(sounded):
-            nxt = sounded[n + 1][1].start if n + 1 < len(sounded) else g.start + hi
+        out: dict[int, dict[int, str]] = {}
+        for n, (k, gi, g) in enumerate(sounded):
+            nxt = sounded[n + 1][2].start if n + 1 < len(sounded) else g.start + hi
             end = min(max(nxt, g.start + lo), g.start + hi)
             a = max(0, int(g.start / frame_s))
             b = max(int(end / frame_s), a + 1)
-            if b > len(level) or k in out:  # past the stem's end: nothing to judge by
+            if b > len(level):  # past the stem's end: nothing to judge by
                 continue
             w = level[a:b]
             peak, med = float(w.max()), float(np.median(w))
             if peak < peak_db and med < median_db:
-                out[k] = (
+                out.setdefault(k, {})[gi] = (
                     f"glyph {g.text!r} at {g.start:.2f} s: silent in the stem "
                     f"(peak {peak:.0f} dB, median {med:.0f} dB)"
                 )
         return out
 
-    return Detector(name="silent_glyph", find=find, remedy=remedy)
+    def find(fine: TimedText, coarse: TimedText) -> dict[int, str]:
+        return {k: next(iter(hits.values())) for k, hits in scan(fine).items()}
+
+    def glyphs(fine: TimedText, coarse: TimedText) -> dict[int, set[int]]:
+        return {k: set(hits) for k, hits in scan(fine).items()}
+
+    return Detector(name="silent_glyph", find=find, remedy=remedy, glyphs=glyphs)
 
 
 def stem_onsets(vocals: Path | str):
@@ -1243,7 +1264,13 @@ def reconcile(
     left empty. Returns the timing and one record per affected word: ``why``
     (the deciding detector), ``detail``, ``remedy``, ``flagged_by`` (every
     detector that flagged it) and ``used`` (the start it got; ``None`` when
-    dropped).
+    dropped). ``mute`` (see :func:`silent_glyph`) keeps the word and its times
+    and sets ``sung=False`` on the glyphs the detector names (the record lists
+    their indices as ``glyphs``); it ranks below ``replace``, so a word another
+    detector distrusts is re-timed and its silence verdict, measured on the
+    distrusted time, is not kept. A ``ー`` after a muted glyph keeps ``sung=True``
+    (it is never judged); and a ``fine`` timing override restores the line whole,
+    ``sung`` included.
     """
     import numpy as np
 
@@ -1261,13 +1288,19 @@ def reconcile(
             "detectors=, pass them to default_detectors(...) instead"
         )
     flags: dict[int, list[tuple[Detector, str]]] = {}
+    muted: dict[int, set[int]] = {}  # word index -> glyph indices, asked once each
     for d in detectors:
         for k, why in d.find(fine, coarse).items():
             flags.setdefault(k, []).append((d, why))
+        if d.remedy == "mute":
+            for k, idx in d.glyphs(fine, coarse).items():
+                muted.setdefault(k, set()).update(idx)
+    # the bias is measured over words whose fine time is trusted; a muted word's
+    # times are (only its sung-ness is in doubt), a replaced or dropped one's not
     good = [
         _word_start(x) - _word_start(y)
         for k, (x, y) in enumerate(zip(a, b))
-        if k not in flags
+        if all(d.remedy == "mute" for d, _ in flags.get(k, ()))
     ]
     bias = float(np.median(good)) if good else 0.0
 
@@ -1317,6 +1350,25 @@ def reconcile(
                             )
                         )
                         rec["used"] = round(shifted.start, 3)
+                    elif d.remedy == "mute":
+                        idx = muted.get(k, set())
+                        if not idx or not idx <= set(range(len(w.glyphs))):
+                            raise ValueError(
+                                f"detector {d.name!r} flagged word {k} ({w.text!r}) "
+                                f"for 'mute' but its glyphs() named {sorted(idx)} "
+                                f"of {len(w.glyphs)} glyphs"
+                            )
+                        words.append(
+                            replace(
+                                w,
+                                glyphs=tuple(
+                                    replace(g, sung=False) if i in idx else g
+                                    for i, g in enumerate(w.glyphs)
+                                ),
+                            )
+                        )
+                        rec["used"] = round(_word_start(w), 3)
+                        rec["glyphs"] = sorted(idx)
                     else:  # pragma: no cover - Detector refuses unknown remedies
                         raise AssertionError(f"no branch for remedy {d.remedy!r}")
                     records.append(rec)
@@ -1593,4 +1645,5 @@ def glyph_rows(tt: TimedText) -> Iterable[dict[str, Any]]:
                     "start": g.start,
                     "end": g.end,
                     "measured": g.measured,
+                    "sung": g.sung,
                 }
