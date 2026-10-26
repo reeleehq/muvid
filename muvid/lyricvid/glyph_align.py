@@ -614,6 +614,7 @@ def _glyph_starts(tt: TimedText) -> list[float]:
         for w in tt.words()
         for g in w.glyphs
         if g.measured
+        and g.sung  # an unsung glyph sits off every onset by definition
         and g.end > g.start
         and unicodedata.category(g.text)[0] == "L"
         and g.text not in _SOUNDLESS_GLYPHS
@@ -701,17 +702,6 @@ def word_agreement(
 # reconciliation: detectors name the words to distrust, remedies fix them
 # --------------------------------------------------------------------------
 
-#: What :func:`reconcile` may do with a word a detector distrusts. ``replace``:
-#: fall back to the coarse window shifted by the measured bias, glyphs spread
-#: evenly and marked unmeasured (the word was sung; the aligner could not place
-#: it). ``drop``: remove the word, and a line or section left empty (it was
-#: never sung, so lighting it at ANY time is wrong). ``mute``: keep the word and
-#: its times, mark only the glyphs the detector names ``sung=False``.
-REMEDIES = ("replace", "drop", "mute")
-#: When several detectors flag one word, the lowest rank decides. Every remedy
-#: needs a rank AND a branch in :func:`reconcile` — a new one is never read as
-#: an old one (a remedy falling through to ``drop`` would delete words).
-_REMEDY_RANK = {"drop": 0, "replace": 1, "mute": 2}
 #: :func:`unsung`'s thresholds, measured on a real song (muvid#144): a frame is
 #: quiet below this many dB under the stem's own loud level...
 UNSUNG_QUIET_DB = -40.0
@@ -772,9 +762,9 @@ class Detector:
 
     ``find(fine, coarse)`` gets both timings (same word sequence) and returns
     ``{word_index: reason}``, indices into ``list(fine.words())``. ``remedy``
-    is one of :data:`REMEDIES`; when several detectors flag one word, ``drop``
-    wins — a word nobody sang has no window worth falling back to — then
-    ``replace``, then ``mute``.
+    is one of :data:`REMEDIES`; when several detectors flag one word, the
+    remedy with the lowest rank wins: ``drop`` — a word nobody sang has no
+    window worth falling back to — then ``replace``, then ``mute``.
     """
 
     name: str
@@ -1239,13 +1229,16 @@ def stem_detectors(
     min_glyph_s: float = MIN_GLYPH_S,
     tol_s: float = ONSET_TOL_S,
     drop_unsung: bool = True,
+    silent_glyph_remedy: str | None = None,
 ) -> tuple[Detector, ...]:
     """What to reconcile with when you have the vocal stem (muvid#150).
 
     :func:`squeezed`, :func:`misplaced` (in place of :func:`disagrees`, which
     trusts the vendor even when its time is impossible), :func:`unsung` with
     ``among=``:func:`lost` (left out when ``drop_unsung`` is false), and
-    :func:`disordered` over the rest. Measured on five songs, this reproduced
+    :func:`disordered` over the rest. :func:`silent_glyph` joins them, with the
+    given remedy, only when ``silent_glyph_remedy`` is set (default: not run;
+    its ``drop`` deletes sung text, so it stays opt-in, muvid#177). Measured on five songs, this reproduced
     both hand fixes the first one needed.
     """
     first: tuple[Detector, ...] = (
@@ -1257,6 +1250,8 @@ def stem_detectors(
             vocals, disagree_s=disagree_s, min_glyph_s=min_glyph_s, tol_s=tol_s
         )
         first = (*first, unsung(vocals, among=among))
+    if silent_glyph_remedy is not None:
+        first = (*first, silent_glyph(vocals, remedy=silent_glyph_remedy))
     return (*first, disordered(first))
 
 
@@ -1267,6 +1262,60 @@ def _longest_run(mask) -> int:
         cur = cur + 1 if v else 0
         best = max(best, cur)
     return best
+
+
+@dataclass(frozen=True, slots=True)
+class _Remedy:
+    """One row of ``_REMEDY_TABLE``. ``rank``: when several detectors flag one
+    word the lowest decides. ``apply(word, coarse_word, *, bias, glyphs)``
+    returns the word to keep (``None``: gone) and the fields it adds to the
+    word's record (``used``, and ``glyphs`` for ``mute``)."""
+
+    rank: int
+    apply: Callable[..., tuple[Word | None, dict[str, Any]]]
+
+
+def _apply_drop(w, c, *, bias, glyphs):
+    return None, {}  # gone: no window is right for a word nobody sang
+
+
+def _apply_replace(w, c, *, bias, glyphs):
+    shifted = replace(
+        c, start=c.start + bias, end=c.end + bias, measured=False, glyphs=()
+    )
+    spread = _interpolated(
+        shifted, [(g.text, "") for g in w.glyphs] or [(ch, "") for ch in w.text]
+    )
+    kept = replace(
+        w, start=shifted.start, end=shifted.end, measured=False, glyphs=spread
+    )
+    return kept, {"used": round(shifted.start, 3)}
+
+
+def _apply_mute(w, c, *, bias, glyphs):
+    kept = replace(
+        w,
+        glyphs=tuple(
+            replace(g, sung=False) if i in glyphs else g for i, g in enumerate(w.glyphs)
+        ),
+    )
+    return kept, {"used": round(_word_start(w), 3), "glyphs": sorted(glyphs)}
+
+
+#: What :func:`reconcile` may do with a word a detector distrusts. ``replace``:
+#: fall back to the coarse window shifted by the measured bias, glyphs spread
+#: evenly and marked unmeasured (the word was sung; the aligner could not place
+#: it). ``drop``: remove the word, and a line or section left empty (it was
+#: never sung, so lighting it at ANY time is wrong). ``mute``: keep the word and
+#: its times, mark only the glyphs the detector names ``sung=False``. A new
+#: remedy is one row: rank AND behaviour together, so it can never be read as an
+#: old one (a remedy falling through to ``drop`` would delete words).
+_REMEDY_TABLE = {
+    "drop": _Remedy(0, _apply_drop),
+    "replace": _Remedy(1, _apply_replace),
+    "mute": _Remedy(2, _apply_mute),
+}
+REMEDIES = tuple(_REMEDY_TABLE)
 
 
 def reconcile(
@@ -1319,10 +1368,19 @@ def reconcile(
     flags: dict[int, list[tuple[Detector, str]]] = {}
     muted: dict[int, set[int]] = {}  # word index -> glyph indices, asked once each
     for d in detectors:
-        for k, why in d.find(fine, coarse).items():
+        found = d.find(fine, coarse)
+        for k, why in found.items():
             flags.setdefault(k, []).append((d, why))
         if d.remedy == "mute":
-            for k, idx in d.glyphs(fine, coarse).items():
+            named = d.glyphs(fine, coarse)
+            for k in {*found, *named}:
+                idx = set(named.get(k, ()))
+                n = len(a[k].glyphs) if 0 <= k < len(a) else 0
+                if not idx or not idx <= set(range(n)):
+                    raise ValueError(
+                        f"detector {d.name!r} flagged word {k} for 'mute' but its "
+                        f"glyphs() named {sorted(idx)} of {n} glyphs"
+                    )
                 muted.setdefault(k, set()).update(idx)
     # the bias is measured over words whose fine time is trusted; a muted word's
     # times are (only its sung-ness is in doubt), a replaced or dropped one's not
@@ -1342,7 +1400,7 @@ def reconcile(
             for w in ln.words:
                 fl = flags.get(k)
                 if fl:
-                    d, why = min(fl, key=lambda f: _REMEDY_RANK[f[0].remedy])
+                    d, why = min(fl, key=lambda f: _REMEDY_TABLE[f[0].remedy].rank)
                     rec = {
                         "index": k,
                         "text": w.text,
@@ -1353,53 +1411,12 @@ def reconcile(
                         "flagged_by": [x.name for x, _ in fl],
                         "used": None,
                     }
-                    if d.remedy == "drop":
-                        pass  # gone: no window is right for a word nobody sang
-                    elif d.remedy == "replace":
-                        c = b[k]
-                        shifted = replace(
-                            c,
-                            start=c.start + bias,
-                            end=c.end + bias,
-                            measured=False,
-                            glyphs=(),
-                        )
-                        glyphs = _interpolated(
-                            shifted,
-                            [(g.text, "") for g in w.glyphs]
-                            or [(ch, "") for ch in w.text],
-                        )
-                        words.append(
-                            replace(
-                                w,
-                                start=shifted.start,
-                                end=shifted.end,
-                                measured=False,
-                                glyphs=glyphs,
-                            )
-                        )
-                        rec["used"] = round(shifted.start, 3)
-                    elif d.remedy == "mute":
-                        idx = muted.get(k, set())
-                        if not idx or not idx <= set(range(len(w.glyphs))):
-                            raise ValueError(
-                                f"detector {d.name!r} flagged word {k} ({w.text!r}) "
-                                f"for 'mute' but its glyphs() named {sorted(idx)} "
-                                f"of {len(w.glyphs)} glyphs"
-                            )
-                        words.append(
-                            replace(
-                                w,
-                                glyphs=tuple(
-                                    replace(g, sung=False) if i in idx else g
-                                    for i, g in enumerate(w.glyphs)
-                                ),
-                            )
-                        )
-                        rec["used"] = round(_word_start(w), 3)
-                        rec["glyphs"] = sorted(idx)
-                    else:  # pragma: no cover - Detector refuses unknown remedies
-                        raise AssertionError(f"no branch for remedy {d.remedy!r}")
+                    kept, fields = _REMEDY_TABLE[d.remedy].apply(
+                        w, b[k], bias=bias, glyphs=muted.get(k, set())
+                    )
+                    rec.update(fields)
+                    if kept is not None:
+                        words.append(kept)
                     records.append(rec)
                 else:
                     words.append(w)

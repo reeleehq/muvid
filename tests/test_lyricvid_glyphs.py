@@ -1888,3 +1888,114 @@ def test_timing_overrides_clear_the_spans_they_invalidate(stem_of, onsets_at):
     assert any(g.span for w in out.words() for g in w.glyphs)
     got, _ = ga.apply_timing_overrides(out, fine, records, overrides={"1": "fine"})
     assert all(g.span is None for w in got.words() for g in w.glyphs)
+
+
+# ---------------------------------------------------------------------------
+# consuming Glyph.sung (muvid#177)
+# ---------------------------------------------------------------------------
+
+
+def _unsung_second_glyph():
+    from dataclasses import replace
+
+    tt = _with_glyphs(_tt())
+    w = next(iter(tt.words()))
+    gs = list(w.glyphs)
+    gs[1] = replace(gs[1], sung=False, start=gs[1].start + 0.3, end=gs[1].end + 0.3)
+    return tt, w.text, w.glyphs[0].start, tuple(gs)
+
+
+def test_glyph_pages_light_an_unsung_glyph_with_its_predecessor():
+    from dataclasses import replace
+
+    tt, text, first_start, gs = _unsung_second_glyph()
+    first = next(iter(tt.words()))
+    tt = replace(
+        tt,
+        sections=tuple(
+            replace(
+                s,
+                lines=tuple(
+                    replace(
+                        l,
+                        words=tuple(
+                            replace(w, glyphs=gs) if w is first else w for w in l.words
+                        ),
+                    )
+                    for l in s.lines
+                ),
+            )
+            for s in tt.sections
+        ),
+    )
+    sc = compile_scene(
+        S.coerce(_treatment())[0], tt, canvas=Canvas(width=1920, height=1080)
+    )
+    ink = {c.text: c for c in sc.cues if c.layer == 1}
+    assert text[1] in ink  # still lit, so the written word completes
+    assert ink[text[1]].t_in == pytest.approx(ink[text[0]].t_in)
+
+
+def test_onset_report_ignores_unsung_glyphs():
+    tt, _, _, gs = _unsung_second_glyph()
+    from dataclasses import replace
+
+    first = next(iter(tt.words()))
+    muted = replace(
+        tt,
+        sections=tuple(
+            replace(
+                s,
+                lines=tuple(
+                    replace(
+                        l,
+                        words=tuple(
+                            replace(w, glyphs=gs) if w is first else w for w in l.words
+                        ),
+                    )
+                    for l in s.lines
+                ),
+            )
+            for s in tt.sections
+        ),
+    )
+    assert len(ga._glyph_starts(muted)) == len(ga._glyph_starts(tt)) - 1
+
+
+def test_from_dict_refuses_a_string_for_a_boolean():
+    d = _with_glyphs(_tt()).to_dict()
+    d["sections"][0]["lines"][0]["words"][0]["glyphs"][0]["sung"] = "false"
+    with pytest.raises(ValueError, match="'sung' must be true or false"):
+        from_dict(d)
+
+
+def test_stem_detectors_run_silent_glyph_only_when_asked(stem_of):
+    stem = stem_of(_stem((1.0, 1.25), (3.0, 3.5)))
+    assert "silent_glyph" not in [d.name for d in ga.stem_detectors(stem)]
+    dets = ga.stem_detectors(stem, silent_glyph_remedy="mute")
+    sg = [d for d in dets if d.name == "silent_glyph"]
+    assert [d.remedy for d in sg] == ["mute"]
+    assert dets[-1].name == "disordered"  # still judges the result of the rest
+
+
+def test_an_unsung_glyph_with_a_stray_time_does_not_move_a_page_turn():
+    from dataclasses import replace
+
+    tt = _with_glyphs(_tt())
+    # the LAST glyph of the first word is unsung, with a time inside page 2
+    tt = ga._map_glyphs(
+        tt,
+        lambda i, g: replace(g, sung=False, start=7.0, end=7.1) if i == 1 else g,
+    )
+    base = compile_scene(
+        S.coerce(_treatment(lines_on_screen=1))[0],
+        _with_glyphs(_tt()),
+        canvas=Canvas(width=1920, height=1080),
+    )
+    sc = compile_scene(
+        S.coerce(_treatment(lines_on_screen=1))[0],
+        tt,
+        canvas=Canvas(width=1920, height=1080),
+    )
+    turns = lambda s: sorted({round(c.t_out, 3) for c in s.cues if c.layer == 1})
+    assert turns(sc) == turns(base)

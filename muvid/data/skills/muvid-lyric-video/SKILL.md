@@ -279,6 +279,11 @@ python -m muvid.lyricvid render song.mp3 out.mp4 --timed-text glyphs.json --trea
   keeps them (vendor windows instead). In Python, `reconcile(...,
   detectors=(*default_detectors(), unsung(stem)))`; a new check is a
   `Detector(name, find, remedy)` — the seam, not a branch.
+  `--silent-glyph {drop,mute,replace}` (muvid#177) adds `silent_glyph`, which
+  finds a word holding one sounded glyph the stem shows silent (an elided
+  mora). It is off by default because `drop` deletes sung text; `mute` keeps
+  the word and marks the glyph `sung=False`, which `glyph_pages` still lights
+  (with the glyph before it in its word) and which `onset_report` ignores.
 - Two **opt-in** post-passes, off unless asked for (muvid#155):
   `--repair-spills` pulls a line's last glyphs back off the NEXT line (seen:
   `ハット`'s `ト` on the next line's `ト`) onto a stem onset, unmeasured;
