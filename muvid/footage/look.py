@@ -101,22 +101,6 @@ DEFAULT_PUNCH_ZOOM = 1.12
 #: Where :func:`punch_in` zooms toward, as a fraction of the canvas. Centre.
 DEFAULT_PUNCH_ANCHOR = (0.5, 0.5)
 
-#: ``looks`` effects whose compiled fragment READS THE FILTER CLOCK, so a cut
-#: carrying one is affected by muvid#73's restart on a blended boundary.
-#:
-#: **Pinned here rather than derived from ``looks``, for the same reason
-#: :data:`muvid.footage.edl.LOOK_FILTERS` is** — a new ``looks`` effect must be a
-#: decision someone records, not a silent change to what muvid warns about. The
-#: drift test in ``tests/test_look_time_varying.py`` fails when
-#: ``looks.effects()`` grows,
-#: which is what forces the classification.
-#:
-#: ``ImplRef.timeline`` is NOT this property and must not be mistaken for it: it
-#: says the implementation supports ffmpeg's ``enable=`` option. ``motion`` — the
-#: one genuinely moving effect — declares ``timeline=False``, and every static
-#: grade declares ``True``, so reading it would get every row backwards.
-TIME_VARYING_EFFECTS = frozenset({"motion"})
-
 
 class LookError(ValueError):
     """A look could not be compiled. Carries what to do about it."""
@@ -432,14 +416,16 @@ def stylize(
         assumption. A grade, a LUT, a posterise is static; two shapes are not,
         and both are reachable from here:
 
-        - a step naming a :data:`TIME_VARYING_EFFECTS` member — ``motion`` is one
-          of ``looks``' registered effects, so ``stylize`` can emit exactly the
-          ``zoompan`` ramp :func:`punch_in` does (verified by compiling it);
+        - a step whose implementation reads the filter clock — ``motion``
+          and ``grain`` are such effects (verified by compiling them);
         - a step with an ``at`` :class:`looks.Span`, which compiles to
           ``enable='between(t,…)'`` — measured: ``Effect("blur", at=Span(0.5,
           1.5))`` becomes ``gblur=sigma=2:enable='between(t,0.5,1.5)'``. Reading
-          the clock to decide *whether* to apply is the same restart, and the
-          effect is not on any list of moving ones.
+          the clock to decide *whether* to apply is the same restart.
+
+        Both are read off ``LookPlan.time_varying`` (looks#17), the property of
+        the compiled plan, not off a list of effect names kept here. It is
+        tri-state upstream; an undeclared step (``None``) is treated as moving.
 
         A blanket ``False`` here — the obvious reading, since ``stylize`` is the
         grade-shaped door — would have been wrong for both.
@@ -479,10 +465,9 @@ def stylize(
         plan = looks.compile_look(look, clip=clip, env=resolved, policy=policy)
         return LookFragment(
             looks.vf(plan),
-            time_varying=any(
-                step.at is not None or step.effect in TIME_VARYING_EFFECTS
-                for step in plan.steps
-            ),
+            # ``None`` (a step whose implementation never declared) reads as
+            # moving: the warning it feeds is cheap, a silent restart is not
+            time_varying=plan.time_varying is not False,
         )
     except (
         looks.CompileError,

@@ -1736,10 +1736,39 @@ LOOK_FILTERS = frozenset(
         # definition of it, and why looks' declaration is worth fixing upstream.
         "null",
         "pad",
+        # -- compiled: looks 0.0.23 (grain, vignette, colorbalance) --
+        # ``curves``, ``halation`` and ``gate_weave`` are NOT here, deliberately
+        # (see :data:`LOOKS_EFFECTS_NOT_OFFERED`): a look compiling to one is
+        # refused at this gate, by filter or by option.
+        "colorbalance",
+        "noise",
+        "vignette",
         # -- hand-authored --
         "hue",
     }
 )
+
+#: ``looks`` effects muvid's gate does not offer, each with why. A look naming one
+#: is refused at the gate by filter name; the drift tests read this table so the
+#: omission is recorded rather than a failure. Revisit with a person (muvid#180).
+LOOKS_EFFECTS_NOT_OFFERED = {
+    "curves": "`curves` has `plot=`, which WRITES a script to a path the caller "
+    "names (the `metadata=file=` class this allowlist exists to stop), and "
+    "`psfile=`, which reads one. Never allow it by name",
+    "halation": "compiles to split/blend with pad labels, which the "
+    "one-linear-chain rule refuses",
+    "gate_weave": "compiles to `crop=...:exact=1`, an option the geometry table "
+    "does not classify, and to `setsar`, which is not offered; its "
+    "`scale=w=iw+4` is a size expression the frame bound refuses besides",
+}
+
+
+def looks_effects_offered() -> list[str]:
+    """The ``looks`` effects a look can reach through this gate, sorted."""
+    import looks
+
+    return sorted(set(looks.effects()) - set(LOOKS_EFFECTS_NOT_OFFERED))
+
 
 #: The only ``(filter, option)`` pair on :data:`LOOK_FILTERS` allowed to name a
 #: path, with the reason it is allowed: ``lut3d`` LOADS a ``.cube``, which is the

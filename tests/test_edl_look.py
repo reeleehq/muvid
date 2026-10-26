@@ -36,6 +36,8 @@ import pytest
 from muvid.footage.assemble import _part_filter
 from muvid.footage.edl import (
     LOOK_FILTERS,
+    LOOKS_EFFECTS_NOT_OFFERED,
+    looks_effects_offered,
     AssemblyCut,
     CropWindow,
     EdlEntry,
@@ -926,6 +928,7 @@ def test_the_allowlist_covers_every_filter_looks_declares():
     declared = {
         f
         for effect in looks.effects()
+        if effect in looks_effects_offered()
         for impl in looks.REGISTRY.implementations(effect)
         if impl.backend == "ffmpeg"
         for f in impl.requires_filters
@@ -992,7 +995,7 @@ def test_every_looks_effect_muvid_compiles_passes_its_own_gate():
     from muvid.footage.look import stylize
 
     frags, compiled = [], []
-    for name in sorted(looks.effects()):
+    for name in looks_effects_offered():
         try:
             frag = stylize(
                 looks.Look(steps=(looks.Effect(name=name),)),
@@ -1394,3 +1397,26 @@ class TestTheNameResolvesTheWayFfmpegResolvesIt:
 
         with pytest.raises(ValueError, match="which muvid does not offer"):
             _validate_look(0, EdlEntry(0.0, 1.0, "A", look="\\ =b"), (640, 360))
+
+
+@needs_ffmpeg
+def test_every_effect_recorded_as_not_offered_is_real_and_really_refused():
+    """The exemption table cannot go stale: each key is still a ``looks`` effect,
+    and the gate still refuses what it compiles to (else it should be offered)."""
+    import looks
+
+    from muvid.footage.look import stylize
+
+    assert set(LOOKS_EFFECTS_NOT_OFFERED) <= set(looks.effects())
+    for name in LOOKS_EFFECTS_NOT_OFFERED:
+        try:
+            frag = stylize(
+                looks.Look(steps=(looks.Effect(name=name),)),
+                canvas=(640, 360),
+                fps=25,
+                duration_s=3.0,
+            )
+        except Exception:  # noqa: BLE001 - needs params or a missing filter: nothing to refuse
+            continue
+        with pytest.raises(ValueError):
+            validate_edl([_entry(look=frag)], [_A], 4.0)

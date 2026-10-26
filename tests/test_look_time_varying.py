@@ -45,6 +45,7 @@ from muvid.footage.look import (
     motion,
     punch_in,
     punch_in_cuts,
+    stylize,
 )
 from tests.ffmpeg_support import needs_ffmpeg
 
@@ -278,35 +279,20 @@ def test_stylize_answers_from_the_compiled_plan_not_from_an_assumption():
     assert is_time_varying(spanned)
 
 
-def test_the_time_varying_effect_list_is_pinned_against_looks():
-    """A new ``looks`` effect must be CLASSIFIED, not silently assumed static.
-
-    Same maintenance rule as ``LOOK_FILTERS``: pinned rather than derived,
-    because deriving would let a new moving effect quietly stop being warned
-    about. If this fails, decide whether the new effect reads the clock and
-    update ``TIME_VARYING_EFFECTS`` (and this list) deliberately.
-    """
+@needs_ffmpeg
+@pytest.mark.parametrize("name, moving", [("grain", True), ("contrast", False)])
+def test_stylize_reads_time_varying_off_the_compiled_plan(name, moving):
+    """No effect-name list here: ``grain`` (muvid#180) is moving because its
+    implementation declares it, so a new clock-reading ``looks`` effect is picked
+    up without anyone editing muvid."""
     looks = pytest.importorskip("looks")
-
-    from muvid.footage.look import TIME_VARYING_EFFECTS
-
-    assert sorted(looks.effects()) == [
-        "blur",
-        "contrast",
-        "fill",
-        "fit",
-        "flatten",
-        "gamma",
-        "gradient_map",
-        "levels",
-        "lut3d",
-        "motion",
-        "posterize",
-        "saturation",
-        "sharpen",
-        "stretch",
-    ]
-    assert TIME_VARYING_EFFECTS == {"motion"}
+    frag = stylize(
+        looks.Look(steps=(looks.Effect(name=name),)),
+        canvas=(640, 360),
+        fps=25,
+        duration_s=3.0,
+    )
+    assert is_time_varying(frag) is moving
 
 
 def test_impl_ref_timeline_is_not_this_property():
@@ -814,3 +800,23 @@ def test_the_mcp_reply_carries_the_findings_the_render_plan_made(tmp_path, monke
         "the positive control: a static look on the same boundary reports nothing, "
         "so the key is not simply always populated"
     )
+
+
+def test_an_undeclared_plan_reads_as_moving(monkeypatch):
+    """``LookPlan.time_varying`` is ``None`` when a step never declared itself;
+    the warning that feeds is cheap and a silent clock restart is not."""
+    looks = pytest.importorskip("looks")
+
+    class _Plan:
+        time_varying = None
+
+    monkeypatch.setattr(looks, "compile_look", lambda *a, **k: _Plan())
+    monkeypatch.setattr(looks, "vf", lambda plan: "hue=s=0")
+    frag = stylize(
+        looks.Look(steps=()),
+        canvas=(640, 360),
+        fps=25,
+        duration_s=3.0,
+        env=looks.FfmpegEnv(filters=frozenset()),
+    )
+    assert is_time_varying(frag)

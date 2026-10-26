@@ -25,6 +25,18 @@
       "luma_power",
       "luma_radius"
     ],
+    "colorbalance": [
+      "bh",
+      "bm",
+      "bs",
+      "gh",
+      "gm",
+      "gs",
+      "pl",
+      "rh",
+      "rm",
+      "rs"
+    ],
     "colorchannelmixer": [
       "aa",
       "ab",
@@ -128,6 +140,33 @@
       "v",
       "y"
     ],
+    "noise": [
+      "all_flags",
+      "all_seed",
+      "all_strength",
+      "allf",
+      "alls",
+      "c0_flags",
+      "c0_seed",
+      "c0_strength",
+      "c0f",
+      "c0s",
+      "c1_flags",
+      "c1_seed",
+      "c1_strength",
+      "c1f",
+      "c1s",
+      "c2_flags",
+      "c2_seed",
+      "c2_strength",
+      "c2f",
+      "c2s",
+      "c3_flags",
+      "c3_seed",
+      "c3_strength",
+      "c3f",
+      "c3s"
+    ],
     "null": [],
     "pad": [
       "aspect",
@@ -219,6 +258,16 @@
       "lx",
       "ly"
     ],
+    "vignette": [
+      "a",
+      "angle",
+      "aspect",
+      "dither",
+      "eval",
+      "mode",
+      "x0",
+      "y0"
+    ],
     "zoompan": [
       "d",
       "fps",
@@ -230,4 +279,3 @@
     ]
   }
 }
-
