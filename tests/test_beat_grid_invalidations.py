@@ -1,6 +1,8 @@
 """The beat-grid writers declare which reads they make stale (reelee#750), and that
-declaration is checked against the code: every read that reaches
-:func:`muvid.footage.service.declared_beat_grid` must be in it."""
+declaration is checked against the code: every read whose calls inside
+:mod:`muvid.footage.service` (by name or attribute) reach
+:func:`~muvid.footage.service.declared_beat_grid`, or the file it reads, must be in it.
+A path through another module is not followed; today none reads the grid."""
 
 import ast
 import inspect
@@ -8,26 +10,34 @@ import inspect
 from muvid.footage import service
 
 
-def _reads_reaching(target: str) -> set:
-    """The read ops of ``service`` whose module-local call graph reaches ``target``."""
+def _reads_reaching(*targets: str) -> set:
+    """The read ops of ``service`` whose call graph inside the module reaches any of
+    ``targets``: a function, or a module constant (the declared grid's file name). A
+    call is followed by bare name and by attribute (``service.f(...)``, ``_svc.f``)."""
     tree = ast.parse(inspect.getsource(service))
     funcs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
-    calls = {
-        name: {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and n.id in funcs}
-        for name, fn in funcs.items()
-    }
+
+    def uses(fn):
+        names = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)}
+        attrs = {n.attr for n in ast.walk(fn) if isinstance(n, ast.Attribute)}
+        return names | attrs
+
+    calls = {name: uses(fn) for name, fn in funcs.items()}
 
     def reaches(name, seen=frozenset()):
-        if name == target:
+        if name in targets:
             return True
-        return name not in seen and any(reaches(c, seen | {name}) for c in calls.get(name, ()))
+        return name not in seen and any(
+            c in targets or reaches(c, seen | {name}) for c in calls.get(name, ()) if c in funcs or c in targets
+        )
 
     reads = [spec.name for spec in service.FOOTAGE_OP_SPECS if spec.effect == "read"]
     return {r for r in reads if reaches(r)}
 
 
 def test_beat_grid_invalidations_cover_every_read_of_the_grid():
-    assert _reads_reaching("declared_beat_grid") == set(service.BEAT_GRID_READS)
+    grid = _reads_reaching("declared_beat_grid", "_DECLARED_BEAT_GRID_NAME")
+    assert grid == set(service.BEAT_GRID_READS)
 
 
 def test_the_beat_grid_writers_declare_them_and_the_catalogue_says_so():
