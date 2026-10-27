@@ -900,8 +900,10 @@ def _cuts_for_piece(
             # this cut carries no next blend. Ending ON the piece's end would carry it
             # — which `holds` just said does not fit — so that end is capped by `holds`,
             # and no earlier than leaves a real piece after it. Where no such cut point
-            # exists the whole piece stays, and the NEXT blend gives way to a hard cut:
-            # a blend is traded, never coverage (the #203 review).
+            # exists the whole piece stays, without reserving the next blend's trail:
+            # `_feasible_blends` then turns that blend into a hard cut if the gate
+            # refuses it, and where it still fits the edge margin gives way instead —
+            # coverage is never what is traded (the #203 review).
             cap = longest_span(src.duration_s or 0.0, transition=own, edge_s=EDGE_S)
             cut_at = _last_beat_before(beats, start + cap, after=start + MIN_PIECE_S)
             if cut_at is not None and cut_at >= end - 1e-6:
