@@ -94,14 +94,15 @@ MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 #: while accepting thirty-two links of 7680x4320 at 1648 MB — which is the
 #: shape of a bound that measures the wrong quantity.
 #:
-#: TWO caps rather than one, because they bound different things and one number
-#: cannot do both: the total bounds the graph, and the resize count bounds how
-#: many LARGE frames can exist in it. Together the measured worst case is
-#: **292 MB** (2 links at the size cap plus 14 cheap ones — but not cheap when
-#: each forces an RGB<->YUV conversion at the large size: 2.46 GB, muvid#199)
-#: against 3171 MB
-#: today. A single total-link cap loose enough for a rich grade would leave the
-#: multiplicative worst case an order of magnitude higher.
+#: The total bounds the graph; it does not bound memory on its own, and neither
+#: does the resize count below — :data:`MAX_LOOK_LARGE_LINKS` and
+#: :data:`MAX_LOOK_HEAVY_LINKS` are what do (muvid#199). Together the measured worst
+#: look found that the gate keeps is **649 MB** (an RGB link, ``zoompan`` to the size
+#: cap and a ``vignette`` there, back to canvas size, the one ``bilateral``, then
+#: ``vignette``/``gblur`` — which keep a frame-sized float buffer of their own; ffmpeg
+#: 8.0.1, 1920x1080, measured by ``test_the_worst_look_the_gate_keeps_is_measured_
+#: under_its_ceiling``) against 3171 MB before any cap. A single total-link cap loose enough for
+#: a rich grade would leave the multiplicative worst case an order of magnitude higher.
 #:
 #: The values are generous by construction: muvid's own compilers emit **1**
 #: link for ``punch_in`` and at most **7** for a ``stylize`` (the named look
@@ -110,6 +111,35 @@ MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 #: size is not a resize while the frame fits the canvas (:func:`_look_resizes`).
 MAX_LOOK_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_LINKS", "16"))
 MAX_LOOK_RESIZES = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_RESIZES", "2"))
+#: How many links of a look may hold a frame LARGER than the canvas (by area) — the
+#: bound on what actually costs memory (muvid#199). Neither cap above is it: after one
+#: resize to the size cap, every following link that makes ffmpeg convert between RGB
+#: and YUV allocates a frame that size, and those conversions are not links at all.
+#: Measured on ffmpeg 8.0.1, a 1920x1080 canvas, one second, peak RSS:
+#:
+#: ===========================================================  ========
+#: look                                                         peak RSS
+#: ===========================================================  ========
+#: ``scale=7680:4320,pad=7680:4320`` + 7x (colorchannelmixer, eq)  2527 MB  (was accepted)
+#: 2 links at 7680x4320, then 13 at canvas size (the worst kept)   438 MB
+#: 16 links at canvas size, alternating RGB and YUV                 350 MB
+#: ===========================================================  ========
+#:
+#: Of the frame-size-independent costs, one filter is an outlier: see
+#: :data:`MAX_LOOK_HEAVY_LINKS`. muvid's own compilers never upsize (``punch_in`` crops and scales back to the
+#: canvas), so the bound costs them nothing; a supersampling look keeps two links.
+MAX_LOOK_LARGE_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_LARGE_LINKS", "2"))
+
+#: Filters whose OWN working set is several frames (``bilateral`` keeps frame-sized
+#: float buffers): measured, sixteen links at 1080p peak at 839 MB, against 82-223 MB
+#: for every other filter muvid offers (``gblur`` is the next, at 223). Unpriced, they
+#: let ``colorchannelmixer,scale=7680:4320,bilateral,…`` reach 2976 MB through the
+#: other caps (the #199 review). ``looks``' ``flatten`` (the ``cartoon`` named look)
+#: emits exactly one.
+_LOOK_HEAVY_FILTERS = frozenset({"bilateral"})
+#: How many heavy links a look may carry — and none of them on a frame larger than the
+#: canvas.
+MAX_LOOK_HEAVY_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_HEAVY_LINKS", "1"))
 
 #: The canvas :func:`validate_edl` bounds a look against when its caller names
 #: none: the element-wise maximum of ``workspace.CANVASES``, so the default is
@@ -2364,7 +2394,7 @@ def _look_resizes(look: str, canvas) -> "list[str]":
     """The links :data:`MAX_LOOK_RESIZES` counts: each geometry link, except one
     that declares no size and keeps its input's frame
     (:attr:`_FilterOptions.unsized_keeps_frame`) while every size declared before it
-    fits the canvas.
+    fits the canvas — read off :func:`_look_frames`, the frame the link is handed.
 
     The exception exists for ``looks`` Rule 22's colour conversion,
     ``scale=in_color_matrix=M:out_color_matrix=M``, which wraps every RGB-domain
@@ -2392,19 +2422,56 @@ def _look_resizes(look: str, canvas) -> "list[str]":
     >>> _look_resizes("zoompan=d=1:fps=25", (1920, 1080))
     ['zoompan']
     """
-    limits = {"width": canvas[0], "height": canvas[1]}
-    out, large = [], False
-    for name, args in _look_links(look):
+    canvas_area = canvas[0] * canvas[1]
+    out = []
+    for name, args, before, _after in _look_frames(look, canvas):
         spec = _LOOK_GEOMETRY_FILTERS.get(name)
         if spec is None:
             continue
-        sizes = _link_output_sizes(name, args)
-        if spec.unsized_keeps_frame and not sizes and not large:
+        unsized = not _link_output_sizes(name, args)
+        if (
+            spec.unsized_keeps_frame
+            and unsized
+            and before[0] * before[1] <= canvas_area
+        ):
             continue
         out.append(name)
-        large = large or any(
-            px is None or px > limits[axis] for _opt, axis, _text, px in sizes
-        )
+    return out
+
+
+#: ``zoompan``'s output when it declares no ``s``: a literal ``hd720``.
+_ZOOMPAN_DEFAULT_SIZE = (1280, 720)
+
+
+def _look_frames(look: str, canvas) -> "list[tuple[str, str, tuple, tuple]]":
+    """``(filter, args, frame in, frame out)`` for each link — the frame size the chain
+    carries, starting from the canvas (the assembler conforms the cut to it first).
+
+    A declared dimension replaces that axis; an undeclared one is kept (``scale`` /
+    ``pad`` default to ``iw``/``ih``, ``crop`` only shrinks, so keeping its input is an
+    upper bound); ``zoompan`` without ``s`` makes :data:`_ZOOMPAN_DEFAULT_SIZE`. A size
+    muvid cannot read (an expression) is infinite, so it reads as large;
+    :func:`_validate_look_size` refuses it anyway.
+
+    >>> [f[3] for f in _look_frames("scale=7680:4320,hue=s=0,scale=1920:1080", (1920, 1080))]
+    [(7680, 4320), (7680, 4320), (1920, 1080)]
+    >>> _look_frames("zoompan=d=1", (640, 360))[0][3]
+    (1280, 720)
+    """
+    frame = (canvas[0], canvas[1])
+    out = []
+    for name, args in _look_links(look):
+        before = frame
+        if name in _LOOK_GEOMETRY_FILTERS:
+            w, h = frame
+            sizes = _link_output_sizes(name, args)
+            if name == "zoompan" and not sizes:
+                w, h = _ZOOMPAN_DEFAULT_SIZE
+            for _opt, axis, _text, px in sizes:
+                v = float("inf") if px is None else px
+                w, h = (v, h) if axis == "width" else (w, v)
+            frame = (w, h)
+        out.append((name, args, before, frame))
     return out
 
 
@@ -2505,13 +2572,38 @@ def _validate_look_links(i, look: str, canvas) -> None:
     if len(resizes) > MAX_LOOK_RESIZES:
         raise ValueError(
             f"EDL entry {i}: look resizes {len(resizes)} times ({', '.join(resizes)}), "
-            f"more than the {MAX_LOOK_RESIZES} muvid allows. Each resize can hold a "
-            f"frame up to {MAX_LOOK_SCALE}x the canvas, so this is the cap that "
-            "bounds how many LARGE frames the graph carries; the total-link cap "
-            "bounds the graph. A look needs one resize, or none — the assembler "
+            f"more than the {MAX_LOOK_RESIZES} muvid allows. A look needs one "
+            "resize, or none — the assembler "
             "has already conformed the cut to the canvas before the look runs. "
             "(A link that declares no size, such as a colour-only `scale`, is not "
             "counted while the frame fits the canvas.)"
+        )
+    canvas_area = canvas[0] * canvas[1]
+    large = [
+        f[0] for f in _look_frames(look, canvas) if f[3][0] * f[3][1] > canvas_area
+    ]
+    if len(large) > MAX_LOOK_LARGE_LINKS:
+        raise ValueError(
+            f"EDL entry {i}: {len(large)} links of this look hold a frame larger than "
+            f"the {canvas[0]}x{canvas[1]} canvas ({', '.join(large)}), more than the "
+            f"{MAX_LOOK_LARGE_LINKS} muvid allows. Every link after a resize up works "
+            "at that size — measured, a look accepted before this bound reached 2.5 GB "
+            "that way (muvid#199). Return to the canvas size right after the link "
+            "that needs the larger frame."
+        )
+    heavy = [f for f in _look_frames(look, canvas) if f[0] in _LOOK_HEAVY_FILTERS]
+    if len(heavy) > MAX_LOOK_HEAVY_LINKS:
+        raise ValueError(
+            f"EDL entry {i}: look chains {len(heavy)} {heavy[0][0]} links, more than "
+            f"the {MAX_LOOK_HEAVY_LINKS} muvid allows — each keeps several frames of "
+            "its own (measured: about 50 MB a link at 1080p, against at most 14 for "
+            "any other filter muvid offers)."
+        )
+    if any(f[2][0] * f[2][1] > canvas_area for f in heavy):
+        raise ValueError(
+            f"EDL entry {i}: look runs {heavy[0][0]} on a frame larger than the "
+            f"{canvas[0]}x{canvas[1]} canvas — it keeps several frames of its own, so "
+            "at the size cap one link reached 940 MB. Run it at canvas size."
         )
 
 
@@ -2722,8 +2814,10 @@ def _validate_look(i, e, canvas) -> None:
             "filter genuinely belongs on this seam add it to "
             "muvid.footage.edl.LOOK_FILTERS deliberately — it must name no file."
         )
-    _validate_look_links(i, look, canvas)
+    # the size first: an expression or an oversized frame is refused for what it is,
+    # not reported as a link count the tracker can only guess at
     _validate_look_size(i, look, canvas)
+    _validate_look_links(i, look, canvas)
     if e.is_gap:
         raise ValueError(
             f"EDL entry {i} is a gap but carries a look. A gap has no footage to "

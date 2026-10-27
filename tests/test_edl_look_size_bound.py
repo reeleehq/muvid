@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -900,7 +901,44 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         attack = ",".join(["scale=7680:4320", self._COLOUR, self._COLOUR])
         with pytest.raises(ValueError, match="resizes 3 times"):
             self._look(0, attack)
-        self._look(0, ",".join(["scale=7680:4320"] + ["hue=s=1"] * 15))
+        # Changed deliberately (muvid#199): any link holding a frame above the canvas
+        # now counts against MAX_LOOK_LARGE_LINKS, so the in-place `hue` run that was
+        # accepted here is refused too — muvid compiles no look that upsizes.
+        with pytest.raises(ValueError, match="larger than the 1920x1080 canvas"):
+            self._look(0, ",".join(["scale=7680:4320"] + ["hue=s=1"] * 15))
+        self._look(0, ",".join(["scale=7680:4320", "hue=s=1", "scale=1920:1080"]))
+
+    def test_links_at_a_large_frame_are_bounded_muvid_199(self):
+        """The issue's fragment: one resize to the size cap, then fourteen links that
+        each force an RGB<->YUV conversion at that size — 2.5 GB, accepted by both
+        older caps. Two links at a large frame are kept; a third is refused."""
+        mix = "colorchannelmixer=rr=1,eq=gamma=1"
+        attack = ",".join(["scale=7680:4320", "pad=7680:4320"] + [mix] * 7)
+        with pytest.raises(ValueError, match="larger than the 1920x1080 canvas"):
+            self._look(0, attack)
+        down = "scale=1920:1080"
+        self._look(0, ",".join(["scale=7680:4320", "colorchannelmixer=rr=1", down]))
+        with pytest.raises(ValueError, match="3 links"):
+            self._look(0, ",".join(["scale=7680:4320", "hue=s=1", "eq=gamma=1", down]))
+
+    def test_a_heavy_filter_is_bounded_and_kept_at_canvas_size(self):
+        """The #199 review: `bilateral` keeps several frames of its own, so the other
+        caps let it reach 2976 MB. One is allowed (`looks`' flatten needs it), at
+        canvas size."""
+        b = "bilateral=sigmaS=1"
+        up, down = "scale=7680:4320", "scale=1920:1080"
+        with pytest.raises(ValueError, match="frame larger than"):
+            self._look(0, ",".join([up, b, down]))  # 940 MB measured
+        with pytest.raises(ValueError, match="2 bilateral links"):
+            self._look(0, ",".join([b, b]))
+        with pytest.raises(ValueError, match="bilateral"):
+            self._look(0, ",".join(["colorchannelmixer=rr=1", up, b, down] + [b] * 12))
+        self._look(0, ",".join([up, "hue=s=1", down, b]))
+
+    def test_an_unreadable_size_is_refused_for_what_it_is(self):
+        """The size check runs first: `-2` is an expression, not a large frame."""
+        with pytest.raises(ValueError, match="not a plain pixel count"):
+            self._look(0, "scale=-2:1080,hue=s=1,eq=gamma=1,hue=s=0")
 
     def test_the_count_is_the_one_ffmpeg_WILL_MAKE(self):
         """Counted through the lexer, so an escaped comma inside an expression
@@ -923,3 +961,44 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         assert len(names) <= MAX_LOOK_LINKS
         assert sum(1 for n in names if n in _LOOK_GEOMETRY_FILTERS) <= MAX_LOOK_RESIZES
         self._look(0, compiled)
+
+
+#: The ceiling the worst look the gate keeps must stay under, in MB of peak RSS for one
+#: ffmpeg at a 1920x1080 canvas. Measured 649 MB on ffmpeg 8.0.1 (608 MB on 7.0.2); the
+#: fragment muvid#199 was filed for reached 2527 MB and the review's `bilateral` one
+#: 2976 MB, so this has room for a build or a thread count that spends more, and none
+#: for either defect.
+_WORST_KEPT_LOOK_MB = 1024
+
+
+@needs_ffmpeg
+@pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
+def test_the_worst_look_the_gate_keeps_is_measured_under_its_ceiling():
+    """The worst case the look caps state, MEASURED (muvid#199): sixteen links — an
+    RGB link, `zoompan` to the 4x size cap with a `vignette` there, back to canvas
+    size, the one heavy `bilateral` allowed, then `vignette`/`gblur` (the worst of the
+    shapes two review rounds measured). Run in a fresh interpreter so the reading is
+    that ffmpeg alone."""
+    from muvid.footage.edl import EdlEntry, _validate_look
+
+    blur = "vignette,gblur=sigma=5"
+    worst = ",".join(
+        ["colorchannelmixer=rr=1", "zoompan=d=1:s=7680x4320", "vignette"]
+        + ["scale=1920:1080", "bilateral=sigmaS=1:planes=7"]
+        + [blur] * 5
+        + ["vignette"]
+    )
+    assert len(worst.split(",")) == MAX_LOOK_LINKS
+    _validate_look(0, EdlEntry(0.0, 1.0, "A", look=worst), (1920, 1080))  # kept
+    probe = (
+        "import resource, subprocess, sys\n"
+        "subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',\n"
+        "    'testsrc2=size=1920x1080:rate=30:duration=0.3', '-vf', sys.argv[1],\n"
+        "    '-f', 'null', '-'], check=True)\n"
+        "rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss\n"
+        "print(rss // (1024 * 1024) if sys.platform == 'darwin' else rss // 1024)\n"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", probe, worst], capture_output=True, text=True, check=True
+    )
+    assert int(out.stdout.strip()) < _WORST_KEPT_LOOK_MB, out.stdout
