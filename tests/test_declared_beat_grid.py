@@ -250,14 +250,14 @@ def scored_proj(proj, tmp_path, monkeypatch):
         from muvid.footage.scoring.grid import ScoreTrack
 
         seen.append((list(ctx.beat.beat_times), ctx.beat.onset_env))
-        n = ctx.grid["n"]
+        n = ctx.grid.n
         raw = np.ones(n, dtype="float32")
         return [
             ScoreTrack(
                 ctx.clip_id,
                 "beats_seen",
-                ctx.grid["t0"],
-                ctx.grid["hop_s"],
+                ctx.grid.t0,
+                ctx.grid.hop_s,
                 raw,
                 np.isfinite(raw),
                 "higher_better",

@@ -16,7 +16,17 @@ A scorer is handed a :class:`ClipContext` and returns tracks. It declares:
 - ``gated`` — whether the optional hard quality gate is ANDed into its masks;
 - ``tier`` — ``"core"`` (the commercial-clean default) or ``"lipsync"`` (the opt-in,
   off-prod tier of the licence boundary in the repo guide). A new scorer is ``"core"``
-  only if every dependency it brings is MIT/BSD/Apache/ISC.
+  only if every dependency it brings is MIT/BSD/Apache/ISC;
+- ``available`` — ``() -> (ok, reason)``, enforced by the orchestrator: an unavailable
+  scorer is skipped with its reason recorded (refused, if its metric was asked for);
+- ``needs`` — the shared master artifacts it reads (:func:`register_artifact`; the
+  lip-sync tier's vocal stem is one), each built once per run and only when a running
+  scorer needs it (muvid#184). The orchestrator names no artifact itself.
+
+The :class:`ClipContext` it is handed is primitives (muvid#184): the clip's placement,
+the :class:`MasterBeats`, the :class:`Grid` and its declared artifacts — never the
+project and never a sibling package's record — plus ``frames``, the one rich object,
+documented as unstable.
 
 **Absent is not zero.** A scorer that could not measure a frame returns the frame
 masked (``NaN`` raw, ``False`` mask), never ``0.0``: the composite renormalises over
@@ -74,22 +84,74 @@ class MasterBeats:
 
 
 @dataclass(frozen=True)
-class ClipContext:
-    """What a scorer is handed for ONE clip. Paths and primitives, never the project.
+class Grid:
+    """The song-time grid every track lands on: ``n`` frames, ``hop_s`` apart, from ``t0``."""
 
-    ``frames`` is the shared decode pass (``None`` when no selected scorer declares
-    ``needs_frames``); ``beat`` is the master beat grid; ``vocal_stem`` the master vocal
-    stem path (``None`` unless the lip-sync tier is running); ``grid`` is
-    ``{"t0", "hop_s", "n"}``.
+    t0: float
+    hop_s: float
+    n: int
+
+    def as_kwargs(self) -> dict:
+        """``{"t0", "hop_s", "n"}``, the keyword arguments the extractors take."""
+        return {"t0": self.t0, "hop_s": self.hop_s, "n": self.n}
+
+
+@dataclass(frozen=True)
+class ClipContext:
+    """What a scorer is handed for ONE clip: paths and primitives, never the project
+    and never a sibling package's record (muvid#184), so a plugin's contract is these
+    fields and nothing behind them.
+
+    ``offset_s`` / ``duration_s`` / ``coverage`` place the clip on the song (seconds;
+    ``coverage`` is the song span it covers); ``beat`` is the master beat grid
+    (:class:`MasterBeats`, primitives); ``grid`` the song-time :class:`Grid`;
+    ``artifacts`` the shared master artifacts the scorer declared in ``needs``
+    (:func:`register_artifact`), by name. ``frames`` is the one rich object — the shared
+    decode pass, ``None`` unless a selected scorer declares ``needs_frames`` — and it is
+    documented as unstable: a plugin reading it accepts that its shape may change.
     """
 
     clip_id: str
     path: str
-    alignment: Any  # FootageAlignment — offset_s, duration_s, coverage …
-    frames: Any  # FramePass | None
-    beat: Any  # MasterBeats (beat_times, onset_env, onset_hop_s, …)
-    vocal_stem: str | None
-    grid: Mapping[str, Any]
+    offset_s: float
+    duration_s: float
+    coverage: "tuple[float, float]"
+    frames: Any  # FramePass | None — documented-unstable
+    beat: MasterBeats
+    grid: Grid
+    artifacts: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Artifact:
+    """A shared master artifact — computed ONCE per run on the song, never per clip —
+    that a scorer can declare in ``needs``. ``build(song_path, scores_dir)`` makes it;
+    ``stage`` is its progress label."""
+
+    name: str
+    build: Callable[[str, str], Any]
+    stage: str
+
+
+_ARTIFACTS: dict[str, Artifact] = {}
+
+
+def register_artifact(artifact: Artifact, *, replace: bool = False) -> Artifact:
+    """Add a shared master artifact; a taken name is refused unless ``replace``."""
+    if artifact.name in _ARTIFACTS and not replace:
+        raise ValueError(f"artifact {artifact.name!r} is already registered")
+    _ARTIFACTS[artifact.name] = artifact
+    return artifact
+
+
+def artifact(name: str) -> Artifact:
+    """The registered artifact ``name``; ``KeyError`` names the registered ones."""
+    try:
+        return _ARTIFACTS[name]
+    except KeyError:
+        raise KeyError(
+            f"no artifact {name!r} is registered; registered: {sorted(_ARTIFACTS)}"
+        ) from None
 
 
 @dataclass(frozen=True)
@@ -102,11 +164,15 @@ class Scorer:
     needs_frames: bool = True
     gated: bool = True
     tier: str = CORE_TIER
-    #: ``() -> (ok, reason)``; ``None`` means always available. Surfaced by
-    #: ``list_available_extractors`` — a missing dependency is a recorded reason, not a crash.
+    #: ``() -> (ok, reason)``; ``None`` means always available. ENFORCED by the
+    #: orchestrator: an unavailable scorer does not run and its reason is recorded in the
+    #: run's ``skipped_scorers`` (a missing dependency is a recorded reason, not a crash).
     available: Callable[[], tuple[bool, str]] | None = field(
         default=None, compare=False
     )
+    #: the shared master artifacts it reads (:func:`register_artifact`), by name. Each is
+    #: built once per run, and only when a running scorer needs it.
+    needs: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.metrics:
@@ -167,18 +233,14 @@ def metrics_of_tier(tier: str) -> set[str]:
 # --------------------------------------------------------------------------
 
 
-def _grid_kw(ctx: ClipContext) -> dict:
-    return {"t0": ctx.grid["t0"], "hop_s": ctx.grid["hop_s"], "n": ctx.grid["n"]}
-
-
 def _run_quality(ctx: ClipContext):
     from muvid.footage.scoring.quality import quality_tracks
 
     return quality_tracks(
         ctx.frames,
         clip_id=ctx.clip_id,
-        offset_s=ctx.alignment.offset_s,
-        **_grid_kw(ctx),
+        offset_s=ctx.offset_s,
+        **ctx.grid.as_kwargs(),
     )
 
 
@@ -188,28 +250,28 @@ def _run_motion_beat(ctx: ClipContext):
     return motionbeat_tracks(
         ctx.frames,
         clip_id=ctx.clip_id,
-        offset_s=ctx.alignment.offset_s,
+        offset_s=ctx.offset_s,
         beat_times=ctx.beat.beat_times,
         onset_env=ctx.beat.onset_env,
         onset_hop_s=ctx.beat.onset_hop_s,
-        **_grid_kw(ctx),
+        **ctx.grid.as_kwargs(),
     )
 
 
 def _run_lipsync(ctx: ClipContext):
-    if ctx.vocal_stem is None:  # the stem could not be made: skip, never a silent 0
+    stem = ctx.artifacts.get(VOCAL_STEM)
+    if stem is None:  # the stem could not be made: skip, never a silent 0
         return []
     from muvid.footage.scoring.lipsync import lipsync_tracks
 
-    a = ctx.alignment
     return lipsync_tracks(
         ctx.path,
         clip_id=ctx.clip_id,
-        offset_s=a.offset_s,
-        duration_s=a.duration_s,
-        coverage=a.coverage,
-        vocal_stem_path=str(ctx.vocal_stem),
-        **_grid_kw(ctx),
+        offset_s=ctx.offset_s,
+        duration_s=ctx.duration_s,
+        coverage=ctx.coverage,
+        vocal_stem_path=str(stem),
+        **ctx.grid.as_kwargs(),
     )
 
 
@@ -217,6 +279,21 @@ def _lipsync_available() -> tuple[bool, str]:
     from muvid.footage.scoring.lipsync import lipsync_available
 
     return lipsync_available()
+
+
+#: The master vocal stem (Demucs), the lip-sync tier's shared artifact.
+VOCAL_STEM = "vocal_stem"
+
+
+def _build_vocal_stem(song_path: str, scores_dir: str):
+    from pathlib import Path
+
+    from muvid.footage.scoring.lipsync import separate_master_vocals
+
+    return separate_master_vocals(song_path, out_dir=str(Path(scores_dir) / "_stems"))
+
+
+register_artifact(Artifact(VOCAL_STEM, _build_vocal_stem, stage="separate_vocals"))
 
 
 register_scorer(
@@ -238,5 +315,6 @@ register_scorer(
         gated=False,
         tier=LIPSYNC_TIER,
         available=_lipsync_available,
+        needs=(VOCAL_STEM,),
     )
 )
