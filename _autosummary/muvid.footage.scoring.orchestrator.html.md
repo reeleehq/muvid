@@ -27,6 +27,7 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 
 | [`DEFAULT_METRICS`](#muvid.footage.scoring.orchestrator.DEFAULT_METRICS)   | The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept for callers that read the constant.   |
 |--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| [`DEFAULT_INPUTS`](#muvid.footage.scoring.orchestrator.DEFAULT_INPUTS)    | the estimator's beat grid, whose fingerprint is `""` (the song already keys it).                                           |
 
 ### Functions
 
@@ -39,6 +40,15 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 | [`KeptScores`](#muvid.footage.scoring.orchestrator.KeptScores)(tracks, recompute, song_hash, ...)   | What a partial re-score keeps (muvid#206): the CURRENT metrics' tracks per clip, the stale metrics to measure again, and the song and alignments the kept tracks were measured under — re-checked under the scoring lock.   |
 |--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
+### muvid.footage.scoring.orchestrator.DEFAULT_INPUTS *= {'beats': <function <lambda>>}*
+
+the estimator’s beat grid,
+whose fingerprint is `""` (the song already keys it). Only the beat grid has a
+default; a host scoring with another keyed input must provide it.
+
+* **Type:**
+  How each keyed input is read when its host names none
+
 ### muvid.footage.scoring.orchestrator.DEFAULT_METRICS *= ('sharpness', 'exposure', 'stability_shake', 'face_framing', 'motion_beat_bas', 'motion_onset_xcorr')*
 
 The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept
@@ -46,13 +56,17 @@ for callers that read the constant. A scorer registered later is picked up by th
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
 
-### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint)
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 What a partial re-score keeps (muvid#206): the CURRENT metrics’ tracks per clip,
 the stale metrics to measure again, and the song and alignments the kept tracks
 were measured under — re-checked under the scoring lock.
+
+#### input_fingerprints *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]*
+
+the keyed inputs’ fingerprints the kept tracks were measured on, by name
 
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 
@@ -61,7 +75,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, beat_source=None, keep=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, inputs=None, beat_source=None, keep=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -74,12 +88,17 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
   * **enable_lipsync** ([`bool`](https://docs.python.org/3/builtins/functions.html#bool) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – force the opt-in tier on/off (default: the env flag).
   * **progress_cb** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)], [`None`](https://docs.python.org/3/builtins/constants.html#None)]]) – sink for `{'kind':'progress', ...}` dict events (nw.jobs mirror shape).
   * **should_cancel** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[], [`bool`](https://docs.python.org/3/builtins/functions.html#bool)]]) – polled between clips/stages; a True short-circuits to a clean cancel.
-  * **beat_source** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`MasterBeats`](muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)]]) – `project -> MasterBeats`, the master beat grid and its name,
-    read together (default: the estimator, `mixing.audio.beat_grid` on the
-    song). The footage service passes one that prefers a declared grid
-    (muvid#187). Its `fingerprint` goes into the manifest, so
-    [`manifest_is_current()`](muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current) can tell scores
-    measured on one grid from another.
+  * **inputs** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]]]) – `{name: read}` — how each keyed master input (`registry.INPUTS`)
+    is read: `read(project) -> (value, fingerprint)`, the two together
+    (muvid#224; default [`DEFAULT_INPUTS`](#muvid.footage.scoring.orchestrator.DEFAULT_INPUTS), the estimator’s beat grid). The footage
+    service passes its own, which prefers a declared grid (muvid#187). Each
+    fingerprint goes into the manifest, so
+    [`stale_metrics()`](muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) can tell scores measured
+    on one value of an input from another.
+  * **beat_source** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`MasterBeats`](muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)]]) – `project -> MasterBeats` — the beat grid’s provider alone, as
+    before muvid#224; the `MasterBeats.fingerprint` is what is recorded.
+    Shorthand for `inputs={BEATS: ...}`; naming the beat grid in both is
+    refused.
   * **keep** ([`KeptScores`](#muvid.footage.scoring.orchestrator.KeptScores) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – a partial re-score (muvid#206): the CURRENT metrics’ tracks to persist
     beside the `keep.recompute` ones this run measures (`metrics` is then
     ignored). Re-checked against the song and alignments under the scoring lock:

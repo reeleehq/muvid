@@ -9,6 +9,7 @@ muvid.footage.scoring.orchestrator
    .. autosummary::
    
       DEFAULT_METRICS
+      DEFAULT_INPUTS
    
    .. rubric:: Functions
 

@@ -1,4 +1,4 @@
-> built 2026-10-27 09:39 UTC from f2e63e0 (main) · muvid 0.0.120. Details: build_info.json
+> built 2026-10-27 10:39 UTC from c7811d0 (main) · muvid 0.0.121. Details: build_info.json
 
 # index.html.md
 
@@ -7061,6 +7061,7 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 
 | [`DEFAULT_METRICS`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.DEFAULT_METRICS)   | The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept for callers that read the constant.   |
 |--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| [`DEFAULT_INPUTS`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.DEFAULT_INPUTS)    | the estimator's beat grid, whose fingerprint is `""` (the song already keys it).                                           |
 
 ### Functions
 
@@ -7073,6 +7074,15 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 | [`KeptScores`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.KeptScores)(tracks, recompute, song_hash, ...)   | What a partial re-score keeps (muvid#206): the CURRENT metrics' tracks per clip, the stale metrics to measure again, and the song and alignments the kept tracks were measured under — re-checked under the scoring lock.   |
 |--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
+### muvid.footage.scoring.orchestrator.DEFAULT_INPUTS *= {'beats': <function <lambda>>}*
+
+the estimator’s beat grid,
+whose fingerprint is `""` (the song already keys it). Only the beat grid has a
+default; a host scoring with another keyed input must provide it.
+
+* **Type:**
+  How each keyed input is read when its host names none
+
 ### muvid.footage.scoring.orchestrator.DEFAULT_METRICS *= ('sharpness', 'exposure', 'stability_shake', 'face_framing', 'motion_beat_bas', 'motion_onset_xcorr')*
 
 The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept
@@ -7080,13 +7090,17 @@ for callers that read the constant. A scorer registered later is picked up by th
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
 
-### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint)
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 What a partial re-score keeps (muvid#206): the CURRENT metrics’ tracks per clip,
 the stale metrics to measure again, and the song and alignments the kept tracks
 were measured under — re-checked under the scoring lock.
+
+#### input_fingerprints *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]*
+
+the keyed inputs’ fingerprints the kept tracks were measured on, by name
 
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 
@@ -7095,7 +7109,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, beat_source=None, keep=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, inputs=None, beat_source=None, keep=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -7108,12 +7122,17 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
   * **enable_lipsync** ([`bool`](https://docs.python.org/3/builtins/functions.html#bool) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – force the opt-in tier on/off (default: the env flag).
   * **progress_cb** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)], [`None`](https://docs.python.org/3/builtins/constants.html#None)]]) – sink for `{'kind':'progress', ...}` dict events (nw.jobs mirror shape).
   * **should_cancel** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[], [`bool`](https://docs.python.org/3/builtins/functions.html#bool)]]) – polled between clips/stages; a True short-circuits to a clean cancel.
-  * **beat_source** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)]]) – `project -> MasterBeats`, the master beat grid and its name,
-    read together (default: the estimator, `mixing.audio.beat_grid` on the
-    song). The footage service passes one that prefers a declared grid
-    (muvid#187). Its `fingerprint` goes into the manifest, so
-    [`manifest_is_current()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current) can tell scores
-    measured on one grid from another.
+  * **inputs** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Mapping`](https://docs.python.org/3/library/typing.html#typing.Mapping)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]]]) – `{name: read}` — how each keyed master input (`registry.INPUTS`)
+    is read: `read(project) -> (value, fingerprint)`, the two together
+    (muvid#224; default [`DEFAULT_INPUTS`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.DEFAULT_INPUTS), the estimator’s beat grid). The footage
+    service passes its own, which prefers a declared grid (muvid#187). Each
+    fingerprint goes into the manifest, so
+    [`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) can tell scores measured
+    on one value of an input from another.
+  * **beat_source** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)]]) – `project -> MasterBeats` — the beat grid’s provider alone, as
+    before muvid#224; the `MasterBeats.fingerprint` is what is recorded.
+    Shorthand for `inputs={BEATS: ...}`; naming the beat grid in both is
+    refused.
   * **keep** ([`KeptScores`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.KeptScores) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – a partial re-score (muvid#206): the CURRENT metrics’ tracks to persist
     beside the `keep.recompute` ones this run measures (`metrics` is then
     ignored). Re-checked against the song and alignments under the scoring lock:
@@ -7238,12 +7257,13 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Classes
 
-| [`Artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Artifact)(name, build, stage)                     | A shared master artifact — computed ONCE per run on the song, never per clip — that a scorer can declare in `needs`.                                                                            |
-|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, offset_s, ...[, ...]) | What a scorer is handed for ONE clip: paths and primitives, never the project and never a sibling package's record (muvid#184), so a plugin's contract is these fields and nothing behind them. |
-| [`Grid`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Grid)(t0, hop_s, n)                               | The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.                                                                                                                  |
-| [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)(beat_times, downbeat_times, ...)     | The master beat grid a scoring run measures on, and the name of it (muvid#187).                                                                                                                 |
-| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...])  | One row of the registry.                                                                                                                                                                        |
+| [`Artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Artifact)(name, build, stage)                     | A shared master artifact — computed ONCE per run on the song, never per clip — that a scorer can declare in `needs`.                                                                                                                                                                                                           |
+|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, offset_s, ...[, ...]) | What a scorer is handed for ONE clip: paths and primitives, never the project and never a sibling package's record (muvid#184), so a plugin's contract is these fields and nothing behind them.                                                                                                                                |
+| [`Grid`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Grid)(t0, hop_s, n)                               | The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.                                                                                                                                                                                                                                                 |
+| [`KeyedInput`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.KeyedInput)(read, fingerprint)                    | How a host provides one keyed master input ([`INPUTS`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.INPUTS), muvid#224) — the single place an input is read, for the run that measures on it (`read`, what the host hands `score_project(inputs=)`) AND for the readers that ask whether the scores are still current (`fingerprint`). |
+| [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)(beat_times, downbeat_times, ...)     | The master beat grid a scoring run measures on, and the name of it (muvid#187).                                                                                                                                                                                                                                                |
+| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...])  | One row of the registry.                                                                                                                                                                                                                                                                                                       |
 
 ### *class* muvid.footage.scoring.registry.Artifact(name, build, stage)
 
@@ -7266,7 +7286,7 @@ is not reading the grid.
 
 The tiers. `core` runs by default; `lipsync` only when the opt-in is enabled.
 
-### *class* muvid.footage.scoring.registry.ClipContext(clip_id, path, offset_s, duration_s, coverage, frames, beat, grid, artifacts=dict())
+### *class* muvid.footage.scoring.registry.ClipContext(clip_id, path, offset_s, duration_s, coverage, frames, beat, grid, artifacts=dict(), inputs=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -7281,6 +7301,10 @@ fields and nothing behind them.
 ([`register_artifact()`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)), by name. `frames` is the one rich object — the shared
 decode pass, `None` unless a selected scorer declares `needs_frames` — and it is
 documented as unstable: a plugin reading it accepts that its shape may change.
+
+#### inputs *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Any](https://docs.python.org/3/library/typing.html#typing.Any)]*
+
+every keyed input’s value by name ([`INPUTS`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.INPUTS); `beat` is the beat grid’s)
 
 ### *class* muvid.footage.scoring.registry.Grid(t0, hop_s, n)
 
@@ -7298,6 +7322,21 @@ The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.
 ### muvid.footage.scoring.registry.INPUTS *= ('beats',)*
 
 Every master input a score is keyed on beyond the song and the placement.
+
+### *class* muvid.footage.scoring.registry.KeyedInput(read, fingerprint)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+How a host provides one keyed master input ([`INPUTS`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.INPUTS), muvid#224) — the
+single place an input is read, for the run that measures on it (`read`, what the
+host hands `score_project(inputs=)`) AND for the readers that ask whether the
+scores are still current (`fingerprint`).
+
+`read(project) -> (value, fingerprint)` is called once per scoring run and the two
+come back TOGETHER, so the manifest can never record one value’s key beside another
+value’s measurement (the beat grid’s #187 rule, for every input). `fingerprint
+(project) -> str` is the cheap current fingerprint alone, for the staleness
+question; `""` means the input’s default, which `song_hash` already keys.
 
 ### *class* muvid.footage.scoring.registry.MasterBeats(beat_times, downbeat_times, tempo_bpm, onset_env, onset_hop_s, fingerprint='')
 
@@ -18676,7 +18715,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 09:39 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f2e63e0c0a4ef4371aad11ce2467bd2bda0a953e"><code>f2e63e0</code></a> on branch <code>main</code>, for **muvid 0.0.120** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 10:39 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/c7811d0a180f2bed42378dee7047b9826e594d61"><code>c7811d0</code></a> on branch <code>main</code>, for **muvid 0.0.121** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -18685,9 +18724,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f2e63e0c0a4ef4371aad11ce2467bd2bda0a953e"><code>f2e63e0c0a4ef4371aad11ce2467bd2bda0a953e</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/c7811d0a180f2bed42378dee7047b9826e594d61"><code>c7811d0a180f2bed42378dee7047b9826e594d61</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.120</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.121</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18696,9 +18735,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40478504372">40478504372</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40487829966">40487829966</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>5af29e8a7313c89eaf2c87fa464ebcc7f1de687f</code> (in the history of the built commit) |
+| Event commit | <code>f1c91e926278be457730194cbacaeb946dc74e56</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18723,13 +18762,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.120/">0.0.120</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.121/">0.0.121</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f2e63e0c0a4ef4371aad11ce2467bd2bda0a953e
+git checkout c7811d0a180f2bed42378dee7047b9826e594d61
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

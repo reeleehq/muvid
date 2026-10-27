@@ -33,6 +33,7 @@ muvid.footage.scoring.registry
       Artifact
       ClipContext
       Grid
+      KeyedInput
       MasterBeats
       Scorer
    
