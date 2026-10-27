@@ -2463,7 +2463,9 @@ def propose_edit(
     ``taken`` (the default) in the order they were taken, so a day reads as it happened
     — by the time their files say, upload order for any that say nothing (``music``
     reports which) — or ``planner``, the montage planner's reuse order, which ignores
-    chronology. ``explain_edit`` says why
+    chronology and matches the videos' liveliness to the sections' loudness (lively
+    pictures in the loud parts; ``music.affect`` says when it applied, muvid#134).
+    ``explain_edit`` says why
     each cut is where it is.
     """
     from muvid.footage.edl import validate_edl

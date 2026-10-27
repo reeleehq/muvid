@@ -595,28 +595,36 @@ def _treatment(archetype: str, cut_feel: str):
 def liveliness(src: FreeSource, env: "Optional[Envelope]") -> Optional[float]:
     """The default ``affect_of`` (muvid#134): how much a video's picture moves — the
     mean of its picture-change activity — or ``None`` (a still, or no envelope).
-    Arousal only, and raw: :func:`fill_spans` ranks it across the pool, so only the
-    ORDER of the videos' liveliness matters, not its scale."""
+    Arousal only, of the whole clip (not per stretch: the in-point choice already
+    matches a stretch's liveliness to its section), and raw — :func:`fill_spans`
+    rescales it across the pool."""
     if env is None or env.activity.size == 0:
         return None
     return float(np.mean(np.nan_to_num(env.activity, nan=0.0)))
 
 
+#: How far apart (relative to the larger) the pool's affects must be to tell pictures
+#: apart (muvid#134): below it, two clips differ by noise — compression, low light —
+#: and splitting the pool on that would only add repeats.
+AFFECT_MIN_SPREAD = 0.25
+
+
 def _affect_fit(sources, analysis, energy_at, *, affect_of, envelope):
     """The planner's ``affect_fit`` (muvid#134) — ``|arousal - slot loudness|`` in
-    [0, 1], arousal being the picture's rank among the pool's ``affect_of`` values and
+    [0, 1], arousal being the picture's ``affect_of`` value rescaled over the pool and
     the loudness its section's — or ``None`` when there is nothing to match: no
-    ``affect_of``, fewer than two sections with a measured loudness, or fewer than two
-    distinct affects. A picture with no affect (``None``) sits in the middle."""
+    ``affect_of``, fewer than two sections with a measured loudness, or affects that do
+    not differ by :data:`AFFECT_MIN_SPREAD`. A picture with no affect sits in the
+    middle."""
     measured = [s for s in analysis.sections if s.energy_db is not None]
     if affect_of is None or len(measured) < 2:
         return None
     raw = {i: affect_of(s, envelope(s)) for i, s in enumerate(sources)}
-    levels = sorted({v for v in raw.values() if v is not None})
-    if len(levels) < 2:
+    known = [v for v in raw.values() if v is not None]
+    lo, hi = (min(known), max(known)) if known else (0.0, 0.0)
+    if hi - lo <= AFFECT_MIN_SPREAD * max(abs(hi), abs(lo), 1e-12):
         return None
-    rank = {v: k / (len(levels) - 1) for k, v in enumerate(levels)}
-    arousal = {i: (0.5 if v is None else rank[v]) for i, v in raw.items()}
+    arousal = {i: (0.5 if v is None else (v - lo) / (hi - lo)) for i, v in raw.items()}
 
     def fit(draft, media) -> float:
         loud = (energy_at((draft.start + draft.end) / 2.0) + 1.0) / 2.0

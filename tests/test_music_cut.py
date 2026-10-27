@@ -736,72 +736,141 @@ def test_take_over_counts_the_blends_the_piece_carries_muvid_210():
 # -- muvid#134: the feel of the pictures matched to the feel of the music ------------
 
 
-def _affect_pool():
-    """Four calm videos (their picture hardly moves) and four lively ones."""
-    srcs = [
-        FreeSource(f"calm{i}", f"/x/calm{i}.mp4", duration_s=30.0) for i in range(4)
-    ]
-    srcs += [
-        FreeSource(f"live{i}", f"/x/live{i}.mp4", duration_s=30.0) for i in range(4)
-    ]
+def _affect_pool(levels=None):
+    """Videos named for their liveliness: ``{"calm": (n, activity), ...}``."""
+    levels = levels or {"calm": (7, 0.05), "live": (7, 1.0)}
+    srcs, activity = [], {}
+    for kind, (n, level) in levels.items():
+        for i in range(n):
+            cid = f"{kind}{i}"
+            srcs.append(FreeSource(cid, f"/x/{cid}.mp4", duration_s=30.0))
+            activity[cid] = level
 
     def envelope_of(src):
-        level = 0.05 if src.clip_id.startswith("calm") else 1.0
-        return Envelope(hop_s=0.1, activity=np.full(300, level), hits=np.zeros(300))
+        n = 300
+        return Envelope(hop_s=0.1, activity=np.full(n, activity[src.clip_id]), hits=np.zeros(n))
 
     return srcs, envelope_of
 
 
-def _fit_share(cut, *, boundary):
-    """The share of cut time where a calm picture is in the quiet half (before
-    ``boundary``) or a lively one in the loud half."""
-    good = total = 0.0
-    for e in cut.entries:
-        length = e.song_end - e.song_start
-        calm = e.clip_id.startswith("calm")
-        quiet = (e.song_start + e.song_end) / 2 < boundary
-        good += length if calm == quiet else 0.0
-        total += length
-    return good / total
-
-
-def test_calm_pictures_land_in_the_quiet_half_and_lively_ones_in_the_loud_half():
-    """muvid#134's acceptance: a song with a quiet and a loud half, a pool with calm
-    and lively videos — the obvious answer is calm-in-quiet, lively-in-loud."""
-    srcs, envelope_of = _affect_pool()
-    kw = dict(
+def _affect_cut(srcs, envelope_of, **kw):
+    return fill_spans(
+        "/x/s.wav",
+        srcs,
         analysis=_analysis(40.0, 120.0),  # verse -20 dB (0-20 s), chorus -10 dB
         envelope_of=envelope_of,
         anchor_of=lambda s: (0.5, 0.5),
         size_of=lambda p: (1920, 1080),
         archetype="beat_cut",
         order="planner",
+        **kw,
     )
-    matched = fill_spans("/x/s.wav", srcs, **kw)
-    blind = fill_spans("/x/s.wav", srcs, affect_of=None, **kw)
+
+
+def _fit_share(cut, *, boundary=20.0):
+    """The share of cut time where a calm picture is in the quiet half (before
+    ``boundary``) or a lively one in the loud half."""
+    good = total = 0.0
+    for e in cut.entries:
+        length = e.song_end - e.song_start
+        quiet = (e.song_start + e.song_end) / 2 < boundary
+        good += length if e.clip_id.startswith("calm") == quiet else 0.0
+        total += length
+    return good / total
+
+
+def _longest_run(cut):
+    run = best = 1
+    for a, b in zip(cut.entries, cut.entries[1:]):
+        run = run + 1 if a.clip_id == b.clip_id else 1
+        best = max(best, run)
+    return best
+
+
+def test_calm_pictures_land_in_the_quiet_half_and_lively_ones_in_the_loud_half():
+    """muvid#134's acceptance: a song with a quiet and a loud half, a pool of calm and
+    lively videos — the obvious answer is calm-in-quiet, lively-in-loud. And affect
+    only CHOOSES: every picture is still shown, none twice in a row."""
+    srcs, envelope_of = _affect_pool()
+    matched = _affect_cut(srcs, envelope_of)
+    blind = _affect_cut(srcs, envelope_of, affect_of=None)
     assert matched.report["affect"] is True and blind.report["affect"] is False
-    # every cut fits: the finale reserve, too, is chosen from pictures that fit the
-    # (loud) finale — before that it showed two calm pictures there (0.95)
-    assert _fit_share(matched, boundary=20.0) == 1.0
-    assert _fit_share(blind, boundary=20.0) < 0.7  # the premise: blind is a coin toss
+    assert _fit_share(matched) >= 0.9
+    assert _fit_share(blind) < 0.7  # the premise: blind is a coin toss
+    assert set(matched.report["uses"]) == {s.clip_id for s in srcs}
+    assert _longest_run(matched) == 1
+
+
+def test_a_skewed_pool_never_turns_affect_into_repeats():
+    """The #134 review: one lively video among seven calm ones played twenty cuts in a
+    row when affect narrowed the pool before the gap rules; it is now the first thing
+    relaxed, so the gap still holds."""
+    srcs, envelope_of = _affect_pool({"calm": (7, 0.05), "live": (1, 1.0)})
+    cut = _affect_cut(srcs, envelope_of)
+    assert cut.report["affect"] is True
+    assert _longest_run(cut) == 1
+    assert set(cut.report["uses"]) == {s.clip_id for s in srcs}
+
+
+def test_noise_between_clips_does_not_split_the_pool():
+    srcs, envelope_of = _affect_pool({"calm": (4, 0.1), "live": (4, 0.1001)})
+    assert _affect_cut(srcs, envelope_of).report["affect"] is False
+
+
+def test_a_middling_picture_fits_both_halves():
+    """Three levels: a medium picture is within AFFECT_SLACK of both halves' best
+    fit, so it is shown in each; a lively one stays out of the quiet half, and the loud
+    half shows lively pictures more than calm ones (the gap, not affect, decides when
+    the fitting ones have all been shown recently)."""
+    srcs, envelope_of = _affect_pool(
+        {"calm": (4, 0.05), "mid": (4, 0.5), "live": (4, 1.0)}
+    )
+    cut = _affect_cut(srcs, envelope_of)
+    time = {}
+    for e in cut.entries:
+        key = (e.clip_id[:3], (e.song_start + e.song_end) / 2 < 20.0)
+        time[key] = time.get(key, 0.0) + e.song_end - e.song_start
+    assert time.get(("mid", True)) and time.get(("mid", False))
+    assert ("liv", True) not in time
+    assert time[("liv", False)] > 2 * time.get(("cal", False), 0.0)
+
+
+def test_affect_never_makes_two_tiles_alike():
+    """The planner seam is general: on a 4-tile slot where one picture fits, the tiles
+    still differ (the hard exclusions are never relaxed for affect)."""
+    from muvid.montage import spec as spec_mod
+    from muvid.montage.analysis import Media
+    from muvid.montage.plan import SlotDraft, assign_media
+
+    pool = [
+        Media(index=i, path=f"{i}.jpg", kind="photo", width=10, height=10)
+        for i in range(8)
+    ]
+    drafts = [
+        SlotDraft(start=k, end=k + 1, section="v", archetype="grid", regions=4,
+                  fresh=(0, 1, 2, 3))
+        for k in range(3)
+    ]
+    picks, stats = assign_media(
+        drafts,
+        pool,
+        spec_mod.Reuse(min_gap=2),
+        affect_fit=lambda d, m: 0.0 if m.index == 0 else 1.0,
+    )
+    assert stats["affect"] is True
+    assert all(len({v[0] for v in slot.values()}) == 4 for slot in picks)
 
 
 def test_affect_leaves_the_taken_order_and_unmeasured_songs_alone():
     srcs, envelope_of = _affect_pool()
-    kw = dict(
-        envelope_of=envelope_of,
-        anchor_of=lambda s: (0.5, 0.5),
-        size_of=lambda p: (1920, 1080),
-        archetype="beat_cut",
-    )
+    kw = dict(envelope_of=envelope_of, anchor_of=lambda s: (0.5, 0.5),
+              size_of=lambda p: (1920, 1080), archetype="beat_cut")
     taken = fill_spans("/x/s.wav", srcs, analysis=_analysis(40.0, 120.0), **kw)
     assert taken.report["affect"] is False  # the order pictures were taken in rules
-    flat = _analysis(40.0, 120.0)
     from dataclasses import replace
 
-    flat = replace(
-        flat, sections=tuple(replace(s, energy_db=None) for s in flat.sections)
-    )
+    flat = _analysis(40.0, 120.0)
+    flat = replace(flat, sections=tuple(replace(s, energy_db=None) for s in flat.sections))
     unmeasured = fill_spans("/x/s.wav", srcs, analysis=flat, order="planner", **kw)
     assert unmeasured.report["affect"] is False  # no loudness to match against
 
@@ -810,7 +879,7 @@ def test_liveliness_is_the_mean_picture_activity_and_none_for_a_still():
     from muvid.footage.music_cut import liveliness
 
     env = Envelope(hop_s=0.1, activity=np.array([0.0, 1.0, np.nan]), hits=np.zeros(3))
-    assert liveliness(
-        FreeSource("v", "/x/v.mp4", duration_s=1.0), env
-    ) == pytest.approx(1 / 3)
+    assert liveliness(FreeSource("v", "/x/v.mp4", duration_s=1.0), env) == pytest.approx(
+        1 / 3
+    )
     assert liveliness(FreeSource("p", "/x/p.jpg", kind="still"), None) is None
