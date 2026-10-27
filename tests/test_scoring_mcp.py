@@ -246,6 +246,9 @@ def test_status_without_job_id_reads_the_job_score_footage_started(
         for text in (
             json.dumps({"job_id": first}),
             json.dumps({"job_id": other}),
+            json.dumps({"job_id": ""}),
+            json.dumps({"job_id": "a/b"}),
+            json.dumps({"job_id": "x" * 300}),
             "not json",
             "[]",
             None,

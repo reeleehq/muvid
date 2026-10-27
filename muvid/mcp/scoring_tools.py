@@ -107,9 +107,12 @@ def score_footage(
     }
     # Recorded BEFORE the job starts, so a failed write refuses a job that never ran
     # rather than starting one the status cannot name.
-    _remember_job(
-        proj, nw_jobs.job_id_for(proj, _SCORE_KIND, params, idempotency_key=idem)
-    )
+    try:
+        _remember_job(
+            proj, nw_jobs.job_id_for(proj, _SCORE_KIND, params, idempotency_key=idem)
+        )
+    except OSError as e:
+        raise _tool_error(f"could not record the scoring job: {e}") from e
     job = nw_jobs.enqueue(
         proj,
         _SCORE_KIND,
@@ -134,10 +137,12 @@ def _latest_score_job(proj, nw_jobs):
     from muvid.footage.workspace import read_json_dict
 
     remembered = (read_json_dict(proj.root / _LAST_JOB_FILE) or {}).get("job_id")
-    candidates = (
-        [nw_jobs.get_job(proj, remembered)] if isinstance(remembered, str) else []
-    )
-    candidates += nw_jobs.list_jobs(proj)
+    candidates = list(nw_jobs.list_jobs(proj))
+    if remembered and isinstance(remembered, str):
+        try:
+            candidates.append(nw_jobs.get_job(proj, remembered))
+        except (ValueError, OSError):  # not a store key nw accepts: a garbled record
+            pass
     jobs = [j for j in candidates if j is not None and j.kind == _SCORE_KIND]
     return max(jobs, key=lambda j: j.created_at or "", default=None)
 
