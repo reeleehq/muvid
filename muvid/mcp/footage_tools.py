@@ -435,7 +435,8 @@ def propose_edit(
     follow one another: ``taken`` (the default) in the order they were taken — by the time
     their files say, upload order for any that say nothing; ``music.order`` /
     ``music.order_note`` report which applied — or ``planner``, the reuse order that
-    ignores chronology.
+    ignores chronology and puts lively videos in the loud parts of the song
+    (``music.affect`` says when it applied).
     """
     return _call(
         project_id,

@@ -793,6 +793,15 @@ def _assign_chronological(
     return out, stats
 
 
+#: How far from the best fit a picture's affect mismatch may be and still count as
+#: fitting a slot (muvid#134), in the mismatch's [0, 1] units: half the range, so in a
+#: quiet slot the calm half of the pool fits and in a middling slot all of it.
+AFFECT_SLACK = 0.5
+
+#: ``(slot, media) -> mismatch in [0, 1]``: how badly a picture's feel fits a slot's.
+AffectFit = Callable[[SlotDraft, Media], float]
+
+
 def assign_media(
     drafts: Sequence[SlotDraft],
     media: Sequence[Media],
@@ -800,8 +809,15 @@ def assign_media(
     *,
     finale_start: float | None = None,
     active: Callable[[SlotDraft], bool] | None = None,
+    affect_fit: AffectFit | None = None,
 ) -> tuple[list[dict[int, tuple[int, int]]], dict[str, Any]]:
     """Fill every region of every draft with ``(media_index, use_ordinal)``.
+
+    ``affect_fit`` (muvid#134) makes the policy also match the feel of the pictures to
+    the slot's: a picture further than :data:`AFFECT_SLACK` from the slot's best fit is
+    the FIRST exclusion the tiers relax, so affect chooses among what the gap allows
+    and never causes a repeat. The ``chronological`` order fixes the sequence, so it
+    ignores affect (the stats say ``affect: false``).
 
     Returns one ``{region: (media, use)}`` per draft, plus the policy's own
     account of what it did (reserved images, uses, the smallest gap it
@@ -822,7 +838,9 @@ def assign_media(
     pool = [m for m in media if m.kind != "cover"]
     pool_idx = [m.index for m in pool]
     if reuse.order == "chronological" and pool:
-        return _assign_chronological(drafts, pool, active)
+        out, stats = _assign_chronological(drafts, pool, active)
+        return out, {**stats, "affect": False}
+    by_index = {m.index: m for m in media}
     if not pool_idx:
         if cover is None:
             raise ValueError("the media pool is empty")
@@ -840,7 +858,27 @@ def assign_media(
         n_reserve = min(len(pool_idx) // FINALE_RESERVE_DIVISOR, n_finale)
         if len(pool_idx) - n_reserve < 2:
             n_reserve = 0
+
+    def unfit(draft: SlotDraft, ms: Sequence[int]) -> set[int]:
+        """The pictures among ``ms`` whose feel does NOT fit ``draft`` — further than
+        :data:`AFFECT_SLACK` from the best fit there (muvid#134); none without
+        ``affect_fit``."""
+        if affect_fit is None or not ms:
+            return set()
+        fit = {m: affect_fit(draft, by_index[m]) for m in ms}
+        best_fit = min(fit.values())
+        return {m for m in ms if fit[m] > best_fit + AFFECT_SLACK}
+
     by_strength = sorted(pool, key=lambda m: (-m.strength, m.index))
+    finale_draft = next(
+        (d for d in drafts if finale_start is not None and d.start >= finale_start),
+        None,
+    )
+    if finale_draft is not None and affect_fit is not None:
+        # the reserve is shown in the finale: hold back pictures that fit it first
+        # (stable sort, so strength still ranks within each group)
+        misfits = unfit(finale_draft, [m.index for m in pool])
+        by_strength.sort(key=lambda m: m.index in misfits)
     reserved = [m.index for m in by_strength[:n_reserve]]
     reserved_queue = list(reserved)
 
@@ -870,13 +908,17 @@ def assign_media(
             recent.clear()
         return m, use
 
-    def pick(hard: set[int], soft: set[int], in_finale: bool) -> tuple[int, int]:
+    def pick(
+        hard: set[int], soft: set[int], in_finale: bool, draft: SlotDraft
+    ) -> tuple[int, int]:
         """``hard``: what this tile must not be (its own previous media, and
         what this slot already assigned). ``soft``: what the other tiles show.
         Relaxed in tiers when the pool is too small: the gap goes first, then
         the other tiles' media — a photo moving to another tile is a lesser
         evil than a tile that does not change, or two tiles alike."""
+        misfits = unfit(draft, pool_idx)
         if in_finale and reserved_queue:
+            # the reserve was chosen to fit the finale (above), so its order stands
             m = reserved_queue.pop(0)
             if m not in hard and m not in soft:
                 return take(m)
@@ -887,7 +929,11 @@ def assign_media(
         g = min(gap, len(candidates) - 1)
         blocked = set(recent[-g:]) if g > 0 else set()
         avail: list[int] = []
+        # "fits the feel" is the FIRST thing relaxed (muvid#134): affect chooses among
+        # what the gap allows and never causes a repeat, two tiles alike or a lost
+        # picture — the #134 review found a pre-filter doing all three
         for exclude in (
+            hard | soft | blocked | misfits,
             hard | soft | blocked,
             hard | soft,
             hard | blocked,
@@ -923,7 +969,7 @@ def assign_media(
                 if r in shown:
                     hard.add(shown[r][0])
                 soft = {v[0] for rr, v in shown.items() if rr != r}
-                assigned[r] = pick(hard, soft, in_finale)
+                assigned[r] = pick(hard, soft, in_finale, d)
             else:
                 assigned[r] = shown[r]
         shown = dict(assigned)
@@ -937,6 +983,7 @@ def assign_media(
         "finale_start": None if finale_start is None else round(finale_start, 4),
         "uses": {str(m): uses[m] for m in pool_idx},
         "n_assignments": ordinal,
+        "affect": affect_fit is not None,
         "min_observed_gap": min_observed_gap,
     }
     return out, stats
@@ -998,11 +1045,13 @@ def plan_montage(
     treatment: spec_mod.TreatmentSpec,
     *,
     active: Callable[[SlotDraft], bool] | None = None,
+    affect_fit: AffectFit | None = None,
 ) -> Plan:
     """Pool + measurements + treatment -> a :class:`Plan`. Pure and deterministic.
 
     ``active`` says which slots will actually be shown (a caller filling only part of
-    the song); the ``chronological`` reuse order spends the pool on those alone."""
+    the song); the ``chronological`` reuse order spends the pool on those alone.
+    ``affect_fit`` matches the pictures' feel to the slots' (:func:`assign_media`)."""
     if not analysis.sections:
         raise ValueError("analysis has no sections")
     if not media:
@@ -1034,6 +1083,7 @@ def plan_montage(
         treatment.direction.reuse,
         finale_start=finale.start if finale else None,
         active=active,
+        affect_fit=affect_fit,
     )
     by_index = {m.index: m for m in media}
     punch_s = PUNCH_BEATS * analysis.beat_s
