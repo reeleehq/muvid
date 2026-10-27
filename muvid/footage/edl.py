@@ -98,7 +98,8 @@ MAX_LOOK_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_LINKS", "16"))
 #: one; the side with no conversion cost is its family). The same-family colour
 #: filters cost about nothing at any size; ``eq``/``boxblur``/``unsharp``/``scale``/
 #: ``zoompan`` about one frame; ``vignette``/``gblur`` about three (float buffers);
-#: ``bilateral`` sixteen — each set a little above its measurement. ``tests/data/ffmpeg_filter_costs.json`` records the
+#: ``bilateral`` sixteen — each set a little above the LARGER of what the builds this
+#: fleet runs measure (CI's ffmpeg 6.x reads ``gblur`` a frame higher than 8.0.1). ``tests/data/ffmpeg_filter_costs.json`` records the
 #: measurement and ``tests/test_edl_look_cost.py`` re-measures the binary in CI and
 #: refuses a table that reads a filter cheaper than it is. ``lut3d`` needs a cube file
 #: to measure; it is priced like ``scale`` until it is.
@@ -109,7 +110,7 @@ _LOOK_FILTER_COSTS: "dict[str, tuple[str, float]]" = {
     "pad": ("any", 1.0),  # a growing pad allocates its larger frame
     "noise": ("any", 0.1),
     "vignette": ("any", 2.9),
-    "gblur": ("any", 3.1),
+    "gblur": ("any", 4.1),  # 2.9 on ffmpeg 8.0.1, 3.9 on CI's 6.x
     "scale": ("yuv", 1.2),
     "zoompan": ("yuv", 1.1),
     "eq": ("yuv", 1.0),
