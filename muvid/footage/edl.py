@@ -97,14 +97,17 @@ MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 #: TWO caps rather than one, because they bound different things and one number
 #: cannot do both: the total bounds the graph, and the resize count bounds how
 #: many LARGE frames can exist in it. Together the measured worst case is
-#: **292 MB** (2 links at the size cap plus 14 cheap ones) against 3171 MB
+#: **292 MB** (2 links at the size cap plus 14 cheap ones — but not cheap when
+#: each forces an RGB<->YUV conversion at the large size: 2.46 GB, muvid#199)
+#: against 3171 MB
 #: today. A single total-link cap loose enough for a rich grade would leave the
 #: multiplicative worst case an order of magnitude higher.
 #:
 #: The values are generous by construction: muvid's own compilers emit **1**
-#: link for ``punch_in`` and **2** for a two-effect ``stylize``, and at most one
-#: of those ever sets a size. ``stylize``'s colour-only ``scale`` wrappers are not
-#: resizes at canvas size (:func:`_look_resizes`).
+#: link for ``punch_in`` and at most **7** for a ``stylize`` (the named look
+#: ``cartoon``: three steps, each wrapped in ``looks`` Rule 22's colour-only
+#: ``scale``), and at most one of those ever sets a size. A link that declares no
+#: size is not a resize while the frame fits the canvas (:func:`_look_resizes`).
 MAX_LOOK_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_LINKS", "16"))
 MAX_LOOK_RESIZES = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_RESIZES", "2"))
 
@@ -1793,6 +1796,11 @@ class _FilterOptions(NamedTuple):
     #: the leading UNNAMED slots a look may fill, in libavfilter's order. Short
     #: on purpose: a positional past the end is REFUSED, never dropped.
     positional: tuple
+    #: whether a link declaring NONE of ``sizes`` outputs a frame no larger than
+    #: its input (``scale``/``pad`` default to ``iw``/``ih``, ``crop`` only
+    #: shrinks). ``False`` for ``zoompan``, whose absent ``s`` is a literal hd720.
+    #: Read by :func:`_look_resizes`.
+    unsized_keeps_frame: bool = True
 
 
 #: Which options a look may set on a filter that can change the OUTPUT FRAME
@@ -1905,6 +1913,7 @@ _LOOK_GEOMETRY_FILTERS = {
         sizes={"s": "size"},
         free=frozenset({"zoom", "z", "x", "y", "d", "fps"}),
         positional=("zoom", "x", "y", "d", "s", "fps"),
+        unsized_keeps_frame=False,
     ),
 }
 
@@ -2314,7 +2323,8 @@ def _link_output_sizes(
 ) -> "list[tuple[str, str, str, int | None]]":
     """One link's declared dimensions, as :func:`_look_output_sizes` reports them
     minus the filter name. Empty for a filter that is not a geometry filter, and for
-    a geometry link that declares no size (its frame is its input's).
+    a geometry link that declares no size (whose frame is then its input's, except
+    ``zoompan``'s — see :attr:`_FilterOptions.unsized_keeps_frame`).
 
     >>> _link_output_sizes("scale", "in_color_matrix=bt709:out_color_matrix=bt709")
     []
@@ -2342,11 +2352,12 @@ def _link_output_sizes(
 
 
 def _look_resizes(look: str, canvas) -> "list[str]":
-    """The links :data:`MAX_LOOK_RESIZES` counts: each geometry link, except a
-    ``scale`` that declares no size while every size declared before it fits the
-    canvas.
+    """The links :data:`MAX_LOOK_RESIZES` counts: each geometry link, except one
+    that declares no size and keeps its input's frame
+    (:attr:`_FilterOptions.unsized_keeps_frame`) while every size declared before it
+    fits the canvas.
 
-    That exception is ``looks`` Rule 22's colour conversion,
+    The exception exists for ``looks`` Rule 22's colour conversion,
     ``scale=in_color_matrix=M:out_color_matrix=M``, which wraps every RGB-domain
     step (muvid#190), so a three-step grade carries four of them and counting them
     as resizes refused the named look ``cartoon`` (muvid#196). It is cheap only
@@ -2356,8 +2367,11 @@ def _look_resizes(look: str, canvas) -> "list[str]":
     fifteen of them **903 MB**, and 1002 MB with ``colorchannelmixer`` between them
     — against 238 MB for the same upsize followed by fifteen in-place ``hue``. A
     colour conversion allocates a new frame at whatever size it is handed, so after
-    an upsize it is one more large frame and counts. An expression size is treated
-    as larger than the canvas (``_validate_look_size`` refuses it anyway).
+    an upsize it counts. That keeps this exemption from widening what the gate
+    admits; it does not make the resize cap a bound on large frames, because
+    ffmpeg's own automatic format conversions between RGB and YUV filters allocate
+    the same way and are not links at all (muvid#199). An expression size is
+    treated as larger than the canvas (``_validate_look_size`` refuses it anyway).
 
     >>> cs = "scale=in_color_matrix=bt709:out_color_matrix=bt709"
     >>> _look_resizes(f"{cs},eq=gamma=1,{cs},{cs}", (1920, 1080))
@@ -2365,15 +2379,18 @@ def _look_resizes(look: str, canvas) -> "list[str]":
     >>> _look_resizes(f"scale=7680:4320,{cs},{cs}", (1920, 1080))
     ['scale', 'scale', 'scale']
     >>> _look_resizes("crop=w='iw*0.9':h='ih*0.9',scale=1920:1080", (1920, 1080))
-    ['crop', 'scale']
+    ['scale']
+    >>> _look_resizes("zoompan=d=1:fps=25", (1920, 1080))
+    ['zoompan']
     """
     limits = {"width": canvas[0], "height": canvas[1]}
     out, large = [], False
     for name, args in _look_links(look):
-        if name not in _LOOK_GEOMETRY_FILTERS:
+        spec = _LOOK_GEOMETRY_FILTERS.get(name)
+        if spec is None:
             continue
         sizes = _link_output_sizes(name, args)
-        if name == "scale" and not sizes and not large:
+        if spec.unsized_keeps_frame and not sizes and not large:
             continue
         out.append(name)
         large = large or any(
@@ -2472,7 +2489,8 @@ def _validate_look_links(i, look: str, canvas) -> None:
             f"{MAX_LOOK_LINKS} muvid allows. Frame size is not the only thing "
             "that costs memory — measured, each additional link at the size cap "
             "adds about 47 MB, and the cap exists so a look cannot reach 3 GB "
-            "one accepted link at a time. muvid's own looks use one or two."
+            "one accepted link at a time. muvid's own looks use at most seven "
+            "(a three-step grade, each step wrapped in a colour conversion)."
         )
     resizes = _look_resizes(look, canvas)
     if len(resizes) > MAX_LOOK_RESIZES:
@@ -2483,7 +2501,8 @@ def _validate_look_links(i, look: str, canvas) -> None:
             "bounds how many LARGE frames the graph carries; the total-link cap "
             "bounds the graph. A look needs one resize, or none — the assembler "
             "has already conformed the cut to the canvas before the look runs. "
-            "(A colour-only `scale` is not counted while the frame fits the canvas.)"
+            "(A link that declares no size, such as a colour-only `scale`, is not "
+            "counted while the frame fits the canvas.)"
         )
 
 
