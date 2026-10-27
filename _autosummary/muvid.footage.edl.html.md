@@ -36,6 +36,8 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 |----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`MAX_LOOK_SCALE`](#muvid.footage.edl.MAX_LOOK_SCALE)            | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
 | [`MAX_LOOK_LINKS`](#muvid.footage.edl.MAX_LOOK_LINKS)            | How many filter links one look may carry, and how many of those may set a size.                                                                                                                                                                                 |
+| [`MAX_LOOK_LARGE_LINKS`](#muvid.footage.edl.MAX_LOOK_LARGE_LINKS)      | How many links of a look may hold a frame LARGER than the canvas (by area) — the bound on what actually costs memory (muvid#199).                                                                                                                               |
+| [`MAX_LOOK_HEAVY_LINKS`](#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS)      | How many heavy links a look may carry — and none of them on a frame larger than the canvas.                                                                                                                                                                     |
 | [`DFLT_LOOK_CANVAS`](#muvid.footage.edl.DFLT_LOOK_CANVAS)          | The canvas [`validate_edl()`](#muvid.footage.edl.validate_edl) bounds a look against when its caller names none: the element-wise maximum of `workspace.CANVASES`, so the default is the LOOSEST bound that is still a bound — never an absent one. |
 | [`TRANSITION_SPLIT`](#muvid.footage.edl.TRANSITION_SPLIT)          | the fraction taken from BEFORE the boundary.                                                                                                                                                                                                                    |
 | [`MIN_TRANSITION_S`](#muvid.footage.edl.MIN_TRANSITION_S)          | Shortest transition that is not a lie.                                                                                                                                                                                                                          |
@@ -57,22 +59,24 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 
 ### Functions
 
-| [`blend_lead`](#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                                                                                                      |
-|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`blend_reads`](#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                |
-| [`blend_trail`](#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                       |
-| [`clip_in_of`](#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                       |
-| [`clip_time_at`](#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                           |
-| [`derive_cuts`](#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                |
-| [`exclude_unvouched`](#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                    |
-| [`fill_gaps`](#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                |
-| [`in_point_bounds`](#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce. |
-| [`looks_effects_offered`](#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                    |
-| [`placed_as`](#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                              |
-| [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                          |
-| [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                   |
-| [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                     |
-| [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                   |
+| [`blend_lead`](#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                                                                                                                                                                                                                           |
+|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`blend_reads`](#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                                                                                                                                     |
+| [`blend_trail`](#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                                                                                                                                            |
+| [`clip_in_of`](#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                                                                                                                                            |
+| [`clip_time_at`](#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                                                                                                                                                |
+| [`derive_cuts`](#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                     |
+| [`exclude_unvouched`](#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                                                                                                                                         |
+| [`fill_gaps`](#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                                                                                                                                     |
+| [`in_point_bounds`](#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce.                                                                                                                      |
+| [`longest_span`](#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree. |
+| [`looks_effects_offered`](#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                                                                                                                                         |
+| [`placed_as`](#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                   |
+| [`still_in_point`](#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                       |
+| [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                               |
+| [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                        |
+| [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                          |
+| [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                        |
 
 ### Classes
 
@@ -528,6 +532,23 @@ adds a part, so a fully-transitioned edit approaches `2 * cuts` invocations. The
 stays on cuts deliberately — it is the number the caller wrote and can act on — but
 read it as bounding work only to within that factor.
 
+### muvid.footage.edl.MAX_LOOK_HEAVY_LINKS *= 1*
+
+How many heavy links a look may carry — and none of them on a frame larger than the
+canvas.
+
+### muvid.footage.edl.MAX_LOOK_LARGE_LINKS *= 2*
+
+How many links of a look may hold a frame LARGER than the canvas (by area) — the
+bound on what actually costs memory (muvid#199). Neither cap above is it: after one
+resize to the size cap, every following link that makes ffmpeg convert between RGB
+and YUV allocates a frame that size, and those conversions are not links at all.
+Measured on ffmpeg 8.0.1, a 1920x1080 canvas, one second, peak RSS:
+
+Of the frame-size-independent costs, one filter is an outlier: see
+[`MAX_LOOK_HEAVY_LINKS`](#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS). muvid’s own compilers never upsize (`punch_in` crops and scales back to the
+canvas), so the bound costs them nothing; a supersampling look keeps two links.
+
 ### muvid.footage.edl.MAX_LOOK_LINKS *= 16*
 
 How many filter links one look may carry, and how many of those may set a
@@ -550,14 +571,15 @@ every fragment below is one `_validate_look_size()` accepts:
 while accepting thirty-two links of 7680x4320 at 1648 MB — which is the
 shape of a bound that measures the wrong quantity.
 
-TWO caps rather than one, because they bound different things and one number
-cannot do both: the total bounds the graph, and the resize count bounds how
-many LARGE frames can exist in it. Together the measured worst case is
-**292 MB** (2 links at the size cap plus 14 cheap ones — but not cheap when
-each forces an RGB<->YUV conversion at the large size: 2.46 GB, muvid#199)
-against 3171 MB
-today. A single total-link cap loose enough for a rich grade would leave the
-multiplicative worst case an order of magnitude higher.
+The total bounds the graph; it does not bound memory on its own, and neither
+does the resize count below — [`MAX_LOOK_LARGE_LINKS`](#muvid.footage.edl.MAX_LOOK_LARGE_LINKS) and
+[`MAX_LOOK_HEAVY_LINKS`](#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS) are what do (muvid#199). Together the measured worst
+look found that the gate keeps is **649 MB** (an RGB link, `zoompan` to the size
+cap and a `vignette` there, back to canvas size, the one `bilateral`, then
+`vignette`/`gblur` — which keep a frame-sized float buffer of their own; ffmpeg
+8.0.1, 1920x1080, measured by `test_the_worst_look_the_gate_keeps_is_measured_
+under_its_ceiling`) against 3171 MB before any cap. A single total-link cap loose enough for
+a rich grade would leave the multiplicative worst case an order of magnitude higher.
 
 The values are generous by construction: muvid’s own compilers emit **1**
 link for `punch_in` and at most **7** for a `stylize` (the named look
@@ -1012,6 +1034,27 @@ True
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+### muvid.footage.edl.longest_span(clip_duration_s, , rate=1.0, transition=None, next_transition=None, edge_s=0.0)
+
+The longest span (song seconds) a free cut can take from a clip of
+`clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the
+question “can this clip hold this piece” asked in [`in_point_bounds()`](#muvid.footage.edl.in_point_bounds)’ own terms
+(muvid#203), so a planner deciding to split a piece and the in-point it then picks
+cannot disagree. `0.0` when nothing fits. Slip is left out: it moves where a cut
+reads, not how much it can read, and no planner sets it.
+
+```pycon
+>>> t = Transition(duration_s=1.0, curve="fade")
+>>> longest_span(10.0, transition=t, next_transition=t, edge_s=0.25)
+8.5
+>>> cut = EdlEntry(0.0, 8.5, "c", transition=t)
+>>> in_point_bounds(cut, clip_duration_s=10.0, next_transition=t, edge_s=0.25)
+(0.75, 0.75)
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 ### muvid.footage.edl.looks_effects_offered()
 
 The `looks` effects a look can reach through this gate, sorted.
@@ -1041,6 +1084,20 @@ nothing to refuse.
 
 * **Return type:**
   [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)
+
+### muvid.footage.edl.still_in_point(cut)
+
+Where a free cut on a STILL starts: the lowest `source_in` the gate accepts —
+the blend’s lead — the same rule as a video’s in-point minus the edge margin a still
+does not need (it has no thumb on the button). muvid#203.
+
+```pycon
+>>> still_in_point(EdlEntry(0.0, 2.0, "p", transition=Transition(1.0, "fade")))
+0.5
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 ### muvid.footage.edl.unplaced(clip_id, duration_s)
 
