@@ -67,7 +67,7 @@ _UNMEASURED = frozenset({"lut3d"})
 _PROBE = (
     "import resource, subprocess, sys\n"
     "subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',\n"
-    f"    'testsrc2=size={_CANVAS[0]}x{_CANVAS[1]}:rate=30:duration=0.3', '-vf',\n"
+    f"    'testsrc2=size={_CANVAS[0]}x{_CANVAS[1]}:rate=30:duration=0.15', '-vf',\n"
     "    sys.argv[1], '-f', 'null', '-'], check=True)\n"
     "rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss\n"
     "print(rss / (1024 * 1024) if sys.platform == 'darwin' else rss / 1024)\n"
