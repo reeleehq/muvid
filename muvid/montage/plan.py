@@ -918,11 +918,8 @@ def assign_media(
         evil than a tile that does not change, or two tiles alike."""
         misfits = unfit(draft, pool_idx)
         if in_finale and reserved_queue:
-            # a reserved picture that fits first; else the queue's head, as without
-            # affect — a reserved picture is never dropped for its feel alone
-            fitting = [m for m in reserved_queue if m not in misfits]
-            m = fitting[0] if fitting else reserved_queue[0]
-            reserved_queue.remove(m)
+            # the reserve was chosen to fit the finale (above), so its order stands
+            m = reserved_queue.pop(0)
             if m not in hard and m not in soft:
                 return take(m)
         candidates = [m for m in pool_idx if in_finale or m not in reserved]
