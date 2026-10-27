@@ -1895,8 +1895,12 @@ _LOOK_GEOMETRY_FILTERS = {
         # RGB-domain step in ``scale=in_color_matrix=M:out_color_matrix=M`` once a
         # colour space is declared (muvid#190). They pick the YUV<->RGB matrix and
         # never touch the frame size, so such a link is not a resize while its
-        # input fits the canvas (`_look_resizes`, muvid#196).
-        free=frozenset({"flags", "in_color_matrix", "out_color_matrix"}),
+        # input fits the canvas (`_look_resizes`, muvid#196). `in_range`/
+        # `out_range` ride on the same wrapper once a colour RANGE is declared too,
+        # which `stylize` does since the assembler normalises it (muvid#195).
+        free=frozenset(
+            {"flags", "in_color_matrix", "out_color_matrix", "in_range", "out_range"}
+        ),
         positional=("w", "h"),
     ),
     "pad": _FilterOptions(

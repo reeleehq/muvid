@@ -101,6 +101,40 @@ DEFAULT_FPS = 30
 #: Default canvas (16:9 1080p) when the caller/genre gives none.
 DEFAULT_CANVAS = (1920, 1080)
 
+#: The colour every part is delivered in: BT.709 matrix, limited ("tv") range —
+#: what a player assumes for untagged HD, and what phone video mostly is already
+#: (muvid#195). Each cut's ``scale`` CONVERTS to it and the encoder TAGS it, so the
+#: frame a look receives has a known colour and :func:`muvid.footage.look.stylize`
+#: declares it as a fact rather than assuming it. Before this, each source kept its
+#: own matrix and tags, and a BT.601 clip or a full-range JPEG still was read as
+#: BT.709 by every player: measured on ffmpeg 8.0.1 against the RGB original, 24 dB
+#: PSNR before and 37 dB (BT.601) / 41 dB (JPEG) after.
+#:
+#: The conversion is the explicit ``scale`` in :func:`_part_filter`, not the
+#: encoder options, although on ffmpeg 8.0.1 the options alone do the same: that
+#: build negotiates ``-colorspace``/``-color_range`` through the filtergraph and
+#: inserts the conversion itself (measured: identical PSNR with either, or both).
+#: Older builds — CI runs 6.x — only WRITE the options into the stream, which tags
+#: a BT.601 picture as BT.709 without converting it. The ``scale`` is what makes the
+#: two builds agree.
+#:
+#: Primaries and transfer are TAGGED BT.709, not converted: ``scale`` changes only
+#: the YCbCr matrix and range. That is a correct statement for SDR footage, and
+#: for HDR (HLG/PQ) footage the delivery was already SDR-without-tone-mapping —
+#: the tag does not make that better or worse.
+DELIVERY_COLOR_SPACE = "bt709"
+DELIVERY_COLOR_RANGE = "tv"
+
+#: The frame-level tag, placed right after the converting ``scale`` (and on a gap's
+#: black). On the FRAME, not only on the encoder: ffmpeg 8.0.1 takes the stream's
+#: colour description from the frames and ignores ``-color_primaries`` /
+#: ``-color_trc`` (measured: both came out ``unknown`` with the options alone), and a
+#: look that converts to RGB reads the frame's matrix tag.
+_DELIVERY_TAG = (
+    f"setparams=range={DELIVERY_COLOR_RANGE}:color_primaries={DELIVERY_COLOR_SPACE}"
+    f":color_trc={DELIVERY_COLOR_SPACE}:colorspace={DELIVERY_COLOR_SPACE}"
+)
+
 
 def _even(n: int) -> int:
     return n - (n % 2)  # H.264/yuv420p needs even dimensions
@@ -424,7 +458,7 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale, pad, setsar, fps, tpad [, look] [, tail]``
+    ``[retime,] [crop,] scale, setparams, pad, setsar, fps, tpad [, look] [, tail]``
 
     ``retime`` is a cut's speed (``setpts=(PTS-STARTPTS)/rate``) and it comes BEFORE
     ``fps``, so ``fps`` picks frames on the retimed clock. (Measured on ffmpeg 9.0: the
@@ -452,9 +486,14 @@ def _part_filter(
     ``tail`` is the only difference between the two sites, and it is a parameter
     rather than a second string.
 
-    With no crop and no look this returns exactly the bytes it always did — the
-    ``look``-absent path is unchanged character for character, which is the
-    property ``tests/test_edl_look.py`` pins.
+    ``scale`` also converts to the delivery colour (:data:`DELIVERY_COLOR_SPACE`,
+    muvid#195) and ``setparams`` (:data:`_DELIVERY_TAG`) says so on the frame, so
+    the look sees a frame whose colour is known as well as its size.
+
+    With no crop and no look this returns exactly the pinned bytes —
+    ``tests/test_edl_look.py`` pins the ``look``-absent chain character for
+    character, so changing it is a deliberate two-place edit (the last one was the
+    colour conversion of muvid#195).
     """
     crop = _crop_filter(cut)
     rate = getattr(cut, "rate", 1.0)
@@ -462,7 +501,9 @@ def _part_filter(
     return (
         f"{retime}"
         f"{crop + ',' if crop else ''}"
-        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease"
+        f":out_color_matrix={DELIVERY_COLOR_SPACE}:out_range={DELIVERY_COLOR_RANGE},"
+        f"{_DELIVERY_TAG},"
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},"
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
@@ -471,11 +512,24 @@ def _part_filter(
 
 
 def _video_codec_args(crf: int, preset: str) -> list[str]:
+    """The encode every part shares, tagged :data:`DELIVERY_COLOR_SPACE` /
+    :data:`DELIVERY_COLOR_RANGE` — identical tags on every part are also what lets
+    the concat stage stream-copy them into one consistently tagged video. The
+    options repeat :data:`_DELIVERY_TAG` for a build that reads the codec context
+    rather than the frames."""
     return [
         "-c:v",
         "libx264",
         "-pix_fmt",
         "yuv420p",
+        "-colorspace",
+        DELIVERY_COLOR_SPACE,
+        "-color_primaries",
+        DELIVERY_COLOR_SPACE,
+        "-color_trc",
+        DELIVERY_COLOR_SPACE,
+        "-color_range",
+        DELIVERY_COLOR_RANGE,
         "-crf",
         str(crf),
         "-preset",
@@ -542,7 +596,7 @@ def _render_part(
             fps=fps,
         ) + ["-vf", vf]
     else:  # a gap entry: no footage for this span — fill black on the same grid
-        vf = f"setsar=1,fps={fps}"
+        vf = f"setsar=1,fps={fps},{_DELIVERY_TAG}"
         args = [
             "-f",
             "lavfi",

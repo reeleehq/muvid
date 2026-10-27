@@ -174,9 +174,12 @@ def test_a_gap_may_not_carry_a_look():
 #: the whole additive claim in one string: it is compared against what
 #: `_part_filter` emits for a cut with no crop and no look, so any future edit to
 #: the template has to be a deliberate two-place change rather than a silent
-#: reshaping of every render muvid has ever produced.
+#: reshaping of every render muvid has ever produced. Changed once, deliberately:
+#: the ``scale`` converts to the delivery colour (muvid#195).
 _HISTORICAL = (
-    "scale=1920:1080:force_original_aspect_ratio=decrease,"
+    "scale=1920:1080:force_original_aspect_ratio=decrease"
+    ":out_color_matrix=bt709:out_range=tv,"
+    "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
     "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,"
     "tpad=stop=-1:stop_mode=clone"
 )
@@ -586,6 +589,9 @@ def test_a_look_less_render_is_deterministic(tmp_path):
 #: Paths are normalised because two of them are a temp directory. Everything else
 #: is verbatim — including argument ORDER, which is what makes it a snapshot
 #: rather than a set of spot checks.
+#:
+#: Changed once, deliberately: muvid#195 converts each cut to the delivery colour
+#: in its ``scale`` and tags every encode (``-colorspace`` ... ``-color_range``).
 _HISTORICAL_ARGV = (
     # solo(A): input-side seek, one spare frame of input, exact -frames:v cap
     [
@@ -596,7 +602,9 @@ _HISTORICAL_ARGV = (
         "-i",
         "/tmp/a.mp4",
         "-vf",
-        "scale=640:360:force_original_aspect_ratio=decrease,"
+        "scale=640:360:force_original_aspect_ratio=decrease"
+        ":out_color_matrix=bt709:out_range=tv,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone",
         "-frames:v",
         "95",
@@ -605,6 +613,14 @@ _HISTORICAL_ARGV = (
         "libx264",
         "-pix_fmt",
         "yuv420p",
+        "-colorspace",
+        "bt709",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-color_range",
+        "tv",
         "-crf",
         "20",
         "-preset",
@@ -626,10 +642,14 @@ _HISTORICAL_ARGV = (
         "-i",
         "/tmp/b.mp4",
         "-filter_complex",
-        "[0:v]scale=640:360:force_original_aspect_ratio=decrease,"
+        "[0:v]scale=640:360:force_original_aspect_ratio=decrease"
+        ":out_color_matrix=bt709:out_range=tv,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone,"
         "format=yuv420p[a];"
-        "[1:v]scale=640:360:force_original_aspect_ratio=decrease,"
+        "[1:v]scale=640:360:force_original_aspect_ratio=decrease"
+        ":out_color_matrix=bt709:out_range=tv,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone,"
         "format=yuv420p[b];"
         "[a][b]xfade=transition=fade:duration=0.400000:offset=0[v]",
@@ -642,6 +662,14 @@ _HISTORICAL_ARGV = (
         "libx264",
         "-pix_fmt",
         "yuv420p",
+        "-colorspace",
+        "bt709",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-color_range",
+        "tv",
         "-crf",
         "20",
         "-preset",
@@ -657,7 +685,9 @@ _HISTORICAL_ARGV = (
         "-i",
         "/tmp/b.mp4",
         "-vf",
-        "scale=640:360:force_original_aspect_ratio=decrease,"
+        "scale=640:360:force_original_aspect_ratio=decrease"
+        ":out_color_matrix=bt709:out_range=tv,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone",
         "-frames:v",
         "145",
@@ -666,6 +696,14 @@ _HISTORICAL_ARGV = (
         "libx264",
         "-pix_fmt",
         "yuv420p",
+        "-colorspace",
+        "bt709",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-color_range",
+        "tv",
         "-crf",
         "20",
         "-preset",
