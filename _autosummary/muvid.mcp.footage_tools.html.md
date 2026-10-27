@@ -703,7 +703,9 @@ the changed edit; `changed` is the index of the second half.
 Your project’s song, clips, alignment summary, and renders. Free.
 
 Also: each clip’s offset and whether it was measured or declared (`alignments`),
-the saved `edits`, and `next_step` — the operation that moves the project on.
+the saved `edits`, the `song_candidates` (songs it could be cut to instead,
+added and chosen in the studio), and `next_step` — the operation that moves the
+project on.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

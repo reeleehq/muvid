@@ -1016,7 +1016,9 @@ song, the saved edits, the finished videos, and the next useful step.
 `aligned` lists the clips that have an offset; `alignments` says for each one
 whether the offset was `measured` (by `align`) or `declared` (`set_offset`)
 and whether it is trusted for rendering (`reliable`). `renders` is newest first
-(the same rows `renders` gives — no server paths).
+(the same rows `renders` gives — no server paths). `song_candidates` are the
+songs it could be cut to instead (`add_song_candidate`; no server paths), so a
+screen can list them without a second read.
 `next_step` names the operation that moves the project forward and why.
 
 * **Return type:**
