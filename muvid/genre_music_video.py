@@ -45,8 +45,8 @@ MUSIC_VIDEO_SLUG = "music_video"
 #: What to do about an nw older than this module needs: nw's floor lives in muvid's
 #: ``mcp`` extra, not the base dependencies (muvid#248).
 _NW_REMEDY = (
-    "upgrade nw to the floor muvid's 'mcp' extra declares (update an editable "
-    "checkout, or install muvid's 'mcp' extra)"
+    f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs it: upgrade nw to the floor muvid's "
+    "'mcp' extra declares (update an editable checkout, or install muvid's 'mcp' extra)"
 )
 
 # nw's own check for a keyword its types lack (nw#164) is newer than some nw a host
@@ -54,9 +54,7 @@ _NW_REMEDY = (
 try:
     from nw import require_fields
 except ImportError as e:  # an nw from before nw#164
-    raise ImportError(
-        f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs a newer nw: {_NW_REMEDY}"
-    ) from e
+    raise ImportError(f"the installed nw has no require_fields; {_NW_REMEDY}") from e
 
 #: Output canvas presets, exposed as the genre's Templates. params carries the canvas name
 #: muvid resolves to a pixel size at assemble time (mixed-orientation phone clips are
@@ -164,8 +162,6 @@ def _as_genre_op(spec) -> GenreOp:
         max_upload_bytes=spec.max_upload_bytes,
         invalidates=spec.invalidates,
     )
-    # a missing NAME fails ``import nw`` loudly; a missing KEYWORD would otherwise reach
-    # the host as a bare ``TypeError`` naming neither nw nor the fix (muvid#248)
     require_fields(GenreOp, fields, remedy=_NW_REMEDY)
     return GenreOp(**fields)
 

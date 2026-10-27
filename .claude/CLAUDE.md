@@ -364,12 +364,12 @@ so **one** `import muvid.genre` surfaces both genres and both project factories.
   `strategy_names=()`, `projection_entrypoint=None`. That combination is what makes
   `is_ready()` True for an `available` genre. Listing muvid's internal strategies in
   `strategy_names` is a wiring bug, not a feature.
-- `muvid` CORE never imports `nw`. The floor is pinned in the `[mcp]` extra
-  (`nw>=0.0.15`, which is where `register_genre_project_factory` exists — the import
-  doubles as the version guard). **Not in the base dependencies, deliberately** (muvid#248):
-  nw brings falaw, lacing and pydantic to an ffmpeg-only core. A missing KEYWORD is not an
-  import error, so `genre_music_video._require_genre_op_fields` asks the installed
-  `GenreOp` (never a version number) before anything registers.
+- `muvid` CORE never imports `nw`. The floor is pinned in the `[mcp]` extra — read it,
+  with each version's reason, in `pyproject.toml` rather than here, where it went stale.
+  **Not in the base dependencies, deliberately** (muvid#248): nw brings falaw, lacing and
+  pydantic to an ffmpeg-only core. A missing KEYWORD is not an import error, so
+  `genre_music_video` asks the installed `GenreOp` through `nw.require_fields` (nw#164,
+  never a version number) before anything registers.
 - `muvid/mcp/scoring_tools.py:80` uses `nw.jobs` as the durable/cancellable async job
   substrate. Reuse it; do not grow a second job system.
 
@@ -904,7 +904,7 @@ a declared grid as current once the grid is cleared; readers go through
 | extra | for | notes |
 |---|---|---|
 | `ai` | part 3 | `falaw`, `lacing`, `lookbook` |
-| `mcp` | serving genres/tools | `fastmcp`, `py2mcp>=0.1.9`, `nw>=0.0.15` |
+| `mcp` | serving genres/tools | `fastmcp`, `py2mcp>=0.1.9`, `nw` (floor and reasons in `pyproject.toml`) |
 | `scoring` | part 2 core tier | `mediapipe` (also brings the `cv2` the CV kernels use), `mixing[beats]>=0.0.30` |
 | `scoring-shots` | `boundary_mode="beats+shots"` | `scenedetect`; absent → degrades to beats-only |
 | `scoring-lipsync` | **opt-in, off-prod** | see the licence boundary above |
