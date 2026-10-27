@@ -873,8 +873,11 @@ keyed input — a vocal-stem model, a declared section map — is a name in
 `service._keyed_inputs` (a `registry.KeyedInput`: `read(project) -> (value,
 fingerprint)` for the run, read together, and `fingerprint(project)` for the staleness
 readers — muvid#224; scorers get the value as `ClipContext.inputs[name]`). A test fails
-while the row is missing, and a run refuses an input with no provider. It needs **no
-new manifest key**. `grid` stores and compares input names and knows none but the legacy beat grid,
+while the row is missing, and a run refuses an input with no provider: the orchestrator
+defaults only the beat grid (`DEFAULT_INPUTS`), so a bare `score_project` with another
+keyed input must be handed it (`inputs={name: read}`). A partial re-score re-checks the
+kept metrics' inputs after reading them, and scores in full when one moved. It needs
+**no new manifest key**. `grid` stores and compares input names and knows none but the legacy beat grid,
 so an input the manifest does not list — one it predates, or a misspelling — reads as
 changed and stales every metric (an unknown is not "none of them"). The record is built
 from every REGISTERED scorer's declarations over the metric axis, not from the scorers

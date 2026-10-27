@@ -1554,7 +1554,7 @@ def run_scoring(
         enable_lipsync=enable_lipsync,
         progress_cb=progress_cb,
         should_cancel=should_cancel,
-        inputs=_keyed_inputs(),
+        inputs={name: k.read for name, k in _keyed_inputs().items()},
         keep=keep,
     )
     return out
@@ -1565,8 +1565,14 @@ def _kept_scores(fp, *, hop_s: float):
     stale in SOME metrics only, on the same grid step, and every aligned clip has
     tracks to keep (a clip skipped last time is scored in full, or it would get only
     the stale metrics)."""
-    from muvid.footage.scoring.grid import load_manifest, load_tensor, tracks_of
+    from muvid.footage.scoring.grid import (
+        load_manifest,
+        load_tensor,
+        recorded_fingerprint,
+        tracks_of,
+    )
     from muvid.footage.scoring.orchestrator import KeptScores
+    from muvid.footage.scoring.registry import INPUTS
 
     manifest = load_manifest(fp.root)
     stale = _stale_metrics(fp, manifest) if manifest else None
@@ -1586,6 +1592,9 @@ def _kept_scores(fp, *, hop_s: float):
         # second read of the project, which an offset could move in between
         song_hash=manifest.get("song_hash", ""),
         align_fingerprint=manifest.get("align_fingerprint", ""),
+        input_fingerprints={
+            name: recorded_fingerprint(manifest, name) for name in INPUTS
+        },
     )
 
 

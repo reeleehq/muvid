@@ -26,7 +26,8 @@ from __future__ import annotations
 
 import os
 import threading
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+from types import MappingProxyType
 from typing import Any, Callable, Mapping, Sequence
 
 from muvid.footage.scoring import registry
@@ -109,7 +110,7 @@ def score_project(
     enable_lipsync: bool | None = None,
     progress_cb: Callable[[dict], None] | None = None,
     should_cancel: Callable[[], bool] | None = None,
-    inputs: "Mapping[str, registry.KeyedInput] | None" = None,
+    inputs: "Mapping[str, Callable[[Any], tuple[Any, str]]] | None" = None,
     beat_source: "Callable[[Any], registry.MasterBeats] | None" = None,
     keep: "KeptScores | None" = None,
 ) -> dict:
@@ -124,16 +125,17 @@ def score_project(
         enable_lipsync: force the opt-in tier on/off (default: the env flag).
         progress_cb: sink for ``{'kind':'progress', ...}`` dict events (nw.jobs mirror shape).
         should_cancel: polled between clips/stages; a True short-circuits to a clean cancel.
-        inputs: ``{name: KeyedInput}`` — how each keyed master input
-            (``registry.INPUTS``) is read, value and fingerprint together (muvid#224;
-            default :data:`DEFAULT_INPUTS`, the estimator's beat grid). The footage
+        inputs: ``{name: read}`` — how each keyed master input (``registry.INPUTS``)
+            is read: ``read(project) -> (value, fingerprint)``, the two together
+            (muvid#224; default :data:`DEFAULT_INPUTS`, the estimator's beat grid). The footage
             service passes its own, which prefers a declared grid (muvid#187). Each
             fingerprint goes into the manifest, so
             :func:`~muvid.footage.scoring.grid.stale_metrics` can tell scores measured
             on one value of an input from another.
         beat_source: ``project -> MasterBeats`` — the beat grid's provider alone, as
             before muvid#224; the ``MasterBeats.fingerprint`` is what is recorded.
-            Shorthand for ``inputs={BEATS: ...}``, which wins when both name it.
+            Shorthand for ``inputs={BEATS: ...}``; naming the beat grid in both is
+            refused.
         keep: a partial re-score (muvid#206): the CURRENT metrics' tracks to persist
             beside the ``keep.recompute`` ones this run measures (``metrics`` is then
             ignored). Re-checked against the song and alignments under the scoring lock:
@@ -163,6 +165,8 @@ class KeptScores:
     recompute: tuple[str, ...]
     song_hash: str
     align_fingerprint: str
+    #: the keyed inputs' fingerprints the kept tracks were measured on, by name
+    input_fingerprints: Mapping[str, str] = field(default_factory=dict)
 
 
 def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
@@ -199,29 +203,74 @@ def _estimated_beats(project) -> registry.MasterBeats:
     return registry.MasterBeats.estimated(beat_grid(str(project.song_path())))
 
 
-#: The keyed inputs a run reads when its host names none: the estimator's beat grid,
-#: whose fingerprint is ``""`` (the song already keys it).
-DEFAULT_INPUTS = {
-    registry.BEATS: registry.KeyedInput(
-        read=lambda project: (_estimated_beats(project), ""),
-        fingerprint=lambda project: "",
+#: How each keyed input is read when its host names none: the estimator's beat grid,
+#: whose fingerprint is ``""`` (the song already keys it). Only the beat grid has a
+#: default; a host scoring with another keyed input must provide it.
+DEFAULT_INPUTS = {registry.BEATS: lambda project: (_estimated_beats(project), "")}
+
+
+def _plan_run(metrics, keep, *, enable_lipsync):
+    """What a run measures: ``(wanted, want_lipsync, active, skipped_scorers,
+    needs_frames, needed)`` — validated (an unknown metric, an unavailable requested
+    scorer, an unregistered need all raise here, before any work)."""
+    if keep is not None:
+        metrics = list(keep.recompute)
+    want_lipsync = _lipsync_enabled(enable_lipsync)
+    # If the caller explicitly asks for lip-sync metrics, requesting them must ENABLE the tier
+    # (honoring availability) rather than silently returning an empty result.
+    # a partial re-score asks for the stale metrics IMPLICITLY: it never switches the
+    # opt-in tier on, and an unavailable scorer is skipped, not refused
+    explicit = set(metrics or ()) if keep is None else set()
+    requested_lipsync = explicit & registry.metrics_of_tier(registry.LIPSYNC_TIER)
+    if requested_lipsync and not want_lipsync:
+        want_lipsync = True
+    if metrics:
+        unknown = sorted(
+            set(metrics) - set(registry.default_metrics(include_lipsync=True))
+        )
+        if unknown:
+            raise ValueError(
+                f"unknown metric(s) {unknown}; registered: "
+                f"{registry.default_metrics(include_lipsync=True)}"
+            )
+    wanted = (
+        set(metrics)
+        if metrics
+        else set(registry.default_metrics(include_lipsync=want_lipsync))
     )
-}
+    # Only the scorers that can produce a wanted metric run; the frame decode (the
+    # expensive shared pass) happens iff one of them reads it.
+    selected = [
+        sc
+        for sc in registry.scorers(include_lipsync=want_lipsync)
+        if wanted & set(sc.metrics)
+    ]
+    active, skipped_scorers = _available(selected, requested=explicit)
+    # the hard quality gate is read off the decode pass, so a gated scorer needs it too
+    # (else the same metric would differ by what else was requested)
+    needs_frames = any(sc.needs_frames or sc.gated for sc in active)
+    needed = list(dict.fromkeys(name for sc in active for name in sc.needs))
+    for name in needed:  # a typo in `needs` fails here, before any work, not mid-job
+        try:
+            registry.artifact(name)
+        except KeyError as e:
+            raise ValueError(e.args[0]) from None
+
+    return wanted, want_lipsync, active, skipped_scorers, needs_frames, needed
 
 
 def _with_beat_source(inputs, beat_source):
     """``inputs`` with ``beat_source`` (the pre-#224 argument) as the beat provider."""
     if beat_source is None:
         return inputs
+    if inputs and registry.BEATS in inputs:
+        raise ValueError("pass the beat grid's provider once: inputs= or beat_source=")
 
     def read(project):
         master = beat_source(project)
         return master, master.fingerprint
 
-    beats = registry.KeyedInput(
-        read=read, fingerprint=lambda project: beat_source(project).fingerprint
-    )
-    return {registry.BEATS: beats, **(inputs or {})}
+    return {registry.BEATS: read, **(inputs or {})}
 
 
 def _read_inputs(project, inputs) -> "tuple[dict, dict]":
@@ -236,9 +285,21 @@ def _read_inputs(project, inputs) -> "tuple[dict, dict]":
     if missing:
         raise ValueError(f"no provider for keyed input(s) {missing}")
     values, fingerprints = {}, {}
-    for name, provider in keyed.items():
-        values[name], fingerprints[name] = provider.read(project)
+    for name, read in keyed.items():
+        values[name], fingerprints[name] = read(project)
     return values, fingerprints
+
+
+def _kept_inputs_moved(keep, fingerprints) -> bool:
+    """Whether an input a KEPT metric reads is not the value it was measured on — read
+    since the kept tracks were chosen (the #224 review: with two inputs, one changing
+    while the job waited left a kept metric measured on its old value)."""
+    kept = {tr.metric for trs in keep.tracks.values() for tr in trs}
+    return any(
+        fingerprints.get(name, "") != keep.input_fingerprints.get(name, "")
+        and kept & registry.metrics_reading(name)
+        for name in fingerprints
+    )
 
 
 def _emit(progress_cb, idx, total, name):
@@ -285,64 +346,34 @@ def _score(
         # the song or an offset changed while this job waited: every kept track was
         # placed through the old one, so none is kept (muvid#59's failure otherwise)
         keep = None
-    if keep is not None:
-        metrics = list(keep.recompute)
     song_dur = project.song_duration()
     n = grid_len(song_dur, hop_s)
     t0 = 0.0
     clip_paths = project.clip_paths()
 
-    want_lipsync = _lipsync_enabled(enable_lipsync)
-    # If the caller explicitly asks for lip-sync metrics, requesting them must ENABLE the tier
-    # (honoring availability) rather than silently returning an empty result.
-    # a partial re-score asks for the stale metrics IMPLICITLY: it never switches the
-    # opt-in tier on, and an unavailable scorer is skipped, not refused
-    explicit = set(metrics or ()) if keep is None else set()
-    requested_lipsync = explicit & registry.metrics_of_tier(registry.LIPSYNC_TIER)
-    if requested_lipsync and not want_lipsync:
-        want_lipsync = True
-    if metrics:
-        unknown = sorted(
-            set(metrics) - set(registry.default_metrics(include_lipsync=True))
-        )
-        if unknown:
-            raise ValueError(
-                f"unknown metric(s) {unknown}; registered: "
-                f"{registry.default_metrics(include_lipsync=True)}"
-            )
-    wanted = (
-        set(metrics)
-        if metrics
-        else set(registry.default_metrics(include_lipsync=want_lipsync))
+    # Planned BEFORE any work, so a bad metric or need is refused without estimating
+    # the beat grid; planned again only if the inputs read below unseat the kept tracks.
+    (wanted, want_lipsync, active, skipped_scorers, needs_frames, needed) = _plan_run(
+        metrics, keep, enable_lipsync=enable_lipsync
     )
-    # Only the scorers that can produce a wanted metric run; the frame decode (the
-    # expensive shared pass) happens iff one of them reads it.
-    selected = [
-        sc
-        for sc in registry.scorers(include_lipsync=want_lipsync)
-        if wanted & set(sc.metrics)
-    ]
-    active, skipped_scorers = _available(selected, requested=explicit)
-    # the hard quality gate is read off the decode pass, so a gated scorer needs it too
-    # (else the same metric would differ by what else was requested)
-    needs_frames = any(sc.needs_frames or sc.gated for sc in active)
-    needed = list(dict.fromkeys(name for sc in active for name in sc.needs))
-    for name in needed:  # a typo in `needs` fails here, before any work, not mid-job
-        try:
-            registry.artifact(name)
-        except KeyError as e:
-            raise ValueError(e.args[0]) from None
 
     total_stages = 1 + len(needed) + len(aligns)
     stage = 0
 
-    # 1. Master beat grid (once).
+    # 1. Master beat grid — with every keyed input, each read ONCE with its name: a grid
+    # declared or cleared while this job waited for the semaphore cannot put one grid's
+    # key beside another grid's beats, and so for every input (muvid#224).
     _emit(progress_cb, stage, total_stages, "beat_grid")
-    # Read ONCE, with its name: a grid declared or cleared while this job waited for the
-    # semaphore cannot put one grid's key beside another grid's beats — and so for
-    # every keyed input (muvid#224).
     input_values, input_fingerprints = _read_inputs(project, inputs)
     bg = input_values[registry.BEATS]
+    if keep is not None and _kept_inputs_moved(keep, input_fingerprints):
+        # an input a kept metric reads moved since the kept tracks were chosen: none
+        # is kept, and the run measures what a full run would
+        keep = None
+        (wanted, want_lipsync, active, skipped_scorers, needs_frames, needed) = (
+            _plan_run(metrics, None, enable_lipsync=enable_lipsync)
+        )
+        total_stages = 1 + len(needed) + len(aligns)
     stage += 1
     if _cancelled(should_cancel):
         return {"status": "cancelled", "stage": "beat_grid"}
@@ -396,7 +427,7 @@ def _score(
             coverage=tuple(a.coverage),
             frames=fp,
             beat=bg,
-            inputs=input_values,
+            inputs=MappingProxyType(input_values),
             grid=grid,
         )
         # Optional hard quality gate → AND into the mask of every GATED scorer's tracks.

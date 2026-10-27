@@ -58,8 +58,9 @@ INPUTS = (BEATS,)
 @dataclass(frozen=True)
 class KeyedInput:
     """How a host provides one keyed master input (:data:`INPUTS`, muvid#224) — the
-    single place an input is read, for the run that measures on it AND for the readers
-    that ask whether the scores are still current.
+    single place an input is read, for the run that measures on it (``read``, what the
+    host hands ``score_project(inputs=)``) AND for the readers that ask whether the
+    scores are still current (``fingerprint``).
 
     ``read(project) -> (value, fingerprint)`` is called once per scoring run and the two
     come back TOGETHER, so the manifest can never record one value's key beside another
