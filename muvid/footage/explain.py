@@ -147,7 +147,8 @@ def explain(
     id to ``{name, kind ('video'|'still'), role}``; ``alignments`` the clip
     placements (for synced cuts); ``envelope_of(clip_id)`` a video's picture signal
     (:class:`muvid.footage.music_cut.Envelope`) or ``None``; ``selection`` how the
-    edit was made (``pace``, ``style``, ``strategy``). ``window`` (song seconds)
+    edit was made (``pace``, ``style``, ``strategy``, and ``fallback`` / ``cause`` when
+    the ``weighted`` strategy fell back). ``window`` (song seconds)
     keeps only the cuts that overlap it; the summary is of the whole edit — or of
     ``scope``, the part of the song a trimmed edit covers (its ``span``), so the
     black outside it is not counted as shots.
@@ -387,6 +388,16 @@ def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
         said.append(f"{off} change{'s are' if off > 1 else ' is'} not on a beat.")
     elif not straddle and any(c.get("free") for c in cuts):
         said.append("Every change to the music starts on a beat.")
+    fallback = selection.get("fallback")
+    if fallback and selection.get("strategy") == "weighted":
+        # what `select_score.selection_notice` recorded: the score-driven cut could not
+        # run, so the edit is not the one the scores chose (muvid#184)
+        cause = selection.get("cause")
+        said.append(
+            "The score-driven choice of videos could not be made"
+            + (f" ({cause})" if cause else "")
+            + f", so {fallback} placed them instead — these cuts do not follow the scores."
+        )
     style = selection.get("style") or ""
     pace = selection.get("pace") or ""
     chose = []
