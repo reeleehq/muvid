@@ -669,7 +669,11 @@ def _affect_band(values: Sequence[float]) -> "Optional[tuple[float, float]]":
     vs = sorted(values)
     if not vs:
         return None
-    k = max(1, math.ceil(AFFECT_TRIM_SHARE * len(vs))) if len(vs) >= AFFECT_TRIM_MIN_POOL else 0
+    k = (
+        max(1, math.ceil(AFFECT_TRIM_SHARE * len(vs)))
+        if len(vs) >= AFFECT_TRIM_MIN_POOL
+        else 0
+    )
     for lo, hi in ((vs[k], vs[-1 - k]), (vs[0], vs[-1])):
         if _spread_enough(lo, hi):
             return lo, hi
@@ -1051,8 +1055,10 @@ def fill_spans(
         # which pictures that matching kept out of which stretch of the song (muvid#234):
         # one entry per section occurrence, pictures never shown there because of it
         "affect_withheld": [
-            {**{k: w[k] for k in ("section", "start", "end")},
-             "clips": [sources[m].clip_id for m in w["media"]]}
+            {
+                **{k: w[k] for k in ("section", "start", "end")},
+                "clips": [sources[m].clip_id for m in w["media"]],
+            }
             for w in plan.reuse.get("affect_withheld", [])
         ],
         # how well the pictures' feel fits the sections', over cut time: 1 a perfect
