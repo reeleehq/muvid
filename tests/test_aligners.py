@@ -229,3 +229,13 @@ def test_whisperx_lite_forwards_the_bound():
     assert _measured(
         align_whisperx_lite(lyrics, late, duration_s=30.0, max_words_per_s=None)
     )
+
+
+def test_without_a_duration_the_bound_is_off():
+    """No duration (ffprobe missing, no song) cannot price the time left: every
+    match is kept rather than all but the last dropped (the #101 review)."""
+    lyrics = _la_song(100)
+    late = _transcript([25.0 + 0.2 * i for i in range(25)])
+    assert align_lyrics(lyrics, late, duration_s=0.0).lines[0].start_s == pytest.approx(
+        25.0
+    )
