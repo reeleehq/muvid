@@ -592,6 +592,39 @@ def _treatment(archetype: str, cut_feel: str):
     return treatment
 
 
+def liveliness(src: FreeSource, env: "Optional[Envelope]") -> Optional[float]:
+    """The default ``affect_of`` (muvid#134): how much a video's picture moves — the
+    mean of its picture-change activity — or ``None`` (a still, or no envelope).
+    Arousal only, and raw: :func:`fill_spans` ranks it across the pool, so only the
+    ORDER of the videos' liveliness matters, not its scale."""
+    if env is None or env.activity.size == 0:
+        return None
+    return float(np.mean(np.nan_to_num(env.activity, nan=0.0)))
+
+
+def _affect_fit(sources, analysis, energy_at, *, affect_of, envelope):
+    """The planner's ``affect_fit`` (muvid#134) — ``|arousal - slot loudness|`` in
+    [0, 1], arousal being the picture's rank among the pool's ``affect_of`` values and
+    the loudness its section's — or ``None`` when there is nothing to match: no
+    ``affect_of``, fewer than two sections with a measured loudness, or fewer than two
+    distinct affects. A picture with no affect (``None``) sits in the middle."""
+    measured = [s for s in analysis.sections if s.energy_db is not None]
+    if affect_of is None or len(measured) < 2:
+        return None
+    raw = {i: affect_of(s, envelope(s)) for i, s in enumerate(sources)}
+    levels = sorted({v for v in raw.values() if v is not None})
+    if len(levels) < 2:
+        return None
+    rank = {v: k / (len(levels) - 1) for k, v in enumerate(levels)}
+    arousal = {i: (0.5 if v is None else rank[v]) for i, v in raw.items()}
+
+    def fit(draft, media) -> float:
+        loud = (energy_at((draft.start + draft.end) / 2.0) + 1.0) / 2.0
+        return abs(arousal.get(media.index, 0.5) - loud)
+
+    return fit
+
+
 def _section_energy(analysis) -> Callable[[float], float]:
     """Song time -> the loudness of its section in [-1, 1] (0 when unmeasured)."""
     secs = [s for s in analysis.sections if s.energy_db is not None]
@@ -625,6 +658,9 @@ def fill_spans(
     fit: str = "cover",
     size_of: Callable[[str], Optional[tuple[int, int]]] = display_size,
     order: str = DEFAULT_ORDER,
+    affect_of: Optional[
+        Callable[[FreeSource, "Optional[Envelope]"], Optional[float]]
+    ] = liveliness,
 ) -> MusicCut:
     """Free cuts of ``sources`` covering ``spans`` of the song (default: all of it).
 
@@ -637,6 +673,12 @@ def fill_spans(
     picture's displayed size (for ``cover``). ``order`` is one of :data:`ORDERS`: by
     default the pictures follow the order they were TAKEN in
     (:func:`chronological_picks`); the report says which order applied and why.
+    ``affect_of`` (muvid#134) gives each picture's feel — ``(source, envelope) ->`` a
+    number, higher livelier, or ``None`` — and the planner then puts lively pictures in
+    the loud sections and calm ones in the quiet sections (default :func:`liveliness`;
+    ``None`` turns it off). It reorders pictures, so it acts in the ``planner`` order
+    only; ``taken`` keeps the order they were taken in. The report's ``affect`` says
+    whether it applied.
 
     Returns :class:`MusicCut` whose ``entries`` are validated-shape
     :class:`~muvid.footage.edl.EdlEntry` free cuts, contiguous over each span, in song
@@ -677,6 +719,16 @@ def fill_spans(
                 direction, reuse=_replace(direction.reuse, order="chronological")
             ),
         )
+    envelopes: dict[str, Optional[Envelope]] = {}
+
+    def envelope(src: FreeSource) -> "Optional[Envelope]":
+        if src.clip_id not in envelopes:
+            envelopes[src.clip_id] = (
+                None if envelope_of is None or src.is_still else envelope_of(src)
+            )
+        return envelopes[src.clip_id]
+
+    energy_at = _section_energy(analysis)
     plan = plan_montage(
         analysis,
         media,
@@ -684,10 +736,16 @@ def fill_spans(
         active=lambda d: any(
             d.start < b - _SAME_FLOAT and d.end > a + _SAME_FLOAT for a, b in spans
         ),
+        affect_fit=(
+            None
+            if order == "taken"
+            else _affect_fit(
+                sources, analysis, energy_at, affect_of=affect_of, envelope=envelope
+            )
+        ),
     )
     order_used = plan.reuse.get("order", "planner")
     order_note = plan.reuse.get("order_note", "") or _mixed_clock_note(sources)
-    energy_at = _section_energy(analysis)
     beats = np.asarray(analysis.beats, dtype=float)
     if fit not in FITS:
         raise ValueError(f"fit must be one of {list(FITS)}, got {fit!r}")
@@ -704,15 +762,6 @@ def fill_spans(
             )
             crops[src.clip_id] = cover_crop(size_of(src.path), canvas, anchor=anchor)
         return crops[src.clip_id]
-
-    envelopes: dict[str, Optional[Envelope]] = {}
-
-    def envelope(src: FreeSource) -> "Optional[Envelope]":
-        if src.clip_id not in envelopes:
-            envelopes[src.clip_id] = (
-                None if envelope_of is None or src.is_still else envelope_of(src)
-            )
-        return envelopes[src.clip_id]
 
     used: dict[str, list[tuple[float, float]]] = {}
     fits: dict[str, list[float]] = {}
@@ -790,6 +839,8 @@ def fill_spans(
         # when it was taken)
         "order": order_used,
         "order_note": order_note,
+        # whether the pictures' feel was matched to the sections' loudness (muvid#134)
+        "affect": bool(plan.reuse.get("affect")),
         "sections": [
             {"label": s.label, "start": round(s.start, 2), "end": round(s.end, 2)}
             for s in analysis.sections

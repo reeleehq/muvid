@@ -731,3 +731,86 @@ def test_take_over_counts_the_blends_the_piece_carries_muvid_210():
         [cur, bare, roomy], cur, need=need, avoid=set(), uses=uses, transition=fade
     )
     assert picked_in.clip_id == "roomy"
+
+
+# -- muvid#134: the feel of the pictures matched to the feel of the music ------------
+
+
+def _affect_pool():
+    """Four calm videos (their picture hardly moves) and four lively ones."""
+    srcs = [
+        FreeSource(f"calm{i}", f"/x/calm{i}.mp4", duration_s=30.0) for i in range(4)
+    ]
+    srcs += [
+        FreeSource(f"live{i}", f"/x/live{i}.mp4", duration_s=30.0) for i in range(4)
+    ]
+
+    def envelope_of(src):
+        level = 0.05 if src.clip_id.startswith("calm") else 1.0
+        return Envelope(hop_s=0.1, activity=np.full(300, level), hits=np.zeros(300))
+
+    return srcs, envelope_of
+
+
+def _fit_share(cut, *, boundary):
+    """The share of cut time where a calm picture is in the quiet half (before
+    ``boundary``) or a lively one in the loud half."""
+    good = total = 0.0
+    for e in cut.entries:
+        length = e.song_end - e.song_start
+        calm = e.clip_id.startswith("calm")
+        quiet = (e.song_start + e.song_end) / 2 < boundary
+        good += length if calm == quiet else 0.0
+        total += length
+    return good / total
+
+
+def test_calm_pictures_land_in_the_quiet_half_and_lively_ones_in_the_loud_half():
+    """muvid#134's acceptance: a song with a quiet and a loud half, a pool with calm
+    and lively videos — the obvious answer is calm-in-quiet, lively-in-loud."""
+    srcs, envelope_of = _affect_pool()
+    kw = dict(
+        analysis=_analysis(40.0, 120.0),  # verse -20 dB (0-20 s), chorus -10 dB
+        envelope_of=envelope_of,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1920, 1080),
+        archetype="beat_cut",
+        order="planner",
+    )
+    matched = fill_spans("/x/s.wav", srcs, **kw)
+    blind = fill_spans("/x/s.wav", srcs, affect_of=None, **kw)
+    assert matched.report["affect"] is True and blind.report["affect"] is False
+    # every cut fits: the finale reserve, too, is chosen from pictures that fit the
+    # (loud) finale — before that it showed two calm pictures there (0.95)
+    assert _fit_share(matched, boundary=20.0) == 1.0
+    assert _fit_share(blind, boundary=20.0) < 0.7  # the premise: blind is a coin toss
+
+
+def test_affect_leaves_the_taken_order_and_unmeasured_songs_alone():
+    srcs, envelope_of = _affect_pool()
+    kw = dict(
+        envelope_of=envelope_of,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1920, 1080),
+        archetype="beat_cut",
+    )
+    taken = fill_spans("/x/s.wav", srcs, analysis=_analysis(40.0, 120.0), **kw)
+    assert taken.report["affect"] is False  # the order pictures were taken in rules
+    flat = _analysis(40.0, 120.0)
+    from dataclasses import replace
+
+    flat = replace(
+        flat, sections=tuple(replace(s, energy_db=None) for s in flat.sections)
+    )
+    unmeasured = fill_spans("/x/s.wav", srcs, analysis=flat, order="planner", **kw)
+    assert unmeasured.report["affect"] is False  # no loudness to match against
+
+
+def test_liveliness_is_the_mean_picture_activity_and_none_for_a_still():
+    from muvid.footage.music_cut import liveliness
+
+    env = Envelope(hop_s=0.1, activity=np.array([0.0, 1.0, np.nan]), hits=np.zeros(3))
+    assert liveliness(
+        FreeSource("v", "/x/v.mp4", duration_s=1.0), env
+    ) == pytest.approx(1 / 3)
+    assert liveliness(FreeSource("p", "/x/p.jpg", kind="still"), None) is None
