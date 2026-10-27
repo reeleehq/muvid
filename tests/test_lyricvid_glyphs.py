@@ -1999,3 +1999,48 @@ def test_an_unsung_glyph_with_a_stray_time_does_not_move_a_page_turn():
     )
     turns = lambda s: sorted({round(c.t_out, 3) for c in s.cues if c.layer == 1})
     assert turns(sc) == turns(base)
+
+
+@pytest.mark.parametrize(
+    "value, msg",
+    [
+        ('{"x": "fien"}', "not a line index"),  # the issue's own case
+        ('{"x": "fin", "y": "fine"}', "not a line index"),
+        ('{"title": "x", "timing_override": {"1": "fine"}}', "did you mean"),
+        ('{"title": "x", "Timing-Overrides": {"1": "fine"}}', "did you mean"),
+        ('{"title": "x", "timingoverides": {"1": "fine"}}', "did you mean"),
+    ],
+)
+def test_a_misspelt_overrides_key_or_value_is_refused_muvid_162(value, msg):
+    """muvid#162: with no song-spec schema, a near-miss of the key or of every value
+    was read as a spec recording none, and nothing was applied in silence."""
+    from muvid.lyricvid.__main__ import _timing_overrides_arg
+
+    with pytest.raises((SystemExit, ValueError), match=msg):
+        ga.check_timing_overrides(_timing_overrides_arg(value), 4)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        '{"title": "x", "lyrics": "y"}',
+        '{"title": "Fine day", "lyrics": "one"}',  # "one" is two edits from "fine"
+        '{"title": "x", "timings": {}}',  # far from the key
+    ],
+)
+def test_a_spec_recording_none_is_said_not_silent_muvid_162(value, capsys):
+    from muvid.lyricvid.__main__ import _timing_overrides_arg
+
+    assert _timing_overrides_arg(value) == {}
+    err = capsys.readouterr().err
+    assert "recording no timing_overrides" in err and "title" in err
+
+
+def test_no_flag_and_a_recorded_none_stay_silent(capsys):
+    """The default path is unaffected: no flag, an empty object, or a spec that says
+    `timing_overrides: null` apply nothing and say nothing."""
+    from muvid.lyricvid.__main__ import _timing_overrides_arg
+
+    for value in ("", "{}", '{"title": "x", "timing_overrides": null}'):
+        assert _timing_overrides_arg(value) == {}
+    assert capsys.readouterr().err == ""
