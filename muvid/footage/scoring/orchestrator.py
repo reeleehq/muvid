@@ -67,13 +67,14 @@ def list_available_extractors() -> dict:
         return importlib.util.find_spec(mod) is not None
 
     from muvid.footage.scoring.lipsync import lipsync_available
+    from muvid.footage.scoring.segment import shots_available
 
     ok, reason = lipsync_available()
     return {
         "quality": _has("cv2"),
         "face_framing": _has("mediapipe"),
         "motion_beat": _has("cv2") and _has("librosa"),
-        "segment": _has("scenedetect"),
+        "segment": shots_available(),
         "lipsync": {"available": ok, "reason": reason},
         # every registered scorer, built-in or not (muvid#19), with the availability the
         # orchestrator enforces (muvid#184)
@@ -398,6 +399,7 @@ def _score(
 
     tracks_by_clip: dict[str, list] = {}
     shots_by_clip: dict[str, list] = {}
+    shots_skipped: dict[str, str] = {}
     skipped: dict[str, str] = {}
 
     for a in aligns:
@@ -451,8 +453,14 @@ def _score(
                 produced_tracks = [_and_mask(tr, gate) for tr in produced_tracks]
             clip_tracks.extend(produced_tracks)
 
-        # Shot boundaries (for the selector's beats+shots mode).
-        shots_by_clip[a.clip_id] = shot_boundaries(str(path), offset_s=a.offset_s)
+        # Shot boundaries (for the selector's beats+shots mode). A detector failure is
+        # recorded, never fatal: the shots are a by-product only `beats+shots` reads, and
+        # raising here would throw away every clip's tracks, the most expensive artifact
+        # in the pipeline (muvid#220). Recorded in `shots_skipped`, so it is not silent.
+        try:
+            shots_by_clip[a.clip_id] = shot_boundaries(str(path), offset_s=a.offset_s)
+        except Exception as e:  # noqa: BLE001 - recorded per clip in shots_skipped
+            shots_skipped[a.clip_id] = f"shot detection failed: {e}"
 
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 
@@ -507,6 +515,7 @@ def _score(
             "sample_fps": sample_fps or F.DEFAULT_SAMPLE_FPS,
             "lipsync_enabled": want_lipsync,
             "skipped": skipped,
+            "shots_skipped": shots_skipped,
         },
     )
     return {
@@ -514,6 +523,7 @@ def _score(
         "metrics": metric_axis,
         "clips_scored": list(tracks_by_clip.keys()),
         "skipped": skipped,
+        "shots_skipped": shots_skipped,
         "n_frames": n,
         "hop_s": hop_s,
         "beats": int(len(bg.beat_times)),

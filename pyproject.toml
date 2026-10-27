@@ -330,7 +330,7 @@ project_name = ""
 # hardcodes the same value in its two install-deps-uv steps; keep the three sites in
 # agreement.
 [tool.wads.ci.install]
-extras = "ai,mcp,ui,lyricvid,photos"
+extras = "ai,mcp,ui,lyricvid,photos,scoring-shots"
 
 [tool.wads.ci.commands]
 pre_test = []
