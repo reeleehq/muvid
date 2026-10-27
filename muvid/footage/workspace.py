@@ -114,8 +114,10 @@ def normalise_id(value: str, *, label: str) -> str:
     """
     v = (value or "").strip() if isinstance(value, str) else ""
     if not ID_PATTERN.fullmatch(v):
+        # an id is a name of at most 64 characters: never echo more of a refused one
+        shown = repr(value)[:66]
         raise ValueError(
-            f"invalid {label} {value!r}: use 1-64 letters, digits, '_' or '-'"
+            f"invalid {label} {shown}: use 1-64 letters, digits, '_' or '-'"
         )
     return v
 

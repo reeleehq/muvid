@@ -1670,6 +1670,23 @@ def scores(
     un-normalised values (``null`` where not measured), so a tooltip can show the real
     number beside its score.
     """
+    manifest, tensor = _current_scores(fp)
+    grid = {
+        "t0": manifest["t0"],
+        "hop_s": manifest["hop_s"],
+        "n": manifest["n"],
+        "song_duration": round(manifest["n"] * manifest["hop_s"], 3),
+    }
+    applied = _applied_weights(preset, weights)
+    if not clip_id:
+        return _scores_summary(fp, tensor, manifest, grid, max_points, applied)
+    return _clip_scores(
+        fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
+    )
+
+
+def _current_scores(fp):
+    """``(manifest, tensor)`` of the CURRENT scores, or a refusal naming the next step."""
     from muvid.footage.scoring.grid import load_manifest, load_tensor
 
     manifest = load_manifest(fp.root)
@@ -1683,12 +1700,11 @@ def scores(
     tensor = load_tensor(fp.root)
     if tensor is None:
         raise FootageError("scores are present but unreadable — re-run score_footage")
-    grid = {
-        "t0": manifest["t0"],
-        "hop_s": manifest["hop_s"],
-        "n": manifest["n"],
-        "song_duration": round(manifest["n"] * manifest["hop_s"], 3),
-    }
+    return manifest, tensor
+
+
+def _applied_weights(preset: str, weights: Optional[dict]) -> dict:
+    """The weights a composite is computed under: a ``preset`` and/or explicit ones."""
     from muvid.footage.select_score import resolve_config
 
     try:
@@ -1702,11 +1718,119 @@ def scores(
             raise ValueError("weights must be finite numbers")
     except (TypeError, ValueError) as e:
         raise FootageError(f"bad weights/preset: {e}") from e
-    if not clip_id:
-        return _scores_summary(fp, tensor, manifest, grid, max_points, applied)
-    return _clip_scores(
-        fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
+    return applied
+
+
+def score_candidates(
+    fp,
+    *,
+    candidates: list[dict],
+    weights: Optional[dict[str, float]] = None,
+    preset: str = "",
+) -> dict:
+    """How well each candidate stretch of a video scores — to choose between takes.
+
+    ``candidates`` are ``{clip_id, song_start, song_end}`` spans on the song timeline
+    (seconds), up to as many as an edit may have cuts. Each answer repeats its own span
+    (match by span, never by position) with ``composite`` — the mean of the weighted
+    blend of the scores over the frames where a weighted metric was measured, ``null``
+    when none was — ``measured`` (the fraction of the span's frames that were), and
+    ``metrics``, each metric's mean normalised score over its measured frames (``null``
+    where it was never measured). Nothing measured is not a low score, so read
+    ``composite`` with ``measured``: it is NOT the ``weighted`` strategy's reward, which
+    counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+
+    ``weights`` / ``preset`` as for ``scores``; the reply's ``weights`` says which
+    applied. Needs current scores (``score`` first). A span off the song, or a video the
+    scores do not hold, is refused.
+    """
+    import numpy as np
+
+    from muvid.footage.edl import MAX_EDL_ENTRIES
+    from muvid.footage.select_score import composite_lane
+
+    if not isinstance(candidates, list) or not candidates:
+        raise FootageError("candidates must be a non-empty list of spans")
+    if len(candidates) > MAX_EDL_ENTRIES:
+        raise FootageError(
+            f"at most {MAX_EDL_ENTRIES} candidates per call, got {len(candidates)}"
+        )
+    _manifest, tensor = _current_scores(fp)
+    applied = _applied_weights(preset, weights)
+    song_end = tensor.t0 + tensor.n * tensor.hop_s
+    lanes: dict[str, "np.ndarray"] = {}
+    out = []
+    for i, c in enumerate(candidates):
+        cid, start, end = _candidate(c, i, song_end=song_end)
+        if cid not in tensor.clip_ids:
+            raise FootageError(
+                f"candidate {i}: the scores hold no video {cid!r} — "
+                "scores lists the ones they hold"
+            )
+        lo, hi = _span_frames(tensor, start, end)
+        if cid not in lanes:
+            lanes[cid] = composite_lane(tensor, applied, cid)
+        lane = lanes[cid][lo:hi]
+        ci = tensor.clip_index(cid)
+        S, M = tensor.S[ci, lo:hi], tensor.M[ci, lo:hi]
+        measured = ~np.isnan(lane)
+        out.append(
+            {
+                "clip_id": cid,
+                "song_start": start,
+                "song_end": end,
+                "composite": round(float(lane[measured].mean()), 4)
+                if measured.any()
+                else None,
+                "measured": round(float(measured.mean()), 4),
+                "metrics": {
+                    m: (
+                        round(float(S[M[:, mi], mi].mean()), 4)
+                        if M[:, mi].any()
+                        else None
+                    )
+                    for mi, m in enumerate(tensor.metrics)
+                },
+            }
+        )
+    return {"candidates": out, "weights": applied}
+
+
+def _span_frames(tensor, start: float, end: float) -> "tuple[int, int]":
+    """``[lo, hi)``: the grid frames whose instant falls in ``[start, end)`` (the
+    selector's own ``_kappa``), or — for a span shorter than a hop that holds no frame
+    instant — the one frame it sits on.
+
+    >>> from types import SimpleNamespace
+    >>> grid = SimpleNamespace(t0=0.0, hop_s=0.1, n=300)
+    >>> _span_frames(grid, 20.0, 25.0), _span_frames(grid, 20.01, 20.06)
+    ((200, 250), (200, 201))
+    """
+    from muvid.footage.select_score import _kappa
+
+    lo = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
+    hi = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
+    if hi > lo:
+        return lo, hi
+    at = min(
+        tensor.n - 1, max(0, math.floor((start - tensor.t0) / tensor.hop_s + 1e-9))
     )
+    return at, at + 1
+
+
+def _candidate(c, i: int, *, song_end: float) -> "tuple[str, float, float]":
+    """``(clip_id, song_start, song_end)`` of candidate ``i``, checked, or a refusal."""
+    if not isinstance(c, dict):
+        raise FootageError(f"candidate {i} must be {{clip_id, song_start, song_end}}")
+    cid = _normalised_id(c.get("clip_id"), label=f"candidate {i} clip_id")
+    start = _finite(c.get("song_start"), f"candidate {i} song_start")
+    end = _finite(c.get("song_end"), f"candidate {i} song_end")
+    if not 0.0 <= start < end <= song_end + _SONG_END_SLACK_S:
+        raise FootageError(
+            f"candidate {i} must satisfy 0 <= song_start < song_end <= the song's "
+            f"{song_end:g} s, got [{start:g}, {end:g}]"
+        )
+    return cid, start, end
 
 
 def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
@@ -1769,27 +1893,18 @@ def _clip_scores(
 
 
 def _composite_lane(fp, tensor, clip_id, weights, max_points) -> dict:
-    """The clip's weighted composite — what ``weighted`` ranks it by — as a lane.
+    """The clip's weighted composite — what ``weighted`` ranks it by — as a lane
+    (:func:`muvid.footage.select_score.composite_lane`): ``null`` where no weighted
+    metric could be measured for the frame."""
+    from muvid.footage.select_score import composite_lane
 
-    Before the unvouched-clip demotion the DP applies on top. ``null`` where no weighted
-    metric could be measured for the frame: the selector uses 0 there (a cumulative sum cannot hold a NaN), but a lane that drew it as a
-    real low score would be the muvid#19 defect again, one layer up.
-    """
-    import numpy as np
-
-    from muvid.footage.select_score import _composite
-
-    aligns = [a for a in fp.load_alignments() if a.clip_id == clip_id]
-    if not aligns:
+    if not any(a.clip_id == clip_id for a in fp.load_alignments()):
         return {"values": None, "reason": "clip has no placement"}
-    g, total = _composite(tensor, weights, aligns)
-    if total <= 0:
+    if not any(float(weights.get(m, 0.0)) > 0 for m in tensor.metrics):
         return {"values": None, "reason": "no weighted metric is in the scores"}
-    ci = tensor.clip_index(clip_id)
-    w = np.array([max(0.0, float(weights.get(m, 0.0))) for m in tensor.metrics])
-    measured = (tensor.M[ci].astype(float) @ w) > 0
-    lane = np.where(measured, g[0], np.nan)
-    return {"values": _decimate_values(lane, max_points)}
+    return {
+        "values": _decimate_values(composite_lane(tensor, weights, clip_id), max_points)
+    }
 
 
 def _stride(n: int, max_points: int) -> int:
@@ -4249,6 +4364,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         host_params=("should_cancel",),
     ),
     OpSpec("scores", "Show how each video scores over the song", "read"),
+    OpSpec("score_candidates", "Compare how stretches of the videos score", "read"),
     OpSpec("strategies", "List the ways to cut", "read"),
     OpSpec("propose_edit", "Cut it for me", "write"),
     OpSpec("save_edit", "Save a cut list as a new edit", "write"),

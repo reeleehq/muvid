@@ -315,9 +315,10 @@ What to know (the list is unnumbered on purpose — the count was already wrong)
 - `muvid/footage/strategy.py` — `select_edl(strategy, aligns, dur, *, context=None)`; the
   built-in `best_confidence`/`longest_take`/`fewest_cuts` remain the alignment-only fallbacks
   (context is passed only to strategies that declare it — the `nw.jobs._call_dispatch` idiom).
-- **Scoring is keyed on INPUTS ONLY** (`song_hash` + offsets + metrics + hop) — weights enter
+- **Scoring is keyed on INPUTS ONLY** (`song_hash` + offsets + beat grid + metrics + hop) — weights enter
   at ASSEMBLE, so one tensor serves every preset. MCP: `score_footage` (background `nw.jobs`),
-  `footage_score_status` (bounded long-poll), `footage_scores` (editor reads), and
+  `footage_score_status` (bounded long-poll), `footage_scores` (editor reads),
+  `footage_score_candidates` (how given stretches score, span-keyed), and
   `assemble_music_video(strategy='weighted', preset=…, weights=…, config=…)`.
 - `muvid/footage/look.py` — the `looks` seam: `punch_in`, `motion`, `stylize`, `chain`,
   `punch_in_cuts`. Compiles only; the assembler splices. `muvid/footage/assemble.py`'s

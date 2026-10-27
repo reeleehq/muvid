@@ -386,13 +386,23 @@ def _composite(
     downstream segment reward. A frame with nothing measured is genuinely unusable, so
     0 is also the right ranking; the distinction that matters is the one above.
     """
-    metrics = tensor.metrics
-    w = np.array(
-        [max(0.0, float(weights.get(m, 0.0))) for m in metrics], dtype=np.float64
+    return _composite_rows(tensor, weights, [a.clip_id for a in aligns])
+
+
+def _weight_vector(tensor, weights: Mapping[str, float]) -> np.ndarray:
+    return np.array(
+        [max(0.0, float(weights.get(m, 0.0))) for m in tensor.metrics],
+        dtype=np.float64,
     )
+
+
+def _composite_rows(
+    tensor, weights: Mapping[str, float], clip_ids: Sequence[str]
+) -> tuple[np.ndarray, float]:
+    """:func:`_composite` for a list of clip ids, in that order."""
+    w = _weight_vector(tensor, weights)
     W = float(w.sum())
-    n = tensor.n
-    g = np.zeros((len(aligns), n), dtype=np.float64)
+    g = np.zeros((len(clip_ids), tensor.n), dtype=np.float64)
     if W <= 0:
         return g, 0.0
     S = np.nan_to_num(np.asarray(tensor.S, dtype=np.float64), nan=0.0)
@@ -400,10 +410,33 @@ def _composite(
     num = (S * M) @ w  # [n_clips_tensor, n]
     den = M @ w  # per-frame available weight
     contrib = np.divide(num, den, out=np.zeros_like(num), where=den > 0)
-    for ai, a in enumerate(aligns):
-        if a.clip_id in tensor.clip_ids:
-            g[ai] = contrib[tensor.clip_ids.index(a.clip_id)]
+    for ai, cid in enumerate(clip_ids):
+        if cid in tensor.clip_ids:
+            g[ai] = contrib[tensor.clip_ids.index(cid)]
     return g, W
+
+
+def composite_lane(tensor, weights: Mapping[str, float], clip_id: str) -> np.ndarray:
+    """One clip's weighted composite, frame by frame on the song grid — what the
+    ``weighted`` strategy ranks it by — with ``NaN`` where no weighted metric was
+    measured (muvid#184).
+
+    It is the composite BEFORE the unvouched-clip demotion the DP adds on top
+    (:data:`UNVOUCHED_REWARD_PENALTY`). The DP itself reads 0 at an unmeasured frame (a
+    cumulative sum cannot hold a NaN); a reader that drew that 0 as a real low score
+    would be the muvid#19 defect one layer up, hence the NaN. All-NaN when the clip is
+    not in the tensor or no metric carries weight.
+    """
+    if clip_id not in tensor.clip_ids:
+        return np.full(tensor.n, np.nan)
+    g, total = _composite_rows(tensor, weights, [clip_id])
+    if total <= 0:
+        return np.full(tensor.n, np.nan)
+    measured = (
+        tensor.M[tensor.clip_index(clip_id)].astype(float)
+        @ _weight_vector(tensor, weights)
+    ) > 0
+    return np.where(measured, g[0], np.nan)
 
 
 #: Reward-seconds per second charged to a clip the aligner will not vouch for. The

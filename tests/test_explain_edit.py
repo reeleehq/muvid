@@ -155,3 +155,17 @@ def test_an_edit_whose_clip_was_removed_is_still_explained(proj):
     service.remove_clip(proj, clip_id="v2")
     out = service.explain_edit(proj, edit_id=made["edit_id"])
     assert out["cuts"]
+
+
+def test_a_weighted_edit_that_fell_back_says_so():
+    """muvid#184 item 5: ``strategy: weighted`` alone would claim a score-driven edit."""
+    an = _analysis(bpm=60.0)
+    entries = [EdlEntry(0.0, 4.0, "v1", source_in=0.0)]
+    fell_back = {"strategy": "weighted", "fallback": "best_confidence", "cause": "no_scores"}
+    out = explain(entries, analysis=an, song_duration=4.0, clips=_clips(), selection=fell_back)
+    assert "best_confidence placed them instead" in out["summary"]
+    assert "(no_scores)" in out["summary"]
+    plain = explain(
+        entries, analysis=an, song_duration=4.0, clips=_clips(), selection={"strategy": "weighted"}
+    )
+    assert "score-driven" not in plain["summary"]

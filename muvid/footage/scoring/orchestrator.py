@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import os
 import threading
+from dataclasses import replace
 from typing import Any, Callable, Sequence
 
 from muvid.footage.scoring import registry
@@ -73,12 +74,30 @@ def list_available_extractors() -> dict:
         "motion_beat": _has("cv2") and _has("librosa"),
         "segment": _has("scenedetect"),
         "lipsync": {"available": ok, "reason": reason},
-        # every registered scorer, built-in or not (muvid#19)
+        # every registered scorer, built-in or not (muvid#19), with the availability the
+        # orchestrator enforces (muvid#184)
         "scorers": {
-            s.name: {"metrics": list(s.metrics), "tier": s.tier}
+            s.name: {"metrics": list(s.metrics), "tier": s.tier, **_availability(s)}
             for s in registry.scorers(include_lipsync=True)
         },
     }
+
+
+def _probe(scorer) -> "tuple[bool, str]":
+    """``scorer.available()``, with a plugin whose own check cannot even import its
+    dependency recorded as unavailable — one broken plugin is a recorded reason, never a
+    dead catalogue (``ImportError`` only: any other exception is a bug to surface)."""
+    if scorer.available is None:
+        return True, ""
+    try:
+        return scorer.available()
+    except ImportError as e:
+        return False, f"its availability check could not import: {e}"
+
+
+def _availability(scorer) -> dict:
+    ok, reason = _probe(scorer)
+    return {"available": ok, **({"reason": reason} if not ok else {})}
 
 
 def score_project(
@@ -121,6 +140,33 @@ def score_project(
             should_cancel=should_cancel,
             beat_source=beat_source,
         )
+
+
+def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
+    """``(the scorers that can run, {name: reason} for those that cannot})``.
+
+    ``Scorer.available`` is enforced here, generically (muvid#184): an unavailable
+    scorer does not run and its reason is recorded. A metric the caller ASKED for by name
+    is refused instead — asking for it and getting nothing would be a silent empty."""
+    ok, skipped = [], {}
+    for sc in scorers:
+        able, reason = _probe(sc)
+        if able:
+            ok.append(sc)
+            continue
+        asked = sorted(requested & set(sc.metrics))
+        if asked:
+            raise ValueError(
+                f"metric(s) {asked} requested but scorer {sc.name!r} is unavailable: "
+                f"{reason}"
+                + (
+                    " (install muvid[scoring-lipsync] + set weights)"
+                    if sc.tier == registry.LIPSYNC_TIER
+                    else ""
+                )
+            )
+        skipped[sc.name] = reason
+    return ok, skipped
 
 
 def _estimated_beats(project) -> registry.MasterBeats:
@@ -178,14 +224,6 @@ def _score(
         else set()
     )
     if requested_lipsync and not want_lipsync:
-        from muvid.footage.scoring.lipsync import lipsync_available
-
-        ok, reason = lipsync_available()
-        if not ok:
-            raise ValueError(
-                f"lip-sync metrics {sorted(requested_lipsync)} requested but the tier is "
-                f"unavailable: {reason} (install muvid[scoring-lipsync] + set weights)"
-            )
         want_lipsync = True
     if metrics:
         unknown = sorted(
@@ -203,16 +241,23 @@ def _score(
     )
     # Only the scorers that can produce a wanted metric run; the frame decode (the
     # expensive shared pass) happens iff one of them reads it.
-    active = [
+    selected = [
         sc
         for sc in registry.scorers(include_lipsync=want_lipsync)
         if wanted & set(sc.metrics)
     ]
+    active, skipped_scorers = _available(selected, requested=set(metrics or ()))
     # the hard quality gate is read off the decode pass, so a gated scorer needs it too
     # (else the same metric would differ by what else was requested)
     needs_frames = any(sc.needs_frames or sc.gated for sc in active)
+    needed = list(dict.fromkeys(name for sc in active for name in sc.needs))
+    for name in needed:  # a typo in `needs` fails here, before any work, not mid-job
+        try:
+            registry.artifact(name)
+        except KeyError as e:
+            raise ValueError(e.args[0]) from None
 
-    total_stages = 1 + (1 if want_lipsync else 0) + len(aligns)
+    total_stages = 1 + len(needed) + len(aligns)
     stage = 0
 
     # 1. Master beat grid (once).
@@ -224,28 +269,23 @@ def _score(
     if _cancelled(should_cancel):
         return {"status": "cancelled", "stage": "beat_grid"}
 
-    # 2. (opt-in) master vocal stem (once).
-    vocal_stem = None
-    if want_lipsync:
-        _emit(progress_cb, stage, total_stages, "separate_vocals")
-        from muvid.footage.scoring.lipsync import (
-            lipsync_available,
-            separate_master_vocals,
+    # 2. The shared master artifacts the running scorers declared (once each) — the
+    # lip-sync tier's vocal stem, or anything a plugin registers.
+    artifacts = {}
+    for name in needed:
+        art = registry.artifact(name)
+        _emit(progress_cb, stage, total_stages, art.stage)
+        artifacts[name] = art.build(
+            str(project.song_path()), str(project.root / "scores")
         )
-
-        ok, _reason = lipsync_available()
-        if ok:
-            vocal_stem = separate_master_vocals(
-                str(project.song_path()),
-                out_dir=str(project.root / "scores" / "_stems"),
-            )
         stage += 1
         if _cancelled(should_cancel):
-            return {"status": "cancelled", "stage": "separate_vocals"}
+            return {"status": "cancelled", "stage": art.stage}
 
     face_fn = F.make_face_scorer() if needs_frames else None
     fps_kw = {} if sample_fps is None else {"sample_fps": sample_fps}
-    grid_kw = {"t0": t0, "hop_s": hop_s, "n": n}
+    grid = registry.Grid(t0=t0, hop_s=hop_s, n=n)
+    grid_kw = grid.as_kwargs()
 
     tracks_by_clip: dict[str, list] = {}
     shots_by_clip: dict[str, list] = {}
@@ -273,11 +313,12 @@ def _score(
         ctx = registry.ClipContext(
             clip_id=a.clip_id,
             path=str(path),
-            alignment=a,
+            offset_s=a.offset_s,
+            duration_s=a.duration_s,
+            coverage=tuple(a.coverage),
             frames=fp,
             beat=bg,
-            vocal_stem=str(vocal_stem) if vocal_stem is not None else None,
-            grid=grid_kw,
+            grid=grid,
         )
         # Optional hard quality gate → AND into the mask of every GATED scorer's tracks.
         gate = None
@@ -286,9 +327,16 @@ def _score(
             gate = None if g.all() else g
         clip_tracks = []
         for sc in active:
+            # each scorer sees only the artifacts it declared, so none comes to rely
+            # on another's `needs`
+            own = {n: artifacts[n] for n in sc.needs if artifacts.get(n) is not None}
             # only what the scorer DECLARED: a track under another scorer's metric
             # name would overwrite it in the tensor
-            produced_tracks = [tr for tr in sc.run(ctx) if tr.metric in sc.metrics]
+            produced_tracks = [
+                tr
+                for tr in sc.run(replace(ctx, artifacts=own))
+                if tr.metric in sc.metrics
+            ]
             if gate is not None and sc.gated:
                 produced_tracks = [_and_mask(tr, gate) for tr in produced_tracks]
             clip_tracks.extend(produced_tracks)
@@ -340,6 +388,7 @@ def _score(
         "hop_s": hop_s,
         "beats": int(len(bg.beat_times)),
         "lipsync_enabled": want_lipsync,
+        **({"skipped_scorers": skipped_scorers} if skipped_scorers else {}),
     }
 
 

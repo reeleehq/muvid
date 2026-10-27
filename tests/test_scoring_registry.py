@@ -119,7 +119,7 @@ def test_a_registered_scorer_is_scored_end_to_end(
     from muvid.footage.workspace import FootageWorkspace
 
     def run(ctx):
-        n = ctx.grid["n"]
+        n = ctx.grid.n
         raw = np.linspace(0, 1, n, dtype="float32")
         raw[: n // 2] = np.nan  # not measurable in the first half: masked, not 0.0
         mask = np.isfinite(raw)
@@ -127,8 +127,8 @@ def test_a_registered_scorer_is_scored_end_to_end(
             ScoreTrack(
                 ctx.clip_id,
                 "ramp",
-                ctx.grid["t0"],
-                ctx.grid["hop_s"],
+                ctx.grid.t0,
+                ctx.grid.hop_s,
                 raw,
                 mask,
                 "higher_better",
@@ -154,3 +154,204 @@ def test_a_registered_scorer_is_scored_end_to_end(
     mi = tensor.metric_index("ramp")
     assert tensor.M[0, : tensor.n // 2, mi].sum() == 0  # masked stays masked
     assert tensor.M[0, tensor.n // 2 + 1 :, mi].all()
+
+
+# -- generic availability and shared artifacts (muvid#184) ----------------------------
+
+from tests.test_declared_beat_grid import proj, scored_proj  # noqa: E402,F401
+
+
+def _only(*scorers):
+    R._SCORERS.clear()
+    for sc in scorers:
+        R.register_scorer(sc)
+
+
+def _track(ctx):
+    import numpy as np
+
+    from muvid.footage.scoring.grid import ScoreTrack
+
+    raw = np.ones(ctx.grid.n, dtype="float32")
+    return lambda metric: ScoreTrack(
+        ctx.clip_id, metric, ctx.grid.t0, ctx.grid.hop_s, raw, np.isfinite(raw)
+    )
+
+
+def test_an_unavailable_scorer_is_skipped_with_its_reason_or_refused_if_asked(
+    scored_proj, clean_registry
+):
+    """``Scorer.available`` is enforced by the orchestrator, for any scorer — no longer a
+    lip-sync special case — and an explicitly requested metric is refused, not empty."""
+    from muvid.footage import service
+
+    proj, _seen, _ = scored_proj
+
+    def never(ctx):
+        raise AssertionError("an unavailable scorer ran")
+
+    _only(
+        R.Scorer(
+            "ok",
+            ("ok_m",),
+            lambda c: [_track(c)("ok_m")],
+            needs_frames=False,
+            gated=False,
+        ),
+        R.Scorer(
+            "never",
+            ("never_m",),
+            never,
+            needs_frames=False,
+            gated=False,
+            available=lambda: (False, "no weights on this machine"),
+        ),
+    )
+    out = service.run_scoring(proj)
+    assert out["metrics"] == ["ok_m"]
+    assert out["skipped_scorers"] == {"never": "no weights on this machine"}
+    with pytest.raises(ValueError, match="never_m.*no weights on this machine"):
+        service.run_scoring(proj, metrics=["never_m"])
+
+
+def test_a_shared_artifact_is_built_once_and_only_when_a_running_scorer_needs_it(
+    scored_proj, clean_registry, monkeypatch
+):
+    from muvid.footage import service
+
+    proj, _seen, _ = scored_proj
+    built, seen = [], []
+    monkeypatch.setitem(
+        R._ARTIFACTS,
+        "drum_stem",
+        R.Artifact(
+            "drum_stem",
+            lambda song, d: built.append(song) or "/stems/drums.wav",
+            stage="drums",
+        ),
+    )
+
+    def needs_drums(ctx):
+        seen.append(ctx.artifacts.get("drum_stem"))
+        return [_track(ctx)("drum_m")]
+
+    _only(
+        R.Scorer(
+            "drums",
+            ("drum_m",),
+            needs_drums,
+            needs_frames=False,
+            gated=False,
+            needs=("drum_stem",),
+        ),
+        R.Scorer(
+            "plain",
+            ("plain_m",),
+            lambda c: [_track(c)("plain_m")],
+            needs_frames=False,
+            gated=False,
+        ),
+    )
+    events = []
+    service.run_scoring(proj, metrics=["plain_m"])
+    assert built == []  # nobody running needed it
+    service.run_scoring(proj, progress_cb=events.append)
+    assert len(built) == 1 and seen == ["/stems/drums.wav"]
+    assert "drums" in [e.get("current_transform") for e in events]
+
+
+def test_a_scorer_sees_only_the_artifacts_it_declared(
+    scored_proj, clean_registry, monkeypatch
+):
+    """The #184 review: one shared ``artifacts`` map let a scorer come to rely on
+    another's ``needs``."""
+    from muvid.footage import service
+
+    proj, _seen, _ = scored_proj
+    monkeypatch.setitem(
+        R._ARTIFACTS,
+        "drum_stem",
+        R.Artifact("drum_stem", lambda s, d: "/d.wav", "drums"),
+    )
+    seen = {}
+
+    def run(name):
+        def _run(ctx):
+            seen[name] = dict(ctx.artifacts)
+            return [_track(ctx)(f"{name}_m")]
+
+        return _run
+
+    _only(
+        R.Scorer(
+            "a",
+            ("a_m",),
+            run("a"),
+            needs_frames=False,
+            gated=False,
+            needs=("drum_stem",),
+        ),
+        R.Scorer("b", ("b_m",), run("b"), needs_frames=False, gated=False),
+    )
+    out = service.run_scoring(proj)
+    assert seen == {"a": {"drum_stem": "/d.wav"}, "b": {}}
+    assert "skipped_scorers" not in out  # omit-when-absent: nothing was skipped
+
+
+def test_an_unregistered_need_is_refused_before_any_work(
+    scored_proj, clean_registry, monkeypatch
+):
+    from muvid.footage import service
+
+    proj, _seen, _ = scored_proj
+    estimated = []
+    monkeypatch.setattr(
+        "muvid.footage.service._master_beats", lambda fp: estimated.append(1)
+    )
+    _only(
+        R.Scorer(
+            "t",
+            ("t_m",),
+            lambda c: [],
+            needs_frames=False,
+            gated=False,
+            needs=("typo_stem",),
+        )
+    )
+    with pytest.raises(ValueError, match="no artifact 'typo_stem'"):
+        service.run_scoring(proj)
+    assert estimated == []  # the beat grid was never computed
+
+
+def test_a_plugin_whose_check_cannot_import_is_a_recorded_reason(
+    scored_proj, clean_registry
+):
+    from muvid.footage import service
+    from muvid.footage.scoring.orchestrator import list_available_extractors
+
+    proj, _seen, _ = scored_proj
+
+    def broken():
+        raise ImportError("No module named 'fancylib'")
+
+    _only(
+        R.Scorer(
+            "ok",
+            ("ok_m",),
+            lambda c: [_track(c)("ok_m")],
+            needs_frames=False,
+            gated=False,
+        ),
+        R.Scorer(
+            "fancy",
+            ("f_m",),
+            lambda c: [],
+            needs_frames=False,
+            gated=False,
+            available=broken,
+        ),
+    )
+    assert "fancylib" in service.run_scoring(proj)["skipped_scorers"]["fancy"]
+    info = list_available_extractors()["scorers"]
+    assert info["ok"]["available"] is True and "reason" not in info["ok"]
+    assert info["fancy"]["available"] is False and "fancylib" in info["fancy"]["reason"]
