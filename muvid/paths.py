@@ -63,6 +63,10 @@ DATA_HOME_ENV_VAR = "MUVID_DATA_HOME"
 PROJECTS_KIND = "projects"
 
 
+#: The ``{kind}`` subfolder holding the ``.cube`` files a look's ``lut3d`` may load — the
+#: only files a look may name (muvid#244, :func:`muvid.footage.edl._validate_look_luts`).
+LUTS_KIND = "luts"
+
 def data_home() -> Path:
     """The muvid data root: ``$MUVID_DATA_HOME`` or ``~/.local/share/muvid``.
 
@@ -119,3 +123,12 @@ def project_root(name: str, *, kind: str = PROJECTS_KIND) -> Path:
         / safe_component(kind, label="kind")
         / safe_component(name, label="project name")
     )
+
+
+def lut_dir() -> Path:
+    """Where the LUTs a look may load live: ``{data_home}/luts`` (muvid#244).
+
+    Not created here, for :func:`project_root`'s reason; an absent folder simply holds
+    no LUT a look can name.
+    """
+    return data_home() / LUTS_KIND

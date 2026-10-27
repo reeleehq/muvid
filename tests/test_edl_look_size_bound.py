@@ -384,7 +384,9 @@ def test_the_3x_case_that_MAX_LOOK_SCALE_is_sized_for_is_really_in_the_sweep():
 
 def test_a_look_with_no_size_option_at_all_is_untouched():
     """The grades — the thing the seam is mostly for — are not in this at all."""
-    for look in ("hue=s=0", "eq=contrast=1.2", "lut3d=file=/x/y.cube", "null"):
+    # `lut3d` with no file: a named file must now exist in muvid's LUT folder
+    # (muvid#244, tests/test_look_lut.py), which is a different rule from this one
+    for look in ("hue=s=0", "eq=contrast=1.2", "lut3d=interp=trilinear", "null"):
         _validate(look)
 
 

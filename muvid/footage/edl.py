@@ -79,6 +79,11 @@ MAX_EDL_ENTRIES = int(os.environ.get("MUVID_FOOTAGE_MAX_EDL_ENTRIES", "500"))
 #: multiple is the whole of the legitimate range.
 MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 
+#: The largest ``LUT_3D_SIZE`` a look's ``lut3d`` may load (muvid#244). ``lut3d``'s memory
+#: is its cube's, not the frame's: 12 bytes x size^3 — 3.3 MB at 65 (the usual grading
+#: size), 201 MB at 256 — so the frame-cost budget cannot see it and this bounds it.
+MAX_LUT_SIZE = int(os.environ.get("MUVID_FOOTAGE_MAX_LUT_SIZE", "65"))
+
 #: How many filter links one look may carry. **Bounding the frame does not bound the
 #: memory** — that is the half :data:`MAX_LOOK_SCALE` misses: thirty-two links of
 #: ``scale=7680:4320`` on a 1920x1080 canvas measured 1648 MB, every one inside the
@@ -1936,11 +1941,10 @@ _LOOK_FORBIDDEN = "[];"
 #: dimension a bound can read, so the four filters that can change the output
 #: geometry are allowlisted per OPTION as well as by name.
 #:
-#: **What this still does NOT bound**, stated because a partial claim is worse
-#: than none: ``lut3d=file=`` will *attempt* to open any path the renderer can
-#: read. It cannot write, and a non-``.cube`` file fails to parse. That is a
-#: failure inside the caller's OWN render; writing to someone else's disk is the
-#: class this closes.
+#: **``lut3d=file=`` is confined separately** (muvid#244): before that it would
+#: *attempt* to open any path the renderer could read, and load a cube of any size.
+#: :func:`_validate_look_luts` now allows only a ``.cube`` inside
+#: :func:`muvid.paths.lut_dir` with ``LUT_3D_SIZE`` at most :data:`MAX_LUT_SIZE`.
 LOOK_FILTERS = frozenset(
     {
         # -- compiled: muvid.footage.look, via looks.compile_motion --
@@ -2610,6 +2614,28 @@ def _look_frames(look: str, canvas) -> "list[tuple[str, str, tuple, tuple]]":
     return out
 
 
+def look_may_resize(look: str) -> bool:
+    """Whether ``look`` can end at a frame size other than the one it is handed.
+
+    ``crop`` and ``zoompan`` always may (an expression crop, ``zoompan``'s hd720
+    default); ``scale`` / ``pad`` only when they declare a size — a colour-matrix
+    ``scale`` (``looks``' RGB wrapper) or a bare ``pad`` keeps the frame. The assembler
+    conforms such a look's output back to the canvas (muvid#244), so this errs towards
+    True: a conform on a frame already at canvas size passes it through unchanged.
+
+    >>> look_may_resize("eq=gamma=1.1,scale=in_color_matrix=bt709:out_color_matrix=bt709")
+    False
+    >>> look_may_resize("scale=7680:4320")
+    True
+    >>> look_may_resize("crop=w='iw*0.9':h=ih")
+    True
+    """
+    return any(
+        name in ("crop", "zoompan") or _link_output_sizes(name, args)
+        for name, args in _look_links(look)
+    )
+
+
 def _crop_literal_size(args: str, frame) -> tuple:
     """``crop``'s output when its ``w`` / ``h`` are plain pixel counts (each no larger
     than ``frame``); an expression keeps that axis at ``frame``'s, an upper bound.
@@ -2891,6 +2917,89 @@ def _validate_look_size(i, look: str, canvas) -> None:
             )
 
 
+#: ``lut3d``'s options a look may set, and its one positional slot. ``file`` is resolved
+#: by :func:`_validate_look_luts`; ``interp`` and ``clut`` pick an interpolation and a
+#: frame policy and allocate nothing.
+_LUT3D_OPTIONS = frozenset({"file", "interp", "clut"})
+_LUT3D_POSITIONAL = ("file",)
+#: A ``file`` value muvid reads as written: no ffmpeg escapes, no quotes, nothing that
+#: means something different after a level of unescaping. muvid's LUT folder needs none.
+_LUT_PATH_TEXT = re.compile(r"^/[A-Za-z0-9._/+@-]+$")
+#: How much of a cube is read looking for its ``LUT_3D_SIZE`` header.
+_LUT_HEADER_BYTES = 64 * 1024
+
+
+def _lut_cube_size(path) -> "int | None":
+    r"""The ``LUT_3D_SIZE`` a ``.cube`` declares in its header, or ``None``.
+
+    >>> import tempfile, pathlib
+    >>> with tempfile.TemporaryDirectory() as d:
+    ...     p = pathlib.Path(d, "a.cube")
+    ...     _ = p.write_text("TITLE t\nLUT_3D_SIZE 33\n0 0 0\n")
+    ...     _lut_cube_size(p)
+    33
+    """
+    with open(path, "rb") as f:
+        head = f.read(_LUT_HEADER_BYTES).decode("utf-8", "replace")
+    for line in head.splitlines():
+        words = line.split()
+        if len(words) == 2 and words[0] == "LUT_3D_SIZE" and words[1].isdigit():
+            return int(words[1])
+    return None
+
+
+def _validate_look_luts(i, look: str) -> None:
+    """Confine what a look's ``lut3d`` may load, and how large. Raises ``ValueError``.
+
+    ``lut3d=file=`` is the one path a look may name (:data:`_LOOK_FILE_OPTIONS`), and
+    before muvid#244 it would *attempt* to open any path the renderer could read — a
+    probe of the host's disk from a remote caller's EDL — and its memory is the cube's
+    (12 bytes x size^3), which :func:`_look_cost` cannot see. Now:
+
+    - only :data:`_LUT3D_OPTIONS` may be set, and no positional past ``file``;
+    - ``file`` is an absolute path, written without escapes, to an existing ``.cube``
+      inside :func:`muvid.paths.lut_dir` once symlinks are resolved;
+    - its header declares ``LUT_3D_SIZE`` at most :data:`MAX_LUT_SIZE`.
+
+    The refusals never print the LUT folder's path: hosted replies carry
+    project-relative paths only. The cube is read at validation, not at render: the
+    folder is muvid's, so a file swapped between the two is the operator's doing.
+    """
+    from pathlib import Path
+
+    from muvid.paths import lut_dir
+
+    def refuse(why):
+        raise ValueError(
+            f"EDL entry {i}: look's lut3d {why}. A look may load a .cube only from "
+            "muvid's LUT folder (muvid.paths.lut_dir()), by its absolute path written "
+            f"without escapes, with LUT_3D_SIZE at most {MAX_LUT_SIZE}."
+        )
+
+    for name, args in _look_links(look):
+        if name != "lut3d":
+            continue
+        opts, overflow = _link_options(args, _LUT3D_POSITIONAL)
+        if overflow or set(opts) - _LUT3D_OPTIONS:
+            extra = sorted(set(opts) - _LUT3D_OPTIONS) + [v for v, _ in overflow]
+            refuse(f"sets {extra}, which muvid does not offer (only {sorted(_LUT3D_OPTIONS)})")
+        text = opts.get("file")
+        if text is None:
+            continue  # no file: lut3d is the identity, and loads nothing
+        if not _LUT_PATH_TEXT.match(text) or not text.lower().endswith(".cube"):
+            refuse(f"file {text!r} is not an absolute .cube path written without escapes")
+        root, path = lut_dir().resolve(), Path(text).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            refuse("file is not a .cube in muvid's LUT folder")
+        size = _lut_cube_size(path)
+        if size is None or size > MAX_LUT_SIZE:
+            refuse(
+                "file declares no LUT_3D_SIZE"
+                if size is None
+                else f"file is a {size}-point cube ({12 * size**3 / 1e6:.0f} MB to load)"
+            )
+
+
 def _validate_look(i, e, canvas) -> None:
     """What a look fragment has to satisfy. Raises ``ValueError``.
 
@@ -2991,6 +3100,7 @@ def _validate_look(i, e, canvas) -> None:
     # not reported as a link count the tracker can only guess at
     _validate_look_size(i, look, canvas)
     _validate_look_links(i, look, canvas)
+    _validate_look_luts(i, look)
     if e.is_gap:
         raise ValueError(
             f"EDL entry {i} is a gap but carries a look. A gap has no footage to "
