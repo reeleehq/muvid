@@ -2539,33 +2539,23 @@ def exclusion_note(x) -> str:
 
 
 def _unverified_notes(entries, aligns) -> list[str]:
-    """One ``warnings`` line per cut of an AUTO edit that still shows a clip's unverified
-    stretch (muvid#241) — footage its measured spans say does not match the song there.
-
-    Selection prefers away from such a stretch (muvid#16), so one that survives means
-    nothing confirmed covered it, or the cut could not avoid it; this line is the
-    caller's only signal. A cut placed by its own source moment (``source_in``, cut to
-    the music) or retimed is not judged by the clip's placement, so it is skipped.
-    """
-    from muvid.footage.edl import selection_unverified_stretches
+    """One ``warnings`` line per cut that shows a clip's unverified stretch (muvid#241) —
+    footage its measured spans say does not match the song there
+    (:func:`~muvid.footage.edl.unverified_in_cut`). Selection prefers away from such a
+    stretch (muvid#16), so on the auto path one that survives had no better cover; on a
+    caller's own edit it is what they chose. Either way this line is the only signal.
+    A declared offset is never flagged: a person placed it."""
+    from muvid.footage.edl import unverified_in_cut
 
     by_id = {a.clip_id: a for a in aligns}
-    notes = []
-    for e in entries:
-        a = by_id.get(e.clip_id)
-        if a is None or e.is_gap or e.source_in is not None or e.rate != 1.0:
-            continue
-        for start, end in selection_unverified_stretches(a):
-            # the cut shows the placement's song time t + slip at song time t
-            lo, hi = max(start - e.slip_s, e.song_start), min(end - e.slip_s, e.song_end)
-            if hi - lo > 1e-3:
-                notes.append(
-                    f"uses {hi - lo:.1f} s of clip {e.clip_id!r} at {lo:.1f}-{hi:.1f} s "
-                    "that its measured spans do not confirm matches the song there "
-                    "(nothing confirmed covered it). Watch that stretch; if it is out of "
-                    "sync, place the clip by hand (set_offset) or cut it out (set_cut)."
-                )
-    return notes
+    return [
+        f"uses {hi - lo:.1f} s of clip {e.clip_id!r} at {lo:.1f}-{hi:.1f} s that its "
+        "measured spans do not confirm matches the song there. Watch that stretch; if "
+        "it is out of sync, place the clip by hand or cut that stretch out."
+        for e in entries
+        if e.clip_id in by_id
+        for lo, hi in unverified_in_cut(e, by_id[e.clip_id])
+    ]
 
 
 def _auto_edl(aligns, song_dur: float, *, strategy, context, recover: bool):
@@ -4194,8 +4184,7 @@ def assemble(
     render_dir = fp.new_render_dir(render_id)
     # The render-plan findings, on their way to the CALLER (who has no stderr).
     notes: list[str] = [exclusion_note(x) for x in excluded]
-    if used_strategy is not None:  # the auto path; a caller's own edl named its clips
-        notes += _unverified_notes(entries, aligns)
+    notes += _unverified_notes(entries, aligns)  # both paths: a warning transforms nothing
     if selection_report:
         notes.append(selection_report["message"])
     # A render that covers only part of the song is that part's length, and its music

@@ -172,21 +172,27 @@ def test_the_18_s_end_of_a_take_that_stopped_matching_now_steers():
     ]
 
 
-def test_close_short_stretches_merge_and_a_lone_short_one_does_not_steer():
+def test_a_stretch_of_exactly_the_threshold_steers_and_a_shorter_one_does_not():
+    """The threshold equals mixing's span hop, the shortest inner dropout it reports."""
     from muvid.footage.edl import SELECTION_MIN_UNVERIFIED_S, selection_unverified_stretches
 
     h = SELECTION_MIN_UNVERIFIED_S
-    # two stretches of 0.6h, h/4 apart: one stretch of 1.45h
-    spans = (
-        MeasuredSpan(0.0, 30.0, 0.0, 0.9),
-        MeasuredSpan(30.0 + 0.6 * h, 30.0 + 0.85 * h, 0.0, 0.9),
-        MeasuredSpan(30.0 + 1.45 * h, 100.0, 0.0, 0.9),
+    for gap, steers in ((h, True), (h - 1e-9, True), (0.9 * h, False)):
+        spans = (MeasuredSpan(0.0, 30.0, 0.0, 0.9), MeasuredSpan(30.0 + gap, 100.0, 0.0, 0.9))
+        a = FootageAlignment("A", 0.0, 0.9, 100.0, (0.0, 100.0), spans=spans)
+        assert bool(selection_unverified_stretches(a)) is steers, gap
+
+
+def test_a_stretch_edge_beside_a_coverage_edge_makes_no_flash_cut():
+    """#241 review: A unverified 50-62, B from 61 — a 1 s B flash cut on a stretch edge
+    that is only good to the span window."""
+    a = FootageAlignment(
+        "A", 0.0, 0.9, 200.0, (0.0, 200.0),
+        spans=(MeasuredSpan(0.0, 50.0, 0.0, 0.9), MeasuredSpan(62.0, 200.0, 0.0, 0.9)),
     )
-    a = FootageAlignment("A", 0.0, 0.9, 100.0, (0.0, 100.0), spans=spans)
-    assert selection_unverified_stretches(a) == [(30.0, 30.0 + 1.45 * h)]
-    lone = (MeasuredSpan(0.0, 30.0, 0.0, 0.9), MeasuredSpan(30.0 + 0.9 * h, 100.0, 0.0, 0.9))
-    b = FootageAlignment("B", 0.0, 0.9, 100.0, (0.0, 100.0), spans=lone)
-    assert selection_unverified_stretches(b) == []
+    b = FootageAlignment("B", 61.0, 0.5, 139.0, (61.0, 200.0))
+    cuts = _cuts(S.select_edl("best_confidence", [a, b], 200.0))
+    assert all(e - s >= 5.0 for s, e, _ in cuts), cuts
 
 
 def test_the_auto_edit_warns_where_it_still_uses_an_unverified_stretch():
@@ -196,12 +202,41 @@ def test_the_auto_edit_warns_where_it_still_uses_an_unverified_stretch():
     a = _clip("A", 0.9, spans=A_CONFIRMED_TO_15)  # unverified 15-40
     [note] = _unverified_notes([EdlEntry(0.0, 40.0, "A")], [a])
     assert "25.0 s of clip 'A' at 15.0-40.0 s" in note
+    assert "set_" not in note  # no op name: the connector renames ops to tools
+    # a slipped cut is judged by what it SHOWS: clip 10-20 at song 0-10
+    [slipped] = _unverified_notes([EdlEntry(0.0, 10.0, "A", slip_s=10.0)], [a])
+    assert "5.0 s of clip 'A' at 5.0-10.0 s" in slipped
     # a cut that avoids it, a gap, and a cut to the music (its own source moment) do not
     assert _unverified_notes([EdlEntry(0.0, 15.0, "A"), EdlEntry(15.0, 40.0, "")], [a]) == []
     assert _unverified_notes([EdlEntry(15.0, 40.0, "A", source_in=0.0)], [a]) == []
     # the edit the strategy builds over A alone carries it
     entries = S.select_edl("best_confidence", [a], 40.0)
     assert len(_unverified_notes(entries, [a])) == 1
+
+
+def _measured_project(tmp_path, monkeypatch):
+    pytest.importorskip("nw")
+    from muvid.footage import service
+    from muvid.footage.workspace import FootageWorkspace
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path / "data"))
+    fp = FootageWorkspace.for_email("u@x.com").create_project("p")
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"RIFF-song")
+    service.set_song(fp, path=str(song), duration_s=40.0)
+    clip = tmp_path / "A.mp4"
+    clip.write_bytes(b"A")
+    service.add_clip(fp, path=str(clip), clip_id="A", duration_s=40.0)
+    fp.save_alignments([_clip("A", 0.9, spans=A_CONFIRMED_TO_15)])
+    return fp
+
+
+def test_the_editor_documents_proposal_reports_it_too(tmp_path, monkeypatch):
+    pytest.importorskip("lacing")
+    from muvid.footage.service import editor_document
+
+    doc = editor_document(_measured_project(tmp_path, monkeypatch))
+    assert any("of clip 'A' at 15.0-40.0 s" in w for w in doc["warnings"]), doc["warnings"]
 
 
 def test_propose_edit_reports_the_unverified_stretch_it_kept(tmp_path, monkeypatch):
