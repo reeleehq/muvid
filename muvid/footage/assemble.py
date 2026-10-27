@@ -92,48 +92,20 @@ import tempfile
 import warnings
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
+from muvid.footage.colour import (
+    DELIVERY_COLOR_RANGE,
+    DELIVERY_COLOR_SPACE,
+    DELIVERY_TAG,
+    read_source_colour,
+)
 from muvid.footage.edl import TRANSITION_SPLIT, AssemblyCut
 
 #: Default output frame rate for the assembled video.
 DEFAULT_FPS = 30
 #: Default canvas (16:9 1080p) when the caller/genre gives none.
 DEFAULT_CANVAS = (1920, 1080)
-
-#: The colour every part is delivered in: BT.709 matrix, limited ("tv") range —
-#: what a player assumes for untagged HD, and what phone video mostly is already
-#: (muvid#195). Each cut's ``scale`` CONVERTS to it and the encoder TAGS it, so the
-#: frame a look receives has a known colour and :func:`muvid.footage.look.stylize`
-#: declares it as a fact rather than assuming it. Before this, each source kept its
-#: own matrix and tags, and a BT.601 clip or a full-range JPEG still was read as
-#: BT.709 by every player: measured on ffmpeg 8.0.1 against the RGB original, 24 dB
-#: PSNR before and 37 dB (BT.601) / 41 dB (JPEG) after.
-#:
-#: The conversion is the explicit ``scale`` in :func:`_part_filter`, not the
-#: encoder options, although on ffmpeg 8.0.1 the options alone do the same: that
-#: build negotiates ``-colorspace``/``-color_range`` through the filtergraph and
-#: inserts the conversion itself (measured: identical PSNR with either, or both).
-#: Older builds — CI runs 6.x — only WRITE the options into the stream, which tags
-#: a BT.601 picture as BT.709 without converting it. The ``scale`` is what makes the
-#: two builds agree.
-#:
-#: Primaries and transfer are TAGGED BT.709, not converted: ``scale`` changes only
-#: the YCbCr matrix and range. That is a correct statement for SDR footage, and
-#: for HDR (HLG/PQ) footage the delivery was already SDR-without-tone-mapping —
-#: the tag does not make that better or worse.
-DELIVERY_COLOR_SPACE = "bt709"
-DELIVERY_COLOR_RANGE = "tv"
-
-#: The frame-level tag, placed right after the converting ``scale`` (and on a gap's
-#: black). On the FRAME, not only on the encoder: ffmpeg 8.0.1 takes the stream's
-#: colour description from the frames and ignores ``-color_primaries`` /
-#: ``-color_trc`` (measured: both came out ``unknown`` with the options alone), and a
-#: look that converts to RGB reads the frame's matrix tag.
-_DELIVERY_TAG = (
-    f"setparams=range={DELIVERY_COLOR_RANGE}:color_primaries={DELIVERY_COLOR_SPACE}"
-    f":color_trc={DELIVERY_COLOR_SPACE}:colorspace={DELIVERY_COLOR_SPACE}"
-)
 
 
 def _even(n: int) -> int:
@@ -443,7 +415,13 @@ def _crop_filter(cut: "AssemblyCut") -> str:
 
 
 def _part_filter(
-    cut: "AssemblyCut", *, w: int, h: int, fps: int, tail: str = ""
+    cut: "AssemblyCut",
+    *,
+    w: int,
+    h: int,
+    fps: int,
+    tail: str = "",
+    in_matrix: "str | None" = None,
 ) -> str:
     """THE per-cut filter chain. ONE implementation, used by BOTH render sites.
 
@@ -486,9 +464,15 @@ def _part_filter(
     ``tail`` is the only difference between the two sites, and it is a parameter
     rather than a second string.
 
-    ``scale`` also converts to the delivery colour (:data:`DELIVERY_COLOR_SPACE`,
-    muvid#195) and ``setparams`` (:data:`_DELIVERY_TAG`) says so on the frame, so
-    the look sees a frame whose colour is known as well as its size.
+    ``scale`` also converts to the delivery colour (:mod:`muvid.footage.colour`,
+    muvid#195) — from ``in_matrix`` when the source's own tag cannot be trusted —
+    and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
+    frame, so the look sees a frame whose colour is known as well as its size.
+
+    The conversion is this ``scale``, not the encoder options, although on ffmpeg
+    8.0.1 the options alone do the same (that build negotiates ``-colorspace`` /
+    ``-color_range`` through the filtergraph and inserts the conversion itself;
+    measured on 7.0.2, it does not). The ``scale`` is what makes the builds agree.
 
     With no crop and no look this returns exactly the pinned bytes —
     ``tests/test_edl_look.py`` pins the ``look``-absent chain character for
@@ -502,8 +486,9 @@ def _part_filter(
         f"{retime}"
         f"{crop + ',' if crop else ''}"
         f"scale={w}:{h}:force_original_aspect_ratio=decrease"
+        f"{f':in_color_matrix={in_matrix}' if in_matrix else ''}"
         f":out_color_matrix={DELIVERY_COLOR_SPACE}:out_range={DELIVERY_COLOR_RANGE},"
-        f"{_DELIVERY_TAG},"
+        f"{DELIVERY_TAG},"
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},"
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
@@ -515,7 +500,7 @@ def _video_codec_args(crf: int, preset: str) -> list[str]:
     """The encode every part shares, tagged :data:`DELIVERY_COLOR_SPACE` /
     :data:`DELIVERY_COLOR_RANGE` — identical tags on every part are also what lets
     the concat stage stream-copy them into one consistently tagged video. The
-    options repeat :data:`_DELIVERY_TAG` for a build that reads the codec context
+    options repeat :data:`DELIVERY_TAG` for a build that reads the codec context
     rather than the frames."""
     return [
         "-c:v",
@@ -564,6 +549,30 @@ def _source_input(path: str, clip_in: float, seconds: float, *, fps: int) -> lis
     return ["-ss", f"{clip_in:.6f}", "-t", f"{seconds:.6f}", "-i", path]
 
 
+def _source_matrices(cuts: Sequence[AssemblyCut], note=None) -> "dict[str, str]":
+    """Read each distinct source's colour once (:func:`~muvid.footage.colour.read_source_colour`):
+    the matrix to convert FROM for each source whose tag cannot be trusted, and a
+    finding for each HDR source, which is delivered as SDR without tone mapping
+    (muvid#201). One ``ffprobe`` per source, not per cut."""
+    matrices: "dict[str, str]" = {}
+    seen: "dict[str, str]" = {}  # path -> clip id, first cut that shows it
+    for cut in cuts:
+        if cut.clip_path and cut.clip_path not in seen:
+            seen[cut.clip_path] = cut.clip_id
+    for path, clip_id in seen.items():
+        colour = read_source_colour(path)
+        if colour.in_matrix:
+            matrices[path] = colour.in_matrix
+        if colour.hdr_transfer:
+            _emit(
+                f"clip {clip_id!r} is HDR ({colour.hdr_transfer}); it is delivered "
+                f"as SDR {DELIVERY_COLOR_SPACE} without tone mapping, so it will look "
+                "washed out (muvid#201)",
+                note,
+            )
+    return matrices
+
+
 def _render_part(
     cut: AssemblyCut,
     part: Path,
@@ -574,8 +583,12 @@ def _render_part(
     n_frames: int,
     crf: int,
     preset: str,
+    matrices: "Mapping[str, str] | None" = None,
 ) -> None:
-    """Render ONE cut (footage or gap) to an intermediate — the single-decoder stage."""
+    """Render ONE cut (footage or gap) to an intermediate — the single-decoder stage.
+
+    ``matrices`` maps a source path to the matrix its ``scale`` must convert FROM,
+    for a source whose own tag cannot be trusted (:func:`_source_matrices`)."""
     from muvid.visualize.ffmpeg import run_ffmpeg
 
     # tpad at the tail: -frames:v alone is a CAP, not a guarantee — a clip whose audio
@@ -583,7 +596,9 @@ def _render_part(
     # validates a span past the last video frame, and without tpad that part comes up
     # short, silently desyncing every later cut. Cloning the last frame makes the frame
     # count exact whenever the source yields at least one frame.
-    vf = _part_filter(cut, w=w, h=h, fps=fps)
+    vf = _part_filter(
+        cut, w=w, h=h, fps=fps, in_matrix=(matrices or {}).get(cut.clip_path)
+    )
     if cut.clip_path:
         # Input-side seek: lands on the keyframe before clip_in and decodes forward to
         # it, so a cut 3 minutes into a clip does not decode 3 minutes of video. One
@@ -596,7 +611,7 @@ def _render_part(
             fps=fps,
         ) + ["-vf", vf]
     else:  # a gap entry: no footage for this span — fill black on the same grid
-        vf = f"setsar=1,fps={fps},{_DELIVERY_TAG}"
+        vf = f"setsar=1,fps={fps},{DELIVERY_TAG}"
         args = [
             "-f",
             "lavfi",
@@ -638,7 +653,9 @@ def _xfade_input(cut: AssemblyCut, clip_in: float, n_frames: int, *, w, h, fps):
     ]
 
 
-def _render_transition(part, out: Path, *, w, h, fps, crf: int, preset: str) -> None:
+def _render_transition(
+    part, out: Path, *, w, h, fps, crf: int, preset: str, matrices=None
+) -> None:
     """Render one blended boundary — the only two-decoder stage.
 
     Both inputs are already seeked to the window's first frame, so ``offset=0`` is
@@ -661,7 +678,14 @@ def _render_transition(part, out: Path, *, w, h, fps, crf: int, preset: str) -> 
     # A-side framing to the B-side — the blend would still render, at the wrong
     # framing, which is exactly the kind of failure nothing downstream can see.
     def _norm(cut) -> str:
-        return _part_filter(cut, w=w, h=h, fps=fps, tail=",format=yuv420p")
+        return _part_filter(
+            cut,
+            w=w,
+            h=h,
+            fps=fps,
+            tail=",format=yuv420p",
+            in_matrix=(matrices or {}).get(cut.clip_path),
+        )
 
     n = part.n_frames
     run_ffmpeg(
@@ -850,6 +874,7 @@ def assemble_music_video(
         # Planned in full BEFORE any encoding, so a transition that does not fit at
         # this fps fails on cut 0 rather than after forty parts are on disk.
         plan = _part_plan(cuts, fps, on_note)
+        matrices = _source_matrices(cuts, on_note)
         if any(p.kind == "xfade" for p in plan):
             require_filter("xfade", needed_for="EDL transitions")
 
@@ -867,10 +892,25 @@ def assemble_music_video(
             name = f"part{i:04d}.mp4"
             part = parts_dir / name
             render_kwargs = dict(
-                w=w, h=h, fps=fps, n_frames=p.n_frames, crf=crf, preset=preset
+                w=w,
+                h=h,
+                fps=fps,
+                n_frames=p.n_frames,
+                crf=crf,
+                preset=preset,
+                matrices=matrices,
             )
             if p.kind == "xfade":
-                _render_transition(p, part, w=w, h=h, fps=fps, crf=crf, preset=preset)
+                _render_transition(
+                    p,
+                    part,
+                    w=w,
+                    h=h,
+                    fps=fps,
+                    crf=crf,
+                    preset=preset,
+                    matrices=matrices,
+                )
                 if part.exists() and not _has_video_frames(part):
                     # One side yielded nothing, so the blend is not renderable. The
                     # window still exists in song time — fill it from a side that CAN

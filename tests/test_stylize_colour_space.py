@@ -17,11 +17,12 @@ import looks
 
 from tests.ffmpeg_support import needs_ffmpeg
 from muvid.footage.assemble import (
-    DELIVERY_COLOR_RANGE,
-    DELIVERY_COLOR_SPACE,
+    AssemblyWarning,
     _render_part,
+    _source_matrices,
     assemble_music_video,
 )
+from muvid.footage.colour import DELIVERY_COLOR_RANGE, DELIVERY_COLOR_SPACE
 from muvid.footage.edl import AssemblyCut, EdlEntry, _validate_look
 from muvid.footage.look import stylize
 
@@ -29,9 +30,9 @@ _GRADE = looks.Look(steps=(looks.Effect(name="saturation", params={"amount": 0.0
 _KW = dict(canvas=(640, 360), fps=25, duration_s=3.0)
 _W, _H, _FPS = 320, 240, 25
 
-#: On ffmpeg 8 the encoder's ``-colorspace``/``-color_range`` alone also convert
-#: (format negotiation), so there these tests cannot tell the ``scale`` from the
-#: options; on ffmpeg 6 (CI) they can. See ``assemble.DELIVERY_COLOR_SPACE``.
+#: Removing the ``scale``'s conversion fails these on 8.0.1 and 7.0.2 alike (the
+#: ``setparams`` tag then re-labels an unconverted frame). Removing the tag as well
+#: passes on 8.0.1 only, whose encoder converts on its own (see ``_part_filter``).
 #:
 #: Below this the source's colour was mis-read. Measured on ffmpeg 8.0.1: 24 dB for
 #: both sources before muvid#195, 37 dB (BT.601) and 41 dB (JPEG) after.
@@ -156,3 +157,60 @@ def test_the_delivered_video_is_tagged_with_the_delivery_colour(sources, tmp_pat
         "color_primaries": DELIVERY_COLOR_SPACE,
         "color_transfer": DELIVERY_COLOR_SPACE,
     }
+
+
+def _hd_clip(tmp_path, name: str, *, tag: str) -> "tuple[Path, Path]":
+    """A 1280x720 RGB reference and a BT.709-encoded clip of it whose tags ``tag`` sets.
+
+    The tag is written on the frame (``setparams``) AND as encoder options, because
+    the two ffmpeg builds in use read different ones."""
+    ref = tmp_path / f"{name}.png"
+    _run(
+        ["-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=25:duration=0.1"]
+        + ["-frames:v", "1", str(ref)]
+    )
+    clip = tmp_path / f"{name}.mp4"
+    _run(
+        ["-loop", "1", "-i", str(ref), "-t", "0.5", "-vf"]
+        + [f"scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,{tag}"]
+        + ["-c:v", "libx264", "-crf", "1", str(clip)]
+    )
+    return ref, clip
+
+
+@needs_ffmpeg
+def test_an_untagged_hd_clip_is_read_as_bt709_the_way_players_read_it(tmp_path):
+    """The #195 review's regression: ``scale`` treats an unspecified matrix as BT.601,
+    so an untagged BT.709 HD clip went 41.6 -> 26.9 dB until the assembler probed it
+    and told ``scale`` the matrix players assume."""
+    untag = "setparams=colorspace=unknown:color_primaries=unknown:color_trc=unknown"
+    ref, clip = _hd_clip(tmp_path, "untagged", tag=untag)
+    cut = AssemblyCut(0.0, 0.4, "A", 0.0, str(clip))
+    matrices = _source_matrices([cut])
+    assert matrices == {str(clip): "bt709"}
+    part = tmp_path / "part.mp4"
+    _render_part(
+        cut,
+        part,
+        w=1280,
+        h=720,
+        fps=_FPS,
+        n_frames=int(0.4 * _FPS),
+        crf=1,
+        preset="veryfast",
+        matrices=matrices,
+    )
+    seen = _as_a_player_reads_it(part, tmp_path / "seen.png")
+    assert _psnr(seen, ref) >= _MIN_PSNR_DB
+
+
+@needs_ffmpeg
+def test_an_hdr_clip_is_reported_because_it_is_not_tone_mapped(tmp_path):
+    """HLG is converted in matrix only and delivered as SDR BT.709 (muvid#201). That
+    is a visible change in the picture, so it reaches the caller as a finding."""
+    hlg = "setparams=colorspace=bt709:color_primaries=bt2020:color_trc=arib-std-b67"
+    _ref, clip = _hd_clip(tmp_path, "hlg", tag=hlg)
+    notes: "list[str]" = []
+    with pytest.warns(AssemblyWarning, match="HDR"):
+        _source_matrices([AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))], notes.append)
+    assert len(notes) == 1 and "'cam'" in notes[0] and "arib-std-b67" in notes[0]

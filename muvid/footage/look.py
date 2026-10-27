@@ -443,8 +443,8 @@ def stylize(
     seeks input-side. Move that seek and this declaration becomes false.
 
     The colour is declared on the same ground (muvid#195): the assembler's
-    ``scale`` converts every cut to :data:`~muvid.footage.assemble.DELIVERY_COLOR_SPACE`
-    at :data:`~muvid.footage.assemble.DELIVERY_COLOR_RANGE` before the look, so the
+    ``scale`` converts every cut to :data:`~muvid.footage.colour.DELIVERY_COLOR_SPACE`
+    at :data:`~muvid.footage.colour.DELIVERY_COLOR_RANGE` before the look, so the
     ``looks`` Rule 22 colour space is a fact about the frame, not a guess about the
     source. Move the look before that ``scale`` and this declaration becomes false.
 
@@ -457,7 +457,7 @@ def stylize(
         LookError: If the look cannot be compiled for this binary, this ceiling
             or this clip. The message is ``looks``', which names the remedy.
     """
-    from muvid.footage.assemble import DELIVERY_COLOR_RANGE, DELIVERY_COLOR_SPACE
+    from muvid.footage.colour import DELIVERY_COLOR_RANGE, DELIVERY_COLOR_SPACE
 
     looks = _require_looks()
     w, h = _canvas(canvas)
