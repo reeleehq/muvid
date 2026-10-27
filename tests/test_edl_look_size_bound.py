@@ -921,6 +921,25 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         with pytest.raises(ValueError, match="3 links"):
             self._look(0, ",".join(["scale=7680:4320", "hue=s=1", "eq=gamma=1", down]))
 
+    def test_a_heavy_filter_is_bounded_and_kept_at_canvas_size(self):
+        """The #199 review: `bilateral` keeps several frames of its own, so the other
+        caps let it reach 2976 MB. One is allowed (`looks`' flatten needs it), at
+        canvas size."""
+        b = "bilateral=sigmaS=1"
+        up, down = "scale=7680:4320", "scale=1920:1080"
+        with pytest.raises(ValueError, match="frame larger than"):
+            self._look(0, ",".join([up, b, down]))  # 940 MB measured
+        with pytest.raises(ValueError, match="2 bilateral links"):
+            self._look(0, ",".join([b, b]))
+        with pytest.raises(ValueError, match="bilateral"):
+            self._look(0, ",".join(["colorchannelmixer=rr=1", up, b, down] + [b] * 12))
+        self._look(0, ",".join([up, "hue=s=1", down, b]))
+
+    def test_an_unreadable_size_is_refused_for_what_it_is(self):
+        """The size check runs first: `-2` is an expression, not a large frame."""
+        with pytest.raises(ValueError, match="not a plain pixel count"):
+            self._look(0, "scale=-2:1080,hue=s=1,eq=gamma=1,hue=s=0")
+
     def test_the_count_is_the_one_ffmpeg_WILL_MAKE(self):
         """Counted through the lexer, so an escaped comma inside an expression
         is not a link. `looks` emits exactly that (`gamma`'s lutrgb carries
@@ -945,25 +964,28 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
 
 
 #: The ceiling the worst look the gate keeps must stay under, in MB of peak RSS for one
-#: ffmpeg at a 1920x1080 canvas. Measured 402-438 MB on ffmpeg 8.0.1 (16 threads); the
-#: fragment muvid#199 was filed for reached 2527 MB, so this has room for a build or a
-#: thread count that spends more, and none for the defect.
+#: ffmpeg at a 1920x1080 canvas. Measured 493 MB on ffmpeg 8.0.1 (16 threads); the
+#: fragment muvid#199 was filed for reached 2527 MB and the review's `bilateral` one
+#: 2976 MB, so this has room for a build or a thread count that spends more, and none
+#: for either defect.
 _WORST_KEPT_LOOK_MB = 1024
 
 
 @needs_ffmpeg
 @pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
 def test_the_worst_look_the_gate_keeps_is_measured_under_its_ceiling():
-    """The worst case MAX_LOOK_LINKS / MAX_LOOK_LARGE_LINKS state, MEASURED (muvid#199):
-    sixteen links, two of them at the 4x size cap, the rest alternating RGB and YUV at
-    canvas size. Run in a fresh interpreter so the reading is that ffmpeg alone."""
+    """The worst case the look caps state, MEASURED (muvid#199): sixteen links — the
+    one heavy `bilateral` allowed, at canvas size, two links at the 4x size cap, the
+    rest alternating RGB and YUV at canvas size (the worst of the shapes the review
+    and the author measured). Run in a fresh interpreter so the reading is that ffmpeg
+    alone."""
     from muvid.footage.edl import EdlEntry, _validate_look
 
     mix = "colorchannelmixer=rr=1,eq=gamma=1"
     worst = ",".join(
         ["scale=7680:4320", "colorchannelmixer=rr=1", "scale=1920:1080"]
+        + ["bilateral=sigmaS=60:sigmaR=0.05:planes=7"]
         + [mix] * 6
-        + ["hue=s=1"]
     )
     assert len(worst.split(",")) == MAX_LOOK_LINKS
     _validate_look(0, EdlEntry(0.0, 1.0, "A", look=worst), (1920, 1080))  # kept
