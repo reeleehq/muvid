@@ -16,5 +16,6 @@ muvid.footage.align
    .. autosummary::
    
       align_footage
+      measure_spans
       vouches_for
    

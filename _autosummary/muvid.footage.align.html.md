@@ -23,9 +23,10 @@ it; it is defined in [`muvid.footage.edl`](muvid.footage.edl.html.md#module-muvi
 
 ### Functions
 
-| [`align_footage`](#muvid.footage.align.align_footage)(song_path, clips, \*[, ...])   | Align `clips` (`[(clip_id, clip_path), ...]`) to the song at `song_path`.      |
-|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| [`vouches_for`](#muvid.footage.align.vouches_for)(\*, confidence, support[, ...])  | Does the aligner vouch for this offset? The ONE place that verdict is reached. |
+| [`align_footage`](#muvid.footage.align.align_footage)(song_path, clips, \*[, ...])   | Align `clips` (`[(clip_id, clip_path), ...]`) to the song at `song_path`.                                                                                                                           |
+|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`measure_spans`](#muvid.footage.align.measure_spans)(song_path, clips, \*[, ...])   | Each clip's stretches that align to the song, window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1), and the window they were measured on — which is also how accurate their edges are. |
+| [`vouches_for`](#muvid.footage.align.vouches_for)(\*, confidence, support[, ...])  | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                      |
 
 ### muvid.footage.align.ALIGN_SAMPLE_RATE *= 16000*
 
@@ -102,6 +103,19 @@ genre stays light.
     of whether `mixing` itself would also refuse or silently answer.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`FootageAlignment`](muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)]
+
+### muvid.footage.align.measure_spans(song_path, clips, , song_duration=None, sample_rate=16000)
+
+Each clip’s stretches that align to the song, window by window
+(`mixing.audio.aligned_spans`; muvid#16 slice 1), and the window they were
+measured on — which is also how accurate their edges are.
+
+About one correlation per window per clip, against one per clip for
+[`align_footage()`](#muvid.footage.align.align_footage), which is why it is opt-in. No broad except: a `mixing`
+failure is a traceback, never a quietly empty measurement.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`MeasuredSpan`](muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]], [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
 ### muvid.footage.align.vouches_for(, confidence, support, margin=None, window_s=None)
 

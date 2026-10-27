@@ -49,6 +49,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`MEASURED`](#muvid.footage.edl.MEASURED)                  | the aligner found the offset, or a person set it.                                                                                                                                                                                                               |
 | [`UNPLACED`](#muvid.footage.edl.UNPLACED)                  | Two more `source` values, for records that are NEVER persisted.                                                                                                                                                                                                 |
 | [`STILL_DURATION_S`](#muvid.footage.edl.STILL_DURATION_S)          | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
+| [`SPAN_OFFSET_TOLERANCE_S`](#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S)   | How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — `mixing`'s own span tolerance (`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.                                          |
 | [`SLIP_MAX_S`](#muvid.footage.edl.SLIP_MAX_S)                | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](#muvid.footage.edl.RATE_MAX_DEV)              | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
 | [`EDGE_S`](#muvid.footage.edl.EDGE_S)                    | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
@@ -75,19 +76,21 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`placed_as`](#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                   |
 | [`still_in_point`](#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                       |
 | [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                               |
+| [`unverified_stretches`](#muvid.footage.edl.unverified_stretches)(a, \*[, tolerance_s])       | The clip-time stretches of `a`'s placement on the song that no measured span confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single offset says is in sync and the window-by-window measurement could not verify there — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.                                                             |
 | [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                        |
 | [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                          |
 | [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                        |
 
 ### Classes
 
-| [`AssemblyCut`](#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.       |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| [`CropWindow`](#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.            |
-| [`EdlEntry`](#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                    |
-| [`ExcludedSpan`](#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88). |
-| [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).            |
-| [`Transition`](#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                          |
+| [`AssemblyCut`](#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.                                          |
+|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| [`CropWindow`](#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.                                               |
+| [`EdlEntry`](#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                                                       |
+| [`ExcludedSpan`](#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88).                                    |
+| [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).                                               |
+| [`MeasuredSpan`](#muvid.footage.edl.MeasuredSpan)(clip_start_s, clip_end_s, ...)       | One stretch of a clip that aligns to the song, measured window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1). |
+| [`Transition`](#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                                                             |
 
 ### Exceptions
 
@@ -398,7 +401,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured')
+### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -446,6 +449,16 @@ field were all written by the aligner, so it defaults to measured.
 
 * **Type:**
   How the offset is KNOWN
+
+#### spans *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[MeasuredSpan](#muvid.footage.edl.MeasuredSpan), ...] | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The clip’s stretches measured window by window, at whatever offset each aligns
+([`MeasuredSpan`](#muvid.footage.edl.MeasuredSpan), muvid#16 slice 1) — `None` when not measured (the
+default: it costs a correlation per window), `()` when nothing in the clip
+aligns. A REPORT for now: nothing cuts on, scores by, or refuses on it, which is
+why [`align_fingerprint()`](muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint) does not hash it.
+Omitted from `to_dict()` when `None`, so records without it stay
+byte-identical.
 
 #### support *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -742,6 +755,19 @@ the same class of silent no-op as muvid#44’s `camera: {move: static}`, which
 if a transition rounds to zero frames at the actual render fps, which this
 song-time floor cannot know.
 
+### *class* muvid.footage.edl.MeasuredSpan(clip_start_s, clip_end_s, offset_s, confidence, support=None, margin=None)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One stretch of a clip that aligns to the song, measured window by window
+(`mixing.audio.aligned_spans`; muvid#16 slice 1).
+
+`clip_start_s`/`clip_end_s` are clip time; `offset_s` places the stretch on
+the song (`song = clip + offset_s`). A clip whose parts sit at different offsets
+(a take stopped and restarted) has several; material the song does not contain has
+none. Edges are accurate to about the analysis window, which is enough to tell two
+takes apart and NOT enough to cut on — nothing cuts on them yet.
+
 ### muvid.footage.edl.NO_VOUCHED_COVERAGE *= 'no_vouched_coverage'*
 
 nothing the aligner vouches for covers it at all. The
@@ -767,6 +793,12 @@ larger than a beat is a different alignment, which is `set_offset`’s job.
 
 * **Type:**
   The largest slip a cut may carry, either way (s)
+
+### muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S *= 0.25*
+
+How far a measured span’s offset may sit from its clip’s offset and still be read
+as THAT placement (seconds) — `mixing`’s own span tolerance
+(`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.
 
 ### muvid.footage.edl.STILL_DURATION_S *= 3600.0*
 
@@ -1132,6 +1164,26 @@ aligner could not place), never overlapping, never persisted.
 
 * **Return type:**
   [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)
+
+### muvid.footage.edl.unverified_stretches(a, , tolerance_s=0.25)
+
+The clip-time stretches of `a`’s placement on the song that no measured span
+confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single
+offset says is in sync and the window-by-window measurement could not verify there
+— the last 18 s of a 78 s clip that stopped matching, a dropout, another take.
+
+`None` when spans were not measured; `[]` when every placed second is confirmed.
+Edges inherit the spans’ resolution (about the analysis window).
+
+```pycon
+>>> a = FootageAlignment("c", 0.0, 0.9, 78.0, (0.0, 78.0),
+...     spans=(MeasuredSpan(0.0, 60.0, 0.01, 0.8),))
+>>> unverified_stretches(a)
+[(60.0, 78.0)]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.edl.validate_edl(edl, alignments, song_duration, , canvas=(1920, 1920), allow_unreliable=False)
 

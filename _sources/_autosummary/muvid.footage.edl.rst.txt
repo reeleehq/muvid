@@ -24,6 +24,7 @@ muvid.footage.edl
       MEASURED
       UNPLACED
       STILL_DURATION_S
+      SPAN_OFFSET_TOLERANCE_S
       SLIP_MAX_S
       RATE_MAX_DEV
       EDGE_S
@@ -51,6 +52,7 @@ muvid.footage.edl
       placed_as
       still_in_point
       unplaced
+      unverified_stretches
       validate_edl
       vouches_for
       with_start
@@ -64,6 +66,7 @@ muvid.footage.edl
       EdlEntry
       ExcludedSpan
       FootageAlignment
+      MeasuredSpan
       Transition
    
    .. rubric:: Exceptions

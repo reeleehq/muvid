@@ -56,6 +56,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`align`](#muvid.footage.service.align)(fp)                                        | Find where each video sits on the song by listening to its own audio, and save it.                                                                                                                                                                                      |
 | [`set_offset`](#muvid.footage.service.set_offset)(fp, \*, clip_id, offset_s)            | Place one video on the song BY HAND: the song time at which the video's own first frame plays (negative = the video starts before the song does).                                                                                                                       |
 | [`clear_offset`](#muvid.footage.service.clear_offset)(fp, \*, clip_id)                    | Forget where I placed this video: remove a hand-declared offset, so the next `align` measures the clip by its audio instead.                                                                                                                                            |
+| [`measure_spans`](#muvid.footage.service.measure_spans)(fp)                                | Check, stretch by stretch, which parts of each placed video actually match the song where it is placed, and save what was found (muvid#16).                                                                                                                             |
 | [`set_has_song`](#muvid.footage.service.set_has_song)(fp, \*, clip_id, has_song)          | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                    |
 | [`timeline`](#muvid.footage.service.timeline)(fp)                                     | Which videos cover which spans of the song (overlaps shown), from the saved alignment — the map for choosing what to cut to.                                                                                                                                            |
 | [`beat_grid`](#muvid.footage.service.beat_grid)(fp)                                    | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                   |
@@ -138,7 +139,7 @@ Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 
 An operation refused — the message says why and what to do next.
 
-### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict())
+### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict(), mcp=True)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -168,6 +169,11 @@ show “8 of 12” and refuse the extra files before sending a byte (muvid#170).
 #### max_upload_bytes *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[int](https://docs.python.org/3/builtins/functions.html#int)]* *= None*
 
 The op’s own ceiling for a host-streamed upload (`nw.GenreOp.max_upload_bytes`).
+
+#### mcp *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= True*
+
+Whether the MCP transport serves it (`muvid.mcp._footage_ops`). `False`
+for an op only a host that honours `runs="job"` should run.
 
 ### muvid.footage.service.add_clip(fp, , path, name='', filename='', clip_id='', ext='', duration_s=None)
 
@@ -556,6 +562,25 @@ and grades (vivid, black and white, posterize, cartoon) — each with its
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.footage.service.measure_spans(fp)
+
+Check, stretch by stretch, which parts of each placed video actually match the
+song where it is placed, and save what was found (muvid#16).
+
+`align` places a whole video at ONE offset. This listens to it window by window
+(slower: about one measurement per 10 s of video) and records, on each video’s
+alignment, the stretches that match the song and at what offset each (`spans`) —
+for measured and hand-placed offsets alike. `unverified` then names, per video,
+the stretches of its placement no span confirms at its offset: the end of a take
+that stopped matching, a dropout, another take. Edges are accurate to about
+`span_edge_accuracy_s` (the analysis window), and a shorter stretch may not show.
+
+A report for now: cutting, scoring and rendering do not use it. Re-aligning or
+re-placing a video replaces its record, so measure again afterwards.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.footage.service.merge_cut(fp, , edit_id, index, into='previous')
 
 Join cut `index` to its neighbour: the neighbour (`into` “previous” or
@@ -607,7 +632,9 @@ choice — fades for a slow song). `order` is how the pictures follow one anothe
 `taken` (the default) in the order they were taken, so a day reads as it happened
 — by the time their files say, upload order for any that say nothing (`music`
 reports which) — or `planner`, the montage planner’s reuse order, which ignores
-chronology. `explain_edit` says why
+chronology and matches the videos’ liveliness to the sections’ loudness (lively
+pictures in the loud parts; `music.affect` says when it applied, muvid#134).
+`explain_edit` says why
 each cut is where it is.
 
 * **Return type:**

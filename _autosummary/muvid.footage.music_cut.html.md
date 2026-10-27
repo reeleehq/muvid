@@ -124,7 +124,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken')
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>)
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -137,6 +137,12 @@ picture per slot, or `"auto"`; `cut_feel` a montage pace (`slow`, `steady`,
 picture’s displayed size (for `cover`). `order` is one of `ORDERS`: by
 default the pictures follow the order they were TAKEN in
 (`chronological_picks()`); the report says which order applied and why.
+`affect_of` (muvid#134) gives each picture’s feel — `(source, envelope) ->` a
+number, higher livelier, or `None` — and the planner then puts lively pictures in
+the loud sections and calm ones in the quiet sections (default `liveliness()`;
+`None` turns it off). It reorders pictures, so it acts in the `planner` order
+only; `taken` keeps the order they were taken in. The report’s `affect` says
+whether it applied.
 
 Returns [`MusicCut`](#muvid.footage.music_cut.MusicCut) whose `entries` are validated-shape
 [`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) free cuts, contiguous over each span, in song

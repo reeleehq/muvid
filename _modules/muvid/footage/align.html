@@ -210,183 +210,228 @@
 </span><span id="line-23">    <span class="n">MIN_MARGIN</span><span class="p">,</span>
 </span><span id="line-24">    <span class="n">MIN_SUPPORT</span><span class="p">,</span>
 </span><span id="line-25">    <span class="n">FootageAlignment</span><span class="p">,</span>
-</span><span id="line-26">    <span class="n">vouches_for</span><span class="p">,</span>
-</span><span id="line-27"><span class="p">)</span>
-</span><span id="line-28">
-</span><span id="line-29"><span class="c1">#: Analysis sample rate for alignment (mono). 16 kHz is plenty for offset precision.</span>
-</span><span id="line-30"><span class="n">ALIGN_SAMPLE_RATE</span> <span class="o">=</span> <span class="mi">16000</span>
-</span><span id="line-31">
-</span><span id="line-32"><span class="c1">#: Re-exported so ``muvid.footage.align`` reads as the whole alignment story — the</span>
-</span><span id="line-33"><span class="c1">#: measurement AND the verdict — without either of them having two definitions.</span>
-</span><span id="line-34"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-35">    <span class="s2">"ALIGN_SAMPLE_RATE"</span><span class="p">,</span>
-</span><span id="line-36">    <span class="s2">"MIN_CONFIDENCE"</span><span class="p">,</span>
-</span><span id="line-37">    <span class="s2">"MIN_MARGIN"</span><span class="p">,</span>
-</span><span id="line-38">    <span class="s2">"MIN_SUPPORT"</span><span class="p">,</span>
-</span><span id="line-39">    <span class="s2">"WINDOW_PARAMETERS"</span><span class="p">,</span>
-</span><span id="line-40">    <span class="s2">"align_footage"</span><span class="p">,</span>
-</span><span id="line-41">    <span class="s2">"vouches_for"</span><span class="p">,</span>
-</span><span id="line-42"><span class="p">]</span>
-</span><span id="line-43">
-</span><span id="line-44"><span class="c1">#: Estimator parameters :func:`align_footage` refuses to forward, because changing them</span>
-</span><span id="line-45"><span class="c1">#: changes what :data:`~muvid.footage.edl.MIN_SUPPORT` MEANS. Per mixing#43 (mixing PR</span>
-</span><span id="line-46"><span class="c1">#: #51), an explicit ``window_s`` wider than a clip can hold a second, independent look</span>
-</span><span id="line-47"><span class="c1">#: at is refused by ``mixing`` itself with a typed ``WindowTooWideForClip``, so that</span>
-</span><span id="line-48"><span class="c1">#: direction no longer reaches muvid as a silent ``support=None``. (Where exactly that</span>
-</span><span id="line-49"><span class="c1">#: bound falls is ``mixing``'s call to make and to change; muvid does not restate it</span>
-</span><span id="line-50"><span class="c1">#: here.) Narrowing the window is not caught by that refusal and still</span>
-</span><span id="line-51"><span class="c1">#: deflates every support — measured across eleven clip lengths, correct alignments read</span>
-</span><span id="line-52"><span class="c1">#: 0.38-0.70 at a 20 s window and 0.00-1.00 at a 4 s one — so correct alignments fall</span>
-</span><span id="line-53"><span class="c1">#: under the threshold instead. Refusing here regardless of what ``mixing`` does about</span>
-</span><span id="line-54"><span class="c1">#: the wide-window case keeps the two packages from disagreeing about it later, and keeps</span>
-</span><span id="line-55"><span class="c1">#: the calibration decision (moving ``MUVID_FOOTAGE_MIN_SUPPORT`` if the window moves)</span>
-</span><span id="line-56"><span class="c1">#: something a person makes out loud rather than a side effect of a keyword — the</span>
-</span><span id="line-57"><span class="c1">#: refusal at ``mixing``'s own entry point is a different failure mode for a different</span>
-</span><span id="line-58"><span class="c1">#: caller, not a substitute for muvid's own gate.</span>
-</span><span id="line-59"><span class="c1">#:</span>
-</span><span id="line-60"><span class="c1">#: (Since ``mixing&gt;=0.0.48``, passing ``window_s`` alone also pairs it with</span>
-</span><span id="line-61"><span class="c1">#: ``hop = window/2``, so the two are one knob at the estimator too. Another reason not</span>
-</span><span id="line-62"><span class="c1">#: to accept half of it through a keyword.)</span>
-</span><span id="line-63"><span class="c1">#:</span>
-</span><span id="line-64"><span class="c1">#: Refused rather than merely documented for the reason the rest of this package refuses</span>
-</span><span id="line-65"><span class="c1">#: things: an argument that quietly turns a safety check off is worse than one that is</span>
-</span><span id="line-66"><span class="c1">#: not accepted at all. Tuning the window is legitimate — it just has to move</span>
-</span><span id="line-67"><span class="c1">#: ``MUVID_FOOTAGE_MIN_SUPPORT`` with it, which is a decision someone has to make out</span>
-</span><span id="line-68"><span class="c1">#: loud rather than a side effect of a keyword.</span>
-</span><span id="line-69"><span class="n">WINDOW_PARAMETERS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"window_s"</span><span class="p">,</span> <span class="s2">"hop_s"</span><span class="p">)</span>
-</span><span id="line-70">
-</span><span id="line-71">
+</span><span id="line-26">    <span class="n">MeasuredSpan</span><span class="p">,</span>
+</span><span id="line-27">    <span class="n">vouches_for</span><span class="p">,</span>
+</span><span id="line-28"><span class="p">)</span>
+</span><span id="line-29">
+</span><span id="line-30"><span class="c1">#: Analysis sample rate for alignment (mono). 16 kHz is plenty for offset precision.</span>
+</span><span id="line-31"><span class="n">ALIGN_SAMPLE_RATE</span> <span class="o">=</span> <span class="mi">16000</span>
+</span><span id="line-32">
+</span><span id="line-33"><span class="c1">#: Re-exported so ``muvid.footage.align`` reads as the whole alignment story — the</span>
+</span><span id="line-34"><span class="c1">#: measurement AND the verdict — without either of them having two definitions.</span>
+</span><span id="line-35"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-36">    <span class="s2">"ALIGN_SAMPLE_RATE"</span><span class="p">,</span>
+</span><span id="line-37">    <span class="s2">"MIN_CONFIDENCE"</span><span class="p">,</span>
+</span><span id="line-38">    <span class="s2">"MIN_MARGIN"</span><span class="p">,</span>
+</span><span id="line-39">    <span class="s2">"MIN_SUPPORT"</span><span class="p">,</span>
+</span><span id="line-40">    <span class="s2">"WINDOW_PARAMETERS"</span><span class="p">,</span>
+</span><span id="line-41">    <span class="s2">"align_footage"</span><span class="p">,</span>
+</span><span id="line-42">    <span class="s2">"measure_spans"</span><span class="p">,</span>
+</span><span id="line-43">    <span class="s2">"vouches_for"</span><span class="p">,</span>
+</span><span id="line-44"><span class="p">]</span>
+</span><span id="line-45">
+</span><span id="line-46"><span class="c1">#: Estimator parameters :func:`align_footage` refuses to forward, because changing them</span>
+</span><span id="line-47"><span class="c1">#: changes what :data:`~muvid.footage.edl.MIN_SUPPORT` MEANS. Per mixing#43 (mixing PR</span>
+</span><span id="line-48"><span class="c1">#: #51), an explicit ``window_s`` wider than a clip can hold a second, independent look</span>
+</span><span id="line-49"><span class="c1">#: at is refused by ``mixing`` itself with a typed ``WindowTooWideForClip``, so that</span>
+</span><span id="line-50"><span class="c1">#: direction no longer reaches muvid as a silent ``support=None``. (Where exactly that</span>
+</span><span id="line-51"><span class="c1">#: bound falls is ``mixing``'s call to make and to change; muvid does not restate it</span>
+</span><span id="line-52"><span class="c1">#: here.) Narrowing the window is not caught by that refusal and still</span>
+</span><span id="line-53"><span class="c1">#: deflates every support — measured across eleven clip lengths, correct alignments read</span>
+</span><span id="line-54"><span class="c1">#: 0.38-0.70 at a 20 s window and 0.00-1.00 at a 4 s one — so correct alignments fall</span>
+</span><span id="line-55"><span class="c1">#: under the threshold instead. Refusing here regardless of what ``mixing`` does about</span>
+</span><span id="line-56"><span class="c1">#: the wide-window case keeps the two packages from disagreeing about it later, and keeps</span>
+</span><span id="line-57"><span class="c1">#: the calibration decision (moving ``MUVID_FOOTAGE_MIN_SUPPORT`` if the window moves)</span>
+</span><span id="line-58"><span class="c1">#: something a person makes out loud rather than a side effect of a keyword — the</span>
+</span><span id="line-59"><span class="c1">#: refusal at ``mixing``'s own entry point is a different failure mode for a different</span>
+</span><span id="line-60"><span class="c1">#: caller, not a substitute for muvid's own gate.</span>
+</span><span id="line-61"><span class="c1">#:</span>
+</span><span id="line-62"><span class="c1">#: (Since ``mixing&gt;=0.0.48``, passing ``window_s`` alone also pairs it with</span>
+</span><span id="line-63"><span class="c1">#: ``hop = window/2``, so the two are one knob at the estimator too. Another reason not</span>
+</span><span id="line-64"><span class="c1">#: to accept half of it through a keyword.)</span>
+</span><span id="line-65"><span class="c1">#:</span>
+</span><span id="line-66"><span class="c1">#: Refused rather than merely documented for the reason the rest of this package refuses</span>
+</span><span id="line-67"><span class="c1">#: things: an argument that quietly turns a safety check off is worse than one that is</span>
+</span><span id="line-68"><span class="c1">#: not accepted at all. Tuning the window is legitimate — it just has to move</span>
+</span><span id="line-69"><span class="c1">#: ``MUVID_FOOTAGE_MIN_SUPPORT`` with it, which is a decision someone has to make out</span>
+</span><span id="line-70"><span class="c1">#: loud rather than a side effect of a keyword.</span>
+</span><span id="line-71"><span class="n">WINDOW_PARAMETERS</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"window_s"</span><span class="p">,</span> <span class="s2">"hop_s"</span><span class="p">)</span>
+</span><span id="line-72">
+</span><span id="line-73">
 <div class="viewcode-block" id="align_footage">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.align.html#muvid.footage.align.align_footage">[docs]</a>
-</span><span id="line-72"><span class="k">def</span><span class="w"> </span><span class="nf">align_footage</span><span class="p">(</span>
-</span><span id="line-73">    <span class="n">song_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-74">    <span class="n">clips</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
-</span><span id="line-75">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-76">    <span class="n">song_duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-77">    <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">ALIGN_SAMPLE_RATE</span><span class="p">,</span>
-</span><span id="line-78">    <span class="o">**</span><span class="n">estimator_kwargs</span><span class="p">,</span>
-</span><span id="line-79"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
-</span><span id="line-80"><span class="w">    </span><span class="sd">"""Align ``clips`` (``[(clip_id, clip_path), ...]``) to the song at ``song_path``.</span>
-</span><span id="line-81">
-</span><span id="line-82"><span class="sd">    Returns one :class:`~muvid.footage.edl.FootageAlignment` per clip, keyed by ``clip_id``</span>
-</span><span id="line-83"><span class="sd">    — including clips that do not overlap the song, which carry ``overlaps=False`` rather</span>
-</span><span id="line-84"><span class="sd">    than being omitted, and clips the aligner could not vouch for, which carry</span>
-</span><span id="line-85"><span class="sd">    ``reliable=False`` rather than being omitted. Nothing may vanish from the record just</span>
-</span><span id="line-86"><span class="sd">    because it matched badly; what a bad match loses is the right to be cut to silently</span>
-</span><span id="line-87"><span class="sd">    (:func:`~muvid.footage.edl.validate_edl` is where that is enforced).</span>
-</span><span id="line-88">
-</span><span id="line-89"><span class="sd">    **A verdict already on disk is never re-judged, and re-aligning is how you re-judge</span>
-</span><span id="line-90"><span class="sd">    it.** A ``reliable=True`` written by muvid 0.0.52 or earlier was reached against the</span>
-</span><span id="line-91"><span class="sd">    UNGRADED support scale, where the muvid#59 shoot's own correct offsets scored 0.42</span>
-</span><span id="line-92"><span class="sd">    and 0.46 — numbers the current threshold refuses. Those records keep their verdicts</span>
-</span><span id="line-93"><span class="sd">    deliberately (:meth:`~muvid.footage.edl.FootageAlignment.from_dict` derives only an</span>
-</span><span id="line-94"><span class="sd">    ABSENT verdict), because a stored verdict is a measurement someone's project already</span>
-</span><span id="line-95"><span class="sd">    depends on, not a value to reinterpret under a scale it never saw. Calling this</span>
-</span><span id="line-96"><span class="sd">    function again is the supported way to get a verdict on today's terms.</span>
-</span><span id="line-97"><span class="sd">    Heavy deps (mixing.audio → numpy/scipy/pydub) are imported lazily here so importing the</span>
-</span><span id="line-98"><span class="sd">    genre stays light.</span>
-</span><span id="line-99">
-</span><span id="line-100"><span class="sd">    Args:</span>
-</span><span id="line-101"><span class="sd">        song_path: The clean master every clip is aligned to.</span>
-</span><span id="line-102"><span class="sd">        clips: ``(clip_id, clip_path)`` pairs; a video path works directly.</span>
-</span><span id="line-103"><span class="sd">        song_duration: The song timeline length; probed from ``song_path`` when omitted.</span>
-</span><span id="line-104"><span class="sd">        sample_rate: Analysis sample rate (mono).</span>
-</span><span id="line-105"><span class="sd">        **estimator_kwargs: Passed straight to ``mixing.audio.align_clips_to_reference``</span>
-</span><span id="line-106"><span class="sd">            — the seam for the windowed-consensus estimator's parameters (muvid#59).</span>
-</span><span id="line-107"><span class="sd">            Forwarding rather than enumerating keeps muvid out of the business of</span>
-</span><span id="line-108"><span class="sd">            tracking ``mixing``'s estimator vocabulary, and an argument the installed</span>
-</span><span id="line-109"><span class="sd">            ``mixing`` does not accept raises :class:`TypeError` from ``mixing`` naming</span>
-</span><span id="line-110"><span class="sd">            it. That failure is the point: a window parameter silently ignored is a</span>
-</span><span id="line-111"><span class="sd">            caller believing they tuned an estimator that never saw the value.</span>
-</span><span id="line-112">
-</span><span id="line-113"><span class="sd">            **The window parameters are the exception and are REFUSED** — see</span>
-</span><span id="line-114"><span class="sd">            :data:`WINDOW_PARAMETERS`. They do not tune the estimator so much as re-scale</span>
-</span><span id="line-115"><span class="sd">            the gate that reads it, and muvid refuses them at this entry point regardless</span>
-</span><span id="line-116"><span class="sd">            of whether ``mixing`` itself would also refuse or silently answer.</span>
-</span><span id="line-117"><span class="sd">    """</span>
-</span><span id="line-118">    <span class="kn">from</span><span class="w"> </span><span class="nn">mixing.audio</span><span class="w"> </span><span class="kn">import</span> <span class="n">align_clips_to_reference</span>  <span class="c1"># lazy: heavy</span>
-</span><span id="line-119">
-</span><span id="line-120">    <span class="n">_refuse_window_parameters</span><span class="p">(</span><span class="n">estimator_kwargs</span><span class="p">)</span>
-</span><span id="line-121">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">cid</span> <span class="k">for</span> <span class="n">cid</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">clips</span><span class="p">]</span>
-</span><span id="line-122">    <span class="n">clip_paths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">clips</span><span class="p">]</span>
-</span><span id="line-123">    <span class="n">aligned</span> <span class="o">=</span> <span class="n">align_clips_to_reference</span><span class="p">(</span>
-</span><span id="line-124">        <span class="n">song_path</span><span class="p">,</span>
-</span><span id="line-125">        <span class="n">clip_paths</span><span class="p">,</span>
-</span><span id="line-126">        <span class="n">reference_duration</span><span class="o">=</span><span class="n">song_duration</span><span class="p">,</span>
-</span><span id="line-127">        <span class="n">sample_rate</span><span class="o">=</span><span class="n">sample_rate</span><span class="p">,</span>
-</span><span id="line-128">        <span class="o">**</span><span class="n">estimator_kwargs</span><span class="p">,</span>
-</span><span id="line-129">    <span class="p">)</span>
-</span><span id="line-130">    <span class="k">return</span> <span class="p">[</span><span class="n">_as_alignment</span><span class="p">(</span><span class="n">clip_ids</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">index</span><span class="p">],</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">aligned</span><span class="p">]</span></div>
+</span><span id="line-74"><span class="k">def</span><span class="w"> </span><span class="nf">align_footage</span><span class="p">(</span>
+</span><span id="line-75">    <span class="n">song_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-76">    <span class="n">clips</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+</span><span id="line-77">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-78">    <span class="n">song_duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-79">    <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">ALIGN_SAMPLE_RATE</span><span class="p">,</span>
+</span><span id="line-80">    <span class="o">**</span><span class="n">estimator_kwargs</span><span class="p">,</span>
+</span><span id="line-81"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
+</span><span id="line-82"><span class="w">    </span><span class="sd">"""Align ``clips`` (``[(clip_id, clip_path), ...]``) to the song at ``song_path``.</span>
+</span><span id="line-83">
+</span><span id="line-84"><span class="sd">    Returns one :class:`~muvid.footage.edl.FootageAlignment` per clip, keyed by ``clip_id``</span>
+</span><span id="line-85"><span class="sd">    — including clips that do not overlap the song, which carry ``overlaps=False`` rather</span>
+</span><span id="line-86"><span class="sd">    than being omitted, and clips the aligner could not vouch for, which carry</span>
+</span><span id="line-87"><span class="sd">    ``reliable=False`` rather than being omitted. Nothing may vanish from the record just</span>
+</span><span id="line-88"><span class="sd">    because it matched badly; what a bad match loses is the right to be cut to silently</span>
+</span><span id="line-89"><span class="sd">    (:func:`~muvid.footage.edl.validate_edl` is where that is enforced).</span>
+</span><span id="line-90">
+</span><span id="line-91"><span class="sd">    **A verdict already on disk is never re-judged, and re-aligning is how you re-judge</span>
+</span><span id="line-92"><span class="sd">    it.** A ``reliable=True`` written by muvid 0.0.52 or earlier was reached against the</span>
+</span><span id="line-93"><span class="sd">    UNGRADED support scale, where the muvid#59 shoot's own correct offsets scored 0.42</span>
+</span><span id="line-94"><span class="sd">    and 0.46 — numbers the current threshold refuses. Those records keep their verdicts</span>
+</span><span id="line-95"><span class="sd">    deliberately (:meth:`~muvid.footage.edl.FootageAlignment.from_dict` derives only an</span>
+</span><span id="line-96"><span class="sd">    ABSENT verdict), because a stored verdict is a measurement someone's project already</span>
+</span><span id="line-97"><span class="sd">    depends on, not a value to reinterpret under a scale it never saw. Calling this</span>
+</span><span id="line-98"><span class="sd">    function again is the supported way to get a verdict on today's terms.</span>
+</span><span id="line-99"><span class="sd">    Heavy deps (mixing.audio → numpy/scipy/pydub) are imported lazily here so importing the</span>
+</span><span id="line-100"><span class="sd">    genre stays light.</span>
+</span><span id="line-101">
+</span><span id="line-102"><span class="sd">    Args:</span>
+</span><span id="line-103"><span class="sd">        song_path: The clean master every clip is aligned to.</span>
+</span><span id="line-104"><span class="sd">        clips: ``(clip_id, clip_path)`` pairs; a video path works directly.</span>
+</span><span id="line-105"><span class="sd">        song_duration: The song timeline length; probed from ``song_path`` when omitted.</span>
+</span><span id="line-106"><span class="sd">        sample_rate: Analysis sample rate (mono).</span>
+</span><span id="line-107"><span class="sd">        **estimator_kwargs: Passed straight to ``mixing.audio.align_clips_to_reference``</span>
+</span><span id="line-108"><span class="sd">            — the seam for the windowed-consensus estimator's parameters (muvid#59).</span>
+</span><span id="line-109"><span class="sd">            Forwarding rather than enumerating keeps muvid out of the business of</span>
+</span><span id="line-110"><span class="sd">            tracking ``mixing``'s estimator vocabulary, and an argument the installed</span>
+</span><span id="line-111"><span class="sd">            ``mixing`` does not accept raises :class:`TypeError` from ``mixing`` naming</span>
+</span><span id="line-112"><span class="sd">            it. That failure is the point: a window parameter silently ignored is a</span>
+</span><span id="line-113"><span class="sd">            caller believing they tuned an estimator that never saw the value.</span>
+</span><span id="line-114">
+</span><span id="line-115"><span class="sd">            **The window parameters are the exception and are REFUSED** — see</span>
+</span><span id="line-116"><span class="sd">            :data:`WINDOW_PARAMETERS`. They do not tune the estimator so much as re-scale</span>
+</span><span id="line-117"><span class="sd">            the gate that reads it, and muvid refuses them at this entry point regardless</span>
+</span><span id="line-118"><span class="sd">            of whether ``mixing`` itself would also refuse or silently answer.</span>
+</span><span id="line-119"><span class="sd">    """</span>
+</span><span id="line-120">    <span class="kn">from</span><span class="w"> </span><span class="nn">mixing.audio</span><span class="w"> </span><span class="kn">import</span> <span class="n">align_clips_to_reference</span>  <span class="c1"># lazy: heavy</span>
+</span><span id="line-121">
+</span><span id="line-122">    <span class="n">_refuse_window_parameters</span><span class="p">(</span><span class="n">estimator_kwargs</span><span class="p">)</span>
+</span><span id="line-123">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">cid</span> <span class="k">for</span> <span class="n">cid</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">clips</span><span class="p">]</span>
+</span><span id="line-124">    <span class="n">clip_paths</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">p</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">clips</span><span class="p">]</span>
+</span><span id="line-125">    <span class="n">aligned</span> <span class="o">=</span> <span class="n">align_clips_to_reference</span><span class="p">(</span>
+</span><span id="line-126">        <span class="n">song_path</span><span class="p">,</span>
+</span><span id="line-127">        <span class="n">clip_paths</span><span class="p">,</span>
+</span><span id="line-128">        <span class="n">reference_duration</span><span class="o">=</span><span class="n">song_duration</span><span class="p">,</span>
+</span><span id="line-129">        <span class="n">sample_rate</span><span class="o">=</span><span class="n">sample_rate</span><span class="p">,</span>
+</span><span id="line-130">        <span class="o">**</span><span class="n">estimator_kwargs</span><span class="p">,</span>
+</span><span id="line-131">    <span class="p">)</span>
+</span><span id="line-132">    <span class="k">return</span> <span class="p">[</span><span class="n">_as_alignment</span><span class="p">(</span><span class="n">clip_ids</span><span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">index</span><span class="p">],</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">aligned</span><span class="p">]</span></div>
 
-</span><span id="line-131">
-</span><span id="line-132">
-</span><span id="line-133"><span class="k">def</span><span class="w"> </span><span class="nf">_refuse_window_parameters</span><span class="p">(</span><span class="n">estimator_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-134"><span class="w">    </span><span class="sd">"""Refuse the kwargs that silently re-scale the support gate — see</span>
-</span><span id="line-135"><span class="sd">    :data:`WINDOW_PARAMETERS`.</span>
-</span><span id="line-136">
-</span><span id="line-137"><span class="sd">    Raises ``TypeError``, matching what ``mixing`` itself raises for a keyword it does</span>
-</span><span id="line-138"><span class="sd">    not accept, so a caller sweeping estimator parameters meets one failure mode rather</span>
-</span><span id="line-139"><span class="sd">    than two.</span>
-</span><span id="line-140"><span class="sd">    """</span>
-</span><span id="line-141">    <span class="n">named</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">WINDOW_PARAMETERS</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">estimator_kwargs</span><span class="p">]</span>
-</span><span id="line-142">    <span class="k">if</span> <span class="ow">not</span> <span class="n">named</span><span class="p">:</span>
-</span><span id="line-143">        <span class="k">return</span>
-</span><span id="line-144">    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-</span><span id="line-145">        <span class="sa">f</span><span class="s2">"align_footage() will not forward </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">named</span><span class="p">)</span><span class="si">}</span><span class="s2">: the analysis window is "</span>
-</span><span id="line-146">        <span class="sa">f</span><span class="s2">"what MIN_SUPPORT is calibrated against, so changing it here would re-scale "</span>
-</span><span id="line-147">        <span class="sa">f</span><span class="s2">"the trust gate without saying so. Narrowing it deflates every support, which "</span>
-</span><span id="line-148">        <span class="sa">f</span><span class="s2">"still reaches the gate silently; widening it past what a clip can hold is now "</span>
-</span><span id="line-149">        <span class="sa">f</span><span class="s2">"refused by mixing itself (WindowTooWideForClip, mixing#43), but muvid "</span>
-</span><span id="line-150">        <span class="sa">f</span><span class="s2">"refuses the keyword regardless, so the calibration decision stays a deliberate "</span>
-</span><span id="line-151">        <span class="sa">f</span><span class="s2">"one on this side too. There is no in-pipeline escape: the window is not "</span>
-</span><span id="line-152">        <span class="sa">f</span><span class="s2">"tunable through this entry point, deliberately. If what you want is a "</span>
-</span><span id="line-153">        <span class="sa">f</span><span class="s2">"different THRESHOLD, set MUVID_FOOTAGE_MIN_SUPPORT. If you genuinely need a "</span>
-</span><span id="line-154">        <span class="sa">f</span><span class="s2">"different window, call mixing.audio.align_clips_to_reference yourself and "</span>
-</span><span id="line-155">        <span class="sa">f</span><span class="s2">"build your own FootageAlignment records from what it returns — you are then "</span>
-</span><span id="line-156">        <span class="sa">f</span><span class="s2">"outside this gate, and choosing a threshold for that window is on you."</span>
-</span><span id="line-157">    <span class="p">)</span>
-</span><span id="line-158">
-</span><span id="line-159">
-</span><span id="line-160"><span class="k">def</span><span class="w"> </span><span class="nf">_as_alignment</span><span class="p">(</span><span class="n">clip_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FootageAlignment</span><span class="p">:</span>
-</span><span id="line-161"><span class="w">    </span><span class="sd">"""One ``mixing.audio.ClipAlignment`` → muvid's record, verdict included.</span>
-</span><span id="line-162">
-</span><span id="line-163"><span class="sd">    ``support``, ``window_s`` and ``hop_s`` are read BY NAME, and absence is ``None``</span>
-</span><span id="line-164"><span class="sd">    rather than an error. The read stays defensive even though the ``mixing&gt;=0.0.48``</span>
-</span><span id="line-165"><span class="sd">    floor guarantees all three: a floor is a claim about what pip *declared*, and this</span>
-</span><span id="line-166"><span class="sd">    is the one line that would turn a wrong claim into an ``AttributeError`` mid-shoot</span>
-</span><span id="line-167"><span class="sd">    rather than into a clip that quietly aligns. The grid comes with the number because</span>
-</span><span id="line-168"><span class="sd">    the estimator fits its window to the clip, so ``support`` without ``window_s`` is a</span>
-</span><span id="line-169"><span class="sd">    fraction whose denominator nobody can see.</span>
-</span><span id="line-170"><span class="sd">    """</span>
-</span><span id="line-171">
-</span><span id="line-172">    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"float | None"</span><span class="p">:</span>
-</span><span id="line-173">        <span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-174">        <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
-</span><span id="line-175">
-</span><span id="line-176">    <span class="n">support</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s2">"support"</span><span class="p">)</span>
-</span><span id="line-177">    <span class="n">window_s</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s2">"window_s"</span><span class="p">)</span>
-</span><span id="line-178">    <span class="n">margin</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s2">"margin"</span><span class="p">)</span>
-</span><span id="line-179">    <span class="k">return</span> <span class="n">FootageAlignment</span><span class="p">(</span>
-</span><span id="line-180">        <span class="n">clip_id</span><span class="o">=</span><span class="n">clip_id</span><span class="p">,</span>
-</span><span id="line-181">        <span class="n">offset_s</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
-</span><span id="line-182">        <span class="n">confidence</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
-</span><span id="line-183">        <span class="n">duration_s</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">duration_s</span><span class="p">,</span>
-</span><span id="line-184">        <span class="n">coverage</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">,</span>
-</span><span id="line-185">        <span class="n">overlaps</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">overlaps</span><span class="p">,</span>
-</span><span id="line-186">        <span class="n">support</span><span class="o">=</span><span class="n">support</span><span class="p">,</span>
-</span><span id="line-187">        <span class="c1"># A clip that does not overlap the song has no offset worth vouching for, but</span>
-</span><span id="line-188">        <span class="c1"># it is `overlaps` that says so — stacking a second False on it would make two</span>
-</span><span id="line-189">        <span class="c1"># different facts read as one, and the caller-facing report distinguishes them.</span>
-</span><span id="line-190">        <span class="n">reliable</span><span class="o">=</span><span class="n">vouches_for</span><span class="p">(</span>
-</span><span id="line-191">            <span class="n">confidence</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
-</span><span id="line-192">            <span class="n">support</span><span class="o">=</span><span class="n">support</span><span class="p">,</span>
-</span><span id="line-193">            <span class="n">margin</span><span class="o">=</span><span class="n">margin</span><span class="p">,</span>
-</span><span id="line-194">            <span class="n">window_s</span><span class="o">=</span><span class="n">window_s</span><span class="p">,</span>
-</span><span id="line-195">        <span class="p">),</span>
-</span><span id="line-196">        <span class="n">window_s</span><span class="o">=</span><span class="n">window_s</span><span class="p">,</span>
-</span><span id="line-197">        <span class="n">hop_s</span><span class="o">=</span><span class="n">read</span><span class="p">(</span><span class="s2">"hop_s"</span><span class="p">),</span>
-</span><span id="line-198">        <span class="n">margin</span><span class="o">=</span><span class="n">margin</span><span class="p">,</span>
+</span><span id="line-133">
+</span><span id="line-134">
+<div class="viewcode-block" id="measure_spans">
+<a class="viewcode-back" href="../../../_autosummary/muvid.footage.align.html#muvid.footage.align.measure_spans">[docs]</a>
+</span><span id="line-135"><span class="k">def</span><span class="w"> </span><span class="nf">measure_spans</span><span class="p">(</span>
+</span><span id="line-136">    <span class="n">song_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-137">    <span class="n">clips</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">],</span>
+</span><span id="line-138">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-139">    <span class="n">song_duration</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-140">    <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">ALIGN_SAMPLE_RATE</span><span class="p">,</span>
+</span><span id="line-141"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"tuple[dict[str, tuple[MeasuredSpan, ...]], float]"</span><span class="p">:</span>
+</span><span id="line-142"><span class="w">    </span><span class="sd">"""Each clip's stretches that align to the song, window by window</span>
+</span><span id="line-143"><span class="sd">    (``mixing.audio.aligned_spans``; muvid#16 slice 1), and the window they were</span>
+</span><span id="line-144"><span class="sd">    measured on — which is also how accurate their edges are.</span>
+</span><span id="line-145">
+</span><span id="line-146"><span class="sd">    About one correlation per window per clip, against one per clip for</span>
+</span><span id="line-147"><span class="sd">    :func:`align_footage`, which is why it is opt-in. No broad except: a ``mixing``</span>
+</span><span id="line-148"><span class="sd">    failure is a traceback, never a quietly empty measurement.</span>
+</span><span id="line-149"><span class="sd">    """</span>
+</span><span id="line-150">    <span class="kn">from</span><span class="w"> </span><span class="nn">mixing.audio</span><span class="w"> </span><span class="kn">import</span> <span class="n">aligned_spans</span>  <span class="c1"># lazy: heavy</span>
+</span><span id="line-151">    <span class="kn">from</span><span class="w"> </span><span class="nn">mixing.audio.audio_ops</span><span class="w"> </span><span class="kn">import</span> <span class="n">SPAN_WINDOW_S</span>  <span class="c1"># not re-exported by mixing.audio</span>
+</span><span id="line-152">
+</span><span id="line-153">    <span class="n">out</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-154">    <span class="k">for</span> <span class="n">clip_id</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">clips</span><span class="p">:</span>
+</span><span id="line-155">        <span class="n">out</span><span class="p">[</span><span class="n">clip_id</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="line-156">            <span class="n">MeasuredSpan</span><span class="p">(</span>
+</span><span id="line-157">                <span class="n">clip_start_s</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">clip_start_s</span><span class="p">),</span>
+</span><span id="line-158">                <span class="n">clip_end_s</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">clip_end_s</span><span class="p">),</span>
+</span><span id="line-159">                <span class="n">offset_s</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">offset_s</span><span class="p">),</span>
+</span><span id="line-160">                <span class="n">confidence</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">confidence</span><span class="p">),</span>
+</span><span id="line-161">                <span class="n">support</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">support</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">support</span><span class="p">),</span>
+</span><span id="line-162">                <span class="n">margin</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">margin</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">margin</span><span class="p">),</span>
+</span><span id="line-163">            <span class="p">)</span>
+</span><span id="line-164">            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">aligned_spans</span><span class="p">(</span>
+</span><span id="line-165">                <span class="n">song_path</span><span class="p">,</span>
+</span><span id="line-166">                <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+</span><span id="line-167">                <span class="n">reference_duration</span><span class="o">=</span><span class="n">song_duration</span><span class="p">,</span>
+</span><span id="line-168">                <span class="n">sample_rate</span><span class="o">=</span><span class="n">sample_rate</span><span class="p">,</span>
+</span><span id="line-169">                <span class="n">window_s</span><span class="o">=</span><span class="n">SPAN_WINDOW_S</span><span class="p">,</span>  <span class="c1"># named, so the reported accuracy is the one used</span>
+</span><span id="line-170">            <span class="p">)</span>
+</span><span id="line-171">        <span class="p">)</span>
+</span><span id="line-172">    <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">SPAN_WINDOW_S</span><span class="p">)</span></div>
+
+</span><span id="line-173">
+</span><span id="line-174">
+</span><span id="line-175"><span class="k">def</span><span class="w"> </span><span class="nf">_refuse_window_parameters</span><span class="p">(</span><span class="n">estimator_kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-176"><span class="w">    </span><span class="sd">"""Refuse the kwargs that silently re-scale the support gate — see</span>
+</span><span id="line-177"><span class="sd">    :data:`WINDOW_PARAMETERS`.</span>
+</span><span id="line-178">
+</span><span id="line-179"><span class="sd">    Raises ``TypeError``, matching what ``mixing`` itself raises for a keyword it does</span>
+</span><span id="line-180"><span class="sd">    not accept, so a caller sweeping estimator parameters meets one failure mode rather</span>
+</span><span id="line-181"><span class="sd">    than two.</span>
+</span><span id="line-182"><span class="sd">    """</span>
+</span><span id="line-183">    <span class="n">named</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">WINDOW_PARAMETERS</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">estimator_kwargs</span><span class="p">]</span>
+</span><span id="line-184">    <span class="k">if</span> <span class="ow">not</span> <span class="n">named</span><span class="p">:</span>
+</span><span id="line-185">        <span class="k">return</span>
+</span><span id="line-186">    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="line-187">        <span class="sa">f</span><span class="s2">"align_footage() will not forward </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">named</span><span class="p">)</span><span class="si">}</span><span class="s2">: the analysis window is "</span>
+</span><span id="line-188">        <span class="sa">f</span><span class="s2">"what MIN_SUPPORT is calibrated against, so changing it here would re-scale "</span>
+</span><span id="line-189">        <span class="sa">f</span><span class="s2">"the trust gate without saying so. Narrowing it deflates every support, which "</span>
+</span><span id="line-190">        <span class="sa">f</span><span class="s2">"still reaches the gate silently; widening it past what a clip can hold is now "</span>
+</span><span id="line-191">        <span class="sa">f</span><span class="s2">"refused by mixing itself (WindowTooWideForClip, mixing#43), but muvid "</span>
+</span><span id="line-192">        <span class="sa">f</span><span class="s2">"refuses the keyword regardless, so the calibration decision stays a deliberate "</span>
+</span><span id="line-193">        <span class="sa">f</span><span class="s2">"one on this side too. There is no in-pipeline escape: the window is not "</span>
+</span><span id="line-194">        <span class="sa">f</span><span class="s2">"tunable through this entry point, deliberately. If what you want is a "</span>
+</span><span id="line-195">        <span class="sa">f</span><span class="s2">"different THRESHOLD, set MUVID_FOOTAGE_MIN_SUPPORT. If you genuinely need a "</span>
+</span><span id="line-196">        <span class="sa">f</span><span class="s2">"different window, call mixing.audio.align_clips_to_reference yourself and "</span>
+</span><span id="line-197">        <span class="sa">f</span><span class="s2">"build your own FootageAlignment records from what it returns — you are then "</span>
+</span><span id="line-198">        <span class="sa">f</span><span class="s2">"outside this gate, and choosing a threshold for that window is on you."</span>
 </span><span id="line-199">    <span class="p">)</span>
+</span><span id="line-200">
+</span><span id="line-201">
+</span><span id="line-202"><span class="k">def</span><span class="w"> </span><span class="nf">_as_alignment</span><span class="p">(</span><span class="n">clip_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FootageAlignment</span><span class="p">:</span>
+</span><span id="line-203"><span class="w">    </span><span class="sd">"""One ``mixing.audio.ClipAlignment`` → muvid's record, verdict included.</span>
+</span><span id="line-204">
+</span><span id="line-205"><span class="sd">    ``support``, ``window_s`` and ``hop_s`` are read BY NAME, and absence is ``None``</span>
+</span><span id="line-206"><span class="sd">    rather than an error. The read stays defensive even though the ``mixing&gt;=0.0.48``</span>
+</span><span id="line-207"><span class="sd">    floor guarantees all three: a floor is a claim about what pip *declared*, and this</span>
+</span><span id="line-208"><span class="sd">    is the one line that would turn a wrong claim into an ``AttributeError`` mid-shoot</span>
+</span><span id="line-209"><span class="sd">    rather than into a clip that quietly aligns. The grid comes with the number because</span>
+</span><span id="line-210"><span class="sd">    the estimator fits its window to the clip, so ``support`` without ``window_s`` is a</span>
+</span><span id="line-211"><span class="sd">    fraction whose denominator nobody can see.</span>
+</span><span id="line-212"><span class="sd">    """</span>
+</span><span id="line-213">
+</span><span id="line-214">    <span class="k">def</span><span class="w"> </span><span class="nf">read</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"float | None"</span><span class="p">:</span>
+</span><span id="line-215">        <span class="n">v</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-216">        <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+</span><span id="line-217">
+</span><span id="line-218">    <span class="n">support</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s2">"support"</span><span class="p">)</span>
+</span><span id="line-219">    <span class="n">window_s</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s2">"window_s"</span><span class="p">)</span>
+</span><span id="line-220">    <span class="n">margin</span> <span class="o">=</span> <span class="n">read</span><span class="p">(</span><span class="s2">"margin"</span><span class="p">)</span>
+</span><span id="line-221">    <span class="k">return</span> <span class="n">FootageAlignment</span><span class="p">(</span>
+</span><span id="line-222">        <span class="n">clip_id</span><span class="o">=</span><span class="n">clip_id</span><span class="p">,</span>
+</span><span id="line-223">        <span class="n">offset_s</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
+</span><span id="line-224">        <span class="n">confidence</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
+</span><span id="line-225">        <span class="n">duration_s</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">duration_s</span><span class="p">,</span>
+</span><span id="line-226">        <span class="n">coverage</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">,</span>
+</span><span id="line-227">        <span class="n">overlaps</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">overlaps</span><span class="p">,</span>
+</span><span id="line-228">        <span class="n">support</span><span class="o">=</span><span class="n">support</span><span class="p">,</span>
+</span><span id="line-229">        <span class="c1"># A clip that does not overlap the song has no offset worth vouching for, but</span>
+</span><span id="line-230">        <span class="c1"># it is `overlaps` that says so — stacking a second False on it would make two</span>
+</span><span id="line-231">        <span class="c1"># different facts read as one, and the caller-facing report distinguishes them.</span>
+</span><span id="line-232">        <span class="n">reliable</span><span class="o">=</span><span class="n">vouches_for</span><span class="p">(</span>
+</span><span id="line-233">            <span class="n">confidence</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span>
+</span><span id="line-234">            <span class="n">support</span><span class="o">=</span><span class="n">support</span><span class="p">,</span>
+</span><span id="line-235">            <span class="n">margin</span><span class="o">=</span><span class="n">margin</span><span class="p">,</span>
+</span><span id="line-236">            <span class="n">window_s</span><span class="o">=</span><span class="n">window_s</span><span class="p">,</span>
+</span><span id="line-237">        <span class="p">),</span>
+</span><span id="line-238">        <span class="n">window_s</span><span class="o">=</span><span class="n">window_s</span><span class="p">,</span>
+</span><span id="line-239">        <span class="n">hop_s</span><span class="o">=</span><span class="n">read</span><span class="p">(</span><span class="s2">"hop_s"</span><span class="p">),</span>
+</span><span id="line-240">        <span class="n">margin</span><span class="o">=</span><span class="n">margin</span><span class="p">,</span>
+</span><span id="line-241">    <span class="p">)</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -400,7 +445,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=cdca99f8"></script>
+    <script src="../../../_static/documentation_options.js?v=fa321392"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

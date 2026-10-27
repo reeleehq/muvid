@@ -245,7 +245,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured')
+### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -293,6 +293,16 @@ field were all written by the aligner, so it defaults to measured.
 
 * **Type:**
   How the offset is KNOWN
+
+#### spans *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[MeasuredSpan](muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), ...] | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The clip’s stretches measured window by window, at whatever offset each aligns
+(`MeasuredSpan`, muvid#16 slice 1) — `None` when not measured (the
+default: it costs a correlation per window), `()` when nothing in the clip
+aligns. A REPORT for now: nothing cuts on, scores by, or refuses on it, which is
+why [`align_fingerprint()`](muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint) does not hash it.
+Omitted from `to_dict()` when `None`, so records without it stay
+byte-identical.
 
 #### support *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 

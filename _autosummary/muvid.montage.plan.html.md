@@ -136,9 +136,15 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 A framing: top-left `(x, y)` and visible fraction `size` of the
 fitted frame, all in `0..1`. The aspect is the canvas’s.
 
-### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None, active=None)
+### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None, active=None, affect_fit=None)
 
 Fill every region of every draft with `(media_index, use_ordinal)`.
+
+`affect_fit` (muvid#134) makes the policy also match the feel of the pictures to
+the slot’s: a picture further than `AFFECT_SLACK` from the slot’s best fit is
+the FIRST exclusion the tiers relax, so affect chooses among what the gap allows
+and never causes a repeat. The `chronological` order fixes the sequence, so it
+ignores affect (the stats say `affect: false`).
 
 Returns one `{region: (media, use)}` per draft, plus the policy’s own
 account of what it did (reserved images, uses, the smallest gap it
@@ -189,12 +195,13 @@ its neighbour — a half-beat pickup is not a slot — and a cut within
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.montage.plan.plan_montage(analysis, media, treatment, , active=None)
+### muvid.montage.plan.plan_montage(analysis, media, treatment, , active=None, affect_fit=None)
 
 Pool + measurements + treatment -> a [`Plan`](#muvid.montage.plan.Plan). Pure and deterministic.
 
 `active` says which slots will actually be shown (a caller filling only part of
 the song); the `chronological` reuse order spends the pool on those alone.
+`affect_fit` matches the pictures’ feel to the slots’ ([`assign_media()`](#muvid.montage.plan.assign_media)).
 
 * **Return type:**
   [`Plan`](#muvid.montage.plan.Plan)

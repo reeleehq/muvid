@@ -786,7 +786,8 @@ overrule one with `footage_set_has_song`. Every video must have been listened to
 follow one another: `taken` (the default) in the order they were taken — by the time
 their files say, upload order for any that say nothing; `music.order` /
 `music.order_note` report which applied — or `planner`, the reuse order that
-ignores chronology.
+ignores chronology and puts lively videos in the loud parts of the song
+(`music.affect` says when it applied).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

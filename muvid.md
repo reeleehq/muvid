@@ -1,4 +1,4 @@
-> built 2026-10-27 10:39 UTC from c7811d0 (main) · muvid 0.0.121. Details: build_info.json
+> built 2026-10-27 11:29 UTC from 5d5966e (main) · muvid 0.0.122. Details: build_info.json
 
 # index.html.md
 
@@ -2312,9 +2312,10 @@ it; it is defined in [`muvid.footage.edl`](_autosummary/muvid.footage.edl.html.m
 
 ### Functions
 
-| [`align_footage`](_autosummary/muvid.footage.align.html.md#muvid.footage.align.align_footage)(song_path, clips, \*[, ...])   | Align `clips` (`[(clip_id, clip_path), ...]`) to the song at `song_path`.      |
-|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| [`vouches_for`](_autosummary/muvid.footage.align.html.md#muvid.footage.align.vouches_for)(\*, confidence, support[, ...])  | Does the aligner vouch for this offset? The ONE place that verdict is reached. |
+| [`align_footage`](_autosummary/muvid.footage.align.html.md#muvid.footage.align.align_footage)(song_path, clips, \*[, ...])   | Align `clips` (`[(clip_id, clip_path), ...]`) to the song at `song_path`.                                                                                                                           |
+|-----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`measure_spans`](_autosummary/muvid.footage.align.html.md#muvid.footage.align.measure_spans)(song_path, clips, \*[, ...])   | Each clip's stretches that align to the song, window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1), and the window they were measured on — which is also how accurate their edges are. |
+| [`vouches_for`](_autosummary/muvid.footage.align.html.md#muvid.footage.align.vouches_for)(\*, confidence, support[, ...])  | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                      |
 
 ### muvid.footage.align.ALIGN_SAMPLE_RATE *= 16000*
 
@@ -2391,6 +2392,19 @@ genre stays light.
     of whether `mixing` itself would also refuse or silently answer.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)]
+
+### muvid.footage.align.measure_spans(song_path, clips, , song_duration=None, sample_rate=16000)
+
+Each clip’s stretches that align to the song, window by window
+(`mixing.audio.aligned_spans`; muvid#16 slice 1), and the window they were
+measured on — which is also how accurate their edges are.
+
+About one correlation per window per clip, against one per clip for
+[`align_footage()`](_autosummary/muvid.footage.align.html.md#muvid.footage.align.align_footage), which is why it is opt-in. No broad except: a `mixing`
+failure is a traceback, never a quietly empty measurement.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`MeasuredSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]], [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
 ### muvid.footage.align.vouches_for(, confidence, support, margin=None, window_s=None)
 
@@ -3430,6 +3444,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`MEASURED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MEASURED)                  | the aligner found the offset, or a person set it.                                                                                                                                                                                                               |
 | [`UNPLACED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNPLACED)                  | Two more `source` values, for records that are NEVER persisted.                                                                                                                                                                                                 |
 | [`STILL_DURATION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.STILL_DURATION_S)          | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
+| [`SPAN_OFFSET_TOLERANCE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S)   | How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — `mixing`'s own span tolerance (`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.                                          |
 | [`SLIP_MAX_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SLIP_MAX_S)                | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.RATE_MAX_DEV)              | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
 | [`EDGE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EDGE_S)                    | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
@@ -3456,19 +3471,21 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                   |
 | [`still_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                       |
 | [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                               |
+| [`unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches)(a, \*[, tolerance_s])       | The clip-time stretches of `a`'s placement on the song that no measured span confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single offset says is in sync and the window-by-window measurement could not verify there — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.                                                             |
 | [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                        |
 | [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                          |
 | [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                        |
 
 ### Classes
 
-| [`AssemblyCut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.       |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| [`CropWindow`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.            |
-| [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                    |
-| [`ExcludedSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88). |
-| [`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).            |
-| [`Transition`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                          |
+| [`AssemblyCut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.                                          |
+|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| [`CropWindow`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.                                               |
+| [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                                                       |
+| [`ExcludedSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88).                                    |
+| [`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).                                               |
+| [`MeasuredSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan)(clip_start_s, clip_end_s, ...)       | One stretch of a clip that aligns to the song, measured window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1). |
+| [`Transition`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                                                             |
 
 ### Exceptions
 
@@ -3779,7 +3796,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured')
+### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3827,6 +3844,16 @@ field were all written by the aligner, so it defaults to measured.
 
 * **Type:**
   How the offset is KNOWN
+
+#### spans *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[MeasuredSpan](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), ...] | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The clip’s stretches measured window by window, at whatever offset each aligns
+([`MeasuredSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), muvid#16 slice 1) — `None` when not measured (the
+default: it costs a correlation per window), `()` when nothing in the clip
+aligns. A REPORT for now: nothing cuts on, scores by, or refuses on it, which is
+why [`align_fingerprint()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint) does not hash it.
+Omitted from `to_dict()` when `None`, so records without it stay
+byte-identical.
 
 #### support *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -4123,6 +4150,19 @@ the same class of silent no-op as muvid#44’s `camera: {move: static}`, which
 if a transition rounds to zero frames at the actual render fps, which this
 song-time floor cannot know.
 
+### *class* muvid.footage.edl.MeasuredSpan(clip_start_s, clip_end_s, offset_s, confidence, support=None, margin=None)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One stretch of a clip that aligns to the song, measured window by window
+(`mixing.audio.aligned_spans`; muvid#16 slice 1).
+
+`clip_start_s`/`clip_end_s` are clip time; `offset_s` places the stretch on
+the song (`song = clip + offset_s`). A clip whose parts sit at different offsets
+(a take stopped and restarted) has several; material the song does not contain has
+none. Edges are accurate to about the analysis window, which is enough to tell two
+takes apart and NOT enough to cut on — nothing cuts on them yet.
+
 ### muvid.footage.edl.NO_VOUCHED_COVERAGE *= 'no_vouched_coverage'*
 
 nothing the aligner vouches for covers it at all. The
@@ -4148,6 +4188,12 @@ larger than a beat is a different alignment, which is `set_offset`’s job.
 
 * **Type:**
   The largest slip a cut may carry, either way (s)
+
+### muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S *= 0.25*
+
+How far a measured span’s offset may sit from its clip’s offset and still be read
+as THAT placement (seconds) — `mixing`’s own span tolerance
+(`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.
 
 ### muvid.footage.edl.STILL_DURATION_S *= 3600.0*
 
@@ -4513,6 +4559,26 @@ aligner could not place), never overlapping, never persisted.
 
 * **Return type:**
   [`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)
+
+### muvid.footage.edl.unverified_stretches(a, , tolerance_s=0.25)
+
+The clip-time stretches of `a`’s placement on the song that no measured span
+confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single
+offset says is in sync and the window-by-window measurement could not verify there
+— the last 18 s of a 78 s clip that stopped matching, a dropout, another take.
+
+`None` when spans were not measured; `[]` when every placed second is confirmed.
+Edges inherit the spans’ resolution (about the analysis window).
+
+```pycon
+>>> a = FootageAlignment("c", 0.0, 0.9, 78.0, (0.0, 78.0),
+...     spans=(MeasuredSpan(0.0, 60.0, 0.01, 0.8),))
+>>> unverified_stretches(a)
+[(60.0, 78.0)]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.edl.validate_edl(edl, alignments, song_duration, , canvas=(1920, 1920), allow_unreliable=False)
 
@@ -5025,7 +5091,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured')
+### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -5073,6 +5139,16 @@ field were all written by the aligner, so it defaults to measured.
 
 * **Type:**
   How the offset is KNOWN
+
+#### spans *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[MeasuredSpan](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), ...] | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The clip’s stretches measured window by window, at whatever offset each aligns
+(`MeasuredSpan`, muvid#16 slice 1) — `None` when not measured (the
+default: it costs a correlation per window), `()` when nothing in the clip
+aligns. A REPORT for now: nothing cuts on, scores by, or refuses on it, which is
+why [`align_fingerprint()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint) does not hash it.
+Omitted from `to_dict()` when `None`, so records without it stay
+byte-identical.
 
 #### support *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -6406,7 +6482,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken')
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>)
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -6419,6 +6495,12 @@ picture per slot, or `"auto"`; `cut_feel` a montage pace (`slow`, `steady`,
 picture’s displayed size (for `cover`). `order` is one of `ORDERS`: by
 default the pictures follow the order they were TAKEN in
 (`chronological_picks()`); the report says which order applied and why.
+`affect_of` (muvid#134) gives each picture’s feel — `(source, envelope) ->` a
+number, higher livelier, or `None` — and the planner then puts lively pictures in
+the loud sections and calm ones in the quiet sections (default `liveliness()`;
+`None` turns it off). It reorders pictures, so it acts in the `planner` order
+only; `taken` keeps the order they were taken in. The report’s `affect` says
+whether it applied.
 
 Returns [`MusicCut`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.MusicCut) whose `entries` are validated-shape
 [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) free cuts, contiguous over each span, in song
@@ -7806,6 +7888,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`align`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.align)(fp)                                        | Find where each video sits on the song by listening to its own audio, and save it.                                                                                                                                                                                      |
 | [`set_offset`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.set_offset)(fp, \*, clip_id, offset_s)            | Place one video on the song BY HAND: the song time at which the video's own first frame plays (negative = the video starts before the song does).                                                                                                                       |
 | [`clear_offset`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.clear_offset)(fp, \*, clip_id)                    | Forget where I placed this video: remove a hand-declared offset, so the next `align` measures the clip by its audio instead.                                                                                                                                            |
+| [`measure_spans`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.measure_spans)(fp)                                | Check, stretch by stretch, which parts of each placed video actually match the song where it is placed, and save what was found (muvid#16).                                                                                                                             |
 | [`set_has_song`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.set_has_song)(fp, \*, clip_id, has_song)          | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                    |
 | [`timeline`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.timeline)(fp)                                     | Which videos cover which spans of the song (overlaps shown), from the saved alignment — the map for choosing what to cut to.                                                                                                                                            |
 | [`beat_grid`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.beat_grid)(fp)                                    | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                   |
@@ -7888,7 +7971,7 @@ Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 
 An operation refused — the message says why and what to do next.
 
-### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict())
+### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict(), mcp=True)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -7918,6 +8001,11 @@ show “8 of 12” and refuse the extra files before sending a byte (muvid#170).
 #### max_upload_bytes *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[int](https://docs.python.org/3/builtins/functions.html#int)]* *= None*
 
 The op’s own ceiling for a host-streamed upload (`nw.GenreOp.max_upload_bytes`).
+
+#### mcp *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= True*
+
+Whether the MCP transport serves it (`muvid.mcp._footage_ops`). `False`
+for an op only a host that honours `runs="job"` should run.
 
 ### muvid.footage.service.add_clip(fp, , path, name='', filename='', clip_id='', ext='', duration_s=None)
 
@@ -8306,6 +8394,25 @@ and grades (vivid, black and white, posterize, cartoon) — each with its
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.footage.service.measure_spans(fp)
+
+Check, stretch by stretch, which parts of each placed video actually match the
+song where it is placed, and save what was found (muvid#16).
+
+`align` places a whole video at ONE offset. This listens to it window by window
+(slower: about one measurement per 10 s of video) and records, on each video’s
+alignment, the stretches that match the song and at what offset each (`spans`) —
+for measured and hand-placed offsets alike. `unverified` then names, per video,
+the stretches of its placement no span confirms at its offset: the end of a take
+that stopped matching, a dropout, another take. Edges are accurate to about
+`span_edge_accuracy_s` (the analysis window), and a shorter stretch may not show.
+
+A report for now: cutting, scoring and rendering do not use it. Re-aligning or
+re-placing a video replaces its record, so measure again afterwards.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.footage.service.merge_cut(fp, , edit_id, index, into='previous')
 
 Join cut `index` to its neighbour: the neighbour (`into` “previous” or
@@ -8357,7 +8464,9 @@ choice — fades for a slow song). `order` is how the pictures follow one anothe
 `taken` (the default) in the order they were taken, so a day reads as it happened
 — by the time their files say, upload order for any that say nothing (`music`
 reports which) — or `planner`, the montage planner’s reuse order, which ignores
-chronology. `explain_edit` says why
+chronology and matches the videos’ liveliness to the sections’ loudness (lively
+pictures in the loud parts; `music.affect` says when it applied, muvid#134).
+`explain_edit` says why
 each cut is where it is.
 
 * **Return type:**
@@ -13714,7 +13823,8 @@ overrule one with `footage_set_has_song`. Every video must have been listened to
 follow one another: `taken` (the default) in the order they were taken — by the time
 their files say, upload order for any that say nothing; `music.order` /
 `music.order_note` report which applied — or `planner`, the reuse order that
-ignores chronology.
+ignores chronology and puts lively videos in the loud parts of the song
+(`music.affect` says when it applied).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -14838,9 +14948,15 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 A framing: top-left `(x, y)` and visible fraction `size` of the
 fitted frame, all in `0..1`. The aspect is the canvas’s.
 
-### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None, active=None)
+### muvid.montage.plan.assign_media(drafts, media, reuse, , finale_start=None, active=None, affect_fit=None)
 
 Fill every region of every draft with `(media_index, use_ordinal)`.
+
+`affect_fit` (muvid#134) makes the policy also match the feel of the pictures to
+the slot’s: a picture further than `AFFECT_SLACK` from the slot’s best fit is
+the FIRST exclusion the tiers relax, so affect chooses among what the gap allows
+and never causes a repeat. The `chronological` order fixes the sequence, so it
+ignores affect (the stats say `affect: false`).
 
 Returns one `{region: (media, use)}` per draft, plus the policy’s own
 account of what it did (reserved images, uses, the smallest gap it
@@ -14891,12 +15007,13 @@ its neighbour — a half-beat pickup is not a slot — and a cut within
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.montage.plan.plan_montage(analysis, media, treatment, , active=None)
+### muvid.montage.plan.plan_montage(analysis, media, treatment, , active=None, affect_fit=None)
 
 Pool + measurements + treatment -> a [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan). Pure and deterministic.
 
 `active` says which slots will actually be shown (a caller filling only part of
 the song); the `chronological` reuse order spends the pool on those alone.
+`affect_fit` matches the pictures’ feel to the slots’ ([`assign_media()`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.assign_media)).
 
 * **Return type:**
   [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan)
@@ -18715,18 +18832,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 10:39 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/c7811d0a180f2bed42378dee7047b9826e594d61"><code>c7811d0</code></a> on branch <code>main</code>, for **muvid 0.0.121** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 11:29 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5d5966e853ec79e9745281408a3496648dd303e4"><code>5d5966e</code></a> on branch <code>main</code>, for **muvid 0.0.122** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.122) is ahead of the latest release on PyPI (0.0.121): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/c7811d0a180f2bed42378dee7047b9826e594d61"><code>c7811d0a180f2bed42378dee7047b9826e594d61</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5d5966e853ec79e9745281408a3496648dd303e4"><code>5d5966e853ec79e9745281408a3496648dd303e4</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.121</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.122</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18735,9 +18854,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40487829966">40487829966</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40490674356">40490674356</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>f1c91e926278be457730194cbacaeb946dc74e56</code> (in the history of the built commit) |
+| Event commit | <code>517578835ba2a668c6d7b6e6ccc9c17b2a6e07be</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18762,13 +18881,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.121/">0.0.121</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.121/">0.0.121</a>, older than the documented version (0.0.122).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout c7811d0a180f2bed42378dee7047b9826e594d61
+git checkout 5d5966e853ec79e9745281408a3496648dd303e4
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
