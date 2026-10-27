@@ -54,6 +54,24 @@ BEATS = "beats"
 #: Every master input a score is keyed on beyond the song and the placement.
 INPUTS = (BEATS,)
 
+
+@dataclass(frozen=True)
+class KeyedInput:
+    """How a host provides one keyed master input (:data:`INPUTS`, muvid#224) — the
+    single place an input is read, for the run that measures on it AND for the readers
+    that ask whether the scores are still current.
+
+    ``read(project) -> (value, fingerprint)`` is called once per scoring run and the two
+    come back TOGETHER, so the manifest can never record one value's key beside another
+    value's measurement (the beat grid's #187 rule, for every input). ``fingerprint
+    (project) -> str`` is the cheap current fingerprint alone, for the staleness
+    question; ``""`` means the input's default, which ``song_hash`` already keys.
+    """
+
+    read: Callable[[Any], "tuple[Any, str]"]
+    fingerprint: Callable[[Any], str]
+
+
 #: The tiers. ``core`` runs by default; ``lipsync`` only when the opt-in is enabled.
 CORE_TIER = "core"
 LIPSYNC_TIER = "lipsync"
@@ -127,6 +145,8 @@ class ClipContext:
     beat: MasterBeats
     grid: Grid
     artifacts: Mapping[str, Any] = field(default_factory=dict)
+    #: every keyed input's value by name (:data:`INPUTS`; ``beat`` is the beat grid's)
+    inputs: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

@@ -109,6 +109,7 @@ def score_project(
     enable_lipsync: bool | None = None,
     progress_cb: Callable[[dict], None] | None = None,
     should_cancel: Callable[[], bool] | None = None,
+    inputs: "Mapping[str, registry.KeyedInput] | None" = None,
     beat_source: "Callable[[Any], registry.MasterBeats] | None" = None,
     keep: "KeptScores | None" = None,
 ) -> dict:
@@ -123,12 +124,16 @@ def score_project(
         enable_lipsync: force the opt-in tier on/off (default: the env flag).
         progress_cb: sink for ``{'kind':'progress', ...}`` dict events (nw.jobs mirror shape).
         should_cancel: polled between clips/stages; a True short-circuits to a clean cancel.
-        beat_source: ``project -> MasterBeats``, the master beat grid and its name,
-            read together (default: the estimator, ``mixing.audio.beat_grid`` on the
-            song). The footage service passes one that prefers a declared grid
-            (muvid#187). Its ``fingerprint`` goes into the manifest, so
-            :func:`~muvid.footage.scoring.grid.manifest_is_current` can tell scores
-            measured on one grid from another.
+        inputs: ``{name: KeyedInput}`` — how each keyed master input
+            (``registry.INPUTS``) is read, value and fingerprint together (muvid#224;
+            default :data:`DEFAULT_INPUTS`, the estimator's beat grid). The footage
+            service passes its own, which prefers a declared grid (muvid#187). Each
+            fingerprint goes into the manifest, so
+            :func:`~muvid.footage.scoring.grid.stale_metrics` can tell scores measured
+            on one value of an input from another.
+        beat_source: ``project -> MasterBeats`` — the beat grid's provider alone, as
+            before muvid#224; the ``MasterBeats.fingerprint`` is what is recorded.
+            Shorthand for ``inputs={BEATS: ...}``, which wins when both name it.
         keep: a partial re-score (muvid#206): the CURRENT metrics' tracks to persist
             beside the ``keep.recompute`` ones this run measures (``metrics`` is then
             ignored). Re-checked against the song and alignments under the scoring lock:
@@ -143,7 +148,7 @@ def score_project(
             enable_lipsync=enable_lipsync,
             progress_cb=progress_cb,
             should_cancel=should_cancel,
-            beat_source=beat_source,
+            inputs=_with_beat_source(inputs, beat_source),
             keep=keep,
         )
 
@@ -194,6 +199,48 @@ def _estimated_beats(project) -> registry.MasterBeats:
     return registry.MasterBeats.estimated(beat_grid(str(project.song_path())))
 
 
+#: The keyed inputs a run reads when its host names none: the estimator's beat grid,
+#: whose fingerprint is ``""`` (the song already keys it).
+DEFAULT_INPUTS = {
+    registry.BEATS: registry.KeyedInput(
+        read=lambda project: (_estimated_beats(project), ""),
+        fingerprint=lambda project: "",
+    )
+}
+
+
+def _with_beat_source(inputs, beat_source):
+    """``inputs`` with ``beat_source`` (the pre-#224 argument) as the beat provider."""
+    if beat_source is None:
+        return inputs
+
+    def read(project):
+        master = beat_source(project)
+        return master, master.fingerprint
+
+    beats = registry.KeyedInput(
+        read=read, fingerprint=lambda project: beat_source(project).fingerprint
+    )
+    return {registry.BEATS: beats, **(inputs or {})}
+
+
+def _read_inputs(project, inputs) -> "tuple[dict, dict]":
+    """``(values, fingerprints)`` by name, every keyed input read ONCE with its name."""
+    keyed = {**DEFAULT_INPUTS, **(inputs or {})}
+    unknown = sorted(set(keyed) - set(registry.INPUTS))
+    if unknown:
+        raise ValueError(
+            f"unknown keyed input(s) {unknown}; muvid keys {list(registry.INPUTS)}"
+        )
+    missing = sorted(set(registry.INPUTS) - set(keyed))
+    if missing:
+        raise ValueError(f"no provider for keyed input(s) {missing}")
+    values, fingerprints = {}, {}
+    for name, provider in keyed.items():
+        values[name], fingerprints[name] = provider.read(project)
+    return values, fingerprints
+
+
 def _emit(progress_cb, idx, total, name):
     if progress_cb is not None:
         progress_cb(
@@ -219,7 +266,7 @@ def _score(
     enable_lipsync,
     progress_cb,
     should_cancel,
-    beat_source=None,
+    inputs=None,
     keep=None,
 ):
     from muvid.footage.scoring import frames as F
@@ -292,8 +339,10 @@ def _score(
     # 1. Master beat grid (once).
     _emit(progress_cb, stage, total_stages, "beat_grid")
     # Read ONCE, with its name: a grid declared or cleared while this job waited for the
-    # semaphore cannot put one grid's key beside another grid's beats.
-    bg = (beat_source or _estimated_beats)(project)
+    # semaphore cannot put one grid's key beside another grid's beats — and so for
+    # every keyed input (muvid#224).
+    input_values, input_fingerprints = _read_inputs(project, inputs)
+    bg = input_values[registry.BEATS]
     stage += 1
     if _cancelled(should_cancel):
         return {"status": "cancelled", "stage": "beat_grid"}
@@ -347,6 +396,7 @@ def _score(
             coverage=tuple(a.coverage),
             frames=fp,
             beat=bg,
+            inputs=input_values,
             grid=grid,
         )
         # Optional hard quality gate → AND into the mask of every GATED scorer's tracks.
@@ -418,7 +468,7 @@ def _score(
         align_fingerprint=align_fingerprint(aligns),
         beat_times=bg.beat_times,
         downbeat_times=bg.downbeat_times,
-        input_fingerprints={registry.BEATS: bg.fingerprint},
+        input_fingerprints=input_fingerprints,
         input_metrics=input_metrics,
         extra={
             "shot_boundaries": shots_by_clip,

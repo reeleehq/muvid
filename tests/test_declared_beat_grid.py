@@ -629,11 +629,18 @@ def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
 
     monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
     sections = {"fp": ""}
-    beats_fps = service._input_fingerprints
+    rows = service._keyed_inputs
+    # since muvid#224 a second input is ONE row, read by the run and the readers alike
     monkeypatch.setattr(
         service,
-        "_input_fingerprints",
-        lambda fp: {**beats_fps(fp), "sections": sections["fp"]},
+        "_keyed_inputs",
+        lambda: {
+            **rows(),
+            "sections": R.KeyedInput(
+                read=lambda fp: (None, sections["fp"]),
+                fingerprint=lambda fp: sections["fp"],
+            ),
+        },
     )
 
     def track(ctx, metric):
@@ -667,3 +674,38 @@ def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
     }
     sections["fp"] = "map1"  # a section map is declared
     assert service.scores(proj)["stale_metrics"] == ["s_m"]
+
+
+def test_every_keyed_input_has_a_provider_in_the_service():
+    """muvid#224: a keyed input with no provider used to be read as its default by the
+    staleness question, silently. The service's one table must cover them all."""
+    from muvid.footage.scoring import registry as R
+
+    assert set(service._keyed_inputs()) == set(R.INPUTS)
+
+
+def test_a_run_refuses_an_input_with_no_provider_or_an_unknown_one(
+    scored_proj, monkeypatch
+):
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.orchestrator import _read_inputs
+
+    proj, _seen, _ = scored_proj
+    monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
+    with pytest.raises(ValueError, match="no provider.*sections"):
+        _read_inputs(proj, None)
+    bogus = R.KeyedInput(read=lambda fp: (None, ""), fingerprint=lambda fp: "")
+    with pytest.raises(ValueError, match="unknown keyed input.*typo"):
+        _read_inputs(proj, {"sections": bogus, "typo": bogus})
+
+
+def test_the_run_records_the_fingerprint_it_read_with_the_value(scored_proj):
+    """The value and its key come from ONE read: the manifest records what ``read``
+    returned, not a second look at the project (the #187 race, for every input)."""
+    from muvid.footage.scoring.grid import load_manifest
+
+    proj, _seen, _ = scored_proj
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    service.run_scoring(proj)
+    recorded = load_manifest(proj.root)["input_fingerprints"]
+    assert recorded == {"beats": service._input_fingerprints(proj)["beats"]} != {}

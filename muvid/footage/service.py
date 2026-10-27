@@ -1554,7 +1554,7 @@ def run_scoring(
         enable_lipsync=enable_lipsync,
         progress_cb=progress_cb,
         should_cancel=should_cancel,
-        beat_source=_master_beats,
+        inputs=_keyed_inputs(),
         keep=keep,
     )
     return out
@@ -1632,12 +1632,31 @@ def _beat_fingerprint(declared: Optional[dict]) -> str:
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
-def _input_fingerprints(fp) -> dict:
-    """The CURRENT value of every keyed input scores are measured on, by name (muvid#213)
-    — the one place a new keyed input's fingerprint is read for the staleness question."""
-    from muvid.footage.scoring.registry import BEATS
+def _keyed_inputs() -> dict:
+    """How this service provides every keyed master input scores are measured on
+    (``registry.INPUTS``), by name (muvid#224): THE table both the scoring run (value and
+    fingerprint, read together) and the staleness readers (the fingerprint alone) use,
+    so the two cannot compute an input's key two ways. A new keyed input is a name in
+    ``registry.INPUTS``, a ``Scorer.inputs`` declaration and a row here — and a test
+    fails while the row is missing. Built per call so each row reads this module's
+    functions at call time."""
+    from muvid.footage.scoring.registry import BEATS, KeyedInput
 
-    return {BEATS: _beat_fingerprint(declared_beat_grid(fp))}
+    def beats(fp):
+        master = _master_beats(fp)
+        return master, master.fingerprint
+
+    return {
+        BEATS: KeyedInput(
+            read=beats,
+            fingerprint=lambda fp: _beat_fingerprint(declared_beat_grid(fp)),
+        )
+    }
+
+
+def _input_fingerprints(fp) -> dict:
+    """The CURRENT fingerprint of every keyed input, by name (muvid#213, #224)."""
+    return {name: k.fingerprint(fp) for name, k in _keyed_inputs().items()}
 
 
 def _stale_metrics(fp, manifest: Optional[dict]) -> Optional[list]:
