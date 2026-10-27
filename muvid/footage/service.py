@@ -867,7 +867,8 @@ def _music_fill(
         canvas=canvas or fp.canvas(),
         fps=DEFAULT_FPS,
         # the synced cuts count against the same cap (muvid#228)
-        max_cuts=MAX_EDL_ENTRIES - sum(1 for e in entries if not e.is_gap),
+        # (at least 1: past the cap already, the gate refuses the edit and says why)
+        max_cuts=max(1, MAX_EDL_ENTRIES - sum(1 for e in entries if not e.is_gap)),
     )
     kept = [e for e in entries if not e.is_gap]
     return fill_gaps(

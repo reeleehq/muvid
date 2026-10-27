@@ -957,20 +957,33 @@ def fill_spans(
     from muvid.footage.edl import MAX_EDL_ENTRIES
 
     cap = MAX_EDL_ENTRIES if max_cuts is None else int(max_cuts)
+    if cap < 1:
+        raise ValueError(f"max_cuts must be at least 1, got {max_cuts}")
     held, slots = 1, plan.slots
     entries, uses, fits = cut(slots)
     # Coarsen until the plan fits the cut cap (muvid#228), as `weighted` escalates its
-    # switch cost: fewer, longer pieces on the same beats, never a refused plan.
-    while len(entries) > cap and len(slots) > len({s.section for s in slots}):
-        held *= 2
-        slots = _hold_slots(plan.slots, held)
+    # switch cost: fewer, longer pieces on the same beats. Holding never crosses a
+    # section boundary, so it bottoms out — and a piece longer than its clip is still
+    # split into take-overs — hence the stop when holding changes nothing more.
+    while len(entries) > cap:
+        coarser = _hold_slots(plan.slots, held * 2)
+        if len(coarser) == len(slots):
+            break
+        held, slots = held * 2, coarser
         entries, uses, fits = cut(slots)
-    cap_note = (
-        f"each picture holds up to {held} of the planned slots, to stay within the "
-        f"{cap}-cut limit"
-        if held > 1
-        else ""
-    )
+    if len(entries) > cap:
+        cap_note = (
+            f"{len(entries)} cuts, over the {cap}-cut limit even with each picture held "
+            f"for up to {held} of the planned slots: the videos are too short to fill "
+            "this song in fewer cuts — add longer videos, or cut part of the song"
+        )
+    elif held > 1:
+        cap_note = (
+            f"each picture holds up to {held} of the planned slots, to stay within the "
+            f"{cap}-cut limit"
+        )
+    else:
+        cap_note = ""
     asked = sum(b - a for a, b in spans)
     covered = sum(e.song_end - e.song_start for e in entries)
     report = {
