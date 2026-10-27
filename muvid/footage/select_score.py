@@ -38,7 +38,7 @@ numpy only (no cv2/torch): registered LAZILY in :mod:`muvid.footage.strategy` so
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Mapping, Sequence
+from typing import Mapping, NamedTuple, Sequence
 
 import numpy as np
 
@@ -273,7 +273,7 @@ def run_weighted(
         # alignment-only default rather than emit an arbitrary path.
         return _fallback(aligns, song_duration, cause="no_weighted_metrics")
 
-    entries, cause, value = _viterbi(aligns, boundaries, composite, tensor, cfg)
+    entries, cause, objective = _viterbi(aligns, boundaries, composite, tensor, cfg)
     solved_cfg = cfg  # the config that actually produced `entries` (escalate on THIS)
     if entries is None:
         # Infeasible: classify, retry with the L_min floor dropped, then fall back.
@@ -284,7 +284,7 @@ def run_weighted(
         # soft, so this is the only shot-length relaxation needed. Guaranteed feasible for a
         # gapless timeline, so this is the real safety net — best_confidence is last resort.
         relaxed = replace(cfg, l_min_s=0.0)
-        entries, cause2, value = _viterbi(
+        entries, cause2, objective = _viterbi(
             aligns, boundaries, composite, tensor, relaxed
         )
         if entries is None:
@@ -293,20 +293,22 @@ def run_weighted(
         cause = "dwell_relaxed"
 
     # Escalate lambda_switch (on the config that solved) if the cut count blows the cap.
+    # `lam` moves only with a solve that succeeded, so `lambda_effective` is always the
+    # λ that `entries` and `objective` were solved at; λ = 0 cannot be escalated.
     lam = solved_cfg.lambda_switch
     tries = 0
-    while len(entries) > MAX_EDL_ENTRIES and tries < 6:
-        lam *= 2.0
-        escalated, _, escalated_value = _viterbi(
+    while len(entries) > MAX_EDL_ENTRIES and tries < 6 and lam > 0:
+        trial = lam * 2.0
+        escalated = _viterbi(
             aligns,
             boundaries,
             composite,
             tensor,
-            replace(solved_cfg, lambda_switch=lam),
+            replace(solved_cfg, lambda_switch=trial),
         )
-        if escalated is None:  # feasibility is λ-independent, so this shouldn't happen
+        if escalated.entries is None:  # feasibility is λ-independent: shouldn't happen
             break  # keep the last good `entries`
-        entries, value = escalated, escalated_value
+        entries, objective, lam = escalated.entries, escalated.objective, trial
         tries += 1
     if len(entries) > MAX_EDL_ENTRIES:
         raise ValueError(
@@ -330,7 +332,7 @@ def run_weighted(
         # the DP's best total: the summed segment rewards (`span_rewards` of the edit)
         # minus `lambda_effective` per cut — pinned by a test, so a reader of either
         # can trust it is the other's arithmetic (muvid#217)
-        "dp_value": value,
+        "objective": objective,
     }
     return validated, meta
 
@@ -580,9 +582,17 @@ def _kappa(b: float, hop_s: float, n: int, t0: float = 0.0) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _viterbi(aligns, boundaries, composite, tensor, cfg):
-    """Return ``(edl_entries | None, cause, value)``. ``None`` ⇒ infeasible (``cause``
-    classifies why, ``value`` is ``None``); otherwise ``value`` is the path's total reward.
+class _Solved(NamedTuple):
+    """What one DP solve found: the edit, or ``None`` when infeasible (``cause`` says
+    why); ``objective`` is the edit's total (rewards minus a switch cost per cut)."""
+
+    entries: "list[EdlEntry] | None"
+    cause: str
+    objective: "float | None" = None
+
+
+def _viterbi(aligns, boundaries, composite, tensor, cfg) -> _Solved:
+    """Solve the DP once (see :class:`_Solved`).
 
     A *segment* is one shot on one clip spanning boundaries ``[B_i, B_j)``, length in
     ``[L_min_eff, L_max]``. **Consecutive segments must be DIFFERENT clips** (same-clip
@@ -593,7 +603,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     B = boundaries
     m = len(B) - 1  # intervals [B_0,B_1) .. [B_{m-1},B_m)
     if m < 1:
-        return None, "empty_span", None
+        return _Solved(None, cause="empty_span")
     K = len(aligns)
     hop, n = tensor.hop_s, tensor.n
     l_min, l_max = cfg.l_min_s, cfg.l_max_s
@@ -624,7 +634,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     # coverage-gap classification: an interval no clip continuously contains.
     for p in range(m):
         if not any(contains(c, p, p + 1) for c in range(K)):
-            return None, "coverage_gap", None
+            return _Solved(None, cause="coverage_gap")
 
     best = [[_NEG_INF] * K for _ in range(m + 1)]
     back = [[None] * K for _ in range(m + 1)]
@@ -661,7 +671,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
 
     v1, a1, _ = top[m]
     if v1 == _NEG_INF:
-        return None, "dwell_infeasible", None
+        return _Solved(None, cause="dwell_infeasible")
 
     # Reconstruct segments (last → first) via back-pointers.
     segments: list[tuple[float, float, str]] = []
@@ -669,7 +679,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     while j > 0:
         bp = back[j][c]
         if bp is None:
-            return None, "reconstruct_failed", None
+            return _Solved(None, cause="reconstruct_failed")
         i, prev_c = bp
         segments.append((B[i], B[j], aligns[c].clip_id))
         if prev_c is None:
@@ -677,7 +687,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
         j, c = i, prev_c
     segments.reverse()
     entries = _coalesce([EdlEntry(s, e, cid) for s, e, cid in segments])
-    return entries, "optimal", v1
+    return _Solved(entries, cause="optimal", objective=v1)
 
 
 def _top2(row):
@@ -720,6 +730,8 @@ def _coalesce(entries: list[EdlEntry]) -> list[EdlEntry]:
 #: ``tests/test_scoring_select.py`` reads this module's source for every cause literal
 #: it emits and fails on one that is in neither this table nor :data:`RUN_CAUSES`.
 FALLBACK_CAUSES = {
+    # travels with `fallback: "empty"`, which is never said (nothing to select from),
+    # but worded so that no cause the DP emits is without words
     "no_alignments": "there was no placed video to choose from",
     "no_weighted_metrics": "no score it was asked to weigh was measured",
     "coverage_gap": "the videos leave part of the song uncovered",
@@ -730,9 +742,12 @@ FALLBACK_CAUSES = {
     "empty_span": "there was no song to cut",
     "reconstruct_failed": "the cut could not be assembled",
 }
-#: The causes a run that did NOT fall back carries (``dwell_relaxed`` is told
-#: separately: see :func:`selection_notice`).
-RUN_CAUSES = ("optimal", "dwell_relaxed")
+#: The causes a run that did NOT fall back carries, in words; ``optimal`` needs none.
+RUN_CAUSES = {
+    "optimal": "",
+    "dwell_relaxed": "no cut could keep every shot at least the minimum length, so "
+    "that minimum was dropped to find one",
+}
 
 
 def _fallback(aligns, song_duration, *, cause: str):

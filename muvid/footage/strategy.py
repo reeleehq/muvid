@@ -84,6 +84,8 @@ def register_lazy_strategy(
 
 
 def _set_title(slug: str, title: str | None) -> None:
+    if title is not None and not (isinstance(title, str) and title.strip()):
+        raise ValueError(f"a strategy title must be non-empty words: {title!r}")
     if title is not None:
         _TITLES[slug] = title
     else:  # a re-registration without a title must not keep the old one's words
@@ -93,7 +95,7 @@ def _set_title(slug: str, title: str | None) -> None:
 def strategy_title(slug: str) -> str:
     """``slug``'s name in words: its registered ``title``, else the slug made readable
     (``"my_rule"`` -> ``"My rule"``), so every listed strategy has one."""
-    return _TITLES.get(slug) or slug.replace("_", " ").capitalize()
+    return _TITLES.get(slug) or slug.strip("_").replace("_", " ").capitalize() or slug
 
 
 def _check_slug(slug: str) -> None:

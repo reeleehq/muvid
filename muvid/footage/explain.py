@@ -406,10 +406,10 @@ def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
             "instead — these cuts do not follow the scores."
         )
     elif selection.get("cause") == "dwell_relaxed":
-        said.append(
-            "No cut could keep every shot at least the minimum length, so that minimum "
-            "was dropped to find one."
-        )
+        from muvid.footage.select_score import RUN_CAUSES
+
+        words = RUN_CAUSES["dwell_relaxed"]
+        said.append(words[0].upper() + words[1:] + ".")
     style = selection.get("style") or ""
     pace = selection.get("pace") or ""
     chose = []
