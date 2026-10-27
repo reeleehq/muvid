@@ -23,6 +23,7 @@ _REQUIRED_IN_CI = [
     ("fastmcp", "mcp"),
     ("mixing", "(base dependency)"),
     ("pi_heif", "photos"),  # the HEIC photo test (muvid#140)
+    ("scenedetect", "scoring-shots"),  # the default shot detector's real test (muvid#220)
 ]
 
 

@@ -34,12 +34,19 @@ def coverage_mask(
 
 
 #: The ``mixing.video.shots`` strategy :func:`shot_boundaries` uses by default, and the
-#: package it needs. NOT ``"diff"`` (mixing's own default, ffmpeg-only) as a silent
-#: fallback: scoring decodes each clip once (``frames.py``), and ``diff`` would be a
-#: second full decode per clip on every scoring run, paid even when the selector's
-#: default ``boundary_mode="beats"`` never reads a shot. Pass ``strategy="diff"`` to ask.
+#: package it needs (the ``scoring-shots`` extra). NOT mixing's own default ``"diff"`` as a
+#: fallback when that package is absent: every install without it pays no shot decode
+#: today, and a fallback would add one per clip to every scoring run — paid even when the
+#: selector's default ``boundary_mode="beats"`` never reads a shot.
 DEFAULT_SHOT_STRATEGY = "pyscenedetect"
-_STRATEGY_PACKAGES = {"pyscenedetect": "scenedetect"}
+_DEFAULT_PACKAGE = "scenedetect"
+
+
+def shots_available(strategy: str = DEFAULT_SHOT_STRATEGY) -> bool:
+    """Whether :func:`shot_boundaries` can detect anything with ``strategy`` here."""
+    from importlib.util import find_spec
+
+    return strategy != DEFAULT_SHOT_STRATEGY or find_spec(_DEFAULT_PACKAGE) is not None
 
 
 def shot_boundaries(
@@ -51,13 +58,10 @@ def shot_boundaries(
     The detection is ``mixing.video.shots(clip_path, strategy=strategy)``: its spans tile
     the clip, so the cuts are the span starts after the first, moved onto the song by
     ``offset_s``. A failure INSIDE the detector raises (the house rule for ``mixing``
-    calls: a swallowed error is a quietly empty result); only a missing optional package
-    is a degrade.
+    calls: a swallowed error is a quietly empty result) — the scoring orchestrator
+    records it per clip; only a missing optional package is a degrade here.
     """
-    from importlib.util import find_spec
-
-    package = _STRATEGY_PACKAGES.get(strategy)
-    if package and find_spec(package) is None:
+    if not shots_available(strategy):
         return []
     from mixing.video import shots  # lazy: mixing.video is not free to import
 

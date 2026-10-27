@@ -73,3 +73,26 @@ def test_a_real_hard_cut_lands_on_the_song(tmp_path):
     )
     [cut] = segment.shot_boundaries(str(clip), offset_s=5.0, strategy="diff")
     assert cut == pytest.approx(7.0, abs=0.5)
+
+
+def test_the_default_detector_finds_a_real_hard_cut(tmp_path):
+    """The DEFAULT strategy, through the real mixing + PySceneDetect (CI installs the
+    scoring-shots extra for this; the canary guards it)."""
+    import subprocess
+
+    from tests.ffmpeg_support import HAS_FFMPEG
+
+    if not HAS_FFMPEG:
+        pytest.skip("ffmpeg is not installed")
+    pytest.importorskip("scenedetect")
+    pytest.importorskip("mixing.video")
+    clip = tmp_path / "cut.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "color=red:s=64x48:r=25:d=2",
+         "-f", "lavfi", "-i", "color=blue:s=64x48:r=25:d=2",
+         "-filter_complex", "[0:v][1:v]concat=n=2:v=1[v]", "-map", "[v]",
+         "-pix_fmt", "yuv420p", str(clip)],
+        check=True,
+    )
+    assert segment.shot_boundaries(str(clip), offset_s=10.0) == [pytest.approx(12.0, abs=0.1)]

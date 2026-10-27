@@ -793,3 +793,19 @@ def test_naming_the_beat_provider_twice_is_refused(scored_proj):
             inputs={R.BEATS: lambda p: (None, "")},
             beat_source=service._master_beats,
         )
+
+
+def test_a_shot_detector_failure_is_recorded_per_clip_and_keeps_the_tracks(
+    scored_proj, monkeypatch
+):
+    """muvid#220: shot detection now raises out of mixing; the orchestrator must not
+    throw away every clip's tracks for a by-product only ``beats+shots`` reads."""
+    proj, _seen, _ = scored_proj
+
+    def broken(path, **kw):
+        raise OSError("Video file not found.")
+
+    monkeypatch.setattr("muvid.footage.scoring.segment.shot_boundaries", broken)
+    out = service.run_scoring(proj, metrics=["beats_seen"])
+    assert out["shots_skipped"] == {"A": "shot detection failed: Video file not found."}
+    assert "beats_seen" in out["metrics"]
