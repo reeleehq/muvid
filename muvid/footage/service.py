@@ -886,7 +886,10 @@ def remove_clip(fp, *, clip_id: str) -> dict:
     known = fp.list_clips()
     if clip_id not in {c["clip_id"] for c in known}:
         raise FootageError(_unknown_clip_message(clip_id, known))
-    removed = fp.remove_clip(clip_id)
+    try:
+        removed = fp.remove_clip(clip_id)
+    except KeyError:  # removed meanwhile: the workspace re-checks under the lock (#236)
+        raise FootageError(_unknown_clip_message(clip_id, fp.list_clips())) from None
     return {
         "removed": {"clip_id": removed["clip_id"], "name": removed["name"]},
         "clips": fp.list_clips(),
