@@ -38,7 +38,14 @@ def ramp_scores(scored_proj):
     before = dict(R._SCORERS)
     R._SCORERS.clear()
     R.register_scorer(
-        R.Scorer("toy", ("ramp", "half"), run, needs_frames=False, gated=False)
+        R.Scorer(
+            "toy",
+            ("ramp", "half"),
+            run,
+            needs_frames=False,
+            gated=False,
+            inputs={"ramp": (R.BEATS,), "half": (R.BEATS,)},
+        )
     )
     service.run_scoring(project)
     yield project
@@ -90,6 +97,8 @@ def test_bad_candidates_are_refused_plainly(ramp_scores, bad, match):
 
 
 def test_it_needs_current_scores(ramp_scores):
+    # every toy metric declares the beat grid (see the fixture), so declaring a grid
+    # stales them all and nothing current is left to answer from
     service.set_beat_grid(ramp_scores, tempo_bpm=100.0)
     with pytest.raises(FootageError, match="stale"):
         service.score_candidates(

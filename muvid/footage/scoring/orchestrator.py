@@ -26,8 +26,8 @@ from __future__ import annotations
 
 import os
 import threading
-from dataclasses import replace
-from typing import Any, Callable, Sequence
+from dataclasses import dataclass, replace
+from typing import Any, Callable, Mapping, Sequence
 
 from muvid.footage.scoring import registry
 from muvid.footage.scoring.grid import DEFAULT_HOP_S, grid_len, save_scores
@@ -110,6 +110,7 @@ def score_project(
     progress_cb: Callable[[dict], None] | None = None,
     should_cancel: Callable[[], bool] | None = None,
     beat_source: "Callable[[Any], registry.MasterBeats] | None" = None,
+    keep: "KeptScores | None" = None,
 ) -> dict:
     """Score every aligned clip of ``project`` → persist the tensor; return a summary dict.
 
@@ -128,6 +129,10 @@ def score_project(
             (muvid#187). Its ``fingerprint`` goes into the manifest, so
             :func:`~muvid.footage.scoring.grid.manifest_is_current` can tell scores
             measured on one grid from another.
+        keep: a partial re-score (muvid#206): the CURRENT metrics' tracks to persist
+            beside the ``keep.recompute`` ones this run measures (``metrics`` is then
+            ignored). Re-checked against the song and alignments under the scoring lock:
+            if either changed since they were read, the run scores in full instead.
     """
     with _SCORING_SEMAPHORE:
         return _score(
@@ -139,7 +144,20 @@ def score_project(
             progress_cb=progress_cb,
             should_cancel=should_cancel,
             beat_source=beat_source,
+            keep=keep,
         )
+
+
+@dataclass(frozen=True)
+class KeptScores:
+    """What a partial re-score keeps (muvid#206): the CURRENT metrics' tracks per clip,
+    the stale metrics to measure again, and the song and alignments the kept tracks
+    were measured under — re-checked under the scoring lock."""
+
+    tracks: Mapping[str, Sequence[Any]]
+    recompute: tuple[str, ...]
+    song_hash: str
+    align_fingerprint: str
 
 
 def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
@@ -202,14 +220,26 @@ def _score(
     progress_cb,
     should_cancel,
     beat_source=None,
+    keep=None,
 ):
     from muvid.footage.scoring import frames as F
     from muvid.footage.scoring.quality import quality_gate_mask
     from muvid.footage.scoring.segment import shot_boundaries
 
+    from muvid.footage.scoring.grid import align_fingerprint
+
     aligns = project.load_alignments()
     if not aligns:
         raise ValueError("no alignments — run align_footage first")
+    if keep is not None and (keep.song_hash, keep.align_fingerprint) != (
+        project.song_hash(),
+        align_fingerprint(aligns),
+    ):
+        # the song or an offset changed while this job waited: every kept track was
+        # placed through the old one, so none is kept (muvid#59's failure otherwise)
+        keep = None
+    if keep is not None:
+        metrics = list(keep.recompute)
     song_dur = project.song_duration()
     n = grid_len(song_dur, hop_s)
     t0 = 0.0
@@ -218,11 +248,10 @@ def _score(
     want_lipsync = _lipsync_enabled(enable_lipsync)
     # If the caller explicitly asks for lip-sync metrics, requesting them must ENABLE the tier
     # (honoring availability) rather than silently returning an empty result.
-    requested_lipsync = (
-        set(metrics) & registry.metrics_of_tier(registry.LIPSYNC_TIER)
-        if metrics
-        else set()
-    )
+    # a partial re-score asks for the stale metrics IMPLICITLY: it never switches the
+    # opt-in tier on, and an unavailable scorer is skipped, not refused
+    explicit = set(metrics or ()) if keep is None else set()
+    requested_lipsync = explicit & registry.metrics_of_tier(registry.LIPSYNC_TIER)
     if requested_lipsync and not want_lipsync:
         want_lipsync = True
     if metrics:
@@ -246,7 +275,7 @@ def _score(
         for sc in registry.scorers(include_lipsync=want_lipsync)
         if wanted & set(sc.metrics)
     ]
-    active, skipped_scorers = _available(selected, requested=set(metrics or ()))
+    active, skipped_scorers = _available(selected, requested=explicit)
     # the hard quality gate is read off the decode pass, so a gated scorer needs it too
     # (else the same metric would differ by what else was requested)
     needs_frames = any(sc.needs_frames or sc.gated for sc in active)
@@ -346,13 +375,27 @@ def _score(
 
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 
-    # Metric axis = the wanted metrics actually produced by ≥1 clip.
+    # A partial re-score keeps the current metrics it did not recompute (muvid#206) —
+    # not the opt-in tier's when that tier is off now.
+    off = set() if want_lipsync else registry.metrics_of_tier(registry.LIPSYNC_TIER)
+    kept_tracks = {
+        cid: [tr for tr in trs if tr.metric not in wanted and tr.metric not in off]
+        for cid, trs in (keep.tracks if keep is not None else {}).items()
+    }
+    for cid, kept in kept_tracks.items():
+        if cid in tracks_by_clip:
+            tracks_by_clip[cid].extend(kept)
+    kept_metrics = {tr.metric for trs in kept_tracks.values() for tr in trs}
+    # Metric axis = the metrics actually produced by ≥1 clip (wanted, or kept).
     produced = {tr.metric for trs in tracks_by_clip.values() for tr in trs}
     metric_axis = [
         m
-        for m in registry.default_metrics(include_lipsync=want_lipsync)
-        if m in produced and m in wanted
+        for m in registry.default_metrics(include_lipsync=True)
+        if m in produced and (m in wanted or m in kept_metrics)
     ]
+    # the metrics measured on the beat grid, by what each running scorer declared;
+    # a kept metric is current, so it was not
+    beat_metrics = [m for sc in active for m in sc.reads(registry.BEATS)]
 
     import math
 
@@ -371,6 +414,7 @@ def _score(
         beat_times=bg.beat_times,
         downbeat_times=bg.downbeat_times,
         beat_fingerprint=bg.fingerprint,
+        beat_metrics=beat_metrics,
         extra={
             "shot_boundaries": shots_by_clip,
             "tempo_bpm": round(tempo, 3) if math.isfinite(tempo) else None,
@@ -389,6 +433,8 @@ def _score(
         "beats": int(len(bg.beat_times)),
         "lipsync_enabled": want_lipsync,
         **({"skipped_scorers": skipped_scorers} if skipped_scorers else {}),
+        # a partial re-score that kept the current metrics names what it measured again
+        **({"rescored": sorted(keep.recompute)} if keep is not None else {}),
     }
 
 

@@ -1302,8 +1302,9 @@ def set_beat_grid(
     It is recorded as ``source: "declared"`` and returned by ``beat_grid`` from then on;
     re-estimating never replaces it (``clear_beat_grid`` forgets it). The cut-to-the-music
     planner, ``explain_edit``, ``fit_to_beat``, the ``weighted`` strategy's beat snap and
-    footage scoring use it: scores made before it are stale until ``score`` runs again (and
-    current again if the grid is cleared) — ``scores_stale: true`` says so. A grid belongs to the
+    footage scoring use it: the beat-derived metrics scored before it are stale (the
+    others stay current) until ``score`` runs again, which recomputes only them — and
+    they are current again if the grid is cleared; ``scores_stale: true`` says so. A grid belongs to the
     song it was set for: with another song set it does not apply (and comes back if that
     song is set again). Returns the grid like ``beat_grid`` does, plus ``changed``.
     """
@@ -1532,10 +1533,15 @@ def run_scoring(
     should_cancel=None,
 ) -> dict:
     """Score every aligned clip and persist the tensor (the engine behind :func:`score`,
-    with the job hooks a background runner passes)."""
+    with the job hooks a background runner passes).
+
+    With no ``metrics`` named and scores that are stale in only SOME metrics (a beat grid
+    was declared or cleared, muvid#206), only those are recomputed and the current ones
+    are kept; the reply's ``rescored`` lists them. Anything else re-scores in full."""
     from muvid.footage.scoring import score_project
 
-    return score_project(
+    keep = _kept_scores(fp, hop_s=hop_s) if metrics is None else None
+    out = score_project(
         fp,
         metrics=metrics,
         hop_s=hop_s,
@@ -1543,6 +1549,37 @@ def run_scoring(
         progress_cb=progress_cb,
         should_cancel=should_cancel,
         beat_source=_master_beats,
+        keep=keep,
+    )
+    return out
+
+
+def _kept_scores(fp, *, hop_s: float):
+    """The partial re-score worth doing, or ``None`` (score in full): the scores are
+    stale in SOME metrics only, on the same grid step, and every aligned clip has
+    tracks to keep (a clip skipped last time is scored in full, or it would get only
+    the stale metrics)."""
+    from muvid.footage.scoring.grid import load_manifest, load_tensor, tracks_of
+    from muvid.footage.scoring.orchestrator import KeptScores
+
+    manifest = load_manifest(fp.root)
+    stale = _stale_metrics(fp, manifest) if manifest else None
+    if not stale or len(stale) >= len(manifest.get("metrics") or []):
+        return None
+    tensor = load_tensor(fp.root)
+    if tensor is None or abs(tensor.hop_s - hop_s) > 1e-9:
+        return None
+    aligns = fp.load_alignments()
+    if {a.clip_id for a in aligns} - set(tensor.clip_ids):
+        return None
+    current = [m for m in tensor.metrics if m not in set(stale)]
+    return KeptScores(
+        tracks=tracks_of(tensor, current, manifest.get("directions", {})),
+        recompute=tuple(stale),
+        # what the kept tracks were MEASURED under, from the manifest itself — never a
+        # second read of the project, which an offset could move in between
+        song_hash=manifest.get("song_hash", ""),
+        align_fingerprint=manifest.get("align_fingerprint", ""),
     )
 
 
@@ -1589,12 +1626,13 @@ def _beat_fingerprint(declared: Optional[dict]) -> str:
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
-def _scores_current(fp, manifest: Optional[dict]) -> bool:
-    """THE staleness question every reader of the score tensor asks: the song, the
-    alignments and the beat grid it was measured on are the current ones."""
-    from muvid.footage.scoring.grid import align_fingerprint, manifest_is_current
+def _stale_metrics(fp, manifest: Optional[dict]) -> Optional[list]:
+    """THE staleness question every reader of the score tensor asks: which persisted
+    metrics no longer match the song, the alignments and the beat grid they were
+    measured on (:func:`muvid.footage.scoring.grid.stale_metrics`). ``None``: no scores."""
+    from muvid.footage.scoring.grid import align_fingerprint, stale_metrics
 
-    return manifest_is_current(
+    return stale_metrics(
         manifest,
         song_hash=fp.song_hash() if fp.has_song() else "",
         align_fingerprint=align_fingerprint(fp.load_alignments()),
@@ -1602,11 +1640,28 @@ def _scores_current(fp, manifest: Optional[dict]) -> bool:
     )
 
 
-def _current_tensor(fp):
-    """The score tensor if it is current, else ``None`` (stale scores are never served)."""
-    from muvid.footage.scoring.grid import load_manifest, load_tensor
+def _usable_tensor(fp, manifest):
+    """``(tensor, stale metrics)``: the persisted tensor with its stale metrics read as
+    not measured, or ``(None, stale)`` when none is current (or there are no scores)."""
+    from muvid.footage.scoring.grid import load_tensor, mask_metrics
 
-    return load_tensor(fp.root) if _scores_current(fp, load_manifest(fp.root)) else None
+    stale = _stale_metrics(fp, manifest)
+    if stale is None:  # no scores, or none current and nothing measured to name
+        return None, None
+    if stale and len(stale) >= len(manifest.get("metrics") or []):
+        return None, stale
+    tensor = load_tensor(fp.root)
+    if tensor is None:
+        return None, stale
+    return mask_metrics(tensor, stale), stale
+
+
+def _current_tensor(fp):
+    """The score tensor with stale metrics masked (never served as measured), or
+    ``None`` when no metric is current."""
+    from muvid.footage.scoring.grid import load_manifest
+
+    return _usable_tensor(fp, load_manifest(fp.root))[0]
 
 
 def _stale_flag(fp) -> dict:
@@ -1616,11 +1671,15 @@ def _stale_flag(fp) -> dict:
 
 
 def _scores_stale(fp) -> bool:
-    """Scores exist and no longer match the project — ``score`` must run again."""
+    """Scores exist and some metric no longer matches the project — ``score`` must run
+    again (it recomputes only those)."""
     from muvid.footage.scoring.grid import load_manifest
 
     manifest = load_manifest(fp.root)
-    return manifest is not None and not _scores_current(fp, manifest)
+    if manifest is None:
+        return False
+    stale = _stale_metrics(fp, manifest)
+    return stale is None or bool(stale)
 
 
 def score(
@@ -1670,7 +1729,7 @@ def scores(
     un-normalised values (``null`` where not measured), so a tooltip can show the real
     number beside its score.
     """
-    manifest, tensor = _current_scores(fp)
+    manifest, tensor, stale = _current_scores(fp)
     grid = {
         "t0": manifest["t0"],
         "hop_s": manifest["hop_s"],
@@ -1679,28 +1738,32 @@ def scores(
     }
     applied = _applied_weights(preset, weights)
     if not clip_id:
-        return _scores_summary(fp, tensor, manifest, grid, max_points, applied)
-    return _clip_scores(
-        fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
-    )
+        out = _scores_summary(fp, tensor, manifest, grid, max_points, applied)
+    else:
+        out = _clip_scores(
+            fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
+        )
+    # omit-when-absent: a stale metric is served as not measured, and named here
+    return {**out, **({"stale_metrics": stale} if stale else {})}
 
 
 def _current_scores(fp):
-    """``(manifest, tensor)`` of the CURRENT scores, or a refusal naming the next step."""
-    from muvid.footage.scoring.grid import load_manifest, load_tensor
+    """``(manifest, tensor, stale metrics)`` of the scores still current — the stale
+    metrics masked — or a refusal naming the next step."""
+    from muvid.footage.scoring.grid import load_manifest
 
     manifest = load_manifest(fp.root)
     if manifest is None:
         raise FootageError("no scores yet — call score_footage first")
-    if not _scores_current(fp, manifest):
+    tensor, stale = _usable_tensor(fp, manifest)
+    if tensor is None and (stale is None or stale):
         raise FootageError(
             "scores are stale (the song, an alignment or the beat grid changed) — "
             "re-run score_footage"
         )
-    tensor = load_tensor(fp.root)
     if tensor is None:
         raise FootageError("scores are present but unreadable — re-run score_footage")
-    return manifest, tensor
+    return manifest, tensor, stale
 
 
 def _applied_weights(preset: str, weights: Optional[dict]) -> dict:
@@ -1755,7 +1818,7 @@ def score_candidates(
         raise FootageError(
             f"at most {MAX_EDL_ENTRIES} candidates per call, got {len(candidates)}"
         )
-    _manifest, tensor = _current_scores(fp)
+    _manifest, tensor, stale = _current_scores(fp)
     applied = _applied_weights(preset, weights)
     song_end = tensor.t0 + tensor.n * tensor.hop_s
     lanes: dict[str, "np.ndarray"] = {}
@@ -1793,7 +1856,11 @@ def score_candidates(
                 },
             }
         )
-    return {"candidates": out, "weights": applied}
+    return {
+        "candidates": out,
+        "weights": applied,
+        **({"stale_metrics": stale} if stale else {}),
+    }
 
 
 def _span_frames(tensor, start: float, end: float) -> "tuple[int, int]":
@@ -2238,18 +2305,22 @@ def _trim_to_span(entries, span) -> list:
 def _selection_context(fp, strat, preset, weights, config):
     """A ``SelectionContext`` from persisted scores, for the ``weighted`` strategy only.
 
-    When scores are absent or stale the tensor is ``None`` and ``weighted_selection``
-    raises a clear "run scoring first" — no scores gives a helpful error, not a silent
-    bad edit.
+    When scores are absent, or stale in every metric, the tensor is ``None`` and
+    ``weighted_selection`` raises a clear "run scoring first". When only SOME metrics
+    are stale (a beat grid changed, muvid#206) the tensor reads them as not measured,
+    the cut runs on the rest, and ``stale_metrics`` makes the reply say so.
     """
     if strat != "weighted":
         return None
-    from muvid.footage.scoring.grid import load_manifest, load_tensor
+    from muvid.footage.scoring.grid import load_manifest
     from muvid.footage.select_score import SelectionContext, resolve_config
 
     manifest = load_manifest(fp.root) or {}
     beats = manifest.get("beats", {})
-    fresh = _scores_current(fp, manifest)
+    # a stale metric reads as not measured (muvid#206): the composite renormalises over
+    # the weight that IS available, so the current ones still cut
+    tensor, stale = _usable_tensor(fp, manifest) if manifest else (None, [])
+    cfg = resolve_config(preset=preset or None, weights=weights, config=config)
     beat_times, downbeat_times = (
         beats.get("beat_times", []),
         beats.get("downbeat_times", []),
@@ -2258,11 +2329,15 @@ def _selection_context(fp, strat, preset, weights, config):
     if declared is not None:  # a person's grid beats the estimator's (muvid#123)
         beat_times, downbeat_times = declared["beat_times"], declared["downbeat_times"]
     return SelectionContext(
-        tensor=load_tensor(fp.root) if fresh else None,
+        tensor=tensor,
         beat_times=beat_times,
         downbeat_times=downbeat_times,
         shot_boundaries=manifest.get("shot_boundaries"),
-        config=resolve_config(preset=preset or None, weights=weights, config=config),
+        config=cfg,
+        # only what the cut WOULD have used: a stale metric weighing 0 changes nothing
+        stale_metrics=tuple(m for m in stale or () if cfg.weights.get(m, 0) > 0)
+        if tensor is not None
+        else (),
     )
 
 
@@ -3992,6 +4067,7 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
     except ImportError as e:
         raise FootageError(_EDITOR_EXTRA_HINT) from e
     from muvid.footage.edl import fill_gaps, validate_edl
+    from muvid.footage.scoring.grid import load_manifest
     from muvid.footage.strategy import DEFAULT_STRATEGY
     from muvid.visualize.ffmpeg import FfmpegError
 
@@ -4053,10 +4129,11 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
         # an FfmpegError is a RuntimeError, not a ValueError). An editor can still open
         # it and place its own DECISION entries.
         decision_error, entries = _project_relative(fp, str(e)), []
-    if _scores_stale(fp):
+    stale = _stale_metrics(fp, load_manifest(fp.root))
+    if stale:
         warnings.append(
-            "score lanes left out: the scores are stale (the song, an alignment or the "
-            "beat grid changed) — re-run score_footage"
+            f"stale score lanes, shown as not measured: {', '.join(stale)} (the "
+            "song, an alignment or the beat grid changed) — re-run score_footage"
         )
     doc = build_document(
         project_id=fp.project_id,

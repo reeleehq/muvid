@@ -394,6 +394,7 @@ def save_scores(
     beat_times: Sequence[float] = (),
     downbeat_times: Sequence[float] = (),
     beat_fingerprint: str = "",
+    beat_metrics: Sequence[str] = (),
     extra: Mapping | None = None,
 ) -> None:
     """Persist per-clip raw arrays + a manifest, crash-consistently.
@@ -453,6 +454,9 @@ def save_scores(
         },
         # omit-when-absent: a run on the estimator's grid writes the manifest it always did
         **({"beat_fingerprint": beat_fingerprint} if beat_fingerprint else {}),
+        # the metrics measured on the beat grid, so a grid change stales only them
+        # (muvid#206); a manifest without the key stales every metric
+        "beat_metrics": [m for m in metrics if m in set(beat_metrics)],
         **(dict(extra) if extra else {}),
     }
     # manifest LAST — its presence signals a complete scores/ dir. allow_nan=False makes any
@@ -464,6 +468,54 @@ def save_scores(
     )
 
 
+def stale_metrics(
+    manifest: dict | None,
+    *,
+    song_hash: str,
+    align_fingerprint: str,
+    beat_fingerprint: str,
+) -> list[str] | None:
+    """Which of the persisted metrics no longer match the CURRENT song, alignments and
+    beat grid: ``[]`` when all are current, every metric when the song or an alignment
+    changed (every track is placed through them), and only the metrics measured on the
+    beat grid when only the grid changed (muvid#206). ``None`` when there are no scores.
+
+    ``beat_fingerprint`` names the beat grid the beat metrics were measured on: ``""`` for
+    the estimator's (a function of the song, already keyed by ``song_hash``), else the
+    grid a person declared (muvid#187). A manifest predating the fingerprint was measured
+    on the estimate; one predating ``beat_metrics`` stales every metric on a grid change.
+
+    >>> m = {"song_hash": "h", "align_fingerprint": "f", "metrics": ["q", "b"],
+    ...      "beat_metrics": ["b"]}
+    >>> kw = {"song_hash": "h", "align_fingerprint": "f"}
+    >>> stale_metrics(m, beat_fingerprint="", **kw), stale_metrics(m, beat_fingerprint="x", **kw)
+    ([], ['b'])
+    """
+    verdict = _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint)
+    if verdict is None:
+        return None
+    every = list(manifest.get("metrics") or [])
+    if verdict == "all":
+        return every or None  # nothing measured to name: as good as no scores
+    if verdict == "beats":
+        return [m for m in every if m in set(manifest.get("beat_metrics", every))]
+    return []
+
+
+def _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint):
+    """``None`` (no scores) | ``"all"`` | ``"beats"`` | ``"none"``."""
+    if not manifest:
+        return None
+    if (
+        manifest.get("song_hash") != song_hash
+        or manifest.get("align_fingerprint") != align_fingerprint
+    ):
+        return "all"
+    if manifest.get("beat_fingerprint", "") != beat_fingerprint:
+        return "beats"
+    return "none"
+
+
 def manifest_is_current(
     manifest: dict | None,
     *,
@@ -471,26 +523,54 @@ def manifest_is_current(
     align_fingerprint: str,
     beat_fingerprint: str,
 ) -> bool:
-    """Whether persisted scores match the CURRENT song + alignments + beat grid (else they
-    are stale).
-
-    Guards the read path: a re-align (or a new song) that raced the score job's rmtree, or a
-    manifest predating the fingerprint, is detected here so no stale/mislabeled scores are
-    served to the editor or the weighted selector.
-
-    ``beat_fingerprint`` names the beat grid the beat metrics were measured on: ``""`` for
-    the estimator's (a function of the song, already keyed by ``song_hash``), else the
-    grid a person declared (muvid#187). Required, so no reader can forget it: declaring a
-    grid makes earlier scores stale, and clearing it makes the estimate's scores current
-    again. A manifest predating the key was measured on the estimate.
-    """
-    if not manifest:
-        return False
-    return (
-        manifest.get("song_hash") == song_hash
-        and manifest.get("align_fingerprint") == align_fingerprint
-        and manifest.get("beat_fingerprint", "") == beat_fingerprint
+    """Whether EVERY persisted metric matches the current song, alignments and beat grid
+    (:func:`stale_metrics` says which do not) — the same answer the readers act on: a
+    grid change with no metric measured on the grid leaves the scores current."""
+    verdict = _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint)
+    kw = dict(song_hash=song_hash, align_fingerprint=align_fingerprint)
+    return verdict == "none" or (
+        verdict == "beats"
+        and "beat_metrics" in manifest  # a manifest predating it stales every metric
+        and not stale_metrics(manifest, beat_fingerprint=beat_fingerprint, **kw)
     )
+
+
+def mask_metrics(tensor: "ScoreTensor", metrics: Sequence[str]) -> "ScoreTensor":
+    """``tensor`` with ``metrics`` read as not measured (masked, ``NaN``) — how a stale
+    metric is served beside current ones: absent, never a low score (muvid#206)."""
+    import dataclasses
+
+    idx = [tensor.metric_index(m) for m in metrics if m in tensor.metrics]
+    if not idx:
+        return tensor
+    M, S, raw = tensor.M.copy(), tensor.S.copy(), tensor.raw.copy()
+    M[:, :, idx] = False
+    S[:, :, idx] = np.nan
+    raw[:, :, idx] = np.nan
+    return dataclasses.replace(tensor, M=M, S=S, raw=raw)
+
+
+def tracks_of(
+    tensor: "ScoreTensor", metrics: Sequence[str], directions: Mapping[str, str]
+) -> dict[str, list[ScoreTrack]]:
+    """The persisted ``metrics`` of ``tensor`` as tracks again, per clip — what a partial
+    re-score keeps beside the metrics it recomputes."""
+    out: dict[str, list[ScoreTrack]] = {}
+    for ci, cid in enumerate(tensor.clip_ids):
+        for m in metrics:
+            mi = tensor.metric_index(m)
+            out.setdefault(cid, []).append(
+                ScoreTrack(
+                    cid,
+                    m,
+                    tensor.t0,
+                    tensor.hop_s,
+                    tensor.raw[ci, :, mi],
+                    tensor.M[ci, :, mi],
+                    directions.get(m, "higher_better"),
+                )
+            )
+    return out
 
 
 def load_manifest(project_root: Path) -> dict | None:
