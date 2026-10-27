@@ -12,6 +12,7 @@ import pytest
 
 pytest.importorskip("lacing")
 pytest.importorskip("an")
+pytest.importorskip("cutan")  # the lip-sync providers moved from an.audio to the genre package (an#321)
 
 
 def _make_alignment_store(project_root, shot_start=0.0, shot_end=10.0):
@@ -112,7 +113,8 @@ def test_make_lipsync_provider_returns_word_timings_lipsync(tmp_path):
     provider = _make_lipsync_provider(ctx)
     assert provider is not None
 
-    from an.audio import LipSyncProvider, WordTimingsLipSync
+    from an.audio import LipSyncProvider
+    from cutan.audio.injectable_lipsync import WordTimingsLipSync
 
     assert isinstance(provider, WordTimingsLipSync)
     assert isinstance(provider, LipSyncProvider)
@@ -141,8 +143,8 @@ def test_lipsync_provider_does_not_re_transcribe(tmp_path):
     timings. We just check the visemes are derived from our injected
     word timings.
     """
-    from an.audio import StaticWordTimings, WordTimingsLipSync
     from an.audio.tts import AudioClip
+    from cutan.audio.injectable_lipsync import StaticWordTimings, WordTimingsLipSync
 
     timings = [("hello", 0.5, 1.0), ("world", 1.2, 2.0)]
     provider = WordTimingsLipSync(StaticWordTimings(timings, label="x"))

@@ -6,7 +6,7 @@ environment becomes the entity backdrop.
 
 Lipsync alignment: muvid already owns the SSOT for word timings (the
 ``lacing`` alignment store written by ``muvid align``). We build a
-:class:`an.audio.WordTimingsLipSync` from those timings and pass it
+:class:`cutan.audio.injectable_lipsync.WordTimingsLipSync` from those timings and pass it
 into ``an.orchestrate`` so ``an`` does NOT re-transcribe the same
 audio with whisper. Falls back to ``an``'s default lipsync provider
 when no alignment store exists yet (e.g. user skipped ``muvid align``).
@@ -419,7 +419,9 @@ def _make_lipsync_provider(ctx: RenderContext):
 
     Returns ``None`` if either:
 
-    - ``an.audio.WordTimingsLipSync`` is not available (older ``an``), or
+    - ``cutan.audio.injectable_lipsync.WordTimingsLipSync`` is not available
+      (the cut-out genre package ``cutan`` is not installed; it moved there
+      from ``an.audio``, an#321), or
     - the project has no ``lyrics/alignment.annot`` yet, or
     - no words fall in this shot's window.
 
@@ -427,7 +429,10 @@ def _make_lipsync_provider(ctx: RenderContext):
     its default offline lipsync.
     """
     try:
-        from an.audio import StaticWordTimings, WordTimingsLipSync
+        from cutan.audio.injectable_lipsync import (
+            StaticWordTimings,
+            WordTimingsLipSync,
+        )
     except ImportError:
         return None
 
