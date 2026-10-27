@@ -59,9 +59,9 @@ from muvid.footage.edl import (
     FootageAlignment,
     _look_output_sizes,
     validate_edl,
+    MAX_LOOK_COST,
     MAX_LOOK_LINKS,
-    MAX_LOOK_RESIZES,
-    _LOOK_GEOMETRY_FILTERS,
+    _look_cost,
 )
 from muvid.footage.look import motion, punch_in
 from tests.ffmpeg_support import needs_ffmpeg
@@ -872,15 +872,14 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         with pytest.raises(ValueError, match="more than the"):
             self._look(0, ",".join(["hue=s=1"] * (MAX_LOOK_LINKS + 1)))
 
-    def test_the_resize_cap_is_separate_from_the_total(self):
-        """Three resizes is far under the total cap and still refused — two
-        caps because they bound different things, and one number cannot do
-        both: the total bounds the graph, the resize count bounds how many
-        LARGE frames live in it."""
-        three = "scale=1920:1080,pad=1920:1080,zoompan=d=1:s=1920x1080"
-        assert len(three.split(",")) < MAX_LOOK_LINKS
-        with pytest.raises(ValueError, match="resizes 3 times"):
-            self._look(0, three)
+    def test_geometry_links_at_canvas_size_cost_what_colour_links_cost(self):
+        """Changed deliberately (muvid#229): three resizes AT canvas size were refused
+        by a resize count, though they cost what three colour links cost. One budget
+        prices them by the frames they hold — and three resizes UP are refused."""
+        self._look(0, "scale=1920:1080,pad=1920:1080,zoompan=d=1:s=1920x1080")
+        with pytest.raises(ValueError, match="costs"):
+            self._look(0, "scale=7680:4320,pad=7680:4320,zoompan=d=1:s=7680x4320,"
+                       + ",".join(["colorchannelmixer=rr=1,eq=gamma=1"] * 2))
 
     def test_two_resizes_are_allowed(self):
         self._look(0, "scale=1920:1080,pad=1920:1080")
@@ -898,14 +897,13 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         """The exemption is for a frame that fits the canvas. After
         `scale=7680:4320` each colour scale allocates a frame that size —
         fifteen of them measured 903 MB against 238 MB for fifteen `hue`."""
-        attack = ",".join(["scale=7680:4320", self._COLOUR, self._COLOUR])
-        with pytest.raises(ValueError, match="resizes 3 times"):
+        attack = ",".join(["scale=7680:4320"] + [self._COLOUR] * 15)  # 903 MB
+        with pytest.raises(ValueError, match="costs"):
             self._look(0, attack)
-        # Changed deliberately (muvid#199): any link holding a frame above the canvas
-        # now counts against MAX_LOOK_LARGE_LINKS, so the in-place `hue` run that was
-        # accepted here is refused too — muvid compiles no look that upsizes.
-        with pytest.raises(ValueError, match="larger than the 1920x1080 canvas"):
-            self._look(0, ",".join(["scale=7680:4320"] + ["hue=s=1"] * 15))
+        # Changed deliberately (muvid#229): the fifteen in-place `hue` links after an
+        # upsize (238 MB measured) were refused by the large-link count; priced, they
+        # are cheap — `hue` works on the frame it is handed.
+        self._look(0, ",".join(["scale=7680:4320"] + ["hue=s=1"] * 15))
         self._look(0, ",".join(["scale=7680:4320", "hue=s=1", "scale=1920:1080"]))
 
     def test_links_at_a_large_frame_are_bounded_muvid_199(self):
@@ -914,12 +912,13 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         older caps. Two links at a large frame are kept; a third is refused."""
         mix = "colorchannelmixer=rr=1,eq=gamma=1"
         attack = ",".join(["scale=7680:4320", "pad=7680:4320"] + [mix] * 7)
-        with pytest.raises(ValueError, match="larger than the 1920x1080 canvas"):
-            self._look(0, attack)
+        with pytest.raises(ValueError, match="costs"):
+            self._look(0, attack)  # 2527 MB measured: priced at ~819
         down = "scale=1920:1080"
         self._look(0, ",".join(["scale=7680:4320", "colorchannelmixer=rr=1", down]))
-        with pytest.raises(ValueError, match="3 links"):
-            self._look(0, ",".join(["scale=7680:4320", "hue=s=1", "eq=gamma=1", down]))
+        # Changed deliberately (muvid#229): refused as "3 links at a large frame" by a
+        # count, it costs ~35 frames priced (hue in place, eq one frame at 16x)
+        self._look(0, ",".join(["scale=7680:4320", "hue=s=1", "eq=gamma=1", down]))
 
     def test_a_heavy_filter_is_bounded_and_kept_at_canvas_size(self):
         """The #199 review: `bilateral` keeps several frames of its own, so the other
@@ -927,10 +926,11 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         canvas size."""
         b = "bilateral=sigmaS=1"
         up, down = "scale=7680:4320", "scale=1920:1080"
-        with pytest.raises(ValueError, match="frame larger than"):
-            self._look(0, ",".join([up, b, down]))  # 940 MB measured
-        with pytest.raises(ValueError, match="2 bilateral links"):
-            self._look(0, ",".join([b, b]))
+        with pytest.raises(ValueError, match="bilateral"):
+            self._look(0, ",".join([up, b, down]))  # 940 MB measured: ~284
+        # Changed deliberately (muvid#229): two at canvas size (~31 frames, about
+        # 100 MB) were refused by a heavy-filter count
+        self._look(0, ",".join([b, b]))
         with pytest.raises(ValueError, match="bilateral"):
             self._look(0, ",".join(["colorchannelmixer=rr=1", up, b, down] + [b] * 12))
         self._look(0, ",".join([up, "hue=s=1", down, b]))
@@ -959,7 +959,7 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         compiled = punch_in(canvas=self.CANVAS, fps=25, duration_s=3.0)
         names = _look_filter_names(compiled)
         assert len(names) <= MAX_LOOK_LINKS
-        assert sum(1 for n in names if n in _LOOK_GEOMETRY_FILTERS) <= MAX_LOOK_RESIZES
+        assert _look_cost(compiled, self.CANVAS)[0] <= MAX_LOOK_COST
         self._look(0, compiled)
 
 
@@ -973,22 +973,19 @@ _WORST_KEPT_LOOK_MB = 1024
 
 @needs_ffmpeg
 @pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
-def test_the_worst_look_the_gate_keeps_is_measured_under_its_ceiling():
-    """The worst case the look caps state, MEASURED (muvid#199): sixteen links — an
-    RGB link, `zoompan` to the 4x size cap with a `vignette` there, back to canvas
-    size, the one heavy `bilateral` allowed, then `vignette`/`gblur` (the worst of the
-    shapes two review rounds measured). Run in a fresh interpreter so the reading is
-    that ffmpeg alone."""
+def test_the_worst_look_the_budget_keeps_is_measured_under_its_ceiling():
+    """The worst case the cost budget states, MEASURED (muvid#229): the costliest
+    allocators at the 4x size cap — vignette, gblur, boxblur — back to canvas size, then
+    a bilateral, at 149 of the 150 frames (about 560 MB measured on ffmpeg 8.0.1;
+    every other look found near the budget measured 345-542 MB). Run in a fresh
+    interpreter so the reading is that ffmpeg alone."""
     from muvid.footage.edl import EdlEntry, _validate_look
 
-    blur = "vignette,gblur=sigma=5"
-    worst = ",".join(
-        ["colorchannelmixer=rr=1", "zoompan=d=1:s=7680x4320", "vignette"]
-        + ["scale=1920:1080", "bilateral=sigmaS=1:planes=7"]
-        + [blur] * 5
-        + ["vignette"]
+    worst = (
+        "scale=7680:4320,vignette,gblur=sigma=5,boxblur,scale=1920:1080,"
+        "bilateral=sigmaS=1"
     )
-    assert len(worst.split(",")) == MAX_LOOK_LINKS
+    assert 140 < _look_cost(worst, (1920, 1080))[0] <= MAX_LOOK_COST
     _validate_look(0, EdlEntry(0.0, 1.0, "A", look=worst), (1920, 1080))  # kept
     probe = (
         "import resource, subprocess, sys\n"

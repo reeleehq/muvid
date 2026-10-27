@@ -1,0 +1,78 @@
+{
+  "bilateral": {
+    "family": "yuv",
+    "frames": 16.01
+  },
+  "boxblur": {
+    "family": "yuv",
+    "frames": 0.88
+  },
+  "colorbalance": {
+    "family": "rgb",
+    "frames": 0.02
+  },
+  "colorchannelmixer": {
+    "family": "rgb",
+    "frames": 0.0
+  },
+  "colorlevels": {
+    "family": "rgb",
+    "frames": 0.0
+  },
+  "crop": {
+    "family": "any",
+    "frames": 0.0
+  },
+  "eq": {
+    "family": "yuv",
+    "frames": 0.98
+  },
+  "gblur": {
+    "family": "any",
+    "frames": 2.89
+  },
+  "hue": {
+    "family": "yuv",
+    "frames": 0.36
+  },
+  "lutrgb": {
+    "family": "rgb",
+    "frames": 0.06
+  },
+  "lutyuv": {
+    "family": "yuv",
+    "frames": 0.04
+  },
+  "noise": {
+    "family": "any",
+    "frames": 0.06
+  },
+  "null": {
+    "family": "any",
+    "frames": 0.0
+  },
+  "pad": {
+    "family": "any",
+    "frames": 0.0
+  },
+  "scale": {
+    "family": "yuv",
+    "frames": 1.14
+  },
+  "setpts": {
+    "family": "any",
+    "frames": 0.0
+  },
+  "unsharp": {
+    "family": "yuv",
+    "frames": 1.07
+  },
+  "vignette": {
+    "family": "any",
+    "frames": 2.68
+  },
+  "zoompan": {
+    "family": "yuv",
+    "frames": 1.01
+  }
+}

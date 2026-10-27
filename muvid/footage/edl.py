@@ -79,74 +79,74 @@ MAX_EDL_ENTRIES = int(os.environ.get("MUVID_FOOTAGE_MAX_EDL_ENTRIES", "500"))
 #: multiple is the whole of the legitimate range.
 MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 
-#: How many filter links one look may carry, and how many of those may set a
-#: size. **Bounding the frame does not bound the memory** — that is the half
-#: :data:`MAX_LOOK_SCALE` misses, and it misses it by a factor of ten.
-#:
-#: Measured, ffmpeg 9.0.1, three frames, ``/usr/bin/time -l`` peak RSS, every
-#: link sitting exactly AT the size cap (7680x4320 for a 1920x1080 canvas), so
-#: every fragment below is one :func:`_validate_look_size` accepts:
-#:
-#: =========================  =========
-#: look                       peak RSS
-#: =========================  =========
-#: ``scale=7680:4320`` x1     171 MB
-#: ``scale=7680:4320`` x8     505 MB
-#: ``scale=7680:4320`` x32    1648 MB
-#: ``scale=7680:4320`` x64    3171 MB
-#: =========================  =========
-#:
-#: ~47 MB per additional link, unbounded, on a box that has been OOM-killed at
-#: 30 cuts (muvid#21/#24). The size cap refuses ``scale=8000:8000`` at 241 MB
-#: while accepting thirty-two links of 7680x4320 at 1648 MB — which is the
-#: shape of a bound that measures the wrong quantity.
-#:
-#: The total bounds the graph; it does not bound memory on its own, and neither
-#: does the resize count below — :data:`MAX_LOOK_LARGE_LINKS` and
-#: :data:`MAX_LOOK_HEAVY_LINKS` are what do (muvid#199). Together the measured worst
-#: look found that the gate keeps is **649 MB** (an RGB link, ``zoompan`` to the size
-#: cap and a ``vignette`` there, back to canvas size, the one ``bilateral``, then
-#: ``vignette``/``gblur`` — which keep a frame-sized float buffer of their own; ffmpeg
-#: 8.0.1, 1920x1080, measured by ``test_the_worst_look_the_gate_keeps_is_measured_
-#: under_its_ceiling``) against 3171 MB before any cap. A single total-link cap loose enough for
-#: a rich grade would leave the multiplicative worst case an order of magnitude higher.
-#:
-#: The values are generous by construction: muvid's own compilers emit **1**
-#: link for ``punch_in`` and at most **7** for a ``stylize`` (the named look
-#: ``cartoon``: three steps, each wrapped in ``looks`` Rule 22's colour-only
-#: ``scale``), and at most one of those ever sets a size. A link that declares no
-#: size is not a resize while the frame fits the canvas (:func:`_look_resizes`).
+#: How many filter links one look may carry. **Bounding the frame does not bound the
+#: memory** — that is the half :data:`MAX_LOOK_SCALE` misses: thirty-two links of
+#: ``scale=7680:4320`` on a 1920x1080 canvas measured 1648 MB, every one inside the
+#: size cap. This total bounds the GRAPH; what bounds the memory is
+#: :data:`MAX_LOOK_COST` below. muvid's own compilers emit 1 link for ``punch_in`` and at
+#: most 7 for a ``stylize`` (the named look ``cartoon``).
 MAX_LOOK_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_LINKS", "16"))
-MAX_LOOK_RESIZES = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_RESIZES", "2"))
-#: How many links of a look may hold a frame LARGER than the canvas (by area) — the
-#: bound on what actually costs memory (muvid#199). Neither cap above is it: after one
-#: resize to the size cap, every following link that makes ffmpeg convert between RGB
-#: and YUV allocates a frame that size, and those conversions are not links at all.
-#: Measured on ffmpeg 8.0.1, a 1920x1080 canvas, one second, peak RSS:
-#:
-#: ===========================================================  ========
-#: look                                                         peak RSS
-#: ===========================================================  ========
-#: ``scale=7680:4320,pad=7680:4320`` + 7x (colorchannelmixer, eq)  2527 MB  (was accepted)
-#: 2 links at 7680x4320, then 13 at canvas size (the worst kept)   438 MB
-#: 16 links at canvas size, alternating RGB and YUV                 350 MB
-#: ===========================================================  ========
-#:
-#: Of the frame-size-independent costs, one filter is an outlier: see
-#: :data:`MAX_LOOK_HEAVY_LINKS`. muvid's own compilers never upsize (``punch_in`` crops and scales back to the
-#: canvas), so the bound costs them nothing; a supersampling look keeps two links.
-MAX_LOOK_LARGE_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_LARGE_LINKS", "2"))
 
-#: Filters whose OWN working set is several frames (``bilateral`` keeps frame-sized
-#: float buffers): measured, sixteen links at 1080p peak at 839 MB, against 82-223 MB
-#: for every other filter muvid offers (``gblur`` is the next, at 223). Unpriced, they
-#: let ``colorchannelmixer,scale=7680:4320,bilateral,…`` reach 2976 MB through the
-#: other caps (the #199 review). ``looks``' ``flatten`` (the ``cartoon`` named look)
-#: emits exactly one.
-_LOOK_HEAVY_FILTERS = frozenset({"bilateral"})
-#: How many heavy links a look may carry — and none of them on a frame larger than the
-#: canvas.
-MAX_LOOK_HEAVY_LINKS = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_HEAVY_LINKS", "1"))
+#: What each filter a look may use costs in memory (muvid#229): ``(family, frames)``.
+#: ``frames`` is the frames the link allocates of its OUTPUT size, in YUV 4:2:0 frames;
+#: ``family`` the pixel family it works in — ``rgb``, ``yuv`` or ``any`` — because
+#: what costs memory at a large frame is mostly not a link: it is the conversion ffmpeg
+#: inserts when consecutive links want different families.
+#:
+#: MEASURED, not classified by hand (ffmpeg 8.0.1, default threads, one link vs three
+#: at 16x the canvas area, and each filter alternated with a known-RGB and a known-YUV
+#: one; the side with no conversion cost is its family). The same-family colour
+#: filters cost about nothing at any size; ``eq``/``boxblur``/``unsharp``/``scale``/
+#: ``zoompan`` about one frame; ``vignette``/``gblur`` about three (float buffers);
+#: ``bilateral`` sixteen — each set a little above its measurement. ``tests/data/ffmpeg_filter_costs.json`` records the
+#: measurement and ``tests/test_edl_look_cost.py`` re-measures the binary in CI and
+#: refuses a table that reads a filter cheaper than it is. ``lut3d`` needs a cube file
+#: to measure; it is priced like ``scale`` until it is.
+_LOOK_FILTER_COSTS: "dict[str, tuple[str, float]]" = {
+    "null": ("any", 0.0),
+    "setpts": ("any", 0.0),
+    "crop": ("any", 0.0),
+    "pad": ("any", 1.0),  # a growing pad allocates its larger frame
+    "noise": ("any", 0.1),
+    "vignette": ("any", 2.9),
+    "gblur": ("any", 3.1),
+    "scale": ("yuv", 1.2),
+    "zoompan": ("yuv", 1.1),
+    "eq": ("yuv", 1.0),
+    "hue": ("yuv", 0.4),
+    "lutyuv": ("yuv", 0.0),
+    "boxblur": ("yuv", 1.0),
+    "unsharp": ("yuv", 1.1),
+    "bilateral": ("yuv", 16.5),
+    "colorchannelmixer": ("rgb", 0.0),
+    "colorlevels": ("rgb", 0.0),
+    "colorbalance": ("rgb", 0.0),
+    "lutrgb": ("rgb", 0.0),
+    "lut3d": ("rgb", 1.2),
+}
+#: What one RGB<->YUV conversion costs, in frames of the size it converts: measured
+#: 2.1-2.6 (it holds a frame of each side), rounded up.
+_LOOK_CONVERSION_FRAMES = 3.0
+#: The family the frame a look is handed is in: the assembler's normalised YUV.
+_LOOK_INPUT_FAMILY = "yuv"
+
+#: The memory a look may cost, in canvas-sized YUV frames (:func:`_look_cost`) — ONE
+#: budget in place of the three counts of muvid#196/#199 (resizes, links holding a large
+#: frame, heavy filters), which each answered one version of this question (#229).
+#:
+#: Calibrated against measurements (ffmpeg 8.0.1, a 1920x1080 canvas, peak RSS):
+#:
+#: =================================================================  ======  ========
+#: look                                                               cost    peak RSS
+#: =================================================================  ======  ========
+#: the worst look the three caps kept (zoompan to 16x, vignette...)   ~121    649 MB
+#: ``bilateral`` at 16x the canvas (the #199 review)                   ~284    940 MB
+#: ``scale,pad`` to 16x + 7x (colorchannelmixer, eq) (muvid#199)       ~819   2527 MB
+#: =================================================================  ======  ========
+#:
+#: 150 keeps the first with room and refuses the others; the worst look found UNDER it
+#: is measured in CI under a ceiling (``test_the_worst_look_the_budget_keeps_...``).
+MAX_LOOK_COST = float(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_COST", "150"))
 
 #: The canvas :func:`validate_edl` bounds a look against when its caller names
 #: none: the element-wise maximum of ``workspace.CANVASES``, so the default is
@@ -1998,11 +1998,6 @@ class _FilterOptions(NamedTuple):
     #: the leading UNNAMED slots a look may fill, in libavfilter's order. Short
     #: on purpose: a positional past the end is REFUSED, never dropped.
     positional: tuple
-    #: whether a link declaring NONE of ``sizes`` outputs a frame no larger than
-    #: its input (``scale``/``pad`` default to ``iw``/``ih``, ``crop`` only
-    #: shrinks). ``False`` for ``zoompan``, whose absent ``s`` is a literal hd720.
-    #: Read by :func:`_look_resizes`.
-    unsized_keeps_frame: bool = True
 
 
 #: Which options a look may set on a filter that can change the OUTPUT FRAME
@@ -2096,8 +2091,8 @@ _LOOK_GEOMETRY_FILTERS = {
         # ``in_color_matrix``/``out_color_matrix``: ``looks`` Rule 22 wraps every
         # RGB-domain step in ``scale=in_color_matrix=M:out_color_matrix=M`` once a
         # colour space is declared (muvid#190). They pick the YUV<->RGB matrix and
-        # never touch the frame size, so such a link is not a resize while its
-        # input fits the canvas (`_look_resizes`, muvid#196). `in_range`/
+        # never touch the frame size, so such a link costs what any YUV link does
+        # (`_look_cost`, muvid#196/#229). `in_range`/
         # `out_range` ride on the same wrapper once a colour RANGE is declared too,
         # which `stylize` does since the assembler normalises it (muvid#195).
         free=frozenset(
@@ -2119,7 +2114,6 @@ _LOOK_GEOMETRY_FILTERS = {
         sizes={"s": "size"},
         free=frozenset({"zoom", "z", "x", "y", "d", "fps"}),
         positional=("zoom", "x", "y", "d", "s", "fps"),
-        unsized_keeps_frame=False,
     ),
 }
 
@@ -2530,7 +2524,7 @@ def _link_output_sizes(
     """One link's declared dimensions, as :func:`_look_output_sizes` reports them
     minus the filter name. Empty for a filter that is not a geometry filter, and for
     a geometry link that declares no size (whose frame is then its input's, except
-    ``zoompan``'s — see :attr:`_FilterOptions.unsized_keeps_frame`).
+    ``zoompan``'s, a literal hd720 — :data:`_ZOOMPAN_DEFAULT_SIZE`).
 
     >>> _link_output_sizes("scale", "in_color_matrix=bt709:out_color_matrix=bt709")
     []
@@ -2554,55 +2548,6 @@ def _link_output_sizes(
         else:
             px = int(text) if _LOOK_PIXELS.match(text) else None
             out.append((opt, axis, text, px))
-    return out
-
-
-def _look_resizes(look: str, canvas) -> "list[str]":
-    """The links :data:`MAX_LOOK_RESIZES` counts: each geometry link, except one
-    that declares no size and keeps its input's frame
-    (:attr:`_FilterOptions.unsized_keeps_frame`) while every size declared before it
-    fits the canvas — read off :func:`_look_frames`, the frame the link is handed.
-
-    The exception exists for ``looks`` Rule 22's colour conversion,
-    ``scale=in_color_matrix=M:out_color_matrix=M``, which wraps every RGB-domain
-    step (muvid#190), so a three-step grade carries four of them and counting them
-    as resizes refused the named look ``cartoon`` (muvid#196). It is cheap only
-    because its frame is its input's — so it is exempt only while that input is no
-    larger than the canvas. Measured on ffmpeg 8.0.1, a 1920x1080 canvas, peak RSS:
-    sixteen colour links at canvas size 115 MB; ``scale=7680:4320`` followed by
-    fifteen of them **903 MB**, and 1002 MB with ``colorchannelmixer`` between them
-    — against 238 MB for the same upsize followed by fifteen in-place ``hue``. A
-    colour conversion allocates a new frame at whatever size it is handed, so after
-    an upsize it counts. That keeps this exemption from widening what the gate
-    admits; it does not make the resize cap a bound on large frames, because
-    ffmpeg's own automatic format conversions between RGB and YUV filters allocate
-    the same way and are not links at all (muvid#199). An expression size is
-    treated as larger than the canvas (``_validate_look_size`` refuses it anyway).
-
-    >>> cs = "scale=in_color_matrix=bt709:out_color_matrix=bt709"
-    >>> _look_resizes(f"{cs},eq=gamma=1,{cs},{cs}", (1920, 1080))
-    []
-    >>> _look_resizes(f"scale=7680:4320,{cs},{cs}", (1920, 1080))
-    ['scale', 'scale', 'scale']
-    >>> _look_resizes("crop=w='iw*0.9':h='ih*0.9',scale=1920:1080", (1920, 1080))
-    ['scale']
-    >>> _look_resizes("zoompan=d=1:fps=25", (1920, 1080))
-    ['zoompan']
-    """
-    canvas_area = canvas[0] * canvas[1]
-    out = []
-    for name, args, before, _after in _look_frames(look, canvas):
-        spec = _LOOK_GEOMETRY_FILTERS.get(name)
-        if spec is None:
-            continue
-        unsized = not _link_output_sizes(name, args)
-        if (
-            spec.unsized_keeps_frame
-            and unsized
-            and before[0] * before[1] <= canvas_area
-        ):
-            continue
-        out.append(name)
     return out
 
 
@@ -2711,19 +2656,45 @@ def _look_unclassified_options(look: str) -> "list[tuple[str, str, str]]":
     return out
 
 
+def _look_cost(look: str, canvas) -> "tuple[float, list[tuple[str, float]]]":
+    """What ``look`` costs in memory at ``canvas`` (muvid#229): the total, in
+    canvas-sized YUV frames, and each link's share.
+
+    A link costs its own allocation (:data:`_LOOK_FILTER_COSTS`) at its OUTPUT frame's
+    area, plus a conversion (:data:`_LOOK_CONVERSION_FRAMES`) at its INPUT frame's area
+    when it works in another pixel family than the frame it is handed — the conversion
+    ffmpeg inserts, which is not a link and is where a large frame's memory mostly goes.
+    Areas are relative to the canvas, read off :func:`_look_frames`.
+
+    >>> _look_cost("eq=gamma=1", (1920, 1080))[0]
+    1.0
+    >>> round(_look_cost("scale=7680:4320,colorchannelmixer=rr=1,scale=1920:1080",
+    ...                  (1920, 1080))[0], 1)
+    116.4
+    """
+    canvas_area = float(canvas[0] * canvas[1])
+    family, total, shares = _LOOK_INPUT_FAMILY, 0.0, []
+    for name, _args, before, after in _look_frames(look, canvas):
+        link_family, frames = _LOOK_FILTER_COSTS.get(name, ("any", 1.0))
+        cost = frames * (after[0] * after[1]) / canvas_area
+        if link_family != "any" and link_family != family:
+            cost += _LOOK_CONVERSION_FRAMES * (before[0] * before[1]) / canvas_area
+            family = link_family
+        total += cost
+        shares.append((name, cost))
+    return total, shares
+
+
 def _validate_look_links(i, look: str, canvas) -> None:
-    """Bound how many filter links a look carries, and how many resize. Raises.
+    """Bound how many filter links a look carries and what it costs in memory. Raises.
 
-    The companion to :func:`_validate_look_size`, and the half it misses:
-    bounding the FRAME does not bound the MEMORY. Every fragment this refuses
-    sits entirely inside the size cap — thirty-two links of ``scale=7680:4320``
-    on a 1920x1080 canvas is 1648 MB and was accepted, while the size cap
-    refuses ``scale=8000:8000`` at 241 MB. See :data:`MAX_LOOK_LINKS` for the
-    table.
+    The companion to :func:`_validate_look_size`, and the half it misses: bounding the
+    FRAME does not bound the MEMORY. The link count (:data:`MAX_LOOK_LINKS`) bounds the
+    graph; the cost (:func:`_look_cost`, :data:`MAX_LOOK_COST`) bounds the memory — one
+    budget where three counts each answered one version of the question (muvid#229).
 
-    Counted through :func:`_look_filter_names`, so the count is the one ffmpeg
-    will make — escaped commas inside an expression are not separators, and a
-    look whose links are spelled with quotes or escapes counts the same.
+    Counted through :func:`_look_filter_names`, so the count is the one ffmpeg will
+    make — escaped commas inside an expression are not separators.
     """
     names = _look_filter_names(look)
     if len(names) > MAX_LOOK_LINKS:
@@ -2735,42 +2706,17 @@ def _validate_look_links(i, look: str, canvas) -> None:
             "one accepted link at a time. muvid's own looks use at most seven "
             "(a three-step grade, each step wrapped in a colour conversion)."
         )
-    resizes = _look_resizes(look, canvas)
-    if len(resizes) > MAX_LOOK_RESIZES:
+    total, shares = _look_cost(look, canvas)
+    if total > MAX_LOOK_COST:
+        worst = sorted(shares, key=lambda x: -x[1])[:3]
+        named = ", ".join(f"{n} ({c:.0f})" for n, c in worst)
         raise ValueError(
-            f"EDL entry {i}: look resizes {len(resizes)} times ({', '.join(resizes)}), "
-            f"more than the {MAX_LOOK_RESIZES} muvid allows. A look needs one "
-            "resize, or none — the assembler "
-            "has already conformed the cut to the canvas before the look runs. "
-            "(A link that declares no size, such as a colour-only `scale`, is not "
-            "counted while the frame fits the canvas.)"
-        )
-    canvas_area = canvas[0] * canvas[1]
-    large = [
-        f[0] for f in _look_frames(look, canvas) if f[3][0] * f[3][1] > canvas_area
-    ]
-    if len(large) > MAX_LOOK_LARGE_LINKS:
-        raise ValueError(
-            f"EDL entry {i}: {len(large)} links of this look hold a frame larger than "
-            f"the {canvas[0]}x{canvas[1]} canvas ({', '.join(large)}), more than the "
-            f"{MAX_LOOK_LARGE_LINKS} muvid allows. Every link after a resize up works "
-            "at that size — measured, a look accepted before this bound reached 2.5 GB "
-            "that way (muvid#199). Return to the canvas size right after the link "
-            "that needs the larger frame."
-        )
-    heavy = [f for f in _look_frames(look, canvas) if f[0] in _LOOK_HEAVY_FILTERS]
-    if len(heavy) > MAX_LOOK_HEAVY_LINKS:
-        raise ValueError(
-            f"EDL entry {i}: look chains {len(heavy)} {heavy[0][0]} links, more than "
-            f"the {MAX_LOOK_HEAVY_LINKS} muvid allows — each keeps several frames of "
-            "its own (measured: about 50 MB a link at 1080p, against at most 14 for "
-            "any other filter muvid offers)."
-        )
-    if any(f[2][0] * f[2][1] > canvas_area for f in heavy):
-        raise ValueError(
-            f"EDL entry {i}: look runs {heavy[0][0]} on a frame larger than the "
-            f"{canvas[0]}x{canvas[1]} canvas — it keeps several frames of its own, so "
-            "at the size cap one link reached 940 MB. Run it at canvas size."
+            f"EDL entry {i}: look costs {total:.0f} canvas frames of memory, more than "
+            f"the {MAX_LOOK_COST:.0f} muvid allows (costliest: {named}). A link at a "
+            "frame larger than the canvas costs that many times more, and switching "
+            "between RGB and YUV filters costs a frame-sized conversion each time — "
+            "return to the canvas size right after the link that needs the larger "
+            "frame, and keep RGB and YUV steps together."
         )
 
 
