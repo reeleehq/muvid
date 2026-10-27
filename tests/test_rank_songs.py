@@ -96,15 +96,13 @@ def test_the_feel_of_the_footage_counts_toward_the_fit():
     assert fit["score"] > song_fit("/x/b.wav", srcs, analysis=flat, **kw)["score"]
 
 
-def test_every_term_of_the_score_moves_it():
+def test_the_reuse_term_charges_repetition():
     fit = song_fit("/x/a.wav", _pool(), analysis=_analysis(400.0, 120.0), **_KW)
-    for term in SONG_FIT_WEIGHTS:
-        zero = dict(SONG_FIT_WEIGHTS, **{term: 0.0})
-        other = song_fit(
-            "/x/a.wav", _pool(), analysis=_analysis(400.0, 120.0), weights=zero, **_KW
-        )
-        if term == "reuse":
-            assert other["score"] > fit["score"]  # repetition was charged
+    free = dict(SONG_FIT_WEIGHTS, reuse=0.0)
+    other = song_fit(
+        "/x/a.wav", _pool(), analysis=_analysis(400.0, 120.0), weights=free, **_KW
+    )
+    assert other["score"] > fit["score"]  # repetition was charged
 
 
 # -- the operations --------------------------------------------------------------------
@@ -239,3 +237,12 @@ def test_the_candidate_ops_are_host_only_and_set_song_is_unchanged():
     assert inspect.signature(service.set_song).parameters["path"].default is (
         inspect.Parameter.empty
     )
+
+
+def test_each_candidate_gets_its_own_analysis(fp, tmp_path):
+    """Analyses are cached by each file's content hash — never one shared entry."""
+    _candidate(fp, tmp_path, "long.mp3", b"ID3-long")
+    _candidate(fp, tmp_path, "song.wav", b"RIFF-other")  # 40 s by the stub's rule
+    out = service.rank_songs(fp)
+    by_id = {r["candidate_id"]: r["duration_s"] for r in out["ranking"]}
+    assert by_id["long"] == 400.0 and by_id["song"] == 40.0
