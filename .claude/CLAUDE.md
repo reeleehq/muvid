@@ -743,10 +743,17 @@ bridge before muvid#37.
   (muvid#199). After one resize to the size cap, every following link that makes ffmpeg
   convert between RGB and YUV allocates a frame that size, and those conversions are not
   links: `scale=7680:4320,pad=7680:4320` plus seven `colorchannelmixer,eq` pairs passed
-  both caps at **2527 MB**. `edl._look_frames` now tracks the frame each link outputs,
-  and `MAX_LOOK_LARGE_LINKS` (2) bounds the links holding one larger than the canvas by
-  area; the worst look kept (two such links, then canvas-size work) is MEASURED in CI
-  under a ceiling, not asserted.
+  both caps at **2527 MB**. `edl._look_frames` tracks the frame each link outputs, and
+  since muvid#229 ONE memory budget (`MAX_LOOK_COST`, `edl._look_cost`) replaces the
+  three counts that each answered a version of the question (resizes, links at a large
+  frame, heavy filters): a link costs its allocation at its output's area plus a
+  frame-sized RGB<->YUV conversion at its input's area when its pixel family changes —
+  the conversion is not a link, and it is where a large frame's memory mostly went. The
+  per-filter `(family, frames)` table (`edl._LOOK_FILTER_COSTS`) is a MEASUREMENT:
+  `tests/data/ffmpeg_filter_costs.json` records it and `tests/test_edl_look_cost.py`
+  re-measures the runner's binary and refuses a table reading any filter cheaper or in
+  another family. The worst look found under the budget is measured in CI under a
+  ceiling, not asserted.
 - **The two ffmpeg builds disagree about what a bare argument after a `key=value` one
   MEANS, and only CI could see it.** `scale=w=8000:100` exits 234 on 9.0.1 ("No option
   name near '100'" — the shorthand is discarded) and renders **8000x100** on 6.1.6, which
