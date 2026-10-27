@@ -563,3 +563,107 @@ def test_the_old_tuple_shape_of_inputs_is_refused_plainly():
 
     with pytest.raises(TypeError, match="maps each metric"):
         R.Scorer("x", ("x_m",), lambda c: [], inputs=(R.BEATS,))
+
+
+def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
+    scored_proj, monkeypatch
+):
+    """muvid#213 item 2: the decode pass is the expensive one, and it runs only when a
+    scorer that RUNS needs frames — so a partial re-score whose stale metrics read no
+    frames decodes nothing, though a current metric beside them does read frames."""
+    import numpy as np
+
+    from muvid.footage.scoring import frames as F
+    from muvid.footage.scoring import quality
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.grid import ScoreTrack
+
+    decodes = []
+    monkeypatch.setattr(
+        F, "sample_clip_frames", lambda path, **kw: decodes.append(path) or object()
+    )
+    monkeypatch.setattr(F, "make_face_scorer", lambda: None)
+    monkeypatch.setattr(quality, "quality_gate_mask", lambda fp, **kw: np.array([True]))
+
+    def track(ctx, metric):
+        raw = np.full(ctx.grid.n, 0.5, dtype="float32")
+        return [
+            ScoreTrack(
+                ctx.clip_id, metric, ctx.grid.t0, ctx.grid.hop_s, raw, np.isfinite(raw)
+            )
+        ]
+
+    proj, _seen, _ = scored_proj
+    R._SCORERS.clear()
+    R.register_scorer(R.Scorer("q", ("q_m",), lambda c: track(c, "q_m"), gated=False))
+    R.register_scorer(
+        R.Scorer(
+            "b",
+            ("b_m",),
+            lambda c: track(c, "b_m"),
+            needs_frames=False,
+            gated=False,
+            inputs={"b_m": (R.BEATS,)},
+        )
+    )
+    service.run_scoring(proj)
+    assert len(decodes) == 1  # q reads frames: the full run decodes
+
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    decodes.clear()
+    out = service.run_scoring(proj)
+    assert out["rescored"] == ["b_m"]
+    assert decodes == []  # only b re-ran, and it reads no frames
+
+
+def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
+    scored_proj, monkeypatch
+):
+    """The #213 review: the record of which metrics read which input was built from the
+    scorers that RAN, so a partial re-score dropped a kept metric's input — and once
+    that input changed, the metric measured on its old value was served as current."""
+    import numpy as np
+
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.grid import ScoreTrack, load_manifest
+
+    monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
+    sections = {"fp": ""}
+    beats_fps = service._input_fingerprints
+    monkeypatch.setattr(
+        service,
+        "_input_fingerprints",
+        lambda fp: {**beats_fps(fp), "sections": sections["fp"]},
+    )
+
+    def track(ctx, metric):
+        raw = np.full(ctx.grid.n, 0.5, dtype="float32")
+        return [
+            ScoreTrack(
+                ctx.clip_id, metric, ctx.grid.t0, ctx.grid.hop_s, raw, np.isfinite(raw)
+            )
+        ]
+
+    proj, _seen, _ = scored_proj
+    R._SCORERS.clear()
+    frameless = dict(needs_frames=False, gated=False)
+    R.register_scorer(R.Scorer("q", ("q_m",), lambda c: track(c, "q_m"), **frameless))
+    for name, inp in (("b", R.BEATS), ("s", "sections")):
+        R.register_scorer(
+            R.Scorer(
+                name,
+                (f"{name}_m",),
+                lambda c, m=f"{name}_m": track(c, m),
+                inputs={f"{name}_m": (inp,)},
+                **frameless,
+            )
+        )
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    assert service.run_scoring(proj)["rescored"] == ["b_m"]  # s_m kept
+    assert load_manifest(proj.root)["input_metrics"] == {
+        R.BEATS: ["b_m"],
+        "sections": ["s_m"],
+    }
+    sections["fp"] = "map1"  # a section map is declared
+    assert service.scores(proj)["stale_metrics"] == ["s_m"]

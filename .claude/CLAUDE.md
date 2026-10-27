@@ -859,11 +859,28 @@ Invalidation is deliberate: `set_song` drops `alignments.json` and every score t
 (the song is the alignment reference); `align_footage` only invalidates scores when
 `align_fingerprint` actually changed, because the tensor is the most expensive artifact
 in the pipeline. `set_beat_grid` / `clear_beat_grid` delete nothing: the manifest's
-`beat_fingerprint` makes the metrics measured on the beat grid stale (the scorers that
-declare `inputs=(BEATS,)`; the manifest's `beat_metrics`) while the rest stay served,
+beat-grid fingerprint makes the metrics measured on the beat grid stale (the scorers that
+declare `inputs=(BEATS,)`; see below) while the rest stay served,
 the reply says `scores_stale: true`, and a default `score` recomputes only the stale ones
 (muvid#206); clearing a grid makes scores measured on the estimate current again
 (muvid#187).
+
+**The score manifest keys staleness per INPUT, not per beat grid** (muvid#213):
+`input_fingerprints` (`{input: fingerprint}`, `""` = the input's default, omitted) and
+`input_metrics` (`{input: [metrics that read it]}`, every keyed input listed). A second
+keyed input — a vocal-stem model, a declared section map — is a name in
+`scoring.registry.INPUTS`, a `Scorer.inputs` declaration, an entry in
+`service._input_fingerprints` and one in the orchestrator's `input_fingerprints`; it
+needs **no new manifest key** (four edits are still four; one registry for them is
+https://github.com/reeleehq/muvid/issues/224). `grid` stores and compares input names and knows none but the legacy beat grid,
+so an input the manifest does not list — one it predates, or a misspelling — reads as
+changed and stales every metric (an unknown is not "none of them"). The record is built
+from every REGISTERED scorer's declarations over the metric axis, not from the scorers
+that ran: a partial re-score must keep a kept metric's inputs. The legacy `beat_fingerprint` /
+`beat_metrics` keys are still **written** as a mirror of the beat entry, because a
+build before #213 reads only those and, without them, would serve metrics measured on
+a declared grid as current once the grid is cleared; readers go through
+`grid.recorded_fingerprint`, which falls back to them for a manifest written before.
 
 ## Optional extras
 

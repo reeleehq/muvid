@@ -1429,12 +1429,13 @@ def _read_beat_grid_cache(path: Path, song_hash: str) -> Optional[dict]:
 
 def _beat_grid_from_scores(fp, song_hash: str) -> Optional[dict]:
     """Lift the grid out of a scoring run's manifest when one exists for THIS song."""
-    from muvid.footage.scoring.grid import load_manifest
+    from muvid.footage.scoring.grid import load_manifest, recorded_fingerprint
+    from muvid.footage.scoring.registry import BEATS
 
     manifest = load_manifest(fp.root)
     if not manifest or manifest.get("song_hash") != song_hash:
         return None
-    if manifest.get("beat_fingerprint"):
+    if recorded_fingerprint(manifest, BEATS):
         # measured on a DECLARED grid (muvid#187): served as the estimate, it would bring
         # a forgotten declaration back under another name
         return None
@@ -1631,9 +1632,17 @@ def _beat_fingerprint(declared: Optional[dict]) -> str:
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
+def _input_fingerprints(fp) -> dict:
+    """The CURRENT value of every keyed input scores are measured on, by name (muvid#213)
+    — the one place a new keyed input's fingerprint is read for the staleness question."""
+    from muvid.footage.scoring.registry import BEATS
+
+    return {BEATS: _beat_fingerprint(declared_beat_grid(fp))}
+
+
 def _stale_metrics(fp, manifest: Optional[dict]) -> Optional[list]:
     """THE staleness question every reader of the score tensor asks: which persisted
-    metrics no longer match the song, the alignments and the beat grid they were
+    metrics no longer match the song, the alignments and the keyed inputs they were
     measured on (:func:`muvid.footage.scoring.grid.stale_metrics`). ``None``: no scores."""
     from muvid.footage.scoring.grid import align_fingerprint, stale_metrics
 
@@ -1641,7 +1650,7 @@ def _stale_metrics(fp, manifest: Optional[dict]) -> Optional[list]:
         manifest,
         song_hash=fp.song_hash() if fp.has_song() else "",
         align_fingerprint=align_fingerprint(fp.load_alignments()),
-        beat_fingerprint=_beat_fingerprint(declared_beat_grid(fp)),
+        input_fingerprints=_input_fingerprints(fp),
     )
 
 
@@ -1941,6 +1950,8 @@ def _candidate(c, i: int, *, song_end: float) -> "tuple[str, float, float]":
 
 
 def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
+    from muvid.footage.scoring.grid import recorded_fingerprint
+    from muvid.footage.scoring.registry import BEATS
     from muvid.footage.select_score import selection_margin
 
     margin = selection_margin(fp.load_alignments(), tensor, weights=weights)
@@ -1962,7 +1973,9 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
             "count": len(beats),
             "times": _decimate_list(beats, max_points),
             # the grid the beat metrics were measured on (muvid#187)
-            "source": DECLARED if manifest.get("beat_fingerprint") else "estimated",
+            "source": DECLARED
+            if recorded_fingerprint(manifest, BEATS)
+            else "estimated",
         },
         "tempo_bpm": manifest.get("tempo_bpm"),
         "selection_margin": _decimate_values(margin, max_points, pool="min"),

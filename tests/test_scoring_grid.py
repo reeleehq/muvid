@@ -60,7 +60,7 @@ def test_manifest_is_current_guards_song_and_alignment():
     from muvid.footage.scoring.grid import manifest_is_current
 
     m = {"song_hash": "h1", "align_fingerprint": "f1"}
-    kw = {"beat_fingerprint": ""}
+    kw = {"input_fingerprints": {}}
     assert manifest_is_current(m, song_hash="h1", align_fingerprint="f1", **kw)
     assert not manifest_is_current(
         m, song_hash="h2", align_fingerprint="f1", **kw
@@ -79,11 +79,11 @@ def test_manifest_is_current_guards_the_beat_grid_it_was_measured_on():
     kw = {"song_hash": "h1", "align_fingerprint": "f1"}
     estimated = {"song_hash": "h1", "align_fingerprint": "f1"}
     declared = {**estimated, "beat_fingerprint": "b1"}
-    assert manifest_is_current(estimated, beat_fingerprint="", **kw)
-    assert not manifest_is_current(estimated, beat_fingerprint="b1", **kw)
-    assert manifest_is_current(declared, beat_fingerprint="b1", **kw)
-    assert not manifest_is_current(declared, beat_fingerprint="b2", **kw)
-    assert not manifest_is_current(declared, beat_fingerprint="", **kw)
+    assert manifest_is_current(estimated, input_fingerprints={"beats": ""}, **kw)
+    assert not manifest_is_current(estimated, input_fingerprints={"beats": "b1"}, **kw)
+    assert manifest_is_current(declared, input_fingerprints={"beats": "b1"}, **kw)
+    assert not manifest_is_current(declared, input_fingerprints={"beats": "b2"}, **kw)
+    assert not manifest_is_current(declared, input_fingerprints={"beats": ""}, **kw)
 
 
 def test_resample_empty_and_all_nan():
@@ -249,3 +249,150 @@ def test_torn_manifest_write_keeps_the_previous_scores(tmp_path, monkeypatch):
     manifest = json.loads((tmp_path / "scores" / "manifest.json").read_text())
     assert manifest["song_hash"] == "v1"
     assert not [p for p in (tmp_path / "scores").iterdir() if p.name.startswith(".")]
+
+
+# ---------------------------------------------------------------------------
+# muvid#213: a fingerprint per keyed input, not only the beat grid
+# ---------------------------------------------------------------------------
+
+
+def _two_inputs(monkeypatch):
+    """A second keyed input beside the beat grid — what a vocal-stem model or a
+    declared section map would add — with no other change to muvid."""
+    from muvid.footage.scoring import registry as R
+
+    monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
+    return R.BEATS, "sections"
+
+
+def _saved_manifest(tmp_path, **kw):
+    from muvid.footage.scoring.grid import load_manifest
+
+    n = 4
+    tracks = {
+        "A": [
+            ScoreTrack("A", m, 0.0, 0.1, np.full(n, 0.5, "float32"), np.ones(n, bool))
+            for m in ("q", "b", "s")
+        ]
+    }
+    save_scores(
+        tmp_path,
+        tracks,
+        t0=0.0,
+        hop_s=0.1,
+        n=n,
+        metrics=["q", "b", "s"],
+        song_hash="h",
+        **kw,
+    )
+    return load_manifest(tmp_path)
+
+
+def test_a_second_keyed_input_stales_only_its_metrics_and_needs_no_new_key(
+    tmp_path, monkeypatch
+):
+    from muvid.footage.scoring.grid import manifest_is_current, stale_metrics
+
+    beats, sections = _two_inputs(monkeypatch)
+    m = _saved_manifest(
+        tmp_path,
+        input_fingerprints={beats: "", sections: "map1"},
+        input_metrics={beats: ["b"], sections: ["s"]},
+    )
+    assert m["input_fingerprints"] == {sections: "map1"}  # "" = the default, omitted
+    assert m["input_metrics"] == {beats: ["b"], sections: ["s"]}
+    kw = dict(song_hash="h", align_fingerprint="")
+
+    def stale(**fps):
+        return stale_metrics(m, input_fingerprints=fps, **kw)
+
+    assert stale(sections="map1") == []
+    assert manifest_is_current(m, input_fingerprints={sections: "map1"}, **kw)
+    assert stale(sections="map2") == ["s"]
+    assert stale(sections="") == ["s"]  # the map was cleared
+    assert stale(beats="grid", sections="map1") == ["b"]
+    assert stale(beats="grid", sections="map2") == ["b", "s"]
+
+
+def test_a_manifest_predating_an_input_stales_everything_when_that_input_moves(
+    tmp_path, monkeypatch
+):
+    """A manifest that does not say which metrics read an input cannot say which are
+    stale when it changes — every metric is (an unknown is not 'none of them')."""
+    from muvid.footage.scoring.grid import manifest_is_current, stale_metrics
+
+    m = _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
+    _beats, sections = _two_inputs(monkeypatch)  # added after the manifest was written
+    kw = dict(song_hash="h", align_fingerprint="")
+    assert stale_metrics(m, input_fingerprints={}, **kw) == []
+    assert stale_metrics(m, input_fingerprints={sections: "map1"}, **kw) == [
+        "q",
+        "b",
+        "s",
+    ]
+    assert not manifest_is_current(m, input_fingerprints={sections: "map1"}, **kw)
+
+
+def test_the_beat_record_is_still_written_where_an_older_build_reads_it(tmp_path):
+    """An older build reads only ``beat_fingerprint`` / ``beat_metrics``; without them
+    it would serve metrics measured on a declared grid as current once it is cleared."""
+    m = _saved_manifest(
+        tmp_path, input_fingerprints={"beats": "g1"}, input_metrics={"beats": ["b"]}
+    )
+    assert m["beat_fingerprint"] == "g1" and m["beat_metrics"] == ["b"]
+    estimate = _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
+    assert "beat_fingerprint" not in estimate  # omit-when-absent, as before
+
+
+def test_a_legacy_manifest_reads_as_before(tmp_path):
+    from muvid.footage.scoring.grid import recorded_fingerprint, stale_metrics
+
+    legacy = {
+        "song_hash": "h",
+        "align_fingerprint": "",
+        "metrics": ["q", "b"],
+        "beat_fingerprint": "g1",
+        "beat_metrics": ["b"],
+    }
+    kw = dict(song_hash="h", align_fingerprint="")
+    assert recorded_fingerprint(legacy, "beats") == "g1"
+    assert stale_metrics(legacy, input_fingerprints={"beats": "g1"}, **kw) == []
+    assert stale_metrics(legacy, input_fingerprints={"beats": ""}, **kw) == ["b"]
+
+
+def test_a_malformed_input_record_is_refused_before_anything_is_written(tmp_path):
+    """The #213 review: a refusal after the clips' arrays were replaced left new data
+    under the old manifest's key."""
+    from muvid.footage.scoring.grid import load_manifest, load_tensor
+
+    _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
+    before = load_tensor(tmp_path).raw.copy()
+    for bad in ("b", None, [1]):
+        with pytest.raises(ValueError, match="input metrics"):
+            _saved_manifest(tmp_path, input_metrics={"beats": bad})
+    with pytest.raises(ValueError, match="input fingerprints"):
+        _saved_manifest(tmp_path, input_fingerprints={"beats": None})
+    assert np.array_equal(load_tensor(tmp_path).raw, before)
+    assert load_manifest(tmp_path)["input_metrics"] == {"beats": ["b"]}
+
+
+def test_a_name_only_the_caller_knows_reads_as_changed_never_as_current(tmp_path):
+    """A misspelled input, or one the manifest predates, stales every metric: the
+    persistence layer stores names, it does not know them (the #213 review)."""
+    from muvid.footage.scoring.grid import stale_metrics
+
+    m = _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
+    kw = dict(song_hash="h", align_fingerprint="")
+    assert stale_metrics(m, input_fingerprints={"beat": "g1"}, **kw) == ["q", "b", "s"]
+    corrupt = {**m, "input_metrics": {"beats": [1]}}
+    assert stale_metrics(corrupt, input_fingerprints={"beats": "g1"}, **kw) == [
+        "q",
+        "b",
+        "s",
+    ]
+
+
+def test_the_legacy_input_name_is_the_registry_beat_input():
+    from muvid.footage.scoring import grid, registry
+
+    assert grid._LEGACY_INPUT == registry.BEATS

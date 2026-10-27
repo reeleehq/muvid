@@ -393,9 +393,14 @@ def _score(
         for m in registry.default_metrics(include_lipsync=True)
         if m in produced and (m in wanted or m in kept_metrics)
     ]
-    # the metrics measured on the beat grid, by what each running scorer declared;
-    # a kept metric is current, so it was not
-    beat_metrics = [m for sc in active for m in sc.reads(registry.BEATS)]
+    # the metrics on the axis measured on each keyed input, by what their scorers
+    # declare — every registered one, so a metric KEPT by a partial re-score keeps
+    # its inputs too (the #213 review: built from the running scorers only, a kept
+    # metric lost them and was served as current after its input changed)
+    input_metrics = {
+        name: [m for m in metric_axis if m in registry.metrics_reading(name)]
+        for name in registry.INPUTS
+    }
 
     import math
 
@@ -413,8 +418,8 @@ def _score(
         align_fingerprint=align_fingerprint(aligns),
         beat_times=bg.beat_times,
         downbeat_times=bg.downbeat_times,
-        beat_fingerprint=bg.fingerprint,
-        beat_metrics=beat_metrics,
+        input_fingerprints={registry.BEATS: bg.fingerprint},
+        input_metrics=input_metrics,
         extra={
             "shot_boundaries": shots_by_clip,
             "tempo_bpm": round(tempo, 3) if math.isfinite(tempo) else None,
