@@ -25,14 +25,17 @@ source is read here first (:func:`read_source_colour`):
   against the SDR original). So it is TONE MAPPED (muvid#201, :func:`tonemap_chain`):
   to linear light with :data:`HDR_REFERENCE_WHITE_NITS` as SDR white, to BT.709
   primaries, :data:`TONEMAP` with :data:`TONEMAP_PARAM`, then BT.709 limited — 24.7 dB
-  on the same clip. A build without ``zscale`` / ``tonemap`` cannot, and the assembler
-  then reports each HDR clip it delivers washed out.
+  on the same clip. Those three are the defaults of a :class:`ToneMap`, which a caller
+  can replace (muvid#215: more highlight detail, or a brighter mid-range). A build
+  without ``zscale`` / ``tonemap`` cannot, and the assembler then reports each HDR
+  clip it delivers washed out.
 
 Import-light (stdlib only at module top): the look compiler imports the constants.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -75,26 +78,77 @@ HDR_REFERENCE_WHITE_NITS = 203
 #: top five; ``mobius`` 0.5 sends none but costs 8 codes at signal 0.70.
 TONEMAP = "mobius"
 TONEMAP_PARAM = 0.85
+#: The curves ffmpeg's ``tonemap`` filter offers (``ffmpeg -h filter=tonemap``) — a
+#: closed vocabulary, because the curve is spliced into a filter string.
+TONEMAP_CURVES = frozenset(
+    {"none", "linear", "gamma", "clip", "reinhard", "hable", "mobius"}
+)
 #: The filters :func:`tonemap_chain` needs (``zscale`` is libzimg, WTFPL).
 TONEMAP_FILTERS = ("zscale", "tonemap")
 
 
-def tonemap_chain(fill: "tuple[tuple[str, str], ...]" = ()) -> str:
+@dataclass(frozen=True)
+class ToneMap:
+    """How an HDR source is brought to the SDR delivery (muvid#215): the ``tonemap``
+    ``curve`` and its ``param`` for the highlights, and the HDR luminance (nits) that
+    becomes SDR white — lower it for a brighter mid-range. The defaults are the
+    measured choice above; ``ToneMap(param=0.5)`` keeps every highlight below white at
+    the cost of some mid-tone codes.
+
+    Checked on construction, because every field lands in a filter string:
+
+    >>> ToneMap(curve="hable").curve
+    'hable'
+    >>> ToneMap(curve="mobius:desat=9")
+    Traceback (most recent call last):
+    ...
+    ValueError: unknown tone curve 'mobius:desat=9'; one of ['clip', 'gamma', 'hable', 'linear', 'mobius', 'none', 'reinhard']
+    """
+
+    curve: str = TONEMAP
+    param: float = TONEMAP_PARAM
+    reference_white_nits: float = HDR_REFERENCE_WHITE_NITS
+
+    def __post_init__(self):
+        if self.curve not in TONEMAP_CURVES:
+            raise ValueError(
+                f"unknown tone curve {self.curve!r}; one of {sorted(TONEMAP_CURVES)}"
+            )
+        for name in ("param", "reference_white_nits"):
+            v = getattr(self, name)
+            # bool is an int; a positive finite real is what ffmpeg accepts for both
+            if isinstance(v, bool) or not isinstance(v, (int, float)):
+                raise ValueError(f"tone map {name} must be a number, got {v!r}")
+            if not (math.isfinite(v) and v > 0):
+                raise ValueError(f"tone map {name} must be positive and finite: {v!r}")
+
+
+#: Today's tone mapping, the one every render gets unless it asks for another.
+DEFAULT_TONE_MAP = ToneMap()
+
+
+def tonemap_chain(
+    fill: "tuple[tuple[str, str], ...]" = (), *, tone_map: ToneMap = DEFAULT_TONE_MAP
+) -> str:
     """HDR -> the SDR delivery colour, for a frame already at the canvas size (float
     frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. ``fill``
-    names the colour tags the source left out (:attr:`SourceColour.hdr_fill`).
+    names the colour tags the source left out (:attr:`SourceColour.hdr_fill`);
+    ``tone_map`` is how the highlights are brought down (:class:`ToneMap`).
 
     >>> tonemap_chain().split(",")[0]
     'zscale=t=linear:npl=203'
     >>> tonemap_chain((("color_primaries", "bt2020"),)).split(",")[0]
     'setparams=color_primaries=bt2020'
+    >>> tonemap_chain(tone_map=ToneMap(param=0.5)).split(",")[3]
+    'tonemap=mobius:param=0.5:desat=0'
     """
     d = DELIVERY_COLOR_SPACE
     tags = ":".join(f"{k}={v}" for k, v in fill)
+    t = tone_map
     return (
         (f"setparams={tags}," if tags else "")
-        + f"zscale=t=linear:npl={HDR_REFERENCE_WHITE_NITS},format=gbrpf32le,"
-        f"zscale=p={d},tonemap={TONEMAP}:param={TONEMAP_PARAM}:desat=0,"
+        + f"zscale=t=linear:npl={t.reference_white_nits:g},format=gbrpf32le,"
+        f"zscale=p={d},tonemap={t.curve}:param={t.param:g}:desat=0,"
         f"zscale=t={d}:m={d}:r={DELIVERY_COLOR_RANGE},format=yuv420p"
     )
 
@@ -211,7 +265,10 @@ __all__ = [
     "SD_MAX_HEIGHT",
     "HDR_TRANSFERS",
     "SourceColour",
+    "ToneMap",
+    "DEFAULT_TONE_MAP",
     "TONEMAP",
+    "TONEMAP_CURVES",
     "TONEMAP_PARAM",
     "HDR_REFERENCE_WHITE_NITS",
     "can_tonemap",

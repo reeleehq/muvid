@@ -897,9 +897,11 @@ class AssemblyCut:
     #: when the source's tag cannot be trusted, an HDR transfer and its missing tags).
     #: ``None``: ``scale`` reads the frame's own tags.
     source_colour: Any = None
-    #: NOT from the EDL: whether the assembler tone-maps this cut's HDR source — the
-    #: probe says HDR AND this ffmpeg can (:func:`muvid.footage.colour.can_tonemap`).
-    source_tonemap: bool = False
+    #: NOT from the EDL: how the assembler tone-maps this cut's HDR source
+    #: (a :class:`muvid.footage.colour.ToneMap`, the render's ``tone_map``), set when the
+    #: probe says HDR AND this ffmpeg can (:func:`muvid.footage.colour.can_tonemap`);
+    #: falsy (``None``) when it does not tone-map.
+    source_tonemap: Any = None
 
     @property
     def duration(self) -> float:

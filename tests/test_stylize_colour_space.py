@@ -23,7 +23,12 @@ from muvid.footage.assemble import (
     _with_source_colour,
     assemble_music_video,
 )
-from muvid.footage.colour import DELIVERY_COLOR_RANGE, DELIVERY_COLOR_SPACE
+from muvid.footage.colour import (
+    DEFAULT_TONE_MAP,
+    DELIVERY_COLOR_RANGE,
+    DELIVERY_COLOR_SPACE,
+    ToneMap,
+)
 from muvid.footage.edl import AssemblyCut, EdlEntry, _validate_look
 from muvid.footage.look import stylize
 
@@ -309,9 +314,13 @@ def _mean_y(video: Path) -> float:
     return sum(raw[: 320 * 240]) / (320 * 240)
 
 
-def _tonemapped(tmp_path, clip: Path, name: str) -> Path:
-    (cut,) = _with_source_colour([AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))])
-    assert cut.source_tonemap
+def _tonemapped(
+    tmp_path, clip: Path, name: str, *, tone_map: ToneMap = DEFAULT_TONE_MAP
+) -> Path:
+    (cut,) = _with_source_colour(
+        [AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))], tone_map=tone_map
+    )
+    assert cut.source_tonemap == tone_map
     part = tmp_path / f"{name}.mp4"
     _render_part(
         cut,
@@ -349,3 +358,66 @@ def test_an_hdr_clip_missing_a_colour_tag_still_renders(tmp_path, untag):
     assert dict(cut.source_colour.hdr_fill), cut.source_colour
     grey = _mean_y(_tonemapped(tmp_path, clip, f"grey_{untag}"))
     assert abs(grey - 116) <= 8, grey
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        {"curve": "mobius:desat=9"},
+        {"curve": "MOBIUS"},
+        {"param": 0},
+        {"param": -0.5},
+        {"param": float("nan")},
+        {"param": float("inf")},
+        {"param": True},
+        {"param": "0.5"},
+        {"reference_white_nits": 0},
+        {"reference_white_nits": float("inf")},
+    ],
+)
+def test_a_tone_map_that_would_not_be_a_valid_filter_is_refused(kw):
+    """muvid#215: every field of a ToneMap lands in a filter string."""
+    with pytest.raises(ValueError):
+        ToneMap(**kw)
+
+
+@needs_ffmpeg_filter("zscale", "tonemap")
+def test_the_tone_map_is_a_seam_that_reaches_the_render(tmp_path):
+    """muvid#215: a caller's tone map is the one rendered. A lower reference white
+    brightens the mid-range — measured in the #201 review: 18% grey at Y 151 with a
+    100-nit white against 117 at the default 203."""
+    clip = _flat_hlg(tmp_path, "0x767676")
+    default = _mean_y(_tonemapped(tmp_path, clip, "grey_default"))
+    brighter = _mean_y(
+        _tonemapped(
+            tmp_path, clip, "grey_100", tone_map=ToneMap(reference_white_nits=100)
+        )
+    )
+    assert brighter > default + 20, (default, brighter)
+
+
+@needs_ffmpeg_filter("zscale", "tonemap")
+def test_assemble_music_video_carries_its_tone_map_to_every_hdr_part(tmp_path):
+    """The kwarg, not just the helper: ``assemble_music_video(tone_map=)`` renders by it."""
+    clip = _flat_hlg(tmp_path, "0x767676")
+    song = tmp_path / "song.m4a"
+    _run(
+        ["-f", "lavfi", "-i", "sine=frequency=220:duration=0.4", "-c:a", "aac"]
+        + [str(song)]
+    )
+
+    def grey(name, **kw):
+        out = assemble_music_video(
+            [AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))],
+            str(song),
+            str(tmp_path / f"{name}.mp4"),
+            canvas=(320, 240),
+            fps=_FPS,
+            **kw,
+        )
+        return _mean_y(out)
+
+    assert (
+        grey("bright", tone_map=ToneMap(reference_white_nits=100))
+        > grey("default") + 20
+    )
