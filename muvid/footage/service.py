@@ -2541,8 +2541,10 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     The in-point also leaves room AFTER the cut: the next cut's blend (``following``) reads
     its trail past this cut's end in this clip, and ``validate_edl`` requires it. A clip
     too short to hold the span, its own blend and that trail is refused here, plainly,
-    rather than by the gate on the next save (muvid#181)."""
-    from muvid.footage.edl import EDGE_S, blend_lead, blend_trail
+    rather than by the gate on the next save (muvid#181). The bounds are
+    :func:`muvid.footage.edl.in_point_bounds`', the same ones the music cutter picks
+    within (muvid#192)."""
+    from muvid.footage.edl import EDGE_S, blend_reads, in_point_bounds
 
     if not clip_id:
         return None
@@ -2557,35 +2559,26 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     lead = e.transition.duration_s if e.transition is not None else 0.0
     if row.get("kind") == STILL_KIND:
         return round(lead, 4)
-    # What the gate asks of the clip, in clip seconds (it scales both by the cut's rate):
-    # the cut's own lead BEFORE the in-point, and the next cut's trail PAST the cut's end.
-    rate = e.rate
-    span = (e.song_end - e.song_start) * rate
-    need_before = blend_lead(e.transition) * rate if e.transition is not None else 0.0
-    need_after = (
-        blend_trail(following.transition) * rate
-        if following is not None and following.transition is not None
-        else 0.0
-    )
+    following_t = following.transition if following is not None else None
     duration = _clip_duration(fp, clip_id)
-    room = duration - span - need_after  # the latest the cut may start in the clip
-    if room < need_before - _EPS:
+    span = e.song_end - e.song_start
+    bounds = in_point_bounds(
+        span_s=span,
+        clip_duration_s=duration,
+        rate=e.rate,
+        transition=e.transition,
+        next_transition=following_t,
+        edge_s=EDGE_S,
+    )
+    if bounds is None:
+        before, after = blend_reads(e.transition, following_t, rate=e.rate)
         raise FootageError(
-            f"clip {clip_id!r} is {duration:.2f}s, too short for this "
-            f"{e.song_end - e.song_start:.2f}s cut"
-            + (
-                f" with {need_before:.2f}s of its own blend before"
-                if need_before
-                else ""
-            )
-            + (
-                f" and {need_after:.2f}s of the next cut's blend after"
-                if need_after
-                else ""
-            )
-            + f" — it needs {span + need_before + need_after:.2f}s"
+            f"clip {clip_id!r} is {duration:.2f}s, too short for this {span:.2f}s cut"
+            + (f" with {before:.2f}s of its own blend before" if before else "")
+            + (f" and {after:.2f}s of the next cut's blend after" if after else "")
+            + f" — it needs {span * e.rate + before + after:.2f}s"
         )
-    return round(min(EDGE_S + lead, max(0.0, room)), 4)
+    return round(bounds[0], 4)
 
 
 def _moved_start(e, start: float):

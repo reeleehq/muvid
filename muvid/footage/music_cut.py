@@ -172,14 +172,16 @@ def choose_source_in(
     beat_offsets: Sequence[float] = (),
     used: Sequence[tuple[float, float]] = (),
     energy: float = 0.0,
-    lead_s: float = 0.0,
-    trail_s: float = 0.0,
+    transition=None,
+    next_transition=None,
     ordinal: int = 0,
 ) -> tuple[float, float]:
     """Where in a video a cut of ``length`` seconds should start: ``(source_in, fit)``.
 
-    Scores every in-point on the envelope's grid (``lead_s``/``trail_s`` of extra
-    footage kept free on either side, for a blend), by three terms:
+    Scores every in-point on the envelope's grid within the legal room —
+    :func:`muvid.footage.edl.in_point_bounds` for the cut's own ``transition`` and the
+    FOLLOWING cut's ``next_transition``, keeping :data:`EDGE_S` from each end where it
+    fits (muvid#192) — by three terms:
 
     * **hits on the beat** — the mean picture-change hit at each ``beat_offsets`` (beats
       inside the cut, in seconds from its start), relative to the video's own mean hit:
@@ -198,11 +200,22 @@ def choose_source_in(
     >>> round(s, 2), fit > 1
     (1.5, True)
     """
-    room_lo = EDGE_S + lead_s
-    room_hi = clip_duration - EDGE_S - trail_s - length
-    if room_hi < room_lo:  # too short for the margins: centre what there is
-        room_lo = max(0.0, lead_s)
-        room_hi = max(room_lo, clip_duration - trail_s - length)
+    from muvid.footage.edl import blend_reads, in_point_bounds
+
+    room = in_point_bounds(
+        span_s=length,
+        clip_duration_s=clip_duration,
+        transition=transition,
+        next_transition=next_transition,
+        edge_s=EDGE_S,
+    )
+    if room is None:
+        # Too short for the span and both blends: keep the SPAN inside the clip (the
+        # gate's own containment rule) and let `_feasible_blends` drop whichever
+        # blend no longer fits, rather than an in-point that runs off the clip.
+        lead, _trail = blend_reads(transition, None)
+        room = (min(lead, max(0.0, clip_duration - length)),) * 2
+    room_lo, room_hi = room
     if env is None or env.hits.size < 2:
         span = max(0.0, room_hi - room_lo)
         candidates = np.linspace(room_lo, room_hi, max(2, int(span / 0.25) + 1))
@@ -958,6 +971,10 @@ def _one_cut(
 
     length = end - start
     transition = transition_cls(duration_s=fade, curve="fade") if fade > 0 else None
+    # the FOLLOWING cut's blend, which reads `trail` past this cut's end
+    next_transition = (
+        transition_cls(duration_s=trail, curve="fade") if trail > 0 else None
+    )
     use = uses.get(src.clip_id, 0)
     uses[src.clip_id] = use + 1
     if src.is_still:
@@ -990,8 +1007,8 @@ def _one_cut(
         beat_offsets=inner,
         used=used.get(src.clip_id, ()),
         energy=energy_at((start + end) / 2.0),
-        lead_s=fade,
-        trail_s=trail,
+        transition=transition,
+        next_transition=next_transition,
         ordinal=k,
     )
     used.setdefault(src.clip_id, []).append((s_in, s_in + length))

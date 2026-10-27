@@ -2741,6 +2741,65 @@ def blend_trail(t: "Transition") -> float:
     return t.duration_s * (1 - TRANSITION_SPLIT)
 
 
+def blend_reads(
+    transition: "Transition | None",
+    next_transition: "Transition | None",
+    *,
+    rate: float = 1.0,
+) -> "tuple[float, float]":
+    """``(lead, trail)``: clip seconds a cut's blends read before its in-point (its own
+    ``transition``) and past its end (the FOLLOWING cut's), at the cut's ``rate`` — as
+    :func:`_validate_transition` scales them.
+
+    >>> blend_reads(Transition(duration_s=1.0, curve="fade"), None, rate=2.0)
+    (1.0, 0.0)
+    """
+    lead = blend_lead(transition) * rate if transition is not None else 0.0
+    trail = blend_trail(next_transition) * rate if next_transition is not None else 0.0
+    return lead, trail
+
+
+def in_point_bounds(
+    *,
+    span_s: float,
+    clip_duration_s: float,
+    rate: float = 1.0,
+    transition: "Transition | None" = None,
+    next_transition: "Transition | None" = None,
+    edge_s: float = 0.0,
+) -> "tuple[float, float] | None":
+    """The legal in-points ``(lo, hi)``, in clip seconds, for a free cut — THE owner of
+    that arithmetic (muvid#192), so every writer that picks an in-point asks the same
+    question :func:`_validate_transition` and the containment check enforce.
+
+    A cut of ``span_s`` song seconds at ``rate`` reads ``span_s * rate`` of its clip;
+    its own ``transition`` reads :func:`blend_lead` before the in-point, and the
+    FOLLOWING cut's ``next_transition`` reads :func:`blend_trail` past its end — both
+    in this clip, scaled by this cut's rate, as the gate scales them.
+
+    ``edge_s`` keeps a margin from each end of the clip (a thumb on the button,
+    :data:`EDGE_S`) when there is room for it, and gives it up symmetrically when there
+    is not: the margin is a preference, the gate's bounds are not. ``None`` when the
+    clip cannot hold the span and both blends at all.
+
+    >>> t = Transition(duration_s=1.0, curve="fade")
+    >>> in_point_bounds(span_s=2.0, clip_duration_s=10.0, transition=t, next_transition=t)
+    (0.5, 7.5)
+    >>> in_point_bounds(span_s=2.0, clip_duration_s=10.0, transition=t, edge_s=0.25)
+    (0.75, 7.75)
+    >>> in_point_bounds(span_s=2.0, clip_duration_s=3.25, transition=t, next_transition=t, edge_s=0.25)
+    (0.625, 0.625)
+    >>> in_point_bounds(span_s=2.0, clip_duration_s=2.9, transition=t, next_transition=t) is None
+    True
+    """
+    lead, trail = blend_reads(transition, next_transition, rate=rate)
+    slack = clip_duration_s - span_s * rate - lead - trail
+    if slack < -_EPS:
+        return None
+    edge = min(edge_s, max(0.0, slack) / 2)
+    return lead + edge, max(lead + edge, lead + slack - edge)
+
+
 def _validate_transition(i, e, prev, by_id) -> None:
     """The four things a transition has to satisfy. Raises ``ValueError``.
 

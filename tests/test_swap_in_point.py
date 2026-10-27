@@ -47,14 +47,15 @@ def test_without_a_following_blend_nothing_extra_is_reserved(monkeypatch, tmp_pa
     fp, e, _, _ = _swap_fixture(tmp_path, dur=0)
     monkeypatch.setattr(service, "_clip_duration", lambda f, c: 30.0)
     monkeypatch.setattr(service, "_role_of", lambda row, a: service.FREE_ROLE)
-    assert service._swap_in_point(fp, "dog", e, None) == pytest.approx(
-        1.25
-    )  # EDGE_S + fade
+    # EDGE_S + the blend's LEAD (0.5 of the 1 s fade) — what the gate reads before
+    # the in-point. It was EDGE_S + the whole fade (1.25) until the in-point bounds
+    # got one owner, `edl.in_point_bounds` (muvid#192).
+    assert service._swap_in_point(fp, "dog", e, None) == pytest.approx(0.75)
     from muvid.footage.edl import EdlEntry
 
     assert service._swap_in_point(
         fp, "dog", e, EdlEntry(12.0, 20.0, "b")
-    ) == pytest.approx(1.25)
+    ) == pytest.approx(0.75)
 
 
 def test_a_clip_too_short_for_the_cut_and_its_blends_is_refused_plainly(
