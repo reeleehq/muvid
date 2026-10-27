@@ -21,14 +21,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from muvid.visualize.canvas import THUMBNAIL_MAX_BYTES, THUMBNAIL_SIZE
 from muvid.visualize.ffmpeg import (
     DEFAULT_LOUDNESS_I,
     Loudness,
     PathLike,
-    measure_loudness,
     media_duration,
+    stream_pcm,
     probe,
 )
 
@@ -39,6 +40,44 @@ DURATION_TOLERANCE = 0.5
 #: How far the integrated loudness may sit from the target, in LU. Encoding to
 #: AAC moves it slightly, so demanding an exact hit would fail every time.
 LOUDNESS_TOLERANCE = 1.5
+
+#: The rate and channel count the meter decodes at when the stream does not say.
+METER_SAMPLE_RATE = 48_000
+METER_CHANNELS = 2
+
+#: A loudness meter: ``media -> integrated LUFS`` (muvid#219).
+LoudnessMeter = Callable[[PathLike], float]
+
+
+def measure_integrated_lufs(media: PathLike) -> float:
+    """The BS.1770-4 integrated loudness of ``media``'s audio, in LUFS (muvid#219).
+
+    Decoded by muvid (:func:`~muvid.visualize.ffmpeg.stream_pcm`: the ffmpeg muvid
+    renders with, bounded by ``$MUVID_FFMPEG_TIMEOUT_S``, a failure an
+    :class:`~muvid.visualize.ffmpeg.FfmpegError`) at the stream's own rate and channel
+    count, and metered as it streams by ``mixing.loudness.stream_loudness``, so memory
+    stays bounded whatever the length where the samples held whole cost 577 MB for five
+    minutes. Within about 0.05 LU of ffmpeg's ``loudnorm`` analysis at 44.1/48 kHz
+    (0.15-0.35 LU at 8-22 kHz; 5.1 reads about 0.5 LU low — no surround weights — and
+    muvid renders stereo), in a fraction of its time. Normalising still uses two-pass
+    ``loudnorm`` (:func:`muvid.visualize.ffmpeg.measure_loudness`). No fallback: a
+    failure here is a traceback, not a quietly different meter.
+    """
+    import numpy as np
+    from mixing.loudness import stream_loudness
+
+    stream = next(
+        (s for s in probe(media).get("streams", []) if s.get("codec_type") == "audio"),
+        {},
+    )
+    rate = int(stream.get("sample_rate") or METER_SAMPLE_RATE)
+    channels = int(stream.get("channels") or METER_CHANNELS)
+    chunks = (
+        np.frombuffer(raw, dtype="<f4").reshape(-1, channels)
+        for raw in stream_pcm(media, sample_rate=rate, channels=channels)
+    )
+    return float(stream_loudness(chunks, rate).integrated_lufs)
+
 
 #: How much of the file's head to scan for the ``moov`` atom's boxes. With
 #: ``+faststart`` the moov comes first, so this is generous.
@@ -67,6 +106,7 @@ def verify_video(
     duration_tolerance: float = DURATION_TOLERANCE,
     expected_canvas: tuple[int, int] | None = None,
     expected_duration: float | None = None,
+    loudness_meter: LoudnessMeter = measure_integrated_lufs,
 ) -> list[Check]:
     """Check ``video`` against YouTube's expectations; return one result per check.
 
@@ -86,6 +126,8 @@ def verify_video(
         expected_duration: The length the render was ASKED for, when that is not
             the whole of ``audio`` — a trimmed edit renders only part of the song.
             Arms the duration check on its own, and wins over ``audio``'s length.
+        loudness_meter: How ``check_loudness`` measures: ``media -> LUFS``. Default
+            :func:`measure_integrated_lufs`.
 
     Returns:
         A list of :class:`Check`. Falsy checks are the problems; :func:`report`
@@ -205,10 +247,8 @@ def verify_video(
         )
 
     if check_loudness:
-        target = loudness or Loudness()
-        measured = measure_loudness(video, target).measured or {}
-        actual = float(measured.get("input_i", "nan"))
-        want = target.integrated if loudness else DEFAULT_LOUDNESS_I
+        actual = loudness_meter(video)
+        want = loudness.integrated if loudness else DEFAULT_LOUDNESS_I
         checks.append(
             Check(
                 "loudness",

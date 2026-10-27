@@ -18,9 +18,11 @@ import os
 import shlex
 import shutil
 import subprocess
+import threading
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Iterator
 
 PathLike = str | Path
 
@@ -248,6 +250,75 @@ def decode_pcm(audio: PathLike, *, sample_rate: int, channels: int = 1) -> bytes
         text=False,
     )
     return proc.stdout or b""
+
+
+#: Seconds of raw PCM each chunk of :func:`stream_pcm` holds.
+PCM_STREAM_CHUNK_S = 10.0
+#: How much of a failed decode's stderr an error quotes.
+_STDERR_TAIL_BYTES = 2000
+
+
+def stream_pcm(
+    audio: PathLike,
+    *,
+    sample_rate: int,
+    channels: int,
+    chunk_s: float = PCM_STREAM_CHUNK_S,
+) -> Iterator[bytes]:
+    """Decode ``audio`` to raw :data:`PCM_SAMPLE_FORMAT` samples, yielded ``chunk_s`` at
+    a time — :func:`decode_pcm`'s streaming twin, for a pass that must not hold a whole
+    track (a loudness meter, muvid#219).
+
+    Bounded by ``$MUVID_FFMPEG_TIMEOUT_S`` like every other decode (:func:`_run_bounded`):
+    the whole decode, not each read — a watchdog kills ffmpeg when it runs out, and the
+    generator raises :class:`FfmpegError`. A failed decode raises too, with ffmpeg's
+    message; unlike :func:`decode_pcm` there is no "no effect" to fall back on. Closing
+    the generator early stops ffmpeg.
+    """
+    require_ffmpeg("ffmpeg")
+    cmd = [
+        "ffmpeg", "-v", "error", "-nostdin", "-i", str(audio),
+        "-ac", str(channels), "-ar", str(sample_rate), "-f", PCM_SAMPLE_FORMAT, "-",
+    ]  # fmt: skip
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stderr = bytearray()
+
+    def drain() -> None:  # a full stderr pipe would stall ffmpeg, and the read with it
+        for line in proc.stderr:
+            stderr.extend(line)
+            del stderr[:-_STDERR_TAIL_BYTES]
+
+    timeout = _ffmpeg_timeout()
+    timed_out = threading.Event()
+    watchdog = threading.Timer(timeout, lambda: (timed_out.set(), proc.kill()))
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    if timeout:
+        watchdog.start()
+    frame = channels * 4
+    step = max(1, int(chunk_s * sample_rate)) * frame
+    try:
+        while data := proc.stdout.read(step):
+            usable = len(data) - len(data) % frame  # a decode killed mid-sample
+            if usable:
+                yield data[:usable]
+        returncode = proc.wait()
+    finally:
+        watchdog.cancel()
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+        reader.join(timeout=5)
+    if timed_out.is_set() and returncode != 0:  # fired after a clean finish: no
+        raise FfmpegError(
+            f"ffmpeg timed out after {timeout:g}s decoding {audio!s} "
+            f"(bound by ${FFMPEG_TIMEOUT_ENV_VAR}).\n\ncommand: {shlex.join(cmd)}"
+        )
+    if returncode != 0:
+        raise FfmpegError(
+            f"ffmpeg could not decode {audio!s} (exit {returncode}).\n"
+            f"{stderr.decode(errors='replace').strip()}"
+        )
 
 
 @lru_cache(maxsize=1)
