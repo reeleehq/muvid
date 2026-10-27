@@ -90,3 +90,51 @@ def test_the_default_meter_reads_the_file(tmp_path):
         _loudness_check(verify_video(quiet, check_loudness=True)).detail.split()[0]
     )
     assert a - b == pytest.approx(20.0, abs=0.5)  # 20 dB quieter, read as such
+
+
+def test_the_default_meter_is_the_streaming_one():
+    import inspect
+
+    default = inspect.signature(verify_video).parameters["loudness_meter"].default
+    assert default is measure_integrated_lufs
+
+
+@needs_ffmpeg
+def test_a_meter_failure_is_a_traceback_not_a_quiet_fallback(tmp_path, monkeypatch):
+    import mixing.loudness
+
+    def broken(chunks, fs):
+        raise RuntimeError("meter broke")
+
+    monkeypatch.setattr(mixing.loudness, "stream_loudness", broken)
+    with pytest.raises(RuntimeError, match="meter broke"):
+        measure_integrated_lufs(_tone(tmp_path, channels=2))
+
+
+@needs_ffmpeg
+def test_an_undecodable_file_is_an_ffmpeg_error(tmp_path):
+    from muvid.visualize.ffmpeg import FfmpegError, stream_pcm
+
+    junk = tmp_path / "junk.m4a"
+    junk.write_bytes(b"not media at all")
+    with pytest.raises(FfmpegError, match="could not decode"):
+        list(stream_pcm(junk, sample_rate=48000, channels=2))
+
+
+@needs_ffmpeg
+@pytest.mark.skipif(not hasattr(__import__("os"), "mkfifo"), reason="needs a FIFO")
+def test_the_decode_is_bounded_by_the_ffmpeg_timeout(tmp_path, monkeypatch):
+    """The #219 review: mixing's own decoder had no timeout — a stalled input hung the
+    check and orphaned ffmpeg. muvid's stream_pcm is bounded like every other decode."""
+    import os
+    import time
+
+    from muvid.visualize.ffmpeg import FfmpegError, stream_pcm
+
+    fifo = tmp_path / "stall.wav"
+    os.mkfifo(fifo)  # nobody writes: ffmpeg blocks opening it
+    monkeypatch.setenv("MUVID_FFMPEG_TIMEOUT_S", "1")
+    start = time.monotonic()
+    with pytest.raises(FfmpegError, match="timed out"):
+        list(stream_pcm(fifo, sample_rate=48000, channels=2))
+    assert time.monotonic() - start < 10

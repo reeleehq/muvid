@@ -29,6 +29,7 @@ from muvid.visualize.ffmpeg import (
     Loudness,
     PathLike,
     media_duration,
+    stream_pcm,
     probe,
 )
 
@@ -40,6 +41,10 @@ DURATION_TOLERANCE = 0.5
 #: AAC moves it slightly, so demanding an exact hit would fail every time.
 LOUDNESS_TOLERANCE = 1.5
 
+#: The rate and channel count the meter decodes at when the stream does not say.
+METER_SAMPLE_RATE = 48_000
+METER_CHANNELS = 2
+
 #: A loudness meter: ``media -> integrated LUFS`` (muvid#219).
 LoudnessMeter = Callable[[PathLike], float]
 
@@ -47,17 +52,31 @@ LoudnessMeter = Callable[[PathLike], float]
 def measure_integrated_lufs(media: PathLike) -> float:
     """The BS.1770-4 integrated loudness of ``media``'s audio, in LUFS (muvid#219).
 
-    ``mixing.loudness.file_loudness``: decoded in chunks and metered as it streams, so
-    memory stays bounded whatever the length (about 130 MB) where the samples held
-    whole cost 577 MB for five minutes; within about 0.05 LU of ffmpeg's ``loudnorm``
-    analysis at 44.1/48 kHz, in a fraction of its time. Normalising still uses
-    two-pass ``loudnorm`` (:func:`muvid.visualize.ffmpeg.measure_loudness`). No
-    fallback: ``mixing`` is a core dependency, and a failure here is a traceback, not a
-    quietly different meter.
+    Decoded by muvid (:func:`~muvid.visualize.ffmpeg.stream_pcm`: the ffmpeg muvid
+    renders with, bounded by ``$MUVID_FFMPEG_TIMEOUT_S``, a failure an
+    :class:`~muvid.visualize.ffmpeg.FfmpegError`) at the stream's own rate and channel
+    count, and metered as it streams by ``mixing.loudness.stream_loudness``, so memory
+    stays bounded whatever the length where the samples held whole cost 577 MB for five
+    minutes. Within about 0.05 LU of ffmpeg's ``loudnorm`` analysis at 44.1/48 kHz
+    (0.15-0.35 LU at 8-22 kHz; 5.1 reads about 0.5 LU low — no surround weights — and
+    muvid renders stereo), in a fraction of its time. Normalising still uses two-pass
+    ``loudnorm`` (:func:`muvid.visualize.ffmpeg.measure_loudness`). No fallback: a
+    failure here is a traceback, not a quietly different meter.
     """
-    from mixing.loudness import file_loudness
+    import numpy as np
+    from mixing.loudness import stream_loudness
 
-    return float(file_loudness(str(media)).integrated_lufs)
+    stream = next(
+        (s for s in probe(media).get("streams", []) if s.get("codec_type") == "audio"),
+        {},
+    )
+    rate = int(stream.get("sample_rate") or METER_SAMPLE_RATE)
+    channels = int(stream.get("channels") or METER_CHANNELS)
+    chunks = (
+        np.frombuffer(raw, dtype="<f4").reshape(-1, channels)
+        for raw in stream_pcm(media, sample_rate=rate, channels=channels)
+    )
+    return float(stream_loudness(chunks, rate).integrated_lufs)
 
 
 #: How much of the file's head to scan for the ``moov`` atom's boxes. With
