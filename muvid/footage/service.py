@@ -802,7 +802,7 @@ def status_summary(fp) -> dict:
         "photos": stills,
         "placed": sum(1 for a in aligns if a.reliable and a.overlaps),
         "unplaced_synced": sum(
-            1 for a in aligns if not a.reliable and roles.get(a.clip_id) == "synced"
+            1 for a in aligns if not a.reliable and roles.get(a.clip_id) == SYNCED
         ),
         "edits": n_edits,
         "renders": n_renders,

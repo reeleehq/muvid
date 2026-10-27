@@ -1555,7 +1555,7 @@ def test_genre_status_reads_and_never_writes(tmp_path, monkeypatch):
     meta.write_text('{"render_id": "r1"}')
     monkeypatch.setattr(S, "_probe_duration", lambda p: pytest.fail("probed"))
     before = {p: p.stat().st_mtime_ns for p in project.root.rglob("*")}
-    nw.genre_status_of(project)
+    assert nw.genre_status_of(project) is not None
     assert {p: p.stat().st_mtime_ns for p in project.root.rglob("*")} == before
 def test_genre_status_summarises_a_lyric_video(tmp_path):
     import muvid
@@ -1572,5 +1572,7 @@ def test_genre_status_summarises_a_lyric_video(tmp_path):
     )
     project.lyric.add_source(_bytes_file(tmp_path / "poem.txt", b"la"), role="poem")
     project.lyric.set_song(_bytes_file(tmp_path / "song.wav", b"RIFF"))
+    project.lyric.add_render(_bytes_file(tmp_path / "r.mp4", b"mp4"), render_id="r1")
     out = nw.genre_status_of(project)
     assert out["sources"] == {"lyrics": 1, "poem": 1} and out["has_song"] is True
+    assert out["renders"] == 1
