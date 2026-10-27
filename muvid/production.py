@@ -41,6 +41,7 @@ from muvid.footage.workspace import (
     MusicVideoFootageProject,
     atomic_write_text,
     fresh_output,
+    read_json_dict,
     replace_file,
 )
 from muvid.paths import safe_component
@@ -128,7 +129,7 @@ class Project(nw.Project):
             self.root / FOOTAGE_DIRNAME / "manifest.json",
             self.root / LYRIC_DIRNAME / "manifest.json",
         ):
-            cover = (_read_json(manifest) or {}).get("cover") or {}
+            cover = (read_json_dict(manifest) or {}).get("cover") or {}
             if cover.get("artifact_id"):
                 return cover["artifact_id"]
         return None
@@ -193,7 +194,7 @@ class LyricVideoProduction:
         return self.root / "manifest.json"
 
     def manifest(self) -> dict:
-        return _read_json(self.manifest_path) or {"sources": [], "renders": []}
+        return read_json_dict(self.manifest_path) or {"sources": [], "renders": []}
 
     def _write_manifest(self, m: dict) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -341,14 +342,6 @@ def _lyric_status_summary(production: "LyricVideoProduction") -> dict:
         "sources": roles,
         "renders": len(m.get("renders", [])),
     }
-
-
-def _read_json(path: Path) -> Optional[dict]:
-    try:
-        data = json.loads(Path(path).read_text())
-    except (OSError, ValueError):
-        return None
-    return data if isinstance(data, dict) else None
 
 
 def _set_or_drop(d: dict, key: str, value) -> None:
