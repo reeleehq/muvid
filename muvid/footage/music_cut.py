@@ -771,6 +771,7 @@ def fill_spans(
     affect_of: Optional[
         Callable[[FreeSource, "Optional[Envelope]"], Optional[float]]
     ] = liveliness,
+    max_cuts: Optional[int] = None,
 ) -> MusicCut:
     """Free cuts of ``sources`` covering ``spans`` of the song (default: all of it).
 
@@ -788,7 +789,11 @@ def fill_spans(
     the loud sections and calm ones in the quiet sections (default :func:`liveliness`;
     ``None`` turns it off). It reorders pictures, so it acts in the ``planner`` order
     only; ``taken`` keeps the order they were taken in. The report's ``affect`` says
-    whether it applied.
+    whether it applied. ``max_cuts`` (default :data:`~muvid.footage.edl.MAX_EDL_ENTRIES`)
+    is the most cuts the plan may make: past it, consecutive slots of a section are held
+    as one picture (:func:`_hold_slots`) until it fits, and the report's ``held`` and
+    ``cap_note`` say so (muvid#228) — so the planner never proposes an edit the gate is
+    certain to refuse.
 
     Returns :class:`MusicCut` whose ``entries`` are validated-shape
     :class:`~muvid.footage.edl.EdlEntry` free cuts, contiguous over each span, in song
@@ -879,74 +884,115 @@ def fill_spans(
             crops[src.clip_id] = cover_crop(size_of(src.path), canvas, anchor=anchor)
         return crops[src.clip_id]
 
-    used: dict[str, list[tuple[float, float]]] = {}
-    fits: dict[str, list[float]] = {}
     anchors: dict[str, tuple[float, float]] = {}
-    uses: dict[str, int] = {}
-    pieces: list[dict] = []
-    for slot in plan.slots:
-        for a, b in spans:
-            lo, hi = max(slot.start, a), min(slot.end, b)
-            if hi - lo <= _SAME_FLOAT:
-                continue
-            tile = slot.tiles[0]
-            fade = (
-                slot.transition_s
-                if (lo == slot.start and slot.transition != "cut")
-                else 0.0
-            )
-            pieces.append(
-                {
-                    # a sliver a span boundary cut off a slot — not a slot the
-                    # planner made short on purpose (a flip-book hold)
-                    "clipped": lo > slot.start + _SAME_FLOAT
-                    or hi < slot.end - _SAME_FLOAT,
-                    "start": lo,
-                    "end": hi,
-                    "media": tile.media,
-                    "motion": tile.motion,
-                    "fade": fade,
-                    "first_in_span": abs(lo - a) < _SAME_FLOAT,
-                }
-            )
-    pieces = _fold_tiny(pieces)
-    _fades_start_on_the_beat(pieces)
-    for this, nxt in zip(pieces, pieces[1:]):
-        this["next"], nxt["prev"] = {"media": nxt["media"]}, {"media": this["media"]}
-        # The next cut's blend reads past this cut's end in this cut's source.
-        if abs(this["end"] - nxt["start"]) < _SAME_FLOAT and not nxt["first_in_span"]:
-            this["next_fade"] = nxt["fade"]
 
-    entries = []
-    for k, p in enumerate(pieces):
-        entries += _cuts_for_piece(
-            p,
-            k,
-            sources=sources,
-            beats=beats,
-            energy_at=energy_at,
-            envelope=envelope,
-            anchor_of=anchor_of,
-            anchors=anchors,
-            used=used,
-            fits=fits,
-            uses=uses,
-            canvas=canvas,
-            fps=fps,
-            crop_for=crop_for,
+    def cut(slots):
+        """The plan's ``slots`` as free cuts: ``(entries, uses, fits)``."""
+        used: dict[str, list[tuple[float, float]]] = {}
+        fits: dict[str, list[float]] = {}
+        uses: dict[str, int] = {}
+        pieces: list[dict] = []
+        for slot in slots:
+            for a, b in spans:
+                lo, hi = max(slot.start, a), min(slot.end, b)
+                if hi - lo <= _SAME_FLOAT:
+                    continue
+                tile = slot.tiles[0]
+                fade = (
+                    slot.transition_s
+                    if (lo == slot.start and slot.transition != "cut")
+                    else 0.0
+                )
+                pieces.append(
+                    {
+                        # a sliver a span boundary cut off a slot — not a slot the
+                        # planner made short on purpose (a flip-book hold)
+                        "clipped": lo > slot.start + _SAME_FLOAT
+                        or hi < slot.end - _SAME_FLOAT,
+                        "start": lo,
+                        "end": hi,
+                        "media": tile.media,
+                        "motion": tile.motion,
+                        "fade": fade,
+                        "first_in_span": abs(lo - a) < _SAME_FLOAT,
+                    }
+                )
+        pieces = _fold_tiny(pieces)
+        _fades_start_on_the_beat(pieces)
+        for this, nxt in zip(pieces, pieces[1:]):
+            this["next"], nxt["prev"] = {"media": nxt["media"]}, {"media": this["media"]}
+            # The next cut's blend reads past this cut's end in this cut's source.
+            if (
+                abs(this["end"] - nxt["start"]) < _SAME_FLOAT
+                and not nxt["first_in_span"]
+            ):
+                this["next_fade"] = nxt["fade"]
+
+        entries = []
+        for k, p in enumerate(pieces):
+            entries += _cuts_for_piece(
+                p,
+                k,
+                sources=sources,
+                beats=beats,
+                energy_at=energy_at,
+                envelope=envelope,
+                anchor_of=anchor_of,
+                anchors=anchors,
+                used=used,
+                fits=fits,
+                uses=uses,
+                canvas=canvas,
+                fps=fps,
+                crop_for=crop_for,
+            )
+        entries = _feasible_blends(entries, {s.clip_id: s for s in sources})
+        entries = _back_on_the_beat(
+            entries,
+            {round(p["start"], 6): p["shift"] for p in pieces if p.get("shift")},
+            {s.clip_id: s for s in sources},
         )
-    entries = _feasible_blends(entries, {s.clip_id: s for s in sources})
-    entries = _back_on_the_beat(
-        entries,
-        {round(p["start"], 6): p["shift"] for p in pieces if p.get("shift")},
-        {s.clip_id: s for s in sources},
-    )
+        return entries, uses, fits
+
+    from muvid.footage.edl import MAX_EDL_ENTRIES
+
+    cap = MAX_EDL_ENTRIES if max_cuts is None else int(max_cuts)
+    if cap < 1:
+        raise ValueError(f"max_cuts must be at least 1, got {max_cuts}")
+    held, slots = 1, plan.slots
+    entries, uses, fits = cut(slots)
+    # Coarsen until the plan fits the cut cap (muvid#228), as `weighted` escalates its
+    # switch cost: fewer, longer pieces on the same beats. Holding never crosses a
+    # section boundary, so it bottoms out — and a piece longer than its clip is still
+    # split into take-overs — hence the stop when holding changes nothing more.
+    while len(entries) > cap:
+        coarser = _hold_slots(plan.slots, held * 2)
+        if len(coarser) == len(slots):
+            break
+        held, slots = held * 2, coarser
+        entries, uses, fits = cut(slots)
+    if len(entries) > cap:
+        cap_note = (
+            f"{len(entries)} cuts, over the {cap}-cut limit even with each picture held "
+            f"for up to {held} of the planned slots: the videos are too short to fill "
+            "this song in fewer cuts — add longer videos, or cut part of the song"
+        )
+    elif held > 1:
+        cap_note = (
+            f"each picture holds up to {held} of the planned slots, to stay within the "
+            f"{cap}-cut limit"
+        )
+    else:
+        cap_note = ""
     asked = sum(b - a for a, b in spans)
     covered = sum(e.song_end - e.song_start for e in entries)
     report = {
         # seconds of the asked spans no picture could fill (left as gaps) — 0 normally
         "uncovered_s": round(max(0.0, asked - covered), 2),
         "grid_note": grid_note,
+        # how many planned slots each picture holds (1 normally) and why (muvid#228)
+        "held": held,
+        "cap_note": cap_note,
         "tempo_bpm": round(float(analysis.tempo_bpm), 2),
         "beat_source": getattr(analysis, "beat_source", ""),
         "style": chosen,
@@ -974,6 +1020,30 @@ def fill_spans(
         "measured_pictures": sorted(c for c, e in envelopes.items() if e is not None),
     }
     return MusicCut(entries=entries, report=report)
+
+
+def _hold_slots(slots, every: int) -> list:
+    """``slots`` with each run of up to ``every`` consecutive slots OF ONE SECTION held
+    as its first slot's picture (muvid#228): the same beats, fewer cuts. A section's
+    first slot keeps its own boundary, so a cut still lands where the music changes.
+
+    >>> from muvid.montage.plan import Slot
+    >>> s = [Slot(index=i, start=i, end=i + 1, section="v" if i < 3 else "c",
+    ...           archetype="x", regions=1, tiles=()) for i in range(5)]
+    >>> [(x.start, x.end, x.section) for x in _hold_slots(s, 2)]
+    [(0, 2, 'v'), (2, 3, 'v'), (3, 5, 'c')]
+    """
+    from dataclasses import replace as _replace
+
+    out, run = [], 0
+    for slot in slots:
+        if out and run < every and slot.section == out[-1].section:
+            out[-1] = _replace(out[-1], end=slot.end)
+            run += 1
+        else:
+            out.append(slot)
+            run = 1
+    return out
 
 
 def _fades_start_on_the_beat(pieces: list[dict]) -> None:

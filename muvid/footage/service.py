@@ -844,7 +844,7 @@ def _music_fill(
     """Replace the gap entries of ``entries`` with free cuts of ``sources`` cut to the
     music; ``(entries, report)``. The synced cuts are untouched."""
     from muvid.footage.assemble import DEFAULT_FPS
-    from muvid.footage.edl import fill_gaps
+    from muvid.footage.edl import MAX_EDL_ENTRIES, fill_gaps
     from muvid.footage.music_cut import DEFAULT_ORDER, fill_spans
 
     entries = fill_gaps(entries, song_dur) if entries else []
@@ -867,6 +867,9 @@ def _music_fill(
         envelope_of=lambda s: _activity_envelope(fp, s),
         canvas=canvas or fp.canvas(),
         fps=DEFAULT_FPS,
+        # the synced cuts count against the same cap (muvid#228)
+        # (at least 1: past the cap already, the gate refuses the edit and says why)
+        max_cuts=max(1, MAX_EDL_ENTRIES - sum(1 for e in entries if not e.is_gap)),
     )
     kept = [e for e in entries if not e.is_gap]
     return fill_gaps(

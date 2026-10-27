@@ -883,3 +883,64 @@ def test_liveliness_is_the_mean_picture_activity_and_none_for_a_still():
         1 / 3
     )
     assert liveliness(FreeSource("p", "/x/p.jpg", kind="still"), None) is None
+
+
+# -- the cut cap (muvid#228) ------------------------------------------------------------
+
+#: ``_fill()``'s entries recorded on main BEFORE #228: a plan inside the cap must not move.
+_FILL_GOLDEN = [[0.0, 2.0, "long", 0.25], [2.0, 4.0, "short", 0.5], [4.0, 6.0, "mid", 1.5], [6.0, 8.0, "pic", 0.0], [8.0, 10.0, "long", 13.25], [10.0, 12.0, "short", 0.25], [12.0, 14.0, "mid", 4.25], [14.0, 16.0, "pic", 0.0], [16.0, 18.0, "long", 26.25], [18.0, 20.0, "short", 0.75], [20.0, 21.0, "mid", 0.5], [21.0, 22.0, "pic", 0.0], [22.0, 23.0, "long", 12.0], [23.0, 24.0, "short", 0.25], [24.0, 25.0, "mid", 6.25], [25.0, 26.0, "pic", 0.0], [26.0, 27.0, "long", 25.25], [27.0, 28.0, "short", 1.75], [28.0, 29.0, "mid", 3.25], [29.0, 30.0, "pic", 0.0], [30.0, 31.0, "long", 10.5], [31.0, 32.0, "short", 1.75], [32.0, 33.0, "mid", 6.75], [33.0, 34.0, "pic", 0.0], [34.0, 35.0, "long", 24.0], [35.0, 36.0, "short", 0.25], [36.0, 37.0, "mid", 0.25], [37.0, 38.0, "pic", 0.0], [38.0, 39.0, "long", 9.0], [39.0, 40.0, "short", 1.25]]
+
+
+def _cap_fill(analysis, sources=None, **kw):
+    return fill_spans(
+        "/x/song.wav", sources or _sources(), envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5), size_of=lambda p: (1080, 1920),
+        analysis=analysis, **kw,
+    )
+
+
+def test_a_plan_inside_the_cap_is_byte_for_byte_what_it_was():
+    import json
+
+    cut = _fill()
+    assert cut.report["held"] == 1 and cut.report["cap_note"] == ""
+    got = [[round(e.song_start, 6), round(e.song_end, 6), e.clip_id, e.source_in]
+           for e in cut.entries]
+    assert got == json.loads(json.dumps(_FILL_GOLDEN))
+
+
+def test_a_plan_past_the_cap_is_coarsened_and_the_gate_takes_it():
+    """stop_motion on fast songs planned 625 cuts and the gate refused the whole edit."""
+    from muvid.footage.edl import unplaced, validate_edl
+
+    analysis = _analysis(60.0, 300.0)
+    free = _cap_fill(analysis, archetype="stop_motion", max_cuts=10**6)
+    capped = _cap_fill(analysis, archetype="stop_motion", max_cuts=60)
+    assert free.report["n_cuts"] > 60 and free.report["held"] == 1
+    r = capped.report
+    assert len(capped.entries) <= 60 and r["held"] > 1 and "60-cut limit" in r["cap_note"]
+    aligns = [unplaced(s.clip_id, s.duration_s or 60.0) for s in _sources()]
+    validate_edl(capped.entries, aligns, 60.0, allow_unreliable=False)
+
+
+def test_repeated_section_labels_with_short_clips_terminate_with_an_honest_note():
+    """#228 review: holding cannot cross a section, and a piece longer than its clip is
+    split into take-overs, so the cap can be out of reach — the loop must stop and say so
+    (it hung on verse/chorus/verse/chorus)."""
+    analysis = _analysis(40.0, 120.0)
+    from dataclasses import replace
+
+    labels = ("verse", "chorus", "verse", "chorus")
+    analysis = replace(analysis, sections=tuple(
+        Section(label=lab, start=10.0 * i, end=10.0 * (i + 1), energy_db=-15.0)
+        for i, lab in enumerate(labels)
+    ))
+    short = [FreeSource("a", "/x/a.mp4", duration_s=1.0), FreeSource("b", "/x/b.mp4", duration_s=0.9)]
+    cut = _cap_fill(analysis, short, archetype="ballad_dissolve", max_cuts=3)
+    assert len(cut.entries) > 3
+    assert "over the 3-cut limit" in cut.report["cap_note"]
+
+
+def test_a_cap_below_one_is_refused():
+    with pytest.raises(ValueError, match="max_cuts"):
+        _fill(max_cuts=0)
