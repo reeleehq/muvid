@@ -944,3 +944,32 @@ def test_repeated_section_labels_with_short_clips_terminate_with_an_honest_note(
 def test_a_cap_below_one_is_refused():
     with pytest.raises(ValueError, match="max_cuts"):
         _fill(max_cuts=0)
+
+
+# -- muvid#234: a rank scale for arousal, and what affect withheld ------------------------
+
+
+def _loud_half_seconds(cut, *, boundary=20.0):
+    out = {}
+    for e in cut.entries:
+        if (e.song_start + e.song_end) / 2 >= boundary:
+            kind = e.clip_id.rstrip("0123456789")
+            out[kind] = out.get(kind, 0.0) + e.song_end - e.song_start
+    return out
+
+
+def test_one_wild_clip_does_not_squash_the_lively_ones_into_misfits():
+    """On a min-max scale the outlier put the lively clips at ~0.06 arousal, so the
+    loud half went to calm clips whenever the outlier was blocked (measured on main:
+    calm 9 s, lively 8 s); ranked, the lively clips take it."""
+    srcs, envelope_of = _affect_pool({"calm": (6, 0.05), "lively": (6, 0.6), "wild": (1, 10.0)})
+    loud = _loud_half_seconds(_affect_cut(srcs, envelope_of))
+    assert loud.get("calm", 0.0) == 0.0 and loud["lively"] > loud.get("wild", 0.0)
+
+
+def test_the_report_says_what_affect_kept_out_of_which_section():
+    srcs, envelope_of = _affect_pool()
+    withheld = _affect_cut(srcs, envelope_of).report["affect_withheld"]
+    assert withheld["chorus"] and all(c.startswith("calm") for c in withheld["chorus"])
+    assert withheld["verse"] and all(c.startswith("live") for c in withheld["verse"])
+    assert _affect_cut(srcs, envelope_of, affect_of=None).report["affect_withheld"] == {}

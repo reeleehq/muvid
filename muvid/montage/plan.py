@@ -908,6 +908,8 @@ def assign_media(
             recent.clear()
         return m, use
 
+    withheld: dict[str, set[int]] = {}
+
     def pick(
         hard: set[int], soft: set[int], in_finale: bool, draft: SlotDraft
     ) -> tuple[int, int]:
@@ -932,17 +934,23 @@ def assign_media(
         # "fits the feel" is the FIRST thing relaxed (muvid#134): affect chooses among
         # what the gap allows and never causes a repeat, two tiles alike or a lost
         # picture — the #134 review found a pre-filter doing all three
-        for exclude in (
-            hard | soft | blocked | misfits,
-            hard | soft | blocked,
-            hard | soft,
-            hard | blocked,
-            hard,
-            set(),
+        for tier, exclude in enumerate(
+            (
+                hard | soft | blocked | misfits,
+                hard | soft | blocked,
+                hard | soft,
+                hard | blocked,
+                hard,
+                set(),
+            )
         ):
             avail = [m for m in candidates if m not in exclude]
             if avail:
                 break
+        if tier == 0:  # affect held: record what it alone kept out (muvid#234)
+            kept_out = {m for m in candidates if m in misfits} - hard - soft - blocked
+            if kept_out:
+                withheld.setdefault(draft.section, set()).update(kept_out)
         least = min(uses[m] for m in avail)
         tied = [m for m in avail if uses[m] == least]
         return take(_stride_pick(tied, ordinal))
@@ -984,6 +992,9 @@ def assign_media(
         "uses": {str(m): uses[m] for m in pool_idx},
         "n_assignments": ordinal,
         "affect": affect_fit is not None,
+        # media each section's slots did not get because their feel did not fit it,
+        # where the gap rules would otherwise have allowed them (muvid#234)
+        "affect_withheld": {sec: sorted(ms) for sec, ms in withheld.items()},
         "min_observed_gap": min_observed_gap,
     }
     return out, stats
