@@ -357,6 +357,65 @@ class MusicVideoFootageProject:
     def has_song(self) -> bool:
         return bool(self.manifest().get("song"))
 
+    # -- song candidates (muvid#135) ------------------------------------------
+    def add_song_candidate(
+        self,
+        candidate_id: str,
+        src_path: str,
+        *,
+        ext: str,
+        name: str = "",
+        duration_s: "float | None" = None,
+    ) -> str:
+        """Store a song the footage could be cut to instead — a CANDIDATE, ranked by
+        ``rank_songs`` and chosen with ``set_song(candidate_id=...)``. It is not the
+        project's song: nothing is aligned or scored against it. Returns its id."""
+        cid = normalise_id(candidate_id, label="candidate_id")
+        folder = self.root / "song_candidates"
+        folder.mkdir(parents=True, exist_ok=True)
+        for old in _files_with_stem(folder, cid):
+            old.unlink()
+        dest = replace_file(src_path, folder / f"{cid}{_safe_ext(ext)}")
+        artifact_id = self._register(dest, kind="audio")
+        m = self.manifest()
+        rows = m.setdefault("song_candidates", [])
+        rows[:] = [r for r in rows if r.get("candidate_id") != cid]
+        row = {"candidate_id": cid, "file": dest.name, "name": name or cid}
+        _set_or_drop(row, "duration_s", duration_s)
+        _set_or_drop(row, "artifact_id", artifact_id)
+        rows.append(row)
+        self._write_manifest(m)
+        return cid
+
+    def song_candidates(self) -> list[dict]:
+        """``[{candidate_id, name, duration_s?, artifact_id?}]`` — no server paths."""
+        return [
+            {k: v for k, v in r.items() if k != "file"}
+            for r in self.manifest().get("song_candidates", [])
+        ]
+
+    def song_candidate_path(self, candidate_id: str) -> Path:
+        """The stored file of candidate ``candidate_id`` (exact id; ``KeyError`` if none)."""
+        cid = normalise_id(candidate_id, label="candidate_id")
+        for r in self.manifest().get("song_candidates", []):
+            if r.get("candidate_id") == cid:
+                return self.root / "song_candidates" / r["file"]
+        raise KeyError(cid)
+
+    def remove_song_candidate(self, candidate_id: str) -> bool:
+        """Forget candidate ``candidate_id`` and its file; whether it existed."""
+        cid = normalise_id(candidate_id, label="candidate_id")
+        m = self.manifest()
+        rows = m.get("song_candidates", [])
+        kept = [r for r in rows if r.get("candidate_id") != cid]
+        if len(kept) == len(rows):
+            return False
+        for old in _files_with_stem(self.root / "song_candidates", cid):
+            old.unlink()
+        m["song_candidates"] = kept
+        self._write_manifest(m)
+        return True
+
     # -- footage clips -------------------------------------------------------
     def add_clip(
         self,
