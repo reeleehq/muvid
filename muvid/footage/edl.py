@@ -35,7 +35,7 @@ import math
 import os
 import re
 from dataclasses import dataclass, field, replace
-from typing import NamedTuple, Sequence
+from typing import Any, NamedTuple, Sequence
 
 #: Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.
 _EPS = 1e-3
@@ -892,11 +892,14 @@ class AssemblyCut:
     #: Carried through from the EDL entry: the assembler reads ``duration * rate``
     #: seconds of source and retimes it (``setpts``, before ``fps``) onto the span.
     rate: float = 1.0
-    #: NOT from the EDL: the matrix the assembler's ``scale`` converts this cut's
-    #: source FROM, set by the assembler once per render when the source's own tag
-    #: cannot be trusted (an untagged HD clip — :mod:`muvid.footage.colour`).
-    #: ``None`` lets ``scale`` read the frame's tag.
-    source_matrix: "str | None" = None
+    #: NOT from the EDL: this cut's source's colour as the assembler probed it once per
+    #: render (:class:`muvid.footage.colour.SourceColour` — the matrix to convert FROM
+    #: when the source's tag cannot be trusted, an HDR transfer and its missing tags).
+    #: ``None``: ``scale`` reads the frame's own tags.
+    source_colour: Any = None
+    #: NOT from the EDL: whether the assembler tone-maps this cut's HDR source — the
+    #: probe says HDR AND this ffmpeg can (:func:`muvid.footage.colour.can_tonemap`).
+    source_tonemap: bool = False
 
     @property
     def duration(self) -> float:

@@ -98,7 +98,9 @@ from muvid.footage.colour import (
     DELIVERY_COLOR_RANGE,
     DELIVERY_COLOR_SPACE,
     DELIVERY_TAG,
+    can_tonemap,
     read_source_colour,
+    tonemap_chain,
 )
 from muvid.footage.edl import TRANSITION_SPLIT, AssemblyCut
 
@@ -435,7 +437,8 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale, pad, setsar, fps, tpad [, look], setparams [, tail]``
+    ``[retime,] [crop,] scale [, tonemap], pad, setsar, fps, tpad [, look], setparams
+    [, tail]``
 
     ``retime`` is a cut's speed (``setpts=(PTS-STARTPTS)/rate``) and it comes BEFORE
     ``fps``, so ``fps`` picks frames on the retimed clock. (Measured on ffmpeg 9.0: the
@@ -464,9 +467,11 @@ def _part_filter(
     rather than a second string.
 
     ``scale`` also converts to the delivery colour (:mod:`muvid.footage.colour`,
-    muvid#195) — from ``cut.source_matrix`` when the source's own tag cannot be
-    trusted —
-    and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
+    muvid#195) — from ``cut.source_colour.in_matrix`` when the source's own tag cannot
+    be trusted. An HDR source (``cut.source_tonemap``) is instead fitted at its own
+    colour and then tone-mapped at canvas size
+    (:func:`~muvid.footage.colour.tonemap_chain`, its missing tags filled first,
+    muvid#201) — and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
     frame the ENCODER gets: after the look, because a look can drop the frame's
     colour tags (ffmpeg 6.1's ``zoompan`` — a punch-in — left a part untagged that
     its look-less twin was not; ``looks``' own steps convert with explicit
@@ -484,14 +489,23 @@ def _part_filter(
     """
     crop = _crop_filter(cut)
     rate = getattr(cut, "rate", 1.0)
-    in_matrix = getattr(cut, "source_matrix", None)
+    colour = getattr(cut, "source_colour", None)
     retime = f"setpts=(PTS-STARTPTS)/{rate:.6f}," if rate != 1.0 else ""
+    fit = f"scale={w}:{h}:force_original_aspect_ratio=decrease"
+    if getattr(cut, "source_tonemap", False):
+        # HDR: fit at the source's own colour, then tone-map at canvas size (muvid#201)
+        convert = f"{fit},{tonemap_chain(colour.hdr_fill if colour else ())},"
+    else:
+        in_matrix = colour.in_matrix if colour else None
+        convert = (
+            f"{fit}"
+            f"{f':in_color_matrix={in_matrix}' if in_matrix else ''}"
+            f":out_color_matrix={DELIVERY_COLOR_SPACE}:out_range={DELIVERY_COLOR_RANGE},"
+        )
     return (
         f"{retime}"
         f"{crop + ',' if crop else ''}"
-        f"scale={w}:{h}:force_original_aspect_ratio=decrease"
-        f"{f':in_color_matrix={in_matrix}' if in_matrix else ''}"
-        f":out_color_matrix={DELIVERY_COLOR_SPACE}:out_range={DELIVERY_COLOR_RANGE},"
+        f"{convert}"
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},"
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
@@ -553,28 +567,38 @@ def _source_input(path: str, clip_in: float, seconds: float, *, fps: int) -> lis
     return ["-ss", f"{clip_in:.6f}", "-t", f"{seconds:.6f}", "-i", path]
 
 
-def _source_matrices(cuts: Sequence[AssemblyCut], note=None) -> "dict[str, str]":
-    """Read each distinct source's colour once (:func:`~muvid.footage.colour.read_source_colour`):
-    the matrix to convert FROM for each source whose tag cannot be trusted, and a
-    finding for each HDR source, which is delivered as SDR without tone mapping
-    (muvid#201). One ``ffprobe`` per source, not per cut."""
-    matrices: "dict[str, str]" = {}
+def _with_source_colour(cuts: Sequence[AssemblyCut], note=None) -> list[AssemblyCut]:
+    """``cuts`` with each source's colour read once
+    (:func:`~muvid.footage.colour.read_source_colour`, one ``ffprobe`` per source, not
+    per cut): the matrix to convert FROM where the source's tag cannot be trusted, and
+    whether to tone-map an HDR source (muvid#201). A build that cannot tone-map delivers
+    an HDR clip washed out, and says so per clip."""
     seen: "dict[str, str]" = {}  # path -> clip id, first cut that shows it
     for cut in cuts:
         if cut.clip_path and cut.clip_path not in seen:
             seen[cut.clip_path] = cut.clip_id
-    for path, clip_id in seen.items():
-        colour = read_source_colour(path)
-        if colour.in_matrix:
-            matrices[path] = colour.in_matrix
-        if colour.hdr_transfer:
+    colours = {path: read_source_colour(path) for path in seen}
+    tonemap = any(c.hdr_transfer for c in colours.values()) and can_tonemap()
+    for path, colour in colours.items():
+        if colour.hdr_transfer and not tonemap:
             _emit(
-                f"clip {clip_id!r} is HDR ({colour.hdr_transfer}); it is delivered "
-                f"as SDR {DELIVERY_COLOR_SPACE} without tone mapping, so it will look "
-                "washed out (muvid#201)",
+                f"clip {seen[path]!r} is HDR ({colour.hdr_transfer}) and this ffmpeg "
+                "has no zscale/tonemap, so it is delivered as SDR "
+                f"{DELIVERY_COLOR_SPACE} without tone mapping and will look washed out",
                 note,
             )
-    return matrices
+
+    def coloured(c: AssemblyCut) -> AssemblyCut:
+        colour = colours.get(c.clip_path)
+        if colour is None:
+            return c
+        return replace(
+            c,
+            source_colour=colour,
+            source_tonemap=bool(colour.hdr_transfer) and tonemap,
+        )
+
+    return [coloured(c) for c in cuts]
 
 
 def _render_part(
@@ -862,8 +886,7 @@ def assemble_music_video(
     try:
         # Planned in full BEFORE any encoding, so a transition that does not fit at
         # this fps fails on cut 0 rather than after forty parts are on disk.
-        matrices = _source_matrices(cuts, on_note)
-        cuts = [replace(c, source_matrix=matrices.get(c.clip_path)) for c in cuts]
+        cuts = _with_source_colour(cuts, on_note)
         plan = _part_plan(cuts, fps, on_note)
         if any(p.kind == "xfade" for p in plan):
             require_filter("xfade", needed_for="EDL transitions")
