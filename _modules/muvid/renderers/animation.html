@@ -196,7 +196,7 @@
 </span><span id="line-6">
 </span><span id="line-7"><span class="sd">Lipsync alignment: muvid already owns the SSOT for word timings (the</span>
 </span><span id="line-8"><span class="sd">``lacing`` alignment store written by ``muvid align``). We build a</span>
-</span><span id="line-9"><span class="sd">:class:`an.audio.WordTimingsLipSync` from those timings and pass it</span>
+</span><span id="line-9"><span class="sd">:class:`cutan.audio.injectable_lipsync.WordTimingsLipSync` from those timings and pass it</span>
 </span><span id="line-10"><span class="sd">into ``an.orchestrate`` so ``an`` does NOT re-transcribe the same</span>
 </span><span id="line-11"><span class="sd">audio with whisper. Falls back to ``an``'s default lipsync provider</span>
 </span><span id="line-12"><span class="sd">when no alignment store exists yet (e.g. user skipped ``muvid align``).</span>
@@ -615,98 +615,103 @@
 </span><span id="line-419">
 </span><span id="line-420"><span class="sd">    Returns ``None`` if either:</span>
 </span><span id="line-421">
-</span><span id="line-422"><span class="sd">    - ``an.audio.WordTimingsLipSync`` is not available (older ``an``), or</span>
-</span><span id="line-423"><span class="sd">    - the project has no ``lyrics/alignment.annot`` yet, or</span>
-</span><span id="line-424"><span class="sd">    - no words fall in this shot's window.</span>
-</span><span id="line-425">
-</span><span id="line-426"><span class="sd">    In those cases the caller skips the override and ``an`` falls back to</span>
-</span><span id="line-427"><span class="sd">    its default offline lipsync.</span>
-</span><span id="line-428"><span class="sd">    """</span>
-</span><span id="line-429">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-430">        <span class="kn">from</span><span class="w"> </span><span class="nn">an.audio</span><span class="w"> </span><span class="kn">import</span> <span class="n">StaticWordTimings</span><span class="p">,</span> <span class="n">WordTimingsLipSync</span>
-</span><span id="line-431">    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-</span><span id="line-432">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-433">
-</span><span id="line-434">    <span class="n">timings</span> <span class="o">=</span> <span class="n">_word_timings_for_shot</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
-</span><span id="line-435">    <span class="k">if</span> <span class="ow">not</span> <span class="n">timings</span><span class="p">:</span>
-</span><span id="line-436">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-437">
-</span><span id="line-438">    <span class="n">provider</span> <span class="o">=</span> <span class="n">StaticWordTimings</span><span class="p">(</span><span class="n">timings</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"muvid:lacing"</span><span class="p">)</span>
-</span><span id="line-439">    <span class="k">return</span> <span class="n">WordTimingsLipSync</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
-</span><span id="line-440">
-</span><span id="line-441">
-</span><span id="line-442"><span class="k">def</span><span class="w"> </span><span class="nf">_word_timings_for_shot</span><span class="p">(</span>
-</span><span id="line-443">    <span class="n">ctx</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">,</span>
-</span><span id="line-444"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
-</span><span id="line-445"><span class="w">    </span><span class="sd">"""Read this shot's word timings, relative to the slice's t=0.</span>
+</span><span id="line-422"><span class="sd">    - ``cutan.audio.injectable_lipsync.WordTimingsLipSync`` is not available</span>
+</span><span id="line-423"><span class="sd">      (the cut-out genre package ``cutan`` is not installed; it moved there</span>
+</span><span id="line-424"><span class="sd">      from ``an.audio``, an#321), or</span>
+</span><span id="line-425"><span class="sd">    - the project has no ``lyrics/alignment.annot`` yet, or</span>
+</span><span id="line-426"><span class="sd">    - no words fall in this shot's window.</span>
+</span><span id="line-427">
+</span><span id="line-428"><span class="sd">    In those cases the caller skips the override and ``an`` falls back to</span>
+</span><span id="line-429"><span class="sd">    its default offline lipsync.</span>
+</span><span id="line-430"><span class="sd">    """</span>
+</span><span id="line-431">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-432">        <span class="kn">from</span><span class="w"> </span><span class="nn">cutan.audio.injectable_lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-433">            <span class="n">StaticWordTimings</span><span class="p">,</span>
+</span><span id="line-434">            <span class="n">WordTimingsLipSync</span><span class="p">,</span>
+</span><span id="line-435">        <span class="p">)</span>
+</span><span id="line-436">    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+</span><span id="line-437">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-438">
+</span><span id="line-439">    <span class="n">timings</span> <span class="o">=</span> <span class="n">_word_timings_for_shot</span><span class="p">(</span><span class="n">ctx</span><span class="p">)</span>
+</span><span id="line-440">    <span class="k">if</span> <span class="ow">not</span> <span class="n">timings</span><span class="p">:</span>
+</span><span id="line-441">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-442">
+</span><span id="line-443">    <span class="n">provider</span> <span class="o">=</span> <span class="n">StaticWordTimings</span><span class="p">(</span><span class="n">timings</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"muvid:lacing"</span><span class="p">)</span>
+</span><span id="line-444">    <span class="k">return</span> <span class="n">WordTimingsLipSync</span><span class="p">(</span><span class="n">provider</span><span class="p">)</span>
+</span><span id="line-445">
 </span><span id="line-446">
-</span><span id="line-447"><span class="sd">    Thin wrapper over :func:`muvid.contracts.word_timings_for_window`</span>
-</span><span id="line-448"><span class="sd">    + :func:`muvid.contracts.shifted_word_timings`. Kept here as a</span>
-</span><span id="line-449"><span class="sd">    private name so the existing tests in this module's neighbourhood</span>
-</span><span id="line-450"><span class="sd">    don't need to know about ``muvid.contracts``.</span>
-</span><span id="line-451"><span class="sd">    """</span>
-</span><span id="line-452">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">shifted_word_timings</span><span class="p">,</span> <span class="n">word_timings_for_window</span>
-</span><span id="line-453">
-</span><span id="line-454">    <span class="n">absolute</span> <span class="o">=</span> <span class="n">word_timings_for_window</span><span class="p">(</span>
-</span><span id="line-455">        <span class="n">ctx</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
-</span><span id="line-456">        <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">,</span>
-</span><span id="line-457">        <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">end_s</span><span class="p">,</span>
-</span><span id="line-458">    <span class="p">)</span>
-</span><span id="line-459">    <span class="k">return</span> <span class="n">shifted_word_timings</span><span class="p">(</span><span class="n">absolute</span><span class="p">,</span> <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">)</span>
-</span><span id="line-460">
-</span><span id="line-461">
-</span><span id="line-462"><span class="k">def</span><span class="w"> </span><span class="nf">_build_an_scene_md</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-463">    <span class="n">duration</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">duration_s</span><span class="p">)</span>
-</span><span id="line-464">    <span class="n">camera_move</span> <span class="o">=</span> <span class="n">an_camera_move</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">camera</span><span class="p">)</span>
-</span><span id="line-465">    <span class="n">lyrics</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">lyric_lines</span> <span class="ow">or</span> <span class="p">[</span>
-</span><span id="line-466">        <span class="p">{</span>
-</span><span id="line-467">            <span class="s2">"text"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">description</span> <span class="ow">or</span> <span class="s2">"..."</span><span class="p">,</span>
-</span><span id="line-468">            <span class="s2">"start_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">,</span>
-</span><span id="line-469">            <span class="s2">"end_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">end_s</span><span class="p">,</span>
-</span><span id="line-470">        <span class="p">}</span>
-</span><span id="line-471">    <span class="p">]</span>
-</span><span id="line-472">    <span class="n">speaker</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span> <span class="k">else</span> <span class="s2">"narrator"</span>
-</span><span id="line-473">    <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">""</span>
-</span><span id="line-474">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">:</span>
-</span><span id="line-475">        <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-</span><span id="line-476">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: character, id: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">, store: characters, ref: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">-v1 </span><span class="se">}}</span><span class="s2">"</span>
-</span><span id="line-477">            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span>
-</span><span id="line-478">        <span class="p">)</span>
-</span><span id="line-479">    <span class="n">env_block</span> <span class="o">=</span> <span class="s2">""</span>
-</span><span id="line-480">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="p">:</span>
-</span><span id="line-481">        <span class="n">env_block</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-482">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: environment, id: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2">, "</span>
-</span><span id="line-483">            <span class="sa">f</span><span class="s2">"store: environments, ref: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span><span class="s2">"</span>
-</span><span id="line-484">        <span class="p">)</span>
-</span><span id="line-485">    <span class="n">entities</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="n">env_block</span><span class="p">,</span> <span class="n">chars_block</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-486">    <span class="c1"># An EMPTY ```yaml entities``` block does not parse — `an`'s markdown reader</span>
-</span><span id="line-487">    <span class="c1"># fails on it with a bare `yaml.scanner.ScannerError`, which `orchestrate`</span>
-</span><span id="line-488">    <span class="c1"># swallows into `success=False` and this renderer turns into a silent</span>
-</span><span id="line-489">    <span class="c1"># fallback to `still`. Both `env` and `chars` are optional in a muvid script,</span>
-</span><span id="line-490">    <span class="c1"># so that shot is writable today. `an`'s own serializer omits the block when</span>
-</span><span id="line-491">    <span class="c1"># there are no entities; so do we.</span>
-</span><span id="line-492">    <span class="n">entities_block</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">```yaml entities</span><span class="se">\n</span><span class="si">{</span><span class="n">entities</span><span class="si">}</span><span class="se">\n</span><span class="s2">```</span><span class="se">\n</span><span class="s2">"</span> <span class="k">if</span> <span class="n">entities</span> <span class="k">else</span> <span class="s2">""</span>
-</span><span id="line-493">    <span class="n">dialogue</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">speaker</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">L</span><span class="p">[</span><span class="s1">'text'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">lyrics</span><span class="p">)</span>
-</span><span id="line-494">    <span class="k">return</span> <span class="sa">f</span><span class="s2">"""# </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
-</span><span id="line-495">
-</span><span id="line-496"><span class="s2">```yaml meta</span>
-</span><span id="line-497"><span class="s2">title: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
-</span><span id="line-498"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
-</span><span id="line-499"><span class="s2">fps: 24</span>
-</span><span id="line-500"><span class="s2">resolution: </span><span class="se">{{</span><span class="s2"> width: 640, height: 360 </span><span class="se">}}</span>
-</span><span id="line-501"><span class="s2">```</span>
-</span><span id="line-502">
-</span><span id="line-503"><span class="s2">## Shot </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> (cutout)</span>
-</span><span id="line-504">
-</span><span id="line-505"><span class="s2">```yaml shot</span>
-</span><span id="line-506"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
-</span><span id="line-507"><span class="s2">camera: </span><span class="se">{{</span><span class="s2"> move: </span><span class="si">{</span><span class="n">camera_move</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span>
-</span><span id="line-508"><span class="s2">```</span>
-</span><span id="line-509"><span class="si">{</span><span class="n">entities_block</span><span class="si">}</span>
-</span><span id="line-510"><span class="s2">```dialogue</span>
-</span><span id="line-511"><span class="si">{</span><span class="n">dialogue</span><span class="si">}</span>
-</span><span id="line-512"><span class="s2">```</span>
-</span><span id="line-513"><span class="s2">"""</span>
+</span><span id="line-447"><span class="k">def</span><span class="w"> </span><span class="nf">_word_timings_for_shot</span><span class="p">(</span>
+</span><span id="line-448">    <span class="n">ctx</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">,</span>
+</span><span id="line-449"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]:</span>
+</span><span id="line-450"><span class="w">    </span><span class="sd">"""Read this shot's word timings, relative to the slice's t=0.</span>
+</span><span id="line-451">
+</span><span id="line-452"><span class="sd">    Thin wrapper over :func:`muvid.contracts.word_timings_for_window`</span>
+</span><span id="line-453"><span class="sd">    + :func:`muvid.contracts.shifted_word_timings`. Kept here as a</span>
+</span><span id="line-454"><span class="sd">    private name so the existing tests in this module's neighbourhood</span>
+</span><span id="line-455"><span class="sd">    don't need to know about ``muvid.contracts``.</span>
+</span><span id="line-456"><span class="sd">    """</span>
+</span><span id="line-457">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.contracts</span><span class="w"> </span><span class="kn">import</span> <span class="n">shifted_word_timings</span><span class="p">,</span> <span class="n">word_timings_for_window</span>
+</span><span id="line-458">
+</span><span id="line-459">    <span class="n">absolute</span> <span class="o">=</span> <span class="n">word_timings_for_window</span><span class="p">(</span>
+</span><span id="line-460">        <span class="n">ctx</span><span class="o">.</span><span class="n">project</span><span class="p">,</span>
+</span><span id="line-461">        <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">,</span>
+</span><span id="line-462">        <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">end_s</span><span class="p">,</span>
+</span><span id="line-463">    <span class="p">)</span>
+</span><span id="line-464">    <span class="k">return</span> <span class="n">shifted_word_timings</span><span class="p">(</span><span class="n">absolute</span><span class="p">,</span> <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">)</span>
+</span><span id="line-465">
+</span><span id="line-466">
+</span><span id="line-467"><span class="k">def</span><span class="w"> </span><span class="nf">_build_an_scene_md</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-468">    <span class="n">duration</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">duration_s</span><span class="p">)</span>
+</span><span id="line-469">    <span class="n">camera_move</span> <span class="o">=</span> <span class="n">an_camera_move</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">camera</span><span class="p">)</span>
+</span><span id="line-470">    <span class="n">lyrics</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">lyric_lines</span> <span class="ow">or</span> <span class="p">[</span>
+</span><span id="line-471">        <span class="p">{</span>
+</span><span id="line-472">            <span class="s2">"text"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">description</span> <span class="ow">or</span> <span class="s2">"..."</span><span class="p">,</span>
+</span><span id="line-473">            <span class="s2">"start_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">,</span>
+</span><span id="line-474">            <span class="s2">"end_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">end_s</span><span class="p">,</span>
+</span><span id="line-475">        <span class="p">}</span>
+</span><span id="line-476">    <span class="p">]</span>
+</span><span id="line-477">    <span class="n">speaker</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span> <span class="k">else</span> <span class="s2">"narrator"</span>
+</span><span id="line-478">    <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span id="line-479">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">:</span>
+</span><span id="line-480">        <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+</span><span id="line-481">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: character, id: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">, store: characters, ref: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">-v1 </span><span class="se">}}</span><span class="s2">"</span>
+</span><span id="line-482">            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span>
+</span><span id="line-483">        <span class="p">)</span>
+</span><span id="line-484">    <span class="n">env_block</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span id="line-485">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="p">:</span>
+</span><span id="line-486">        <span class="n">env_block</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-487">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: environment, id: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2">, "</span>
+</span><span id="line-488">            <span class="sa">f</span><span class="s2">"store: environments, ref: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span><span class="s2">"</span>
+</span><span id="line-489">        <span class="p">)</span>
+</span><span id="line-490">    <span class="n">entities</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="n">env_block</span><span class="p">,</span> <span class="n">chars_block</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-491">    <span class="c1"># An EMPTY ```yaml entities``` block does not parse — `an`'s markdown reader</span>
+</span><span id="line-492">    <span class="c1"># fails on it with a bare `yaml.scanner.ScannerError`, which `orchestrate`</span>
+</span><span id="line-493">    <span class="c1"># swallows into `success=False` and this renderer turns into a silent</span>
+</span><span id="line-494">    <span class="c1"># fallback to `still`. Both `env` and `chars` are optional in a muvid script,</span>
+</span><span id="line-495">    <span class="c1"># so that shot is writable today. `an`'s own serializer omits the block when</span>
+</span><span id="line-496">    <span class="c1"># there are no entities; so do we.</span>
+</span><span id="line-497">    <span class="n">entities_block</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">```yaml entities</span><span class="se">\n</span><span class="si">{</span><span class="n">entities</span><span class="si">}</span><span class="se">\n</span><span class="s2">```</span><span class="se">\n</span><span class="s2">"</span> <span class="k">if</span> <span class="n">entities</span> <span class="k">else</span> <span class="s2">""</span>
+</span><span id="line-498">    <span class="n">dialogue</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">speaker</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">L</span><span class="p">[</span><span class="s1">'text'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">lyrics</span><span class="p">)</span>
+</span><span id="line-499">    <span class="k">return</span> <span class="sa">f</span><span class="s2">"""# </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
+</span><span id="line-500">
+</span><span id="line-501"><span class="s2">```yaml meta</span>
+</span><span id="line-502"><span class="s2">title: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
+</span><span id="line-503"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
+</span><span id="line-504"><span class="s2">fps: 24</span>
+</span><span id="line-505"><span class="s2">resolution: </span><span class="se">{{</span><span class="s2"> width: 640, height: 360 </span><span class="se">}}</span>
+</span><span id="line-506"><span class="s2">```</span>
+</span><span id="line-507">
+</span><span id="line-508"><span class="s2">## Shot </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> (cutout)</span>
+</span><span id="line-509">
+</span><span id="line-510"><span class="s2">```yaml shot</span>
+</span><span id="line-511"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
+</span><span id="line-512"><span class="s2">camera: </span><span class="se">{{</span><span class="s2"> move: </span><span class="si">{</span><span class="n">camera_move</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span>
+</span><span id="line-513"><span class="s2">```</span>
+</span><span id="line-514"><span class="si">{</span><span class="n">entities_block</span><span class="si">}</span>
+</span><span id="line-515"><span class="s2">```dialogue</span>
+</span><span id="line-516"><span class="si">{</span><span class="n">dialogue</span><span class="si">}</span>
+</span><span id="line-517"><span class="s2">```</span>
+</span><span id="line-518"><span class="s2">"""</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -720,7 +725,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=5c5ca7ce"></script>
+    <script src="../../../_static/documentation_options.js?v=f82423d7"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

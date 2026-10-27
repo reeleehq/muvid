@@ -8,7 +8,7 @@ environment becomes the entity backdrop.
 
 Lipsync alignment: muvid already owns the SSOT for word timings (the
 `lacing` alignment store written by `muvid align`). We build a
-`an.audio.WordTimingsLipSync` from those timings and pass it
+`cutan.audio.injectable_lipsync.WordTimingsLipSync` from those timings and pass it
 into `an.orchestrate` so `an` does NOT re-transcribe the same
 audio with whisper. Falls back to `an`’s default lipsync provider
 when no alignment store exists yet (e.g. user skipped `muvid align`).

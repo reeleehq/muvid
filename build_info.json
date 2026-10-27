@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-27T02:59:12Z",
+  "built_at": "2026-10-27T03:36:36Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.104",
+    "version": "0.0.105",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "dcf5d8feca3cc0cdc60715cc826fbe6ff7677801",
-    "short_commit": "dcf5d8f",
+    "commit": "83789fb321d88e7da7e7a534b32471aa5c526908",
+    "short_commit": "83789fb",
     "branch": "main",
     "tags": [
-      "0.0.104"
+      "0.0.105"
     ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/dcf5d8feca3cc0cdc60715cc826fbe6ff7677801",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/83789fb321d88e7da7e7a534b32471aa5c526908",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "e870a7a95aeead02feb5bc7d08a3143820aadf52",
+    "sha": "ba33a23e7deead14b8d14613e213e97a875dcd0c",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "40438485821",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40438485821",
+    "run_id": "40444542069",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40444542069",
     "server_url": "https://github.com"
   },
   "tools": {
@@ -62,11 +62,11 @@
   },
   "pypi": {
     "checked": true,
-    "latest": "0.0.104",
+    "latest": "0.0.105",
     "relation": "same",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout dcf5d8feca3cc0cdc60715cc826fbe6ff7677801\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 83789fb321d88e7da7e7a534b32471aa5c526908\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
     "aligned": true,

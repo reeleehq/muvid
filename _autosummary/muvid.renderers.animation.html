@@ -146,7 +146,7 @@ lyric line becomes a dialogue beat for the singing character; the shot’s
 environment becomes the entity backdrop.</p>
 <p>Lipsync alignment: muvid already owns the SSOT for word timings (the
 <code class="docutils literal notranslate"><span class="pre">lacing</span></code> alignment store written by <code class="docutils literal notranslate"><span class="pre">muvid</span> <span class="pre">align</span></code>). We build a
-<code class="xref py py-class docutils literal notranslate"><span class="pre">an.audio.WordTimingsLipSync</span></code> from those timings and pass it
+<code class="xref py py-class docutils literal notranslate"><span class="pre">cutan.audio.injectable_lipsync.WordTimingsLipSync</span></code> from those timings and pass it
 into <code class="docutils literal notranslate"><span class="pre">an.orchestrate</span></code> so <code class="docutils literal notranslate"><span class="pre">an</span></code> does NOT re-transcribe the same
 audio with whisper. Falls back to <code class="docutils literal notranslate"><span class="pre">an</span></code>’s default lipsync provider
 when no alignment store exists yet (e.g. user skipped <code class="docutils literal notranslate"><span class="pre">muvid</span> <span class="pre">align</span></code>).</p>
@@ -326,7 +326,7 @@ synthesized and a still image is a wrong answer, not a lesser one (muvid#46).</p
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5c5ca7ce"></script>
+<script src="../_static/documentation_options.js?v=f82423d7"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
