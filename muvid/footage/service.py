@@ -64,6 +64,7 @@ from muvid.footage.edl import (
     MIN_MARGIN,
     MIN_SUPPORT,
     FootageAlignment,
+    unverified_stretches,
 )
 from muvid.footage.errors import FootageCancelled, FootageError
 
@@ -938,6 +939,57 @@ def align(fp) -> dict:
         # Should always be empty; non-empty is a bug upstream, not a verdict on footage.
         "unrecorded": [cid for cid, _ in clips if cid not in aligned_ids],
         "kept_declared": sorted(declared),
+    }
+
+
+def measure_spans(fp) -> dict:
+    """Check, stretch by stretch, which parts of each placed video actually match the
+    song where it is placed, and save what was found (muvid#16).
+
+    ``align`` places a whole video at ONE offset. This listens to it window by window
+    (slower: about one measurement per 10 s of video) and records, on each video's
+    alignment, the stretches that match the song and at what offset each (``spans``) —
+    for measured and hand-placed offsets alike. ``unverified`` then names, per video,
+    the stretches of its placement no span confirms at its offset: the end of a take
+    that stopped matching, a dropout, another take. Edges are accurate to about
+    ``span_edge_accuracy_s`` (the analysis window), and a shorter stretch may not show.
+
+    A report for now: cutting, scoring and rendering do not use it. Re-aligning or
+    re-placing a video replaces its record, so measure again afterwards.
+    """
+    from muvid.footage.align import measure_spans as _measure
+
+    if not fp.has_song():
+        raise FootageError("no song set — call set_song first")
+    aligns = fp.load_alignments()
+    if not aligns:
+        raise FootageError("no video is placed yet — call align (or set_offset) first")
+    paths = fp.clip_paths()
+    placed = [(a.clip_id, paths[a.clip_id]) for a in aligns if a.clip_id in paths]
+    spans, window_s = _measure(
+        str(fp.song_path()), placed, song_duration=fp.song_duration()
+    )
+    aligns = [replace(a, spans=spans.get(a.clip_id, a.spans)) for a in aligns]
+    fp.save_alignments(aligns)
+    rows = []
+    for a in aligns:
+        gaps = unverified_stretches(a)
+        if gaps:
+            rows.append(
+                {
+                    "clip_id": a.clip_id,
+                    "stretches": [[round(s, 3), round(e, 3)] for s, e in gaps],
+                    "seconds": round(sum(e - s for s, e in gaps), 3),
+                }
+            )
+    return {
+        "spans": {
+            a.clip_id: [s.to_dict() for s in a.spans]
+            for a in aligns
+            if a.spans is not None
+        },
+        "unverified": rows,
+        "span_edge_accuracy_s": window_s,
     }
 
 
@@ -4489,6 +4541,12 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("align", "Listen to the videos", "write", runs="job"),
     OpSpec("set_offset", "Place a video on the song by hand", "write"),
     OpSpec("clear_offset", "Forget where I placed this video", "destroy"),
+    OpSpec(
+        "measure_spans",
+        "Check which parts of each video match the song",
+        "write",
+        runs="job",
+    ),
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
     OpSpec("beat_grid", "Find the beat", "read"),
