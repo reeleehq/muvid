@@ -11,7 +11,7 @@ each entry a function of a few bounded parameters compiled through
   tighter framing), ``slow_push`` / ``slow_pull`` (zoom in / out across the cut),
   ``pan_left`` / ``pan_right`` (drift sideways at a slight zoom);
 - grades, which do not: ``vivid``, ``black_and_white``, ``posterize`` and ``cartoon``
-  (flatten + posterize + a little colour — in the spirit of Que Calor's V2, whose real
+  (a little colour + flatten + posterize — in the spirit of Que Calor's V2, whose real
   stylizer was a Python mean-shift and a palette LUT that no filter chain reproduces).
 
 **Tasteful by construction**: every zoom is bounded at :data:`MAX_ZOOM` (1.15) by the
@@ -251,10 +251,13 @@ NAMED_LOOKS: tuple[NamedLook, ...] = (
         "Cartoon",
         "Smoothed, banded, a little brighter in colour — a painted look.",
         "grade",
+        # looks' canonical stage order: the grade (saturation) before the
+        # flatten, the flatten before the posterize. ``flatten`` keeps looks'
+        # own measured defaults (spatial, range, all three planes).
         _grade(
-            ("flatten", lambda p: {"scale": 0.5}),
-            ("posterize", lambda p: {"levels": int(p["levels"])}),
             ("saturation", lambda p: {"amount": 1.15}),
+            ("flatten", lambda p: {}),
+            ("posterize", lambda p: {"levels": int(p["levels"])}),
         ),
         {"levels": Param(8, 4, 16, "Colour levels", integer=True)},
     ),

@@ -1100,6 +1100,36 @@ def test_named_looks(fp):
     assert out["edl"][0]["look"] == "eq=gamma=1.1" and "look_spec" not in out["edl"][0]
 
 
+def _named_look_names():
+    from muvid.footage.named_looks import NAMED_LOOKS
+
+    return [look.name for look in NAMED_LOOKS]
+
+
+@needs_ffmpeg
+@pytest.mark.filterwarnings("error::looks.StageOrderWarning")
+@pytest.mark.parametrize("name", _named_look_names())
+def test_every_named_look_compiles_passes_the_gate_and_renders(fp, name):
+    """muvid#196: a menu entry ``looks`` refuses is a dead button, and ``test_named_looks``
+    above checks only names. So every entry, at its defaults, must compile in canonical
+    stage order, pass ``validate_edl`` (``set_cut`` runs it), and configure in ffmpeg."""
+    from muvid.footage.assemble import DEFAULT_FPS
+
+    service.save_edit(fp, edl=_edl_ab(), edit_id="e")
+    fragment = service.set_cut(fp, edit_id="e", index=0, look={"name": name})["edl"][0][
+        "look"
+    ]
+    w, h = fp.canvas()
+    src = f"testsrc2=size={w}x{h}:rate={DEFAULT_FPS}:duration=0.2"
+    run = subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", src, "-vf", fragment]
+        + ["-f", "null", "-"],
+        capture_output=True,
+        text=True,
+    )
+    assert run.returncode == 0, run.stderr
+
+
 def test_folder_import_keeps_what_it_added_when_one_member_is_refused(
     tmp_path, monkeypatch, fp
 ):

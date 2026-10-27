@@ -884,6 +884,24 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
     def test_two_resizes_are_allowed(self):
         self._look(0, "scale=1920:1080,pad=1920:1080")
 
+    _COLOUR = "scale=in_color_matrix=bt709:out_color_matrix=bt709"
+
+    def test_colour_only_scales_at_canvas_size_are_not_resizes(self):
+        """muvid#196: looks Rule 22 wraps every RGB step in a colour-only `scale`,
+        so a three-step grade carries four. At canvas size they are cheap (16
+        links, 115 MB measured) and must not count against the resize cap."""
+        grade = ",".join([self._COLOUR, "colorchannelmixer=rr=1"] * 4 + [self._COLOUR])
+        self._look(0, grade)
+
+    def test_colour_only_scales_after_an_upsize_still_count(self):
+        """The exemption is for a frame that fits the canvas. After
+        `scale=7680:4320` each colour scale allocates a frame that size —
+        fifteen of them measured 903 MB against 238 MB for fifteen `hue`."""
+        attack = ",".join(["scale=7680:4320", self._COLOUR, self._COLOUR])
+        with pytest.raises(ValueError, match="resizes 3 times"):
+            self._look(0, attack)
+        self._look(0, ",".join(["scale=7680:4320"] + ["hue=s=1"] * 15))
+
     def test_the_count_is_the_one_ffmpeg_WILL_MAKE(self):
         """Counted through the lexer, so an escaped comma inside an expression
         is not a link. `looks` emits exactly that (`gamma`'s lutrgb carries
