@@ -2817,7 +2817,13 @@ def still_in_point(cut: "EdlEntry") -> float:
     >>> still_in_point(EdlEntry(0.0, 2.0, "p", transition=Transition(1.0, "fade")))
     0.5
     """
-    return in_point_bounds(cut, clip_duration_s=STILL_DURATION_S)[0]
+    bounds = in_point_bounds(cut, clip_duration_s=STILL_DURATION_S)
+    if bounds is None:
+        raise ValueError(
+            f"a cut on a still may last at most {STILL_DURATION_S:g} s of picture, "
+            f"got {(cut.song_end - cut.song_start) * getattr(cut, 'rate', 1.0):g} s"
+        )
+    return bounds[0]
 
 
 def longest_span(
@@ -2832,7 +2838,8 @@ def longest_span(
     ``clip_duration_s`` seconds with these blends and ``edge_s`` kept at BOTH ends — the
     question "can this clip hold this piece" asked in :func:`in_point_bounds`' own terms
     (muvid#203), so a planner deciding to split a piece and the in-point it then picks
-    cannot disagree. ``0.0`` when nothing fits.
+    cannot disagree. ``0.0`` when nothing fits. Slip is left out: it moves where a cut
+    reads, not how much it can read, and no planner sets it.
 
     >>> t = Transition(duration_s=1.0, curve="fade")
     >>> longest_span(10.0, transition=t, next_transition=t, edge_s=0.25)

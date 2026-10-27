@@ -895,9 +895,15 @@ def _cuts_for_piece(
         )
         if not src.is_still and holds < length - 1e-6:
             # The video cannot hold the whole piece: show what it has, ending on a beat
-            # (no next blend: a take-over continues it with a hard cut).
+            # before the piece's end, so a take-over continues it with a hard cut and
+            # this cut carries no next blend. Ending ON the piece's end would carry it
+            # — which `holds` just said does not fit — so that end is capped by `holds`.
             cap = longest_span(src.duration_s or 0.0, transition=own, edge_s=EDGE_S)
             cut_at = _last_beat_before(beats, start + cap, after=start + MIN_PIECE_S)
+            if cut_at is not None and cut_at >= end - 1e-6:
+                cut_at = _last_beat_before(
+                    beats, start + holds, after=start + MIN_PIECE_S
+                )
             if cut_at is None or cap < MIN_PIECE_S:
                 nxt = _take_over(sources, src, need=length, avoid=avoid, uses=uses)
                 if nxt.clip_id == src.clip_id:

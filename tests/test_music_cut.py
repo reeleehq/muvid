@@ -604,3 +604,31 @@ def test_a_saved_edit_is_echoed_by_its_stored_id(bath_with_photo):
     out = service.propose_edit(bath)
     doc = service.editor_document(bath, edit_id=f" {out['edit_id']} ")
     assert doc["edit_id"] == out["edit_id"]
+
+
+def test_no_video_cut_gives_up_its_edge_margin_to_a_blend_that_did_not_fit():
+    """The #203 review's plan: the cap path ended a piece ON its end and so carried the
+    next blend that the feasibility check had just said does not fit, and the in-point
+    gave up the edge margin to make room. Every video cut keeps EDGE_S at both ends."""
+    from muvid.footage.edl import EDGE_S
+
+    durs = [1.312, 2.968, 35.715, 3.529, 7.089]
+    srcs = [FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=d) for i, d in enumerate(durs)]
+    entries = fill_spans(
+        "/x/s.wav",
+        srcs,
+        analysis=_analysis(48.835, 61.409),
+        envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1080, 1920),
+        canvas=(1080, 1920),
+        archetype="ballad_dissolve",
+    ).entries
+    duration = {s.clip_id: s.duration_s for s in srcs}
+    for i, e in enumerate(entries):
+        nxt = entries[i + 1] if i + 1 < len(entries) else None
+        trail = nxt.transition.duration_s / 2 if nxt and nxt.transition else 0.0
+        lead = e.transition.duration_s / 2 if e.transition else 0.0
+        head = e.source_in - lead
+        tail = duration[e.clip_id] - e.source_in - (e.song_end - e.song_start) - trail
+        assert min(head, tail) >= EDGE_S - 1e-3, (i, e)

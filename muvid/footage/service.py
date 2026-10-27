@@ -2742,7 +2742,10 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     if _role_of(row, aligns.get(clip_id)) == SYNCED:
         return None
     if row.get("kind") == STILL_KIND:
-        return round(still_in_point(e), 4)
+        try:
+            return round(still_in_point(e), 4)
+        except ValueError as exc:
+            raise FootageError(str(exc)) from exc
     following_t = following.transition if following is not None else None
     duration = _clip_duration(fp, clip_id)
     span = e.song_end - e.song_start
