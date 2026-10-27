@@ -827,9 +827,12 @@ def test_strategies_have_titles_shared_by_the_registry_and_the_strategies_op():
         assert S.strategy_title("_test_only") == "Test only"
         for blank in ("", "  "):
             with pytest.raises(ValueError, match="title"):
-                S.register_selection_strategy(
-                    "my_rule_217", S.best_confidence, title=blank
-                )
+                S.register_selection_strategy("my_rule_217", S.fewest_cuts, title=blank)
+            with pytest.raises(ValueError, match="title"):
+                S.register_lazy_strategy("my_rule_217", "x:y", title=blank)
+            # a refused call changed nothing
+            assert S.resolve_strategy("my_rule_217") is S.best_confidence
+            assert "my_rule_217" not in S._LAZY_STRATEGIES
     finally:
         S._STRATEGIES.pop("my_rule_217", None)
         S._TITLES.pop("my_rule_217", None)

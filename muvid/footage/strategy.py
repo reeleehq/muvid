@@ -61,6 +61,7 @@ def register_selection_strategy(
     ``title`` is its name in words (default: from the slug, see :func:`strategy_title`).
     """
     _check_slug(slug)
+    _check_title(title)
     if not callable(fn):
         raise TypeError("a selection strategy must be callable")
     _STRATEGIES[slug] = fn
@@ -77,15 +78,21 @@ def register_lazy_strategy(
     module at registration time — the import happens in :func:`resolve_strategy`.
     """
     _check_slug(slug)
+    _check_title(title)
     if ":" not in target_ref:
         raise ValueError(f"target_ref must be 'module:func', got {target_ref!r}")
     _LAZY_STRATEGIES[slug] = target_ref
     _set_title(slug, title)
 
 
-def _set_title(slug: str, title: str | None) -> None:
+def _check_title(title: str | None) -> None:
+    """Refuse a blank title BEFORE anything is registered, so a refused call changes
+    nothing."""
     if title is not None and not (isinstance(title, str) and title.strip()):
         raise ValueError(f"a strategy title must be non-empty words: {title!r}")
+
+
+def _set_title(slug: str, title: str | None) -> None:
     if title is not None:
         _TITLES[slug] = title
     else:  # a re-registration without a title must not keep the old one's words
