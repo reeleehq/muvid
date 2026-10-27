@@ -883,3 +883,50 @@ def test_liveliness_is_the_mean_picture_activity_and_none_for_a_still():
         1 / 3
     )
     assert liveliness(FreeSource("p", "/x/p.jpg", kind="still"), None) is None
+
+
+# -- the cut cap (muvid#228) ------------------------------------------------------------
+
+
+def test_a_plan_past_the_cut_cap_is_coarsened_rather_than_refused():
+    """stop_motion on a long fast song planned 625 cuts and the gate refused the whole
+    edit; the planner now holds slots together until it fits, and says so."""
+    kw = dict(analysis=_analysis(240.0, 300.0), archetype="stop_motion")
+    free = fill_spans(
+        "/x/song.wav", _sources(), envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5), size_of=lambda p: (1080, 1920),
+        max_cuts=10**6, **kw
+    )
+    assert free.report["n_cuts"] > 500 and free.report["held"] == 1  # the census shape
+    capped = fill_spans(
+        "/x/song.wav", _sources(), envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5), size_of=lambda p: (1080, 1920),
+        max_cuts=100, **kw
+    )
+    r = capped.report
+    assert len(capped.entries) <= 100 and r["n_cuts"] == len(capped.entries)
+    assert r["held"] > 1 and "100-cut limit" in r["cap_note"]
+    # still the whole song, contiguous, and the gate takes it
+    assert capped.entries[0].song_start == 0.0
+    assert capped.entries[-1].song_end == pytest.approx(240.0)
+    for a, b in zip(capped.entries, capped.entries[1:]):
+        assert a.song_end == pytest.approx(b.song_start)
+
+
+def test_a_plan_inside_the_cap_is_untouched():
+    cut = _fill()
+    assert cut.report["held"] == 1 and cut.report["cap_note"] == ""
+    assert [(e.song_start, e.song_end, e.clip_id) for e in cut.entries] == [
+        (e.song_start, e.song_end, e.clip_id) for e in _fill(max_cuts=10_000).entries
+    ]
+
+
+def test_the_default_cap_is_the_gates():
+    from muvid.footage import edl
+
+    kw = dict(analysis=_analysis(240.0, 300.0), archetype="stop_motion")
+    cut = fill_spans(
+        "/x/song.wav", _sources(), envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5), size_of=lambda p: (1080, 1920), **kw
+    )
+    assert len(cut.entries) <= edl.MAX_EDL_ENTRIES
