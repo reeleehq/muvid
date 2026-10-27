@@ -362,3 +362,40 @@ def test_a_song_replaced_while_align_measures_is_refused(fp, tmp_path, monkeypat
     with pytest.raises(FootageError, match="song changed"):
         service.align(fp)
     assert fp.load_alignments() == []
+
+
+def test_a_placement_cleared_while_align_measures_is_reported_not_a_bug(fp, monkeypatch):
+    """A was declared when align started, so it was not measured; forgetting it meanwhile
+    leaves it with no record — named in `cleared_meanwhile`, not in `unrecorded`."""
+    import muvid.footage.align as A
+
+    def slow_align(song, clips, *, song_duration):
+        assert [c for c, _ in clips] == ["C"]  # A was declared, so not measured
+        service.clear_offset(fp, clip_id="A")  # a person, meanwhile
+        return [FootageAlignment(c, 1.0, 0.9, 20.0, (1.0, 21.0)) for c, _ in clips]
+
+    monkeypatch.setattr(A, "align_footage", slow_align)
+    out = service.align(fp)
+    assert out["cleared_meanwhile"] == ["A"]
+    assert out["unrecorded"] == []
+    assert {a.clip_id for a in fp.load_alignments()} == {"C"}
+
+
+def test_an_overlapping_second_remove_refuses_and_keeps_newer_records(fp, monkeypatch):
+    """The clip is looked up under the lock: a remove that waited behind another remove
+    of the same clip must not drop the measurements saved since the first one."""
+    cls = type(fp)  # a frozen dataclass: patch the class, monkeypatch restores it
+    real_lock = cls.alignments_lock
+    measured = FootageAlignment("A", 1.0, 0.9, 20.0, (1.0, 21.0))
+
+    def racing_lock(self):
+        # the first remove, then a measurement, land before this call gets the lock
+        monkeypatch.setattr(cls, "alignments_lock", real_lock)
+        self.remove_clip("C")
+        self.save_alignments([measured])
+        return real_lock(self)
+
+    monkeypatch.setattr(cls, "alignments_lock", racing_lock)
+    with pytest.raises(KeyError):
+        fp.remove_clip("C")
+    assert fp.load_alignments() == [measured]
