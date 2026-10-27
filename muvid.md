@@ -1,4 +1,4 @@
-> built 2026-10-27 03:36 UTC from 83789fb (main) · muvid 0.0.105. Details: build_info.json
+> built 2026-10-27 03:45 UTC from df33794 (main) · muvid 0.0.106. Details: build_info.json
 
 # index.html.md
 
@@ -3063,6 +3063,159 @@ True
   [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
 
+# _autosummary/muvid.footage.colour.html.md
+
+# muvid.footage.colour
+
+The colour every assembled video is delivered in, and how a source’s colour is read.
+
+muvid#195. The assembler’s per-cut `scale` converts every source to
+[`DELIVERY_COLOR_SPACE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE) at [`DELIVERY_COLOR_RANGE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE), [`DELIVERY_TAG`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_TAG)
+says so on the frame, and the encode carries the same tags. That gives a look a
+frame whose colour is a FACT, which [`muvid.footage.look.stylize()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.stylize) declares for
+`looks` Rule 22 instead of assuming it (muvid#190).
+
+Measured on ffmpeg 8.0.1 and 7.0.2, against the RGB original, decoded the way a
+player reads a BT.709-tagged file: a BT.601 clip 24 -> 37 dB, a full-range JPEG
+still 24 -> 41 dB, a PNG 24 -> 40 dB, a tagged BT.709 clip unchanged at 40 dB.
+
+Two things the conversion cannot get right from the frame alone, which is why a
+source is read here first ([`read_source_colour()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.read_source_colour)):
+
+- **An untagged source.** `scale` reads the frame’s matrix tag and swscale treats
+  an unspecified one as BT.601, while players read untagged HD as BT.709. Measured:
+  an untagged 1280x720 BT.709 clip went 41.6 -> 26.9 dB on both builds until the
+  assembler told `scale` the matrix. An untagged YUV source that players call HD
+  ([`is_hd()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.is_hd)) is therefore converted FROM BT.709; an SD one keeps swscale’s
+  BT.601, which is the SD convention.
+- **An HDR source** (HLG or PQ transfer — iPhone footage records HLG by default).
+  Only the YCbCr matrix and range are converted; BT.2020 primaries and an HDR
+  transfer are not, so the delivered SDR picture looks washed out. Before muvid#195
+  the part kept its HDR tags, which an HDR-aware player honoured; now it is tagged
+  BT.709. That is not fixed here (tone mapping, muvid#201), so it is REPORTED: the
+  assembler sends a finding naming each HDR clip.
+
+Import-light (stdlib only at module top): the look compiler imports the constants.
+
+### Module Attributes
+
+| [`DELIVERY_COLOR_SPACE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE)   | The delivery matrix — and the primaries and transfer it is tagged with.                                                                                                                                 |
+|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`DELIVERY_COLOR_RANGE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE)   | limited ("tv"), the range H.264 delivery is read in.                                                                                                                                                    |
+| [`DELIVERY_TAG`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_TAG)           | The frame-level tag the assembler places last in each part's chain, after the look (and on a gap's black).                                                                                              |
+| [`HD_MIN_WIDTH`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HD_MIN_WIDTH)           | Where players draw the line between SD (BT.601) and HD (BT.709) for an untagged source: at least this wide, OR taller than [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT) (mpv's rule). |
+| [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT)          | The tallest SD frame (PAL, 576 lines).                                                                                                                                                                  |
+| [`HDR_TRANSFERS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_TRANSFERS)          | ffprobe's names for the transfers that make a source HDR (HLG, PQ).                                                                                                                                     |
+
+### Functions
+
+| [`read_source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.read_source_colour)(path, \*[, probe])   | The [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) of the first video stream of `path`.   |
+|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
+| [`is_hd`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.is_hd)(width, height)                    | Whether players read an untagged `width` x `height` source as HD (BT.709).                               |
+| [`source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.source_colour)(stream)                   | A probed video stream's [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour).                   |
+
+### Classes
+
+| [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer])   | What the assembler needs to know about one source's colour.   |
+|--------------------------------------------------------------------------------------------|---------------------------------------------------------------|
+
+### muvid.footage.colour.DELIVERY_COLOR_RANGE *= 'tv'*
+
+limited (“tv”), the range H.264 delivery is read in.
+
+* **Type:**
+  The delivery range
+
+### muvid.footage.colour.DELIVERY_COLOR_SPACE *= 'bt709'*
+
+The delivery matrix — and the primaries and transfer it is tagged with. BT.709 is
+what a player assumes for untagged HD and what phone video mostly is already.
+
+### muvid.footage.colour.DELIVERY_TAG *= 'setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709'*
+
+The frame-level tag the assembler places last in each part’s chain, after the
+look (and on a gap’s black). On the FRAME, not only on the encoder: ffmpeg 8.0.1 takes
+the stream’s colour description from the frames and ignores `-color_primaries`
+/ `-color_trc` (measured: both came out `unknown` with the options alone).
+
+### muvid.footage.colour.HDR_TRANSFERS *= frozenset({'arib-std-b67', 'smpte2084'})*
+
+ffprobe’s names for the transfers that make a source HDR (HLG, PQ).
+
+### muvid.footage.colour.HD_MIN_WIDTH *= 1280*
+
+Where players draw the line between SD (BT.601) and HD (BT.709) for an untagged
+source: at least this wide, OR taller than [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT) (mpv’s rule).
+Width matters for letterboxed HD — an untagged 1280x536 BT.709 clip measured
+26.9 dB under a height-only rule.
+
+### muvid.footage.colour.SD_MAX_HEIGHT *= 576*
+
+The tallest SD frame (PAL, 576 lines).
+
+### *class* muvid.footage.colour.SourceColour(in_matrix=None, hdr_transfer=None)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+What the assembler needs to know about one source’s colour.
+
+#### hdr_transfer *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= None*
+
+The source’s HDR transfer (`"arib-std-b67"`, `"smpte2084"`), else `None`.
+
+#### in_matrix *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= None*
+
+The matrix to give `scale` as `in_color_matrix`; `None` lets it read the
+frame’s own tag (a tagged source, an RGB picture, an untagged SD one).
+
+### muvid.footage.colour.is_hd(width, height)
+
+Whether players read an untagged `width` x `height` source as HD (BT.709).
+
+```pycon
+>>> is_hd(1280, 536), is_hd(720, 1280), is_hd(720, 576), is_hd(960, 540)
+(True, True, False, False)
+```
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
+### muvid.footage.colour.read_source_colour(path, , probe=None)
+
+The [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) of the first video stream of `path`.
+
+A file ffprobe cannot read gets the default (`scale` reads the tag): the render
+of that file is where an unreadable source is reported, not here.
+
+* **Return type:**
+  [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)
+
+### muvid.footage.colour.source_colour(stream)
+
+A probed video stream’s [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour).
+
+```pycon
+>>> source_colour({"pix_fmt": "yuv420p", "width": 1920, "height": 1080})
+SourceColour(in_matrix='bt709', hdr_transfer=None)
+>>> source_colour({"pix_fmt": "yuv420p", "width": 1280, "height": 536})
+SourceColour(in_matrix='bt709', hdr_transfer=None)
+>>> source_colour({"pix_fmt": "yuv420p", "width": 640, "height": 480})  # SD
+SourceColour(in_matrix=None, hdr_transfer=None)
+>>> source_colour({"pix_fmt": "yuv420p", "height": 1080, "color_space": "smpte170m"})
+SourceColour(in_matrix=None, hdr_transfer=None)
+>>> source_colour({"pix_fmt": "rgb24", "height": 1080})  # RGB has no matrix
+SourceColour(in_matrix=None, hdr_transfer=None)
+>>> source_colour({"pix_fmt": "yuvj420p", "height": 1080})  # JFIF: BT.601
+SourceColour(in_matrix=None, hdr_transfer=None)
+>>> source_colour({"pix_fmt": "yuv420p10le", "height": 2160,
+...                "color_space": "bt2020nc", "color_transfer": "arib-std-b67"})
+SourceColour(in_matrix=None, hdr_transfer='arib-std-b67')
+```
+
+* **Return type:**
+  [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)
+
+
 # _autosummary/muvid.footage.edl.html.md
 
 # muvid.footage.edl
@@ -3154,7 +3307,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_matrix=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3194,6 +3347,16 @@ seconds of source and retimes it (`setpts`, before `fps`) onto the span.
 #### *property* source_duration *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds of the clip this cut consumes — its span at its rate.
+
+#### source_matrix *: [str](https://docs.python.org/3/builtins/stdtypes.html#str) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+the matrix the assembler’s `scale` converts this cut’s
+source FROM, set by the assembler once per render when the source’s own tag
+cannot be trusted (an untagged HD clip — [`muvid.footage.colour`](_autosummary/muvid.footage.colour.html.md#module-muvid.footage.colour)).
+`None` lets `scale` read the frame’s tag.
+
+* **Type:**
+  NOT from the EDL
 
 #### transition *: [Transition](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -5020,7 +5183,7 @@ the alignment-only built-ins ignore it. See `SelectionStrategy`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
-### muvid.footage.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None, assume_color_space='bt709')
+### muvid.footage.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
 
 A `looks.Look` compiled against the binary muvid will run.
 
@@ -5033,9 +5196,6 @@ A `looks.Look` compiled against the binary muvid will run.
   * **env** – a `looks.FfmpegEnv` to compile against, instead of probing.
   * **policy** – a `looks.Policy` — the licence ceiling. `looks`’ default
     applies when omitted.
-  * **assume_color_space** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]) – the colour space to declare for the output when a step
-    needs one (`looks` Rule 22, muvid#190); see
-    `DEFAULT_ASSUMED_COLOR_SPACE`. `None` keeps `looks`’ refusal.
 * **Return type:**
   [`LookFragment`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookFragment)
 * **Returns:**
@@ -5068,6 +5228,12 @@ stated cause rather than by default: `looks` treats a span as being in the
 host’s decoder time, and *input-side* `-ss` rebases the filter timeline to
 0 where output-side `-ss` does not. `muvid.footage.assemble._render_part()`
 seeks input-side. Move that seek and this declaration becomes false.
+
+The colour is declared on the same ground (muvid#195): the assembler’s
+`scale` converts every cut to [`DELIVERY_COLOR_SPACE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE)
+at [`DELIVERY_COLOR_RANGE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE) before the look, so the
+`looks` Rule 22 colour space is a fact about the frame, not a guess about the
+source. Move the look before that `scale` and this declaration becomes false.
 
 **A refusal is the feature.** `looks` resolves each step’s licence tier
 against the probed binary, so a look reaching a GPL-only filter on an
@@ -5134,6 +5300,7 @@ Returns the normalized list of [`EdlEntry`](_autosummary/muvid.footage.html.md#m
 | [`beat_fit`](_autosummary/muvid.footage.beat_fit.html.md#module-muvid.footage.beat_fit)           | Fitting a cut's timing to the beat — the pure numerics behind `service.fit_to_beat`.                                                                                |
 | [`beats`](_autosummary/muvid.footage.beats.html.md#module-muvid.footage.beats)                 | Beat signals — continuous envelopes of where the beat is, in the song and in each video.                                                                            |
 | [`capture_time`](_autosummary/muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)   | When a photo or a video was taken, read from the file itself (muvid#137).                                                                                           |
+| [`colour`](_autosummary/muvid.footage.colour.html.md#module-muvid.footage.colour)               | The colour every assembled video is delivered in, and how a source's colour is read.                                                                                |
 | [`edl`](_autosummary/muvid.footage.edl.html.md#module-muvid.footage.edl)                     | EDL data types + the `validate_edl` single-source-of-truth gate.                                                                                                    |
 | [`errors`](_autosummary/muvid.footage.errors.html.md#module-muvid.footage.errors)               | The refusal and cancellation types of the footage operations ([`muvid.footage.service`](_autosummary/muvid.footage.service.html.md#module-muvid.footage.service)). |
 | [`explain`](_autosummary/muvid.footage.explain.html.md#module-muvid.footage.explain)             | Why each cut is where it is — the post-mortem of an edit, in plain words.                                                                                           |
@@ -5398,10 +5565,9 @@ limit is stated on the field rather than left to be discovered.
 
 ### Module Attributes
 
-| [`DEFAULT_PUNCH_ZOOM`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ZOOM)          | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.       |
-|------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`DEFAULT_ASSUMED_COLOR_SPACE`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE) | The colour space [`stylize()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.stylize) ASSUMES for the assembler's output when the caller names none (muvid#190). |
-| [`DEFAULT_PUNCH_ANCHOR`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ANCHOR)        | Where [`punch_in()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                           |
+| [`DEFAULT_PUNCH_ZOOM`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ZOOM)   | the design partner described what he wanted as a "slight zoom/punch-in jump" (muvid#66), and a punch-in is a punctuation mark, not a transition.   |
+|-----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`DEFAULT_PUNCH_ANCHOR`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_PUNCH_ANCHOR) | Where [`punch_in()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.punch_in) zooms toward, as a fraction of the canvas.                                       |
 
 ### Functions
 
@@ -5422,19 +5588,6 @@ limit is stated on the field rather than left to be discovered.
 
 | [`LookError`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookError)   | A look could not be compiled.   |
 |--------------------------------------------------------------|---------------------------------|
-
-### muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE *= 'bt709'*
-
-The colour space [`stylize()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.stylize) ASSUMES for the assembler’s output when the
-caller names none (muvid#190). `looks` Rule 22 refuses an RGB-only step
-(`saturation` …) on a clip with no declared colour space, because the
-RGB round trip would otherwise use whatever matrix the ffmpeg build guesses.
-This is a GUESS, not a fact: the assembler keeps each source’s own colour tags
-(it neither converts nor tags), so a BT.601 clip or a JPEG still is mis-read
-as BT.709 on ffmpeg >= 7 (measured in the #190 review). Phone footage is
-mostly BT.709, and it is the best single answer until the assembler
-normalises its output (the real fix, filed as a follow-up). The plan keeps
-`color_assumed`, but `stylize` does not surface it yet.
 
 ### muvid.footage.look.DEFAULT_PUNCH_ANCHOR *= (0.5, 0.5)*
 
@@ -5686,7 +5839,7 @@ seconds-based interval would drift off it.
   assembler cannot warn that a punch bordering a transition restarts its
   ramp (muvid#73).
 
-### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None, assume_color_space='bt709')
+### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
 
 A `looks.Look` compiled against the binary muvid will run.
 
@@ -5699,9 +5852,6 @@ A `looks.Look` compiled against the binary muvid will run.
   * **env** – a `looks.FfmpegEnv` to compile against, instead of probing.
   * **policy** – a `looks.Policy` — the licence ceiling. `looks`’ default
     applies when omitted.
-  * **assume_color_space** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]) – the colour space to declare for the output when a step
-    needs one (`looks` Rule 22, muvid#190); see
-    [`DEFAULT_ASSUMED_COLOR_SPACE`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.DEFAULT_ASSUMED_COLOR_SPACE). `None` keeps `looks`’ refusal.
 * **Return type:**
   [`LookFragment`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookFragment)
 * **Returns:**
@@ -5734,6 +5884,12 @@ stated cause rather than by default: `looks` treats a span as being in the
 host’s decoder time, and *input-side* `-ss` rebases the filter timeline to
 0 where output-side `-ss` does not. `muvid.footage.assemble._render_part()`
 seeks input-side. Move that seek and this declaration becomes false.
+
+The colour is declared on the same ground (muvid#195): the assembler’s
+`scale` converts every cut to [`DELIVERY_COLOR_SPACE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE)
+at [`DELIVERY_COLOR_RANGE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE) before the look, so the
+`looks` Rule 22 colour space is a fact about the frame, not a guess about the
+source. Move the look before that `scale` and this declaration becomes false.
 
 **A refusal is the feature.** `looks` resolves each step’s licence tier
 against the probed binary, so a look reaching a GPL-only filter on an
@@ -17870,7 +18026,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 03:36 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/83789fb321d88e7da7e7a534b32471aa5c526908"><code>83789fb</code></a> on branch <code>main</code>, for **muvid 0.0.105** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 03:45 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/df33794a4d330aa88986588e6ce7126e7b6696e9"><code>df33794</code></a> on branch <code>main</code>, for **muvid 0.0.106** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -17879,9 +18035,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/83789fb321d88e7da7e7a534b32471aa5c526908"><code>83789fb321d88e7da7e7a534b32471aa5c526908</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/df33794a4d330aa88986588e6ce7126e7b6696e9"><code>df33794a4d330aa88986588e6ce7126e7b6696e9</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.105</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.106</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17890,9 +18046,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40444542069">40444542069</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40445183552">40445183552</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>ba33a23e7deead14b8d14613e213e97a875dcd0c</code> (in the history of the built commit) |
+| Event commit | <code>2d63d41fb37519c601d563e46e98e2d6abefc09d</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17917,13 +18073,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.105/">0.0.105</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.106/">0.0.106</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 83789fb321d88e7da7e7a534b32471aa5c526908
+git checkout df33794a4d330aa88986588e6ce7126e7b6696e9
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

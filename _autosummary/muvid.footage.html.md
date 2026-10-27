@@ -692,7 +692,7 @@ the alignment-only built-ins ignore it. See `SelectionStrategy`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
-### muvid.footage.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None, assume_color_space='bt709')
+### muvid.footage.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
 
 A `looks.Look` compiled against the binary muvid will run.
 
@@ -705,9 +705,6 @@ A `looks.Look` compiled against the binary muvid will run.
   * **env** – a `looks.FfmpegEnv` to compile against, instead of probing.
   * **policy** – a `looks.Policy` — the licence ceiling. `looks`’ default
     applies when omitted.
-  * **assume_color_space** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]) – the colour space to declare for the output when a step
-    needs one (`looks` Rule 22, muvid#190); see
-    `DEFAULT_ASSUMED_COLOR_SPACE`. `None` keeps `looks`’ refusal.
 * **Return type:**
   [`LookFragment`](muvid.footage.look.html.md#muvid.footage.look.LookFragment)
 * **Returns:**
@@ -740,6 +737,12 @@ stated cause rather than by default: `looks` treats a span as being in the
 host’s decoder time, and *input-side* `-ss` rebases the filter timeline to
 0 where output-side `-ss` does not. `muvid.footage.assemble._render_part()`
 seeks input-side. Move that seek and this declaration becomes false.
+
+The colour is declared on the same ground (muvid#195): the assembler’s
+`scale` converts every cut to [`DELIVERY_COLOR_SPACE`](muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE)
+at [`DELIVERY_COLOR_RANGE`](muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE) before the look, so the
+`looks` Rule 22 colour space is a fact about the frame, not a guess about the
+source. Move the look before that `scale` and this declaration becomes false.
 
 **A refusal is the feature.** `looks` resolves each step’s licence tier
 against the probed binary, so a look reaching a GPL-only filter on an
@@ -806,6 +809,7 @@ Returns the normalized list of [`EdlEntry`](#muvid.footage.EdlEntry).
 | [`beat_fit`](muvid.footage.beat_fit.html.md#module-muvid.footage.beat_fit)           | Fitting a cut's timing to the beat — the pure numerics behind `service.fit_to_beat`.                                                                                |
 | [`beats`](muvid.footage.beats.html.md#module-muvid.footage.beats)                 | Beat signals — continuous envelopes of where the beat is, in the song and in each video.                                                                            |
 | [`capture_time`](muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)   | When a photo or a video was taken, read from the file itself (muvid#137).                                                                                           |
+| [`colour`](muvid.footage.colour.html.md#module-muvid.footage.colour)               | The colour every assembled video is delivered in, and how a source's colour is read.                                                                                |
 | [`edl`](muvid.footage.edl.html.md#module-muvid.footage.edl)                     | EDL data types + the `validate_edl` single-source-of-truth gate.                                                                                                    |
 | [`errors`](muvid.footage.errors.html.md#module-muvid.footage.errors)               | The refusal and cancellation types of the footage operations ([`muvid.footage.service`](muvid.footage.service.html.md#module-muvid.footage.service)). |
 | [`explain`](muvid.footage.explain.html.md#module-muvid.footage.explain)             | Why each cut is where it is — the post-mortem of an edit, in plain words.                                                                                           |

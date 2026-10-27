@@ -1,0 +1,31 @@
+muvid.footage.colour
+====================
+
+.. automodule:: muvid.footage.colour
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      DELIVERY_COLOR_SPACE
+      DELIVERY_COLOR_RANGE
+      DELIVERY_TAG
+      HD_MIN_WIDTH
+      SD_MAX_HEIGHT
+      HDR_TRANSFERS
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      read_source_colour
+      is_hd
+      source_colour
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      SourceColour
+   

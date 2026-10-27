@@ -9,7 +9,6 @@ muvid.footage.look
    .. autosummary::
    
       DEFAULT_PUNCH_ZOOM
-      DEFAULT_ASSUMED_COLOR_SPACE
       DEFAULT_PUNCH_ANCHOR
    
    .. rubric:: Functions

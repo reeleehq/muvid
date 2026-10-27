@@ -50,6 +50,7 @@ muvid.footage
    beat_fit
    beats
    capture_time
+   colour
    edl
    errors
    explain

@@ -87,7 +87,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_matrix=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -127,6 +127,16 @@ seconds of source and retimes it (`setpts`, before `fps`) onto the span.
 #### *property* source_duration *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds of the clip this cut consumes — its span at its rate.
+
+#### source_matrix *: [str](https://docs.python.org/3/builtins/stdtypes.html#str) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+the matrix the assembler’s `scale` converts this cut’s
+source FROM, set by the assembler once per render when the source’s own tag
+cannot be trusted (an untagged HD clip — [`muvid.footage.colour`](muvid.footage.colour.html.md#module-muvid.footage.colour)).
+`None` lets `scale` read the frame’s tag.
+
+* **Type:**
+  NOT from the EDL
 
 #### transition *: [Transition](#muvid.footage.edl.Transition) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
