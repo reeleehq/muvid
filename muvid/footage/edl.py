@@ -40,12 +40,12 @@ from typing import TYPE_CHECKING, Any, NamedTuple, Sequence
 if TYPE_CHECKING:  # pragma: no cover
     from muvid.footage.colour import ToneMap
 
-#: Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.
-_EPS = 1e-3
-#: The same, for a planner that must agree with the gate on which two moments are one:
-#: a planner comparing at a finer tolerance can emit a span the gate calls zero
+#: Spans shorter than this (seconds) are treated as coincident / zero — guards float
+#: noise. Public because a planner must agree with the gate on which two moments are
+#: one: comparing at a finer tolerance, it can emit a span the gate calls zero
 #: (muvid#210: a beat 60 us before a piece's end left a 60 us take-over).
-COINCIDENT_S = _EPS
+COINCIDENT_S = 1e-3
+_EPS = COINCIDENT_S
 #: Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-``edl`` paths. The
 #: assembler runs one bounded ffmpeg per PART (memory O(1) in cut count), so this caps
 #: total WORK — N encoder invocations on a shared box — not a single command's inputs.
