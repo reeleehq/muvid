@@ -771,6 +771,46 @@ def status(fp) -> dict:
     return out
 
 
+def status_summary(fp) -> dict:
+    """Where the music video stands, COUNTED (muvid#232): what a host's status door
+    serves (``muvid.Project.genre_status``) and an agent reads first. Built from cheap
+    reads only — the manifest, the alignments, the edit records, the finished render
+    folders — so a polled endpoint never validates an edit, probes a file or writes a
+    render's metadata; no paths, no per-item lists.
+
+    ``placed`` counts videos whose offset is trusted and on the song; ``unplaced_synced``
+    the ones that should be synced (they have the song in them) and could not be
+    placed — the number that means a problem, unlike a video cut to the music.
+    """
+    m = fp.manifest()
+    aligns = fp.load_alignments()
+    roles = footage_roles(fp)
+    clips = m.get("clips", [])
+    stills = sum(1 for c in clips if c.get("kind") == STILL_KIND)
+    n_edits = len(fp.list_edit_records())
+    rdir = fp.renders_dir
+    n_renders = (
+        sum(1 for d in rdir.iterdir() if (d / "meta.json").is_file())
+        if rdir.is_dir()
+        else 0
+    )
+    duration = m.get("song_duration")
+    return {
+        "has_song": fp.has_song(),
+        "song_duration_s": None if duration is None else round(float(duration), 2),
+        "videos": len(clips) - stills,
+        "photos": stills,
+        "placed": sum(1 for a in aligns if a.reliable and a.overlaps),
+        "unplaced_synced": sum(
+            1 for a in aligns if not a.reliable and roles.get(a.clip_id) == SYNCED
+        ),
+        "edits": n_edits,
+        "renders": n_renders,
+        # its checks only ask whether there are edits / renders, so counts serve
+        "next_step": _next_step(fp, aligns, n_edits, n_renders),
+    }
+
+
 def _alignment_row(a: FootageAlignment) -> dict:
     return {
         "clip_id": a.clip_id,
