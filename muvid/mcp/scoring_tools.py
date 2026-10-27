@@ -18,10 +18,12 @@ Key design decisions (LOCKED, see ``misc/docs/footage_scoring_design.md``):
 - **NaN never hits the wire** — masked entries serialize as ``null``; the ``mask`` array is
   authoritative.
 - **The status without a ``job_id`` reads the job ``score_footage`` last started**, recorded
-  in the project (``score_job.json``), through ``nw.jobs.get_job`` — never by scanning
-  ``list_jobs``, which stops listing a run 30 days after it ends (nw#169) and returns 50 jobs
-  of every kind, so a project with more newer jobs reported "no scoring job found"
-  (muvid#264). The scan stays only for a project scored before the record existed.
+  in the project (``score_job.json``), through ``nw.jobs.get_job``, which answers for an
+  archived run. ``list_jobs`` alone stops listing a run 30 days after it ends (nw#169) and
+  returns 50 jobs of every kind, so an old or busy project read "no scoring job found"
+  (muvid#264). Its head is still a candidate, the newer of the two wins: it covers a
+  project scored before the record existed and a job a build without it enqueued.
+  nw#185 would make both the record and the scan nw's.
 """
 
 from __future__ import annotations
@@ -97,21 +99,26 @@ def score_footage(
     key_basis = f"{proj.song_hash()}:{align_fingerprint(aligns)}:{sorted(metrics or [])}:{hop_s}"
     idem = hashlib.sha256(f"{proj.root}:{_SCORE_KIND}:{key_basis}".encode()).hexdigest()
 
+    params = {
+        "hop_s": hop_s,
+        "metrics": metrics,
+        "estimated_usd": 0.0,
+        "output_kind": "compute",
+    }
+    # Recorded BEFORE the job starts, so a failed write refuses a job that never ran
+    # rather than starting one the status cannot name.
+    _remember_job(
+        proj, nw_jobs.job_id_for(proj, _SCORE_KIND, params, idempotency_key=idem)
+    )
     job = nw_jobs.enqueue(
         proj,
         _SCORE_KIND,
-        {
-            "hop_s": hop_s,
-            "metrics": metrics,
-            "estimated_usd": 0.0,
-            "output_kind": "compute",
-        },
+        params,
         dispatch=_score_dispatch(),
         idempotency_key=idem,
         label="Score footage",
         on_event=None,
     )
-    _remember_job(proj, job.job_id)
     return {"project_id": project_id, "job_id": job.job_id, "status": job.status}
 
 
@@ -121,13 +128,18 @@ def _remember_job(proj, job_id: str) -> None:
     atomic_write_text(proj.root / _LAST_JOB_FILE, json.dumps({"job_id": job_id}))
 
 
-def _remembered_job_id(proj) -> str | None:
-    """The id :func:`_remember_job` recorded, or ``None`` (absent or unreadable)."""
-    try:
-        job_id = json.loads((proj.root / _LAST_JOB_FILE).read_text()).get("job_id")
-    except (OSError, ValueError, AttributeError):
-        return None
-    return job_id if isinstance(job_id, str) and job_id else None
+def _latest_score_job(proj, nw_jobs):
+    """The newer of the job :func:`_remember_job` recorded and the newest scoring job
+    ``list_jobs`` still lists; ``None`` when neither exists."""
+    from muvid.footage.workspace import read_json_dict
+
+    remembered = (read_json_dict(proj.root / _LAST_JOB_FILE) or {}).get("job_id")
+    candidates = (
+        [nw_jobs.get_job(proj, remembered)] if isinstance(remembered, str) else []
+    )
+    candidates += nw_jobs.list_jobs(proj)
+    jobs = [j for j in candidates if j is not None and j.kind == _SCORE_KIND]
+    return max(jobs, key=lambda j: j.created_at or "", default=None)
 
 
 def footage_score_status(
@@ -135,9 +147,10 @@ def footage_score_status(
 ) -> dict:
     """The scoring job's status (bounded long-poll). Free.
 
-    Pass the ``job_id`` from ``score_footage`` (or omit for the one it last started). With
-    ``wait_s`` > 0 this blocks up to ~``wait_s`` seconds (capped), returning early on a
-    terminal state — so an agent needs ~1 poll, not many.
+    Pass the ``job_id`` from ``score_footage`` (or omit for the one it last started — which
+    may predate a later ``set_song``, which drops the scores that job made).
+    With ``wait_s`` > 0 this blocks up to ~``wait_s`` seconds (capped), returning early on
+    a terminal state — so an agent needs ~1 poll, not many.
     """
     try:
         from nw import jobs as nw_jobs
@@ -150,11 +163,7 @@ def footage_score_status(
     def _current():
         if job_id:
             return nw_jobs.get_job(proj, job_id)
-        remembered = _remembered_job_id(proj)
-        if remembered and (job := nw_jobs.get_job(proj, remembered)):
-            return job
-        jobs = [j for j in nw_jobs.list_jobs(proj) if j.kind == _SCORE_KIND]
-        return jobs[0] if jobs else None
+        return _latest_score_job(proj, nw_jobs)
 
     job = _current()
     terminal = {"succeeded", "failed", "cancelled"}

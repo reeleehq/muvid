@@ -7,6 +7,7 @@ score_footage → footage_score_status (long-poll) → footage_scores → assemb
 from __future__ import annotations
 
 import importlib.util
+import json
 import shutil
 import subprocess
 
@@ -208,7 +209,7 @@ def test_weighted_assemble_without_scores_is_a_clean_error(tmp_path, monkeypatch
 def test_status_without_job_id_reads_the_job_score_footage_started(
     tmp_path, monkeypatch
 ):
-    """muvid#264: the status reaches the last scoring job through ``get_job`` even once
+    """muvid#264: the status reaches the last scoring job through ``get_job`` once
     ``list_jobs`` stops listing it — nw#169 archives a run 30 days after it ends, and
     ``list_jobs`` returns 50 jobs of every kind before the kind filter runs."""
     pytest.importorskip("fastmcp")
@@ -225,21 +226,40 @@ def test_status_without_job_id_reads_the_job_score_footage_started(
     monkeypatch.setattr(service, "run_scoring", lambda fp, **kw: {"scored": True})
     monkeypatch.setattr(MusicVideoFootageProject, "song_hash", lambda self: "h")
     proj = FootageWorkspace.for_email("u@x.com").create_project("p")
+    record = proj.root / st._LAST_JOB_FILE
+
+    def finished(job_id):
+        return st.footage_score_status("p", job_id=job_id, wait_s=25)["status"]
 
     with use_email("u@x.com"):
-        started = st.score_footage("p")
-        done = st.footage_score_status("p", job_id=started["job_id"], wait_s=25)
-        assert done["status"] == "succeeded", done
+        first = st.score_footage("p")["job_id"]
+        assert finished(first) == "succeeded"
+        newer = st.score_footage("p", hop_s=0.2)["job_id"]
+        assert newer != first and finished(newer) == "succeeded"
+        other = nw_jobs.enqueue(
+            proj, "other.kind", {}, dispatch={"other.kind": lambda *a, **k: {}}
+        ).job_id
 
-        listed = nw_jobs.list_jobs
-        monkeypatch.setattr(nw_jobs, "list_jobs", lambda *a, **k: [])
-        assert st.footage_score_status("p")["job_id"] == started["job_id"]
+        # The record and the scan's head are both candidates; the newer scoring job
+        # wins, so a racing or older writer that recorded `first` does not hide `newer`,
+        # and a record naming another kind's job (or garbage, or nothing) is passed over.
+        for text in (
+            json.dumps({"job_id": first}),
+            json.dumps({"job_id": other}),
+            "not json",
+            "[]",
+            None,
+        ):
+            record.unlink(missing_ok=True)
+            if text is not None:
+                record.write_text(text)
+            assert st.footage_score_status("p")["job_id"] == newer, text
 
-        # A record that is unreadable, or names a job nw no longer knows, falls back
-        # to the scan — which is all a project scored before the record existed has.
-        monkeypatch.setattr(nw_jobs, "list_jobs", listed)
-        for text in ("not json", '{"job_id": "gone"}', "[]"):
-            (proj.root / st._LAST_JOB_FILE).write_text(text)
-            assert st.footage_score_status("p")["job_id"] == started["job_id"]
-        (proj.root / st._LAST_JOB_FILE).unlink()
-        assert st.footage_score_status("p")["job_id"] == started["job_id"]
+        # Archived for real: past retention, list_jobs no longer lists it — the
+        # record still reaches it through get_job.
+        record.write_text(json.dumps({"job_id": newer}))
+        nw_jobs.archive_finished_runs(
+            proj, config=nw_jobs.JobsConfig(index_retention_s=0, heartbeat_stale_s=0)
+        )
+        assert not [j for j in nw_jobs.list_jobs(proj) if j.kind == st._SCORE_KIND]
+        assert st.footage_score_status("p")["job_id"] == newer

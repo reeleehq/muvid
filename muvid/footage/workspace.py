@@ -919,6 +919,17 @@ def atomic_write_text(path: Path, text: str) -> None:
     atomic_write_bytes(path, text.encode("utf-8"))
 
 
+def read_json_dict(path) -> "dict | None":
+    """The JSON object at ``path``, or ``None`` when it is absent, unreadable or not an
+    object — the read side of :func:`atomic_write_text` for a record a reader may
+    find missing."""
+    try:
+        data = json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def init_footage_project(
     root: Path,
     *,
