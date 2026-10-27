@@ -67,7 +67,11 @@ def _fake_project(tmp_path, monkeypatch, *, with_scores=False):
     if with_scores:
         import numpy as np
 
-        from muvid.footage.scoring.grid import ScoreTrack, save_scores
+        from muvid.footage.scoring.grid import (
+            ScoreTrack,
+            align_fingerprint,
+            save_scores,
+        )
 
         n = 40
         rng = np.random.default_rng(0)
@@ -92,6 +96,9 @@ def _fake_project(tmp_path, monkeypatch, *, with_scores=False):
             n=n,
             metrics=["quality"],
             song_hash=SONG_HASH,
+            # current for THIS project: every reader of the tensor now asks (muvid#187),
+            # and a manifest with no alignment key was always stale on it
+            align_fingerprint=align_fingerprint(proj.load_alignments()),
         )
     return proj
 
