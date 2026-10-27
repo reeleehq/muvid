@@ -309,7 +309,7 @@ def stream_pcm(
             proc.kill()
             proc.wait()
         reader.join(timeout=5)
-    if timed_out.is_set():
+    if timed_out.is_set() and returncode != 0:  # fired after a clean finish: no
         raise FfmpegError(
             f"ffmpeg timed out after {timeout:g}s decoding {audio!s} "
             f"(bound by ${FFMPEG_TIMEOUT_ENV_VAR}).\n\ncommand: {shlex.join(cmd)}"

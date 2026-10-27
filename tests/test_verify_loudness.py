@@ -1,5 +1,6 @@
-"""``verify_video``'s loudness meter (muvid#219): ``mixing.loudness.file_loudness``,
-metered as it streams, in place of ffmpeg's ``loudnorm`` analysis pass."""
+"""``verify_video``'s loudness meter (muvid#219): muvid's bounded ``stream_pcm`` decode
+metered as it streams by ``mixing.loudness.stream_loudness``, in place of ffmpeg's
+``loudnorm`` analysis pass."""
 
 import subprocess
 
@@ -135,6 +136,44 @@ def test_the_decode_is_bounded_by_the_ffmpeg_timeout(tmp_path, monkeypatch):
     os.mkfifo(fifo)  # nobody writes: ffmpeg blocks opening it
     monkeypatch.setenv("MUVID_FFMPEG_TIMEOUT_S", "1")
     start = time.monotonic()
-    with pytest.raises(FfmpegError, match="timed out"):
-        list(stream_pcm(fifo, sample_rate=48000, channels=2))
+    outcome = _within(10, lambda: list(stream_pcm(fifo, sample_rate=48000, channels=2)))
+    assert isinstance(outcome, FfmpegError) and "timed out" in str(outcome)
     assert time.monotonic() - start < 10
+
+
+def _within(seconds, fn):
+    """``fn()``'s result or the exception it raised, run in a daemon thread — a hang
+    fails the test after ``seconds`` instead of hanging the suite."""
+    import threading
+
+    out = []
+
+    def run():
+        try:
+            out.append(fn())
+        except BaseException as e:  # noqa: BLE001 — handed back to the test to assert
+            out.append(e)
+
+    worker = threading.Thread(target=run, daemon=True)
+    worker.start()
+    worker.join(seconds)
+    assert out, f"still running after {seconds}s: a hang"
+    return out[0]
+
+
+@needs_ffmpeg
+def test_a_decode_that_floods_stderr_does_not_deadlock(tmp_path):
+    """The #219 review: a corrupt file makes ffmpeg write far more than a pipe holds
+    to stderr; unread, that stalls ffmpeg and the read with it. stream_pcm drains it."""
+    from muvid.visualize.ffmpeg import FfmpegError, stream_pcm
+
+    long = _tone(tmp_path, channels=2, name="long.m4a", seconds=600)
+    data = bytearray(long.read_bytes())
+    rng = __import__("random").Random(219)
+    for _ in range(60_000):  # corrupt the audio frames, not the header
+        data[rng.randrange(len(data) // 10, len(data))] = rng.randrange(256)
+    long.write_bytes(bytes(data))
+    outcome = _within(
+        60, lambda: sum(len(c) for c in stream_pcm(long, sample_rate=48000, channels=2))
+    )
+    assert isinstance(outcome, (int, FfmpegError))  # finished, either way — no hang
