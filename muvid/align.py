@@ -30,6 +30,7 @@ can be edited by other tools.
 
 from __future__ import annotations
 
+import math
 import os
 import re
 from dataclasses import dataclass
@@ -211,18 +212,49 @@ def align_lyrics(
 # --- aligner: scribe-greedy ----------------------------------------------
 
 
+def _words_per_s_from_env(name: str, default: float) -> float:
+    """A positive words-a-second rate from env var ``name``, else ``default``."""
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        value = float("nan")
+    if not (math.isfinite(value) and value > 0):
+        raise ValueError(f"{name} must be a positive number of words a second: {raw!r}")
+    return value
+
+
+#: The fastest a lyric is sung, in words a second — the bound that tells a late match
+#: from a right one without ground truth (muvid#101). A matched word at ``t`` that
+#: leaves more lyric after it than the rest of the song could hold at this rate is
+#: refused: the lyric left CANNOT be sung in the time left, so the match is wrong,
+#: however good the token. On the issue's song (212 tokens, 77.7 s) the first line
+#: matched at 60.26 s would leave 208 words for 17.4 s, 12 a second. Eight is above
+#: the fastest rap verses (about 6.5 words a second); for a faster lyric, pass
+#: ``max_words_per_s=None`` or set the env var.
+MAX_SUNG_WORDS_PER_S = _words_per_s_from_env("MUVID_ALIGN_MAX_WORDS_PER_S", 8.0)
+
+
 def align_scribe_greedy(
     lyrics: LyricsDoc,
     transcript: dict,
     *,
     duration_s: float = 0.0,
     lookahead: int = 6,
+    max_words_per_s: Optional[float] = MAX_SUNG_WORDS_PER_S,
 ) -> AlignmentResult:
     """Greedy token-match against a word-timestamped transcript.
 
     Cheap, network-only (assumes the transcript came from Scribe or
     similar). Tolerates 1-character mishears between sung and written
-    text. ``duration_s`` is used only when extrapolating end times.
+    text. ``duration_s`` is used when extrapolating end times and, when known,
+    to refuse the matches the song has no time for (:func:`drop_infeasible_matches`,
+    ``max_words_per_s=None`` turns it off) — AFTER the walk, which it leaves
+    untouched (muvid#101). A refused word's line, if it is left with none, is
+    interpolated and reads as not measured; consecutive such lines share the span
+    between their neighbours' anchors.
     """
     transcript_words = words_from_transcript(transcript)
     transcript_tokens = [
@@ -269,6 +301,14 @@ def align_scribe_greedy(
             )
         )
         cursor = match_at + 1
+
+    if duration_s > 0 and max_words_per_s is not None:
+        word_alignments_per_line = drop_infeasible_matches(
+            word_alignments_per_line,
+            words_after=_words_after(flat_lyric_tokens),
+            duration_s=duration_s,
+            max_words_per_s=max_words_per_s,
+        )
 
     # Now reduce to line / section alignments, falling back to anchors and
     # interpolation for empty lines.
@@ -321,6 +361,56 @@ def align_scribe_greedy(
             )
         )
     return AlignmentResult(sections=tuple(section_alignments))
+
+
+def _words_after(flat_lyric_tokens) -> "dict[tuple[int, int], int]":
+    """``{(line_index, token_index): lyric words after it}``, empty tokens not counted."""
+    out: dict[tuple[int, int], int] = {}
+    left = sum(1 for *_, tok in flat_lyric_tokens if tok)
+    for line_idx, tok_idx, tok in flat_lyric_tokens:
+        if tok:
+            left -= 1
+            out[(line_idx, tok_idx)] = left
+    return out
+
+
+def drop_infeasible_matches(
+    words_by_line: "dict[int, list[WordAlignment]]",
+    *,
+    words_after: "dict[tuple[int, int], int]",
+    duration_s: float,
+    max_words_per_s: float,
+) -> "dict[int, list[WordAlignment]]":
+    """The matched words the song has time for: a word at ``t`` whose
+    ``words_after`` lyric words cannot be sung in ``duration_s - t`` at
+    ``max_words_per_s`` is dropped (muvid#101) — the lyric left cannot fit, so the
+    match is wrong, however good the token.
+
+    A pass over an aligner's FINISHED matches, not a step of its walk: refusing
+    inside the walk left the cursor behind, so the next token re-matched an early
+    word that belonged to another, and the first match it let through was by
+    construction the least plausible one (the #101 review: 31 wrong measured words
+    instead of 14). Here a match is only ever removed, never moved. Assumes the
+    lyric is what the audio contains: an excerpt loses its anchors near the end,
+    which then read as not measured.
+
+    >>> def at(t):
+    ...     return {0: [WordAlignment(line_index=0, token_index=0, text="la",
+    ...                               start_s=t, end_s=t + 0.1)]}
+    >>> kw = dict(words_after={(0, 0): 40}, duration_s=10.0, max_words_per_s=8.0)
+    >>> len(drop_infeasible_matches(at(1.0), **kw)), len(drop_infeasible_matches(at(6.0), **kw))
+    (1, 0)
+    """
+    if not (math.isfinite(max_words_per_s) and max_words_per_s > 0):
+        raise ValueError(f"max_words_per_s must be positive, got {max_words_per_s!r}")
+
+    def fits(w: WordAlignment) -> bool:
+        left = words_after.get((w.line_index, w.token_index), 0)
+        time_left = duration_s - w.start_s
+        return left == 0 or (time_left > 0 and left / time_left <= max_words_per_s)
+
+    kept = {line: [w for w in ws if fits(w)] for line, ws in words_by_line.items()}
+    return {line: ws for line, ws in kept.items() if ws}
 
 
 def _close_enough(a: str, b: str) -> bool:
@@ -490,6 +580,7 @@ def align_whisperx_lite(
     audio_path: Optional[str | Path] = None,
     model_size: str = WHISPERX_LITE_MODEL_SIZE,
     lookahead: int = 6,
+    max_words_per_s: Optional[float] = MAX_SUNG_WORDS_PER_S,
 ) -> AlignmentResult:
     """Local-only aligner that re-uses ``faster-whisper`` (no API).
 
@@ -505,10 +596,11 @@ def align_whisperx_lite(
     overridable via ``MUVID_WHISPERX_LITE_MODEL_SIZE``) rather than
     faster-whisper's own ``"tiny"`` default — see muvid#101.
     """
+    greedy = dict(
+        duration_s=duration_s, lookahead=lookahead, max_words_per_s=max_words_per_s
+    )
     if audio_path is None:
-        return align_scribe_greedy(
-            lyrics, transcript, duration_s=duration_s, lookahead=lookahead
-        )
+        return align_scribe_greedy(lyrics, transcript, **greedy)
 
     try:
         from faster_whisper import WhisperModel  # type: ignore
@@ -532,9 +624,7 @@ def align_whisperx_lite(
                 }
             )
     transcript = {"words": words}
-    return align_scribe_greedy(
-        lyrics, transcript, duration_s=duration_s, lookahead=lookahead
-    )
+    return align_scribe_greedy(lyrics, transcript, **greedy)
 
 
 # --- aligner: stars (singing-grade — stub) --------------------------------
