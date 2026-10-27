@@ -216,310 +216,336 @@
 </span><span id="line-29"><span class="kn">import</span><span class="w"> </span><span class="nn">inspect</span>
 </span><span id="line-30"><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Sequence</span>
 </span><span id="line-31">
-</span><span id="line-32"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">EdlEntry</span><span class="p">,</span> <span class="n">FootageAlignment</span>
-</span><span id="line-33">
-</span><span id="line-34"><span class="c1">#: A strategy: alignments + song duration → an EDL (built-ins ignore song_duration but it</span>
-</span><span id="line-35"><span class="c1">#: is passed so a strategy MAY reason about the full timeline).</span>
-</span><span id="line-36"><span class="c1">#:</span>
-</span><span id="line-37"><span class="c1">#: **Score-driven opt-in (progressive disclosure).** A strategy that needs the score tensor</span>
-</span><span id="line-38"><span class="c1">#: + beats declares a keyword-only ``context`` parameter (or ``**kwargs``); :func:`select_edl`</span>
-</span><span id="line-39"><span class="c1">#: then passes a ``SelectionContext`` (defined in :mod:`muvid.footage.select_score`) as</span>
-</span><span id="line-40"><span class="c1">#: ``context=``. The built-ins take only ``(alignments, song_duration)`` and never see it —</span>
-</span><span id="line-41"><span class="c1">#: the exact same dispatch idiom as ``nw.jobs._call_dispatch``. The magic parameter name is</span>
-</span><span id="line-42"><span class="c1">#: literally ``context``.</span>
-</span><span id="line-43"><span class="n">SelectionStrategy</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">"list[EdlEntry]"</span><span class="p">]</span>
-</span><span id="line-44">
-</span><span id="line-45"><span class="n">_STRATEGIES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SelectionStrategy</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-46"><span class="c1">#: Lazily-loaded strategies: slug -&gt; ``"module:func"``. Resolved (imported) only on first</span>
-</span><span id="line-47"><span class="c1">#: use, so listing/registering the score-driven ``weighted`` strategy never pulls numpy onto</span>
-</span><span id="line-48"><span class="c1">#: the import-light path (thorwhalen/muvid#13; keeps ``import muvid.footage`` cv2/numpy-free).</span>
-</span><span id="line-49"><span class="n">_LAZY_STRATEGIES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-50"><span class="c1">#: Each strategy's name in words — what a screen labels it with and what ``explain``</span>
-</span><span id="line-51"><span class="c1">#: says when one cut a video (muvid#217), so the two share one wording.</span>
-</span><span id="line-52"><span class="n">_TITLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-53"><span class="n">_EPS</span> <span class="o">=</span> <span class="mf">1e-6</span>
-</span><span id="line-54">
-</span><span id="line-55">
+</span><span id="line-32"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-33">    <span class="n">EdlEntry</span><span class="p">,</span>
+</span><span id="line-34">    <span class="n">FootageAlignment</span><span class="p">,</span>
+</span><span id="line-35">    <span class="n">selection_unverified_stretches</span><span class="p">,</span>
+</span><span id="line-36"><span class="p">)</span>
+</span><span id="line-37">
+</span><span id="line-38"><span class="c1">#: A strategy: alignments + song duration → an EDL (built-ins ignore song_duration but it</span>
+</span><span id="line-39"><span class="c1">#: is passed so a strategy MAY reason about the full timeline).</span>
+</span><span id="line-40"><span class="c1">#:</span>
+</span><span id="line-41"><span class="c1">#: **Score-driven opt-in (progressive disclosure).** A strategy that needs the score tensor</span>
+</span><span id="line-42"><span class="c1">#: + beats declares a keyword-only ``context`` parameter (or ``**kwargs``); :func:`select_edl`</span>
+</span><span id="line-43"><span class="c1">#: then passes a ``SelectionContext`` (defined in :mod:`muvid.footage.select_score`) as</span>
+</span><span id="line-44"><span class="c1">#: ``context=``. The built-ins take only ``(alignments, song_duration)`` and never see it —</span>
+</span><span id="line-45"><span class="c1">#: the exact same dispatch idiom as ``nw.jobs._call_dispatch``. The magic parameter name is</span>
+</span><span id="line-46"><span class="c1">#: literally ``context``.</span>
+</span><span id="line-47"><span class="n">SelectionStrategy</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">"list[EdlEntry]"</span><span class="p">]</span>
+</span><span id="line-48">
+</span><span id="line-49"><span class="n">_STRATEGIES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">SelectionStrategy</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-50"><span class="c1">#: Lazily-loaded strategies: slug -&gt; ``"module:func"``. Resolved (imported) only on first</span>
+</span><span id="line-51"><span class="c1">#: use, so listing/registering the score-driven ``weighted`` strategy never pulls numpy onto</span>
+</span><span id="line-52"><span class="c1">#: the import-light path (thorwhalen/muvid#13; keeps ``import muvid.footage`` cv2/numpy-free).</span>
+</span><span id="line-53"><span class="n">_LAZY_STRATEGIES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-54"><span class="c1">#: Each strategy's name in words — what a screen labels it with and what ``explain``</span>
+</span><span id="line-55"><span class="c1">#: says when one cut a video (muvid#217), so the two share one wording.</span>
+</span><span id="line-56"><span class="n">_TITLES</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-57"><span class="n">_EPS</span> <span class="o">=</span> <span class="mf">1e-6</span>
+</span><span id="line-58">
+</span><span id="line-59">
 <div class="viewcode-block" id="register_selection_strategy">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.register_selection_strategy">[docs]</a>
-</span><span id="line-56"><span class="k">def</span><span class="w"> </span><span class="nf">register_selection_strategy</span><span class="p">(</span>
-</span><span id="line-57">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">SelectionStrategy</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-58"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SelectionStrategy</span><span class="p">:</span>
-</span><span id="line-59"><span class="w">    </span><span class="sd">"""Register a selection strategy under ``slug`` (returns it, for inline use).</span>
-</span><span id="line-60">
-</span><span id="line-61"><span class="sd">    ``title`` is its name in words (default: from the slug, see :func:`strategy_title`).</span>
-</span><span id="line-62"><span class="sd">    """</span>
-</span><span id="line-63">    <span class="n">_check_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
-</span><span id="line-64">    <span class="n">_check_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
-</span><span id="line-65">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
-</span><span id="line-66">        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"a selection strategy must be callable"</span><span class="p">)</span>
-</span><span id="line-67">    <span class="n">_STRATEGIES</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span>
-</span><span id="line-68">    <span class="n">_set_title</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
-</span><span id="line-69">    <span class="k">return</span> <span class="n">fn</span></div>
+</span><span id="line-60"><span class="k">def</span><span class="w"> </span><span class="nf">register_selection_strategy</span><span class="p">(</span>
+</span><span id="line-61">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span> <span class="n">SelectionStrategy</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-62"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SelectionStrategy</span><span class="p">:</span>
+</span><span id="line-63"><span class="w">    </span><span class="sd">"""Register a selection strategy under ``slug`` (returns it, for inline use).</span>
+</span><span id="line-64">
+</span><span id="line-65"><span class="sd">    ``title`` is its name in words (default: from the slug, see :func:`strategy_title`).</span>
+</span><span id="line-66"><span class="sd">    """</span>
+</span><span id="line-67">    <span class="n">_check_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
+</span><span id="line-68">    <span class="n">_check_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+</span><span id="line-69">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">fn</span><span class="p">):</span>
+</span><span id="line-70">        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">"a selection strategy must be callable"</span><span class="p">)</span>
+</span><span id="line-71">    <span class="n">_STRATEGIES</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span>
+</span><span id="line-72">    <span class="n">_set_title</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+</span><span id="line-73">    <span class="k">return</span> <span class="n">fn</span></div>
 
-</span><span id="line-70">
-</span><span id="line-71">
+</span><span id="line-74">
+</span><span id="line-75">
 <div class="viewcode-block" id="register_lazy_strategy">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.register_lazy_strategy">[docs]</a>
-</span><span id="line-72"><span class="k">def</span><span class="w"> </span><span class="nf">register_lazy_strategy</span><span class="p">(</span>
-</span><span id="line-73">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target_ref</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-74"><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-75"><span class="w">    </span><span class="sd">"""Register a strategy by a ``"module:func"`` reference, imported only on first use.</span>
-</span><span id="line-76">
-</span><span id="line-77"><span class="sd">    Lets a heavy strategy (numpy DP, cv2, …) be *listed* and *named* without importing its</span>
-</span><span id="line-78"><span class="sd">    module at registration time — the import happens in :func:`resolve_strategy`.</span>
-</span><span id="line-79"><span class="sd">    """</span>
-</span><span id="line-80">    <span class="n">_check_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
-</span><span id="line-81">    <span class="n">_check_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
-</span><span id="line-82">    <span class="k">if</span> <span class="s2">":"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">target_ref</span><span class="p">:</span>
-</span><span id="line-83">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"target_ref must be 'module:func', got </span><span class="si">{</span><span class="n">target_ref</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-84">    <span class="n">_LAZY_STRATEGIES</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_ref</span>
-</span><span id="line-85">    <span class="n">_set_title</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span></div>
+</span><span id="line-76"><span class="k">def</span><span class="w"> </span><span class="nf">register_lazy_strategy</span><span class="p">(</span>
+</span><span id="line-77">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">target_ref</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-78"><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-79"><span class="w">    </span><span class="sd">"""Register a strategy by a ``"module:func"`` reference, imported only on first use.</span>
+</span><span id="line-80">
+</span><span id="line-81"><span class="sd">    Lets a heavy strategy (numpy DP, cv2, …) be *listed* and *named* without importing its</span>
+</span><span id="line-82"><span class="sd">    module at registration time — the import happens in :func:`resolve_strategy`.</span>
+</span><span id="line-83"><span class="sd">    """</span>
+</span><span id="line-84">    <span class="n">_check_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span>
+</span><span id="line-85">    <span class="n">_check_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+</span><span id="line-86">    <span class="k">if</span> <span class="s2">":"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">target_ref</span><span class="p">:</span>
+</span><span id="line-87">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"target_ref must be 'module:func', got </span><span class="si">{</span><span class="n">target_ref</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-88">    <span class="n">_LAZY_STRATEGIES</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">target_ref</span>
+</span><span id="line-89">    <span class="n">_set_title</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span></div>
 
-</span><span id="line-86">
-</span><span id="line-87">
-</span><span id="line-88"><span class="k">def</span><span class="w"> </span><span class="nf">_check_title</span><span class="p">(</span><span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-89"><span class="w">    </span><span class="sd">"""Refuse a blank title BEFORE anything is registered, so a refused call changes</span>
-</span><span id="line-90"><span class="sd">    nothing."""</span>
-</span><span id="line-91">    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">title</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
-</span><span id="line-92">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"a strategy title must be non-empty words: </span><span class="si">{</span><span class="n">title</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-93">
-</span><span id="line-94">
-</span><span id="line-95"><span class="k">def</span><span class="w"> </span><span class="nf">_set_title</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-96">    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-97">        <span class="n">_TITLES</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">title</span>
-</span><span id="line-98">    <span class="k">else</span><span class="p">:</span>  <span class="c1"># a re-registration without a title must not keep the old one's words</span>
-</span><span id="line-99">        <span class="n">_TITLES</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-100">
-</span><span id="line-101">
+</span><span id="line-90">
+</span><span id="line-91">
+</span><span id="line-92"><span class="k">def</span><span class="w"> </span><span class="nf">_check_title</span><span class="p">(</span><span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-93"><span class="w">    </span><span class="sd">"""Refuse a blank title BEFORE anything is registered, so a refused call changes</span>
+</span><span id="line-94"><span class="sd">    nothing."""</span>
+</span><span id="line-95">    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">title</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
+</span><span id="line-96">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"a strategy title must be non-empty words: </span><span class="si">{</span><span class="n">title</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-97">
+</span><span id="line-98">
+</span><span id="line-99"><span class="k">def</span><span class="w"> </span><span class="nf">_set_title</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-100">    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-101">        <span class="n">_TITLES</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="n">title</span>
+</span><span id="line-102">    <span class="k">else</span><span class="p">:</span>  <span class="c1"># a re-registration without a title must not keep the old one's words</span>
+</span><span id="line-103">        <span class="n">_TITLES</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-104">
+</span><span id="line-105">
 <div class="viewcode-block" id="strategy_title">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.strategy_title">[docs]</a>
-</span><span id="line-102"><span class="k">def</span><span class="w"> </span><span class="nf">strategy_title</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-103"><span class="w">    </span><span class="sd">"""``slug``'s name in words: its registered ``title``, else the slug made readable</span>
-</span><span id="line-104"><span class="sd">    (``"my_rule"`` -&gt; ``"My rule"``), so every listed strategy has one."""</span>
-</span><span id="line-105">    <span class="k">return</span> <span class="n">_TITLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span> <span class="ow">or</span> <span class="n">slug</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span> <span class="ow">or</span> <span class="n">slug</span></div>
+</span><span id="line-106"><span class="k">def</span><span class="w"> </span><span class="nf">strategy_title</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-107"><span class="w">    </span><span class="sd">"""``slug``'s name in words: its registered ``title``, else the slug made readable</span>
+</span><span id="line-108"><span class="sd">    (``"my_rule"`` -&gt; ``"My rule"``), so every listed strategy has one."""</span>
+</span><span id="line-109">    <span class="k">return</span> <span class="n">_TITLES</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">slug</span><span class="p">)</span> <span class="ow">or</span> <span class="n">slug</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">"_"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_"</span><span class="p">,</span> <span class="s2">" "</span><span class="p">)</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span> <span class="ow">or</span> <span class="n">slug</span></div>
 
-</span><span id="line-106">
-</span><span id="line-107">
-</span><span id="line-108"><span class="k">def</span><span class="w"> </span><span class="nf">_check_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-109">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">slug</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">isspace</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">slug</span><span class="p">):</span>
-</span><span id="line-110">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-111">            <span class="sa">f</span><span class="s2">"strategy slug must be a non-empty whitespace-free string: </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">"</span>
-</span><span id="line-112">        <span class="p">)</span>
-</span><span id="line-113">
-</span><span id="line-114">
+</span><span id="line-110">
+</span><span id="line-111">
+</span><span id="line-112"><span class="k">def</span><span class="w"> </span><span class="nf">_check_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-113">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">slug</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span><span class="o">.</span><span class="n">isspace</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">slug</span><span class="p">):</span>
+</span><span id="line-114">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-115">            <span class="sa">f</span><span class="s2">"strategy slug must be a non-empty whitespace-free string: </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2">"</span>
+</span><span id="line-116">        <span class="p">)</span>
+</span><span id="line-117">
+</span><span id="line-118">
 <div class="viewcode-block" id="list_strategies">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.list_strategies">[docs]</a>
-</span><span id="line-115"><span class="k">def</span><span class="w"> </span><span class="nf">list_strategies</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-116"><span class="w">    </span><span class="sd">"""All strategy slugs (eager + lazy), sorted. Lazy slugs are NOT imported to list them."""</span>
-</span><span id="line-117">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">_STRATEGIES</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_LAZY_STRATEGIES</span><span class="p">))</span></div>
+</span><span id="line-119"><span class="k">def</span><span class="w"> </span><span class="nf">list_strategies</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-120"><span class="w">    </span><span class="sd">"""All strategy slugs (eager + lazy), sorted. Lazy slugs are NOT imported to list them."""</span>
+</span><span id="line-121">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">_STRATEGIES</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">_LAZY_STRATEGIES</span><span class="p">))</span></div>
 
-</span><span id="line-118">
-</span><span id="line-119">
+</span><span id="line-122">
+</span><span id="line-123">
 <div class="viewcode-block" id="resolve_strategy">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.resolve_strategy">[docs]</a>
-</span><span id="line-120"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_strategy</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="s2">"str | SelectionStrategy"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SelectionStrategy</span><span class="p">:</span>
-</span><span id="line-121"><span class="w">    </span><span class="sd">"""Resolve a strategy name OR a bare callable to a :data:`SelectionStrategy`.</span>
-</span><span id="line-122">
-</span><span id="line-123"><span class="sd">    A lazy slug is imported here (and cached into the eager table) on first resolution.</span>
-</span><span id="line-124"><span class="sd">    """</span>
-</span><span id="line-125">    <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">strategy</span><span class="p">):</span>
-</span><span id="line-126">        <span class="k">return</span> <span class="n">strategy</span>
-</span><span id="line-127">    <span class="k">if</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="n">_STRATEGIES</span><span class="p">:</span>
-</span><span id="line-128">        <span class="k">return</span> <span class="n">_STRATEGIES</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span>
-</span><span id="line-129">    <span class="k">if</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="n">_LAZY_STRATEGIES</span><span class="p">:</span>
-</span><span id="line-130">        <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func_name</span> <span class="o">=</span> <span class="n">_LAZY_STRATEGIES</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
-</span><span id="line-131">        <span class="n">fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">func_name</span><span class="p">)</span>
-</span><span id="line-132">        <span class="n">_STRATEGIES</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span>  <span class="c1"># cache the resolved callable</span>
-</span><span id="line-133">        <span class="k">return</span> <span class="n">fn</span>
-</span><span id="line-134">    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown strategy </span><span class="si">{</span><span class="n">strategy</span><span class="si">!r}</span><span class="s2">; registered: </span><span class="si">{</span><span class="n">list_strategies</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
+</span><span id="line-124"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_strategy</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="s2">"str | SelectionStrategy"</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SelectionStrategy</span><span class="p">:</span>
+</span><span id="line-125"><span class="w">    </span><span class="sd">"""Resolve a strategy name OR a bare callable to a :data:`SelectionStrategy`.</span>
+</span><span id="line-126">
+</span><span id="line-127"><span class="sd">    A lazy slug is imported here (and cached into the eager table) on first resolution.</span>
+</span><span id="line-128"><span class="sd">    """</span>
+</span><span id="line-129">    <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">strategy</span><span class="p">):</span>
+</span><span id="line-130">        <span class="k">return</span> <span class="n">strategy</span>
+</span><span id="line-131">    <span class="k">if</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="n">_STRATEGIES</span><span class="p">:</span>
+</span><span id="line-132">        <span class="k">return</span> <span class="n">_STRATEGIES</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span>
+</span><span id="line-133">    <span class="k">if</span> <span class="n">strategy</span> <span class="ow">in</span> <span class="n">_LAZY_STRATEGIES</span><span class="p">:</span>
+</span><span id="line-134">        <span class="n">module_name</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">func_name</span> <span class="o">=</span> <span class="n">_LAZY_STRATEGIES</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-135">        <span class="n">fn</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="n">module_name</span><span class="p">),</span> <span class="n">func_name</span><span class="p">)</span>
+</span><span id="line-136">        <span class="n">_STRATEGIES</span><span class="p">[</span><span class="n">strategy</span><span class="p">]</span> <span class="o">=</span> <span class="n">fn</span>  <span class="c1"># cache the resolved callable</span>
+</span><span id="line-137">        <span class="k">return</span> <span class="n">fn</span>
+</span><span id="line-138">    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown strategy </span><span class="si">{</span><span class="n">strategy</span><span class="si">!r}</span><span class="s2">; registered: </span><span class="si">{</span><span class="n">list_strategies</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span></div>
 
-</span><span id="line-135">
-</span><span id="line-136">
-</span><span id="line-137"><span class="k">def</span><span class="w"> </span><span class="nf">_call_strategy</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
-</span><span id="line-138"><span class="w">    </span><span class="sd">"""Call ``fn``, passing ``context=`` only if it declares ``context`` or ``**kwargs``.</span>
 </span><span id="line-139">
-</span><span id="line-140"><span class="sd">    Mirrors ``nw.jobs._call_dispatch`` exactly (try/except signature; VAR_KEYWORD → pass;</span>
-</span><span id="line-141"><span class="sd">    else pass only when a ``context`` parameter is present) so a 2-arg built-in is untouched</span>
-</span><span id="line-142"><span class="sd">    and a ``def s(a, d, **kw)`` strategy still receives the context.</span>
-</span><span id="line-143"><span class="sd">    """</span>
-</span><span id="line-144">    <span class="n">accepts_context</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="line-145">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-146">        <span class="n">params</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-</span><span id="line-147">        <span class="n">accepts_context</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="ow">is</span> <span class="n">p</span><span class="o">.</span><span class="n">VAR_KEYWORD</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
-</span><span id="line-148">            <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"context"</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span>
-</span><span id="line-149">        <span class="p">)</span>
-</span><span id="line-150">    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
-</span><span id="line-151">        <span class="n">accepts_context</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="line-152">    <span class="k">if</span> <span class="n">accepts_context</span><span class="p">:</span>
-</span><span id="line-153">        <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
-</span><span id="line-154">    <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span>
-</span><span id="line-155">
-</span><span id="line-156">
+</span><span id="line-140">
+</span><span id="line-141"><span class="k">def</span><span class="w"> </span><span class="nf">_call_strategy</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+</span><span id="line-142"><span class="w">    </span><span class="sd">"""Call ``fn``, passing ``context=`` only if it declares ``context`` or ``**kwargs``.</span>
+</span><span id="line-143">
+</span><span id="line-144"><span class="sd">    Mirrors ``nw.jobs._call_dispatch`` exactly (try/except signature; VAR_KEYWORD → pass;</span>
+</span><span id="line-145"><span class="sd">    else pass only when a ``context`` parameter is present) so a 2-arg built-in is untouched</span>
+</span><span id="line-146"><span class="sd">    and a ``def s(a, d, **kw)`` strategy still receives the context.</span>
+</span><span id="line-147"><span class="sd">    """</span>
+</span><span id="line-148">    <span class="n">accepts_context</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-149">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-150">        <span class="n">params</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">fn</span><span class="p">)</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+</span><span id="line-151">        <span class="n">accepts_context</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">kind</span> <span class="ow">is</span> <span class="n">p</span><span class="o">.</span><span class="n">VAR_KEYWORD</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span>
+</span><span id="line-152">            <span class="n">p</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"context"</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">params</span>
+</span><span id="line-153">        <span class="p">)</span>
+</span><span id="line-154">    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+</span><span id="line-155">        <span class="n">accepts_context</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-156">    <span class="k">if</span> <span class="n">accepts_context</span><span class="p">:</span>
+</span><span id="line-157">        <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="n">context</span><span class="p">)</span>
+</span><span id="line-158">    <span class="k">return</span> <span class="n">fn</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span>
+</span><span id="line-159">
+</span><span id="line-160">
 <div class="viewcode-block" id="select_edl">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.select_edl">[docs]</a>
-</span><span id="line-157"><span class="k">def</span><span class="w"> </span><span class="nf">select_edl</span><span class="p">(</span>
-</span><span id="line-158">    <span class="n">strategy</span><span class="p">:</span> <span class="s2">"str | SelectionStrategy"</span><span class="p">,</span>
-</span><span id="line-159">    <span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span>
-</span><span id="line-160">    <span class="n">song_duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-161">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-162">    <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-163"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
-</span><span id="line-164"><span class="w">    </span><span class="sd">"""Run ``strategy`` (name or callable) to produce an EDL from ``alignments``.</span>
-</span><span id="line-165">
-</span><span id="line-166"><span class="sd">    ``context`` (a ``SelectionContext``) is passed to score-driven strategies that declare it;</span>
-</span><span id="line-167"><span class="sd">    the alignment-only built-ins ignore it. See :data:`SelectionStrategy`.</span>
-</span><span id="line-168"><span class="sd">    """</span>
-</span><span id="line-169">    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span>
-</span><span id="line-170">        <span class="n">_call_strategy</span><span class="p">(</span><span class="n">resolve_strategy</span><span class="p">(</span><span class="n">strategy</span><span class="p">),</span> <span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
-</span><span id="line-171">    <span class="p">)</span></div>
+</span><span id="line-161"><span class="k">def</span><span class="w"> </span><span class="nf">select_edl</span><span class="p">(</span>
+</span><span id="line-162">    <span class="n">strategy</span><span class="p">:</span> <span class="s2">"str | SelectionStrategy"</span><span class="p">,</span>
+</span><span id="line-163">    <span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span>
+</span><span id="line-164">    <span class="n">song_duration</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-165">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-166">    <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-167"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
+</span><span id="line-168"><span class="w">    </span><span class="sd">"""Run ``strategy`` (name or callable) to produce an EDL from ``alignments``.</span>
+</span><span id="line-169">
+</span><span id="line-170"><span class="sd">    ``context`` (a ``SelectionContext``) is passed to score-driven strategies that declare it;</span>
+</span><span id="line-171"><span class="sd">    the alignment-only built-ins ignore it. See :data:`SelectionStrategy`.</span>
+</span><span id="line-172"><span class="sd">    """</span>
+</span><span id="line-173">    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span>
+</span><span id="line-174">        <span class="n">_call_strategy</span><span class="p">(</span><span class="n">resolve_strategy</span><span class="p">(</span><span class="n">strategy</span><span class="p">),</span> <span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">,</span> <span class="n">context</span><span class="p">)</span>
+</span><span id="line-175">    <span class="p">)</span></div>
 
-</span><span id="line-172">
-</span><span id="line-173">
-</span><span id="line-174"><span class="c1"># --------------------------------------------------------------------------</span>
-</span><span id="line-175"><span class="c1"># The built-in strategies — all deterministic, non-AI, over the covered timeline.</span>
-</span><span id="line-176"><span class="c1"># --------------------------------------------------------------------------</span>
+</span><span id="line-176">
 </span><span id="line-177">
-</span><span id="line-178">
-</span><span id="line-179"><span class="k">def</span><span class="w"> </span><span class="nf">_breakpoints</span><span class="p">(</span><span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
-</span><span id="line-180"><span class="w">    </span><span class="sd">"""Sorted unique coverage boundaries — the elementary-interval grid."""</span>
-</span><span id="line-181">    <span class="n">bs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="line-182">    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alignments</span><span class="p">:</span>
-</span><span id="line-183">        <span class="n">bs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">6</span><span class="p">))</span>
-</span><span id="line-184">        <span class="n">bs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">6</span><span class="p">))</span>
-</span><span id="line-185">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bs</span><span class="p">)</span>
-</span><span id="line-186">
-</span><span id="line-187">
-</span><span id="line-188"><span class="k">def</span><span class="w"> </span><span class="nf">_covering</span><span class="p">(</span>
-</span><span id="line-189">    <span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span> <span class="n">mid</span><span class="p">:</span> <span class="nb">float</span>
-</span><span id="line-190"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
-</span><span id="line-191"><span class="w">    </span><span class="sd">"""Alignments whose coverage contains ``mid``."""</span>
-</span><span id="line-192">    <span class="k">return</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alignments</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">_EPS</span> <span class="o">&lt;=</span> <span class="n">mid</span> <span class="o">&lt;</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">]</span>
-</span><span id="line-193">
+</span><span id="line-178"><span class="c1"># --------------------------------------------------------------------------</span>
+</span><span id="line-179"><span class="c1"># The built-in strategies — all deterministic, non-AI, over the covered timeline.</span>
+</span><span id="line-180"><span class="c1"># --------------------------------------------------------------------------</span>
+</span><span id="line-181">
+</span><span id="line-182">
+</span><span id="line-183"><span class="k">def</span><span class="w"> </span><span class="nf">_breakpoints</span><span class="p">(</span><span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+</span><span id="line-184"><span class="w">    </span><span class="sd">"""Sorted unique coverage boundaries — the elementary-interval grid — and the edges</span>
+</span><span id="line-185"><span class="sd">    of every clip's unverified stretches (muvid#16), so a preference can change there."""</span>
+</span><span id="line-186">    <span class="n">bs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-187">    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alignments</span><span class="p">:</span>
+</span><span id="line-188">        <span class="n">bs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">6</span><span class="p">))</span>
+</span><span id="line-189">        <span class="n">bs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">6</span><span class="p">))</span>
+</span><span id="line-190">        <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="ow">in</span> <span class="n">selection_unverified_stretches</span><span class="p">(</span><span class="n">a</span><span class="p">):</span>
+</span><span id="line-191">            <span class="n">bs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+</span><span id="line-192">            <span class="n">bs</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">end</span><span class="p">,</span> <span class="mi">6</span><span class="p">))</span>
+</span><span id="line-193">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bs</span><span class="p">)</span>
 </span><span id="line-194">
-</span><span id="line-195"><span class="k">def</span><span class="w"> </span><span class="nf">_prefer_vouched</span><span class="p">(</span><span class="n">covering</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
-</span><span id="line-196"><span class="w">    </span><span class="sd">"""Rank trust ahead of everything else, for ONE span (muvid#88).</span>
-</span><span id="line-197">
-</span><span id="line-198"><span class="sd">    ``reliable`` is a **preference, not a filter**, and the distinction is the whole</span>
-</span><span id="line-199"><span class="sd">    point. Where a vouched clip covers the span, the unvouched ones are not considered —</span>
-</span><span id="line-200"><span class="sd">    a clip nobody vouches for should never win a span some other clip could have had, on</span>
-</span><span id="line-201"><span class="sd">    any metric. Where none does, the full set is returned and the unvouched clip is still</span>
-</span><span id="line-202"><span class="sd">    chosen, because a strategy PROPOSES: dropping the only footage for a span here would</span>
-</span><span id="line-203"><span class="sd">    put a second trust check next to :func:`~muvid.footage.edl.validate_edl` and remove a</span>
-</span><span id="line-204"><span class="sd">    source from the edit on the strength of a measurement — the two things</span>
-</span><span id="line-205"><span class="sd">    ``overlaps=False`` is carefully written not to do.</span>
-</span><span id="line-206">
-</span><span id="line-207"><span class="sd">    What happens to that forced span is decided downstream and out loud:</span>
-</span><span id="line-208"><span class="sd">    :func:`~muvid.footage.edl.exclude_unvouched` sets it aside as a reported gap on the</span>
-</span><span id="line-209"><span class="sd">    auto path, and ``validate_edl`` refuses it everywhere else.</span>
-</span><span id="line-210">
-</span><span id="line-211"><span class="sd">    Applied per elementary interval rather than to the alignment set, so a clip that is</span>
-</span><span id="line-212"><span class="sd">    the only cover for one span and one of several for the next is preferred away from</span>
-</span><span id="line-213"><span class="sd">    the second without losing the first.</span>
-</span><span id="line-214"><span class="sd">    """</span>
-</span><span id="line-215">    <span class="n">vouched</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">covering</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">reliable</span><span class="p">]</span>
-</span><span id="line-216">    <span class="k">return</span> <span class="n">vouched</span> <span class="ow">or</span> <span class="n">covering</span>
-</span><span id="line-217">
+</span><span id="line-195">
+</span><span id="line-196"><span class="k">def</span><span class="w"> </span><span class="nf">_covering</span><span class="p">(</span>
+</span><span id="line-197">    <span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span> <span class="n">mid</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="line-198"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
+</span><span id="line-199"><span class="w">    </span><span class="sd">"""Alignments whose coverage contains ``mid``."""</span>
+</span><span id="line-200">    <span class="k">return</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alignments</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">_EPS</span> <span class="o">&lt;=</span> <span class="n">mid</span> <span class="o">&lt;</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">]</span>
+</span><span id="line-201">
+</span><span id="line-202">
+</span><span id="line-203"><span class="k">def</span><span class="w"> </span><span class="nf">_prefer_vouched</span><span class="p">(</span><span class="n">covering</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
+</span><span id="line-204"><span class="w">    </span><span class="sd">"""Rank trust ahead of everything else, for ONE span (muvid#88).</span>
+</span><span id="line-205">
+</span><span id="line-206"><span class="sd">    ``reliable`` is a **preference, not a filter**, and the distinction is the whole</span>
+</span><span id="line-207"><span class="sd">    point. Where a vouched clip covers the span, the unvouched ones are not considered —</span>
+</span><span id="line-208"><span class="sd">    a clip nobody vouches for should never win a span some other clip could have had, on</span>
+</span><span id="line-209"><span class="sd">    any metric. Where none does, the full set is returned and the unvouched clip is still</span>
+</span><span id="line-210"><span class="sd">    chosen, because a strategy PROPOSES: dropping the only footage for a span here would</span>
+</span><span id="line-211"><span class="sd">    put a second trust check next to :func:`~muvid.footage.edl.validate_edl` and remove a</span>
+</span><span id="line-212"><span class="sd">    source from the edit on the strength of a measurement — the two things</span>
+</span><span id="line-213"><span class="sd">    ``overlaps=False`` is carefully written not to do.</span>
+</span><span id="line-214">
+</span><span id="line-215"><span class="sd">    What happens to that forced span is decided downstream and out loud:</span>
+</span><span id="line-216"><span class="sd">    :func:`~muvid.footage.edl.exclude_unvouched` sets it aside as a reported gap on the</span>
+</span><span id="line-217"><span class="sd">    auto path, and ``validate_edl`` refuses it everywhere else.</span>
 </span><span id="line-218">
-</span><span id="line-219"><span class="k">def</span><span class="w"> </span><span class="nf">_coalesce</span><span class="p">(</span><span class="n">spans</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
-</span><span id="line-220"><span class="w">    </span><span class="sd">"""Merge consecutive same-clip elementary spans into one EDL entry."""</span>
-</span><span id="line-221">    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-222">    <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">clip_id</span> <span class="ow">in</span> <span class="n">spans</span><span class="p">:</span>
-</span><span id="line-223">        <span class="k">if</span> <span class="n">out</span> <span class="ow">and</span> <span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">clip_id</span> <span class="o">==</span> <span class="n">clip_id</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">song_end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
-</span><span id="line-224">            <span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">EdlEntry</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">)</span>
-</span><span id="line-225">        <span class="k">else</span><span class="p">:</span>
-</span><span id="line-226">            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EdlEntry</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">))</span>
-</span><span id="line-227">    <span class="k">return</span> <span class="n">out</span>
-</span><span id="line-228">
-</span><span id="line-229">
-</span><span id="line-230"><span class="k">def</span><span class="w"> </span><span class="nf">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
-</span><span id="line-231"><span class="w">    </span><span class="sd">"""Walk the elementary intervals, ``pick`` a clip for each covered one, coalesce.</span>
-</span><span id="line-232">
-</span><span id="line-233"><span class="sd">    ``pick(covering, prev_clip_id) -&gt; clip_id``. Intervals covered by no clip are left</span>
-</span><span id="line-234"><span class="sd">    out — the resulting gap is surfaced by validate_edl with the exact uncovered span.</span>
-</span><span id="line-235"><span class="sd">    """</span>
-</span><span id="line-236">    <span class="k">if</span> <span class="ow">not</span> <span class="n">alignments</span><span class="p">:</span>
-</span><span id="line-237">        <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-238">    <span class="n">bs</span> <span class="o">=</span> <span class="n">_breakpoints</span><span class="p">(</span><span class="n">alignments</span><span class="p">)</span>
-</span><span id="line-239">    <span class="n">spans</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-240">    <span class="n">prev_clip_id</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-241">    <span class="k">for</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bs</span><span class="p">,</span> <span class="n">bs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
-</span><span id="line-242">        <span class="k">if</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span> <span class="o">&lt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
-</span><span id="line-243">            <span class="k">continue</span>
-</span><span id="line-244">        <span class="n">covering</span> <span class="o">=</span> <span class="n">_covering</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="n">hi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
-</span><span id="line-245">        <span class="k">if</span> <span class="ow">not</span> <span class="n">covering</span><span class="p">:</span>
-</span><span id="line-246">            <span class="n">prev_clip_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># a gap breaks continuity</span>
-</span><span id="line-247">            <span class="k">continue</span>
-</span><span id="line-248">        <span class="c1"># Trust first, then whatever the strategy optimizes (muvid#88). Here rather than</span>
-</span><span id="line-249">        <span class="c1"># in each `pick` so every built-in — and `fewest_cuts`, which would otherwise sit</span>
-</span><span id="line-250">        <span class="c1"># on an unvouched clip precisely because staying is free — carries it identically.</span>
-</span><span id="line-251">        <span class="n">covering</span> <span class="o">=</span> <span class="n">_prefer_vouched</span><span class="p">(</span><span class="n">covering</span><span class="p">)</span>
-</span><span id="line-252">        <span class="n">clip_id</span> <span class="o">=</span> <span class="n">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">prev_clip_id</span><span class="p">)</span>
-</span><span id="line-253">        <span class="n">spans</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">))</span>
-</span><span id="line-254">        <span class="n">prev_clip_id</span> <span class="o">=</span> <span class="n">clip_id</span>
-</span><span id="line-255">    <span class="k">return</span> <span class="n">_coalesce</span><span class="p">(</span><span class="n">spans</span><span class="p">)</span>
-</span><span id="line-256">
-</span><span id="line-257">
+</span><span id="line-219"><span class="sd">    Applied per elementary interval rather than to the alignment set, so a clip that is</span>
+</span><span id="line-220"><span class="sd">    the only cover for one span and one of several for the next is preferred away from</span>
+</span><span id="line-221"><span class="sd">    the second without losing the first.</span>
+</span><span id="line-222"><span class="sd">    """</span>
+</span><span id="line-223">    <span class="n">vouched</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">covering</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">reliable</span><span class="p">]</span>
+</span><span id="line-224">    <span class="k">return</span> <span class="n">vouched</span> <span class="ow">or</span> <span class="n">covering</span>
+</span><span id="line-225">
+</span><span id="line-226">
+</span><span id="line-227"><span class="k">def</span><span class="w"> </span><span class="nf">_prefer_confirmed</span><span class="p">(</span>
+</span><span id="line-228">    <span class="n">covering</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span> <span class="n">mid</span><span class="p">:</span> <span class="nb">float</span>
+</span><span id="line-229"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">]:</span>
+</span><span id="line-230"><span class="w">    </span><span class="sd">"""Rank a clip whose measured spans confirm this moment ahead of one whose spans</span>
+</span><span id="line-231"><span class="sd">    say it does not match the song here (muvid#16 slice 2) — the same per-interval</span>
+</span><span id="line-232"><span class="sd">    PREFERENCE as :func:`_prefer_vouched`, at the granularity of a stretch: where only</span>
+</span><span id="line-233"><span class="sd">    an unverified clip covers, it is still chosen. A clip with no spans measured counts</span>
+</span><span id="line-234"><span class="sd">    as confirmed (no measurement is not evidence against it)."""</span>
+</span><span id="line-235">
+</span><span id="line-236">    <span class="k">def</span><span class="w"> </span><span class="nf">unverified</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">FootageAlignment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-237">        <span class="k">return</span> <span class="nb">any</span><span class="p">(</span>
+</span><span id="line-238">            <span class="n">s</span> <span class="o">-</span> <span class="mf">1e-6</span> <span class="o">&lt;=</span> <span class="n">mid</span> <span class="o">&lt;</span> <span class="n">e</span> <span class="o">+</span> <span class="mf">1e-6</span> <span class="k">for</span> <span class="n">s</span><span class="p">,</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">selection_unverified_stretches</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</span><span id="line-239">        <span class="p">)</span>
+</span><span id="line-240">
+</span><span id="line-241">    <span class="n">confirmed</span> <span class="o">=</span> <span class="p">[</span><span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">covering</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">unverified</span><span class="p">(</span><span class="n">a</span><span class="p">)]</span>
+</span><span id="line-242">    <span class="k">return</span> <span class="n">confirmed</span> <span class="ow">or</span> <span class="n">covering</span>
+</span><span id="line-243">
+</span><span id="line-244">
+</span><span id="line-245"><span class="k">def</span><span class="w"> </span><span class="nf">_coalesce</span><span class="p">(</span><span class="n">spans</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
+</span><span id="line-246"><span class="w">    </span><span class="sd">"""Merge consecutive same-clip elementary spans into one EDL entry."""</span>
+</span><span id="line-247">    <span class="n">out</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-248">    <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">clip_id</span> <span class="ow">in</span> <span class="n">spans</span><span class="p">:</span>
+</span><span id="line-249">        <span class="k">if</span> <span class="n">out</span> <span class="ow">and</span> <span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">clip_id</span> <span class="o">==</span> <span class="n">clip_id</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">song_end</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
+</span><span id="line-250">            <span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">EdlEntry</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">)</span>
+</span><span id="line-251">        <span class="k">else</span><span class="p">:</span>
+</span><span id="line-252">            <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">EdlEntry</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">))</span>
+</span><span id="line-253">    <span class="k">return</span> <span class="n">out</span>
+</span><span id="line-254">
+</span><span id="line-255">
+</span><span id="line-256"><span class="k">def</span><span class="w"> </span><span class="nf">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
+</span><span id="line-257"><span class="w">    </span><span class="sd">"""Walk the elementary intervals, ``pick`` a clip for each covered one, coalesce.</span>
+</span><span id="line-258">
+</span><span id="line-259"><span class="sd">    ``pick(covering, prev_clip_id) -&gt; clip_id``. Intervals covered by no clip are left</span>
+</span><span id="line-260"><span class="sd">    out — the resulting gap is surfaced by validate_edl with the exact uncovered span.</span>
+</span><span id="line-261"><span class="sd">    """</span>
+</span><span id="line-262">    <span class="k">if</span> <span class="ow">not</span> <span class="n">alignments</span><span class="p">:</span>
+</span><span id="line-263">        <span class="k">return</span> <span class="p">[]</span>
+</span><span id="line-264">    <span class="n">bs</span> <span class="o">=</span> <span class="n">_breakpoints</span><span class="p">(</span><span class="n">alignments</span><span class="p">)</span>
+</span><span id="line-265">    <span class="n">spans</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-266">    <span class="n">prev_clip_id</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-267">    <span class="k">for</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bs</span><span class="p">,</span> <span class="n">bs</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+</span><span id="line-268">        <span class="k">if</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span> <span class="o">&lt;=</span> <span class="mf">1e-3</span><span class="p">:</span>
+</span><span id="line-269">            <span class="k">continue</span>
+</span><span id="line-270">        <span class="n">covering</span> <span class="o">=</span> <span class="n">_covering</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="n">hi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-271">        <span class="k">if</span> <span class="ow">not</span> <span class="n">covering</span><span class="p">:</span>
+</span><span id="line-272">            <span class="n">prev_clip_id</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># a gap breaks continuity</span>
+</span><span id="line-273">            <span class="k">continue</span>
+</span><span id="line-274">        <span class="c1"># Trust first, then whatever the strategy optimizes (muvid#88). Here rather than</span>
+</span><span id="line-275">        <span class="c1"># in each `pick` so every built-in — and `fewest_cuts`, which would otherwise sit</span>
+</span><span id="line-276">        <span class="c1"># on an unvouched clip precisely because staying is free — carries it identically.</span>
+</span><span id="line-277">        <span class="n">covering</span> <span class="o">=</span> <span class="n">_prefer_confirmed</span><span class="p">(</span><span class="n">_prefer_vouched</span><span class="p">(</span><span class="n">covering</span><span class="p">),</span> <span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="n">hi</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-278">        <span class="n">clip_id</span> <span class="o">=</span> <span class="n">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">prev_clip_id</span><span class="p">)</span>
+</span><span id="line-279">        <span class="n">spans</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">))</span>
+</span><span id="line-280">        <span class="n">prev_clip_id</span> <span class="o">=</span> <span class="n">clip_id</span>
+</span><span id="line-281">    <span class="k">return</span> <span class="n">_coalesce</span><span class="p">(</span><span class="n">spans</span><span class="p">)</span>
+</span><span id="line-282">
+</span><span id="line-283">
 <div class="viewcode-block" id="best_confidence">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.best_confidence">[docs]</a>
-</span><span id="line-258"><span class="k">def</span><span class="w"> </span><span class="nf">best_confidence</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
-</span><span id="line-259"><span class="w">    </span><span class="sd">"""For each covered span, show the highest-confidence clip (ties: longest coverage)."""</span>
-</span><span id="line-260">
-</span><span id="line-261">    <span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">_prev</span><span class="p">):</span>
-</span><span id="line-262">        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span>
-</span><span id="line-263">            <span class="n">covering</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-</span><span id="line-264">        <span class="p">)</span><span class="o">.</span><span class="n">clip_id</span>
-</span><span id="line-265">
-</span><span id="line-266">    <span class="k">return</span> <span class="n">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span></div>
+</span><span id="line-284"><span class="k">def</span><span class="w"> </span><span class="nf">best_confidence</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
+</span><span id="line-285"><span class="w">    </span><span class="sd">"""For each covered span, show the highest-confidence clip (ties: longest coverage)."""</span>
+</span><span id="line-286">
+</span><span id="line-287">    <span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">_prev</span><span class="p">):</span>
+</span><span id="line-288">        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span>
+</span><span id="line-289">            <span class="n">covering</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">,</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="line-290">        <span class="p">)</span><span class="o">.</span><span class="n">clip_id</span>
+</span><span id="line-291">
+</span><span id="line-292">    <span class="k">return</span> <span class="n">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span></div>
 
-</span><span id="line-267">
-</span><span id="line-268">
+</span><span id="line-293">
+</span><span id="line-294">
 <div class="viewcode-block" id="longest_take">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.longest_take">[docs]</a>
-</span><span id="line-269"><span class="k">def</span><span class="w"> </span><span class="nf">longest_take</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
-</span><span id="line-270"><span class="w">    </span><span class="sd">"""Prefer the clip that keeps rolling longest — pick the one whose coverage extends</span>
-</span><span id="line-271"><span class="sd">    furthest forward (ties: higher confidence). Yields long, continuous takes."""</span>
-</span><span id="line-272">
-</span><span id="line-273">    <span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">_prev</span><span class="p">):</span>
-</span><span id="line-274">        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">))</span><span class="o">.</span><span class="n">clip_id</span>
-</span><span id="line-275">
-</span><span id="line-276">    <span class="k">return</span> <span class="n">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span></div>
+</span><span id="line-295"><span class="k">def</span><span class="w"> </span><span class="nf">longest_take</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
+</span><span id="line-296"><span class="w">    </span><span class="sd">"""Prefer the clip that keeps rolling longest — pick the one whose coverage extends</span>
+</span><span id="line-297"><span class="sd">    furthest forward (ties: higher confidence). Yields long, continuous takes."""</span>
+</span><span id="line-298">
+</span><span id="line-299">    <span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">_prev</span><span class="p">):</span>
+</span><span id="line-300">        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">))</span><span class="o">.</span><span class="n">clip_id</span>
+</span><span id="line-301">
+</span><span id="line-302">    <span class="k">return</span> <span class="n">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span></div>
 
-</span><span id="line-277">
-</span><span id="line-278">
+</span><span id="line-303">
+</span><span id="line-304">
 <div class="viewcode-block" id="fewest_cuts">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.strategy.html#muvid.footage.fewest_cuts">[docs]</a>
-</span><span id="line-279"><span class="k">def</span><span class="w"> </span><span class="nf">fewest_cuts</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
-</span><span id="line-280"><span class="w">    </span><span class="sd">"""Stay on the current clip as long as it covers; only switch when it runs out</span>
-</span><span id="line-281"><span class="sd">    (then to the clip extending furthest). Minimizes the number of cuts."""</span>
-</span><span id="line-282">
-</span><span id="line-283">    <span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">prev</span><span class="p">):</span>
-</span><span id="line-284">        <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">clip_id</span> <span class="o">==</span> <span class="n">prev</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">covering</span><span class="p">):</span>
-</span><span id="line-285">            <span class="k">return</span> <span class="n">prev</span>
-</span><span id="line-286">        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">))</span><span class="o">.</span><span class="n">clip_id</span>
-</span><span id="line-287">
-</span><span id="line-288">    <span class="k">return</span> <span class="n">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span></div>
+</span><span id="line-305"><span class="k">def</span><span class="w"> </span><span class="nf">fewest_cuts</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">song_duration</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">]:</span>
+</span><span id="line-306"><span class="w">    </span><span class="sd">"""Stay on the current clip as long as it covers; only switch when it runs out</span>
+</span><span id="line-307"><span class="sd">    (then to the clip extending furthest). Minimizes the number of cuts."""</span>
+</span><span id="line-308">
+</span><span id="line-309">    <span class="k">def</span><span class="w"> </span><span class="nf">pick</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">prev</span><span class="p">):</span>
+</span><span id="line-310">        <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">clip_id</span> <span class="o">==</span> <span class="n">prev</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">covering</span><span class="p">):</span>
+</span><span id="line-311">            <span class="k">return</span> <span class="n">prev</span>
+</span><span id="line-312">        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">covering</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">a</span><span class="p">:</span> <span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">coverage</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">a</span><span class="o">.</span><span class="n">confidence</span><span class="p">))</span><span class="o">.</span><span class="n">clip_id</span>
+</span><span id="line-313">
+</span><span id="line-314">    <span class="k">return</span> <span class="n">_build</span><span class="p">(</span><span class="n">alignments</span><span class="p">,</span> <span class="n">pick</span><span class="p">)</span></div>
 
-</span><span id="line-289">
-</span><span id="line-290">
-</span><span id="line-291"><span class="k">for</span> <span class="n">_slug</span><span class="p">,</span> <span class="n">_fn</span><span class="p">,</span> <span class="n">_title</span> <span class="ow">in</span> <span class="p">[</span>
-</span><span id="line-292">    <span class="p">(</span><span class="s2">"best_confidence"</span><span class="p">,</span> <span class="n">best_confidence</span><span class="p">,</span> <span class="s2">"Best-aligned video at each moment"</span><span class="p">),</span>
-</span><span id="line-293">    <span class="p">(</span><span class="s2">"longest_take"</span><span class="p">,</span> <span class="n">longest_take</span><span class="p">,</span> <span class="s2">"Longest takes"</span><span class="p">),</span>
-</span><span id="line-294">    <span class="p">(</span><span class="s2">"fewest_cuts"</span><span class="p">,</span> <span class="n">fewest_cuts</span><span class="p">,</span> <span class="s2">"Fewest cuts"</span><span class="p">),</span>
-</span><span id="line-295"><span class="p">]:</span>
-</span><span id="line-296">    <span class="n">register_selection_strategy</span><span class="p">(</span><span class="n">_slug</span><span class="p">,</span> <span class="n">_fn</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">_title</span><span class="p">)</span>
-</span><span id="line-297">
-</span><span id="line-298"><span class="c1"># The score-driven beat-snapped semi-Markov Viterbi selector (thorwhalen/muvid#13). Lazy:</span>
-</span><span id="line-299"><span class="c1"># its module pulls numpy, so it is registered by reference and imported only when resolved —</span>
-</span><span id="line-300"><span class="c1"># keeping `import muvid.footage` numpy-free (and `list_strategies()` shows it regardless).</span>
-</span><span id="line-301"><span class="n">register_lazy_strategy</span><span class="p">(</span>
-</span><span id="line-302">    <span class="s2">"weighted"</span><span class="p">,</span>
-</span><span id="line-303">    <span class="s2">"muvid.footage.select_score:weighted_selection"</span><span class="p">,</span>
-</span><span id="line-304">    <span class="n">title</span><span class="o">=</span><span class="s2">"Best footage by its scores"</span><span class="p">,</span>
-</span><span id="line-305"><span class="p">)</span>
-</span><span id="line-306">
-</span><span id="line-307"><span class="c1">#: The default auto-strategy when none is chosen.</span>
-</span><span id="line-308"><span class="n">DEFAULT_STRATEGY</span> <span class="o">=</span> <span class="s2">"best_confidence"</span>
+</span><span id="line-315">
+</span><span id="line-316">
+</span><span id="line-317"><span class="k">for</span> <span class="n">_slug</span><span class="p">,</span> <span class="n">_fn</span><span class="p">,</span> <span class="n">_title</span> <span class="ow">in</span> <span class="p">[</span>
+</span><span id="line-318">    <span class="p">(</span><span class="s2">"best_confidence"</span><span class="p">,</span> <span class="n">best_confidence</span><span class="p">,</span> <span class="s2">"Best-aligned video at each moment"</span><span class="p">),</span>
+</span><span id="line-319">    <span class="p">(</span><span class="s2">"longest_take"</span><span class="p">,</span> <span class="n">longest_take</span><span class="p">,</span> <span class="s2">"Longest takes"</span><span class="p">),</span>
+</span><span id="line-320">    <span class="p">(</span><span class="s2">"fewest_cuts"</span><span class="p">,</span> <span class="n">fewest_cuts</span><span class="p">,</span> <span class="s2">"Fewest cuts"</span><span class="p">),</span>
+</span><span id="line-321"><span class="p">]:</span>
+</span><span id="line-322">    <span class="n">register_selection_strategy</span><span class="p">(</span><span class="n">_slug</span><span class="p">,</span> <span class="n">_fn</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">_title</span><span class="p">)</span>
+</span><span id="line-323">
+</span><span id="line-324"><span class="c1"># The score-driven beat-snapped semi-Markov Viterbi selector (thorwhalen/muvid#13). Lazy:</span>
+</span><span id="line-325"><span class="c1"># its module pulls numpy, so it is registered by reference and imported only when resolved —</span>
+</span><span id="line-326"><span class="c1"># keeping `import muvid.footage` numpy-free (and `list_strategies()` shows it regardless).</span>
+</span><span id="line-327"><span class="n">register_lazy_strategy</span><span class="p">(</span>
+</span><span id="line-328">    <span class="s2">"weighted"</span><span class="p">,</span>
+</span><span id="line-329">    <span class="s2">"muvid.footage.select_score:weighted_selection"</span><span class="p">,</span>
+</span><span id="line-330">    <span class="n">title</span><span class="o">=</span><span class="s2">"Best footage by its scores"</span><span class="p">,</span>
+</span><span id="line-331"><span class="p">)</span>
+</span><span id="line-332">
+</span><span id="line-333"><span class="c1">#: The default auto-strategy when none is chosen.</span>
+</span><span id="line-334"><span class="n">DEFAULT_STRATEGY</span> <span class="o">=</span> <span class="s2">"best_confidence"</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -533,7 +559,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=5e4a978b"></script>
+    <script src="../../../_static/documentation_options.js?v=95c30746"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

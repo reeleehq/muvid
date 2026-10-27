@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-27T11:30:42Z",
+  "built_at": "2026-10-27T11:51:33Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.123",
+    "version": "0.0.124",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "7f289832df9a7991df6a922b4ec26491344b9a59",
-    "short_commit": "7f28983",
+    "commit": "e87cf83e91825027cb4c85afb495a5fd07d1adcd",
+    "short_commit": "e87cf83",
     "branch": "main",
     "tags": [
-      "0.0.123"
+      "0.0.124"
     ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/7f289832df9a7991df6a922b4ec26491344b9a59",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/e87cf83e91825027cb4c85afb495a5fd07d1adcd",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "66e6f0832cc3380cace04e23a88e16e46c83e052",
+    "sha": "d83606c9a1a094fdba9d5b7b3e377b56c6c0b44c",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "40490685246",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40490685246",
+    "run_id": "40498320343",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40498320343",
     "server_url": "https://github.com"
   },
   "tools": {
@@ -58,15 +58,15 @@
   },
   "site": {
     "modules_documented": 95,
-    "objects_documented": 1117
+    "objects_documented": 1129
   },
   "pypi": {
     "checked": true,
-    "latest": "0.0.123",
+    "latest": "0.0.124",
     "relation": "same",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 7f289832df9a7991df6a922b4ec26491344b9a59\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout e87cf83e91825027cb4c85afb495a5fd07d1adcd\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
     "aligned": true,

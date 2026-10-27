@@ -18,6 +18,10 @@ muvid.footage.service
       set_song
       add_clip
       remove_clip
+      add_song_candidate
+      remove_song_candidate
+      use_song_candidate
+      rank_songs
       align
       set_offset
       clear_offset

@@ -117,6 +117,19 @@ are recorded only when known — a manifest without them reads the same too.
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
+#### add_song_candidate(candidate_id, src_path, , ext, name='', duration_s=None, song_hash='')
+
+Store a song the footage could be cut to instead — a CANDIDATE, ranked by
+`rank_songs` and chosen with `use_song_candidate`. It is not the project’s
+song: nothing is aligned or scored against it. Returns its id.
+
+The file lands first, the manifest names it, and only then is a stale file of
+the same id with another extension removed — a crash never leaves the
+manifest naming a missing file.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
 #### cover_info()
 
 `{file, artifact_id, taken_from}` of the cover frame, or `None`.
@@ -246,6 +259,13 @@ not hold; the MCP tool turns that into a refusal naming the known ids.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+#### remove_song_candidate(candidate_id)
+
+Forget candidate `candidate_id` and its file; whether it existed.
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
 #### *property* renders_dir *: [Path](https://docs.python.org/3/library/pathlib.html#pathlib.Path)*
 
 Where this project’s renders live.
@@ -289,6 +309,20 @@ With a host catalog the song is registered too, and its id recorded as
 
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+#### song_candidate_path(candidate_id)
+
+The stored file of candidate `candidate_id` (exact id; `KeyError` if none).
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+#### song_candidates()
+
+`[{candidate_id, name, duration_s?, artifact_id?}]` — no server paths.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
 
 #### song_hash()
 

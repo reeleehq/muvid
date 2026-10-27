@@ -185,10 +185,13 @@ constant, which says what it does and does not buy.</p></li>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" title="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a></p></td>
 <td><p>Reward-seconds per second charged to a clip the aligner will not vouch for.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.FALLBACK_CAUSES" title="muvid.footage.select_score.FALLBACK_CAUSES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FALLBACK_CAUSES</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY" title="muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVERIFIED_REWARD_PENALTY</span></code></a></p></td>
+<td><p>The charge per second of a clip's UNVERIFIED stretch — footage its measured spans say does not match the song there (muvid#16 slice 2): above the composite's whole range, so a confirmed clip always outranks it on any metric, and below the unvouched charge by more than that range (see above).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.FALLBACK_CAUSES" title="muvid.footage.select_score.FALLBACK_CAUSES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FALLBACK_CAUSES</span></code></a></p></td>
 <td><p>Why the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> DP handed the edit to <code class="docutils literal notranslate"><span class="pre">best_confidence</span></code>, in words a person reads (<code class="docutils literal notranslate"><span class="pre">explain</span></code> says them) — every <code class="docutils literal notranslate"><span class="pre">cause</span></code> a fallback can carry, kept beside the code that emits them so a new cause is worded where it is written (muvid#217).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.RUN_CAUSES" title="muvid.footage.select_score.RUN_CAUSES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RUN_CAUSES</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.RUN_CAUSES" title="muvid.footage.select_score.RUN_CAUSES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RUN_CAUSES</span></code></a></p></td>
 <td><p>The causes a run that did NOT fall back carries, in words; <code class="docutils literal notranslate"><span class="pre">optimal</span></code> needs none.</p></td>
 </tr>
 </tbody>
@@ -200,7 +203,7 @@ constant, which says what it does and does not buy.</p></li>
 <td><p>One clip's weighted composite, frame by frame on the song grid — what the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy ranks it by — with <code class="docutils literal notranslate"><span class="pre">NaN</span></code> where no weighted metric was measured (muvid#184).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.dp_composite" title="muvid.footage.select_score.dp_composite"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dp_composite</span></code></a>(tensor, aligns, *, config)</p></td>
-<td><p>THE per-frame reward the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> DP integrates, one row per alignment: the composite under <code class="docutils literal notranslate"><span class="pre">config</span></code>'s weights (0 where nothing is measured) with the unvouched-clip demotion (<a class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" title="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a>); and the total weight, <code class="docutils literal notranslate"><span class="pre">0</span></code> when no weighted metric is in the tensor (the DP then does not run).</p></td>
+<td><p>THE per-frame reward the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> DP integrates, one row per alignment: the composite under <code class="docutils literal notranslate"><span class="pre">config</span></code>'s weights (0 where nothing is measured) with the unvouched-clip demotion (<a class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" title="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a>) and the unverified- stretch one (<a class="reference internal" href="#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY" title="muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVERIFIED_REWARD_PENALTY</span></code></a>, muvid#16); and the total weight, <code class="docutils literal notranslate"><span class="pre">0</span></code> when no weighted metric is in the tensor (the DP then does not run).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.resolve_config" title="muvid.footage.select_score.resolve_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_config</span></code></a>(*[, preset, weights, config])</p></td>
 <td><p>Build a <a class="reference internal" href="#muvid.footage.select_score.WeightedSelectionConfig" title="muvid.footage.select_score.WeightedSelectionConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">WeightedSelectionConfig</span></code></a> from an optional preset + overrides.</p></td>
@@ -292,8 +295,16 @@ reads them as not measured, so the cut ignores them, and the caller is told.</p>
 </dd></dl>
 </dd></dl>
 <dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.select_score.</span></span><span class="sig-name descname"><span class="pre">UNVERIFIED_REWARD_PENALTY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.5</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY'">¶</a></dt>
+<dd><p>The charge per second of a clip’s UNVERIFIED stretch — footage its measured spans say
+does not match the song there (muvid#16 slice 2): above the composite’s whole range,
+so a confirmed clip always outranks it on any metric, and below the unvouched charge
+by more than that range (see above). Not a config field, for the same reason.</p>
+</dd></dl>
+<dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.select_score.</span></span><span class="sig-name descname"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2.0</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.select_score.</span></span><span class="sig-name descname"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3.0</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY'">¶</a></dt>
 <dd><p>Reward-seconds per second charged to a clip the aligner will not vouch for. The
 composite ĝ is normalized to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>, so anything <code class="docutils literal notranslate"><span class="pre">&gt;</span> <span class="pre">1.0</span></code> dominates it: over the
 same span a vouched clip at ĝ=0 outscores an unvouched one at ĝ=1, whatever the
@@ -324,6 +335,12 @@ in mind before changing either half.</p>
 dull vouched one, which is exactly the trade muvid#88 says must not be available —
 and a config field would let the preference be tuned away silently by a caller
 passing <code class="docutils literal notranslate"><span class="pre">config=</span></code> to the MCP tool.</p>
+<p><strong>The trust tiers are ORDERED, and the penalties must keep them so</strong> (muvid#16):
+unvouched &gt; unverified + the composite’s range, so the DP never takes an unvouched
+clip over a vouched one on the strength of the vouched one’s unverified stretch —
+<a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.exclude_unvouched" title="muvid.footage.edl.exclude_unvouched"><code class="xref py py-func docutils literal notranslate"><span class="pre">exclude_unvouched()</span></code></a> would then black that span out (the
+#16 slice-2 review measured exactly that with equal penalties). Raised from 2.0 to
+make room for the tier below it; a test pins the ordering.</p>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.footage.select_score.WeightedSelectionConfig">
@@ -361,7 +378,8 @@ not in the tensor or no metric carries weight.</p>
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.select_score.</span></span><span class="sig-name descname"><span class="pre">dp_composite</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligns</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/select_score.html#dp_composite"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.select_score.dp_composite" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.select_score.dp_composite'">¶</a></dt>
 <dd><p>THE per-frame reward the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> DP integrates, one row per alignment: the
 composite under <code class="docutils literal notranslate"><span class="pre">config</span></code>’s weights (0 where nothing is measured) with the
-unvouched-clip demotion (<a class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" title="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a>); and the total weight,
+unvouched-clip demotion (<a class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" title="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a>) and the unverified-
+stretch one (<a class="reference internal" href="#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY" title="muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVERIFIED_REWARD_PENALTY</span></code></a>, muvid#16); and the total weight,
 <code class="docutils literal notranslate"><span class="pre">0</span></code> when no weighted metric is in the tensor (the DP then does not run).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -459,6 +477,7 @@ scores are absent so the MCP layer can say “run muvid_score_footage first”.<
 <li><a :data-current="activeSection === '#muvid.footage.select_score.SelectionContext.stale_metrics'" class="reference internal" href="#muvid.footage.select_score.SelectionContext.stale_metrics"><code class="docutils literal notranslate"><span class="pre">SelectionContext.stale_metrics</span></code></a></li>
 </ul>
 </li>
+<li><a :data-current="activeSection === '#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY'" class="reference internal" href="#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY"><code class="docutils literal notranslate"><span class="pre">UNVERIFIED_REWARD_PENALTY</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY'" class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.WeightedSelectionConfig'" class="reference internal" href="#muvid.footage.select_score.WeightedSelectionConfig"><code class="docutils literal notranslate"><span class="pre">WeightedSelectionConfig</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.composite_lane'" class="reference internal" href="#muvid.footage.select_score.composite_lane"><code class="docutils literal notranslate"><span class="pre">composite_lane()</span></code></a></li>
@@ -482,7 +501,7 @@ scores are absent so the MCP layer can say “run muvid_score_footage first”.<
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5e4a978b"></script>
+<script src="../_static/documentation_options.js?v=95c30746"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

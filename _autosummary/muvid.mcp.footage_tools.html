@@ -838,7 +838,8 @@ where it was never measured). Nothing measured is not a low score, so read
 <code class="docutils literal notranslate"><span class="pre">composite</span></code> with <code class="docutils literal notranslate"><span class="pre">measured</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">reward</span></code> is what the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy itself would earn for the span (its own
 arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
-demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+demoted, so is a long stretch its measured spans do not confirm (muvid#16), a span
+past the longest shot is penalised), so ranking by it ranks takes
 as the selector does; it is <code class="docutils literal notranslate"><span class="pre">null</span></code> where the selector could never choose the span
 (the clip does not cover all of it, the span holds no grid frame, or no weighted
 metric is in the scores). <code class="docutils literal notranslate"><span class="pre">reliable</span></code> says whether the clip’s alignment is vouched
@@ -1173,7 +1174,7 @@ video uses. Replaces any previous song. Duration/size-capped.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5e4a978b"></script>
+<script src="../_static/documentation_options.js?v=95c30746"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

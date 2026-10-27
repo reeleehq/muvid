@@ -574,7 +574,8 @@ where it was never measured). Nothing measured is not a low score, so read
 
 `reward` is what the `weighted` strategy itself would earn for the span (its own
 arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
-demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+demoted, so is a long stretch its measured spans do not confirm (muvid#16), a span
+past the longest shot is penalised), so ranking by it ranks takes
 as the selector does; it is `null` where the selector could never choose the span
 (the clip does not cover all of it, the span holds no grid frame, or no weighted
 metric is in the scores). `reliable` says whether the clip’s alignment is vouched

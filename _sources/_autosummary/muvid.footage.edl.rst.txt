@@ -25,6 +25,7 @@ muvid.footage.edl
       UNPLACED
       STILL_DURATION_S
       SPAN_OFFSET_TOLERANCE_S
+      SPAN_EDGE_ACCURACY_S
       SLIP_MAX_S
       RATE_MAX_DEV
       EDGE_S
@@ -50,8 +51,10 @@ muvid.footage.edl
       longest_span
       looks_effects_offered
       placed_as
+      selection_unverified_stretches
       still_in_point
       unplaced
+      unverified_song_stretches
       unverified_stretches
       validate_edl
       vouches_for

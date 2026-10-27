@@ -200,6 +200,18 @@ trust refusal belongs where the encode does, in <a class="reference internal" hr
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.remove_clip" title="muvid.footage.service.remove_clip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_clip</span></code></a>(fp, *, clip_id)</p></td>
 <td><p>Remove one footage video from the project — its stored file and its entry.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.add_song_candidate" title="muvid.footage.service.add_song_candidate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_song_candidate</span></code></a>(fp, *, path[, ext, ...])</p></td>
+<td><p>Add a song the videos could be cut to instead — a CANDIDATE (muvid#135).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.remove_song_candidate" title="muvid.footage.service.remove_song_candidate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_song_candidate</span></code></a>(fp, *, candidate_id)</p></td>
+<td><p>Forget a song candidate and its file (the project's own song is untouched).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.use_song_candidate" title="muvid.footage.service.use_song_candidate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">use_song_candidate</span></code></a>(fp, *, candidate_id)</p></td>
+<td><p>Make a song candidate the project's song (<code class="docutils literal notranslate"><span class="pre">rank_songs</span></code> says which fits best).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.rank_songs" title="muvid.footage.service.rank_songs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rank_songs</span></code></a>(fp)</p></td>
+<td><p>Which song the videos fit best (muvid#135): every song candidate, and the project's song when it has one, ranked by planning the cut to each — nothing is rendered — on the planner's own terms: the videos' picture changing on the song's beat, their feel (lively or calm) fitting its loud and quiet parts, the song left with no picture, and how many times over the footage must be shown to fill it.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.align" title="muvid.footage.service.align"><code class="xref py py-obj docutils literal notranslate"><span class="pre">align</span></code></a>(fp)</p></td>
 <td><p>Find where each video sits on the song by listening to its own audio, and save it.</p></td>
 </tr>
@@ -459,6 +471,20 @@ project is refused. Size-, duration- and count-capped.</p>
 <p>Run <code class="docutils literal notranslate"><span class="pre">align</span></code> afterwards: listening is how a video with the song in it gets its
 place on the song. Returns the <code class="docutils literal notranslate"><span class="pre">clip_id</span></code>, its <code class="docutils literal notranslate"><span class="pre">name</span></code> and <code class="docutils literal notranslate"><span class="pre">duration</span></code> (and
 <code class="docutils literal notranslate"><span class="pre">artifact_id</span></code> when hosted); a photo also <code class="docutils literal notranslate"><span class="pre">kind:</span> <span class="pre">"still"</span></code>, <code class="docutils literal notranslate"><span class="pre">width</span></code>, <code class="docutils literal notranslate"><span class="pre">height</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.service.add_song_candidate">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">add_song_candidate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ext</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">candidate_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#add_song_candidate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.add_song_candidate" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.add_song_candidate'">¶</a></dt>
+<dd><p>Add a song the videos could be cut to instead — a CANDIDATE (muvid#135). Bring
+two or more, ask <code class="docutils literal notranslate"><span class="pre">rank_songs</span></code> which one the videos fit best, then make it the
+song with <code class="docutils literal notranslate"><span class="pre">use_song_candidate</span></code>. A candidate is not the project’s song: nothing is
+listened to against it. <code class="docutils literal notranslate"><span class="pre">candidate_id</span></code> defaults to the file’s name (made unique);
+an id already in use is refused. Size- and duration-capped like the song.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -890,8 +916,10 @@ for measured and hand-placed offsets alike. <code class="docutils literal notran
 the stretches of its placement no span confirms at its offset: the end of a take
 that stopped matching, a dropout, another take. Edges are accurate to about
 <code class="docutils literal notranslate"><span class="pre">span_edge_accuracy_s</span></code> (the analysis window), and a shorter stretch may not show.</p>
-<p>A report for now: cutting, scoring and rendering do not use it. Re-aligning or
-re-placing a video replaces its record, so measure again afterwards.</p>
+<p>“Cut it for me” then PREFERS confirmed footage over a long unverified stretch
+(a measured, not declared, offset); nothing is refused on it, and scoring and
+rendering do not read it. Re-aligning or re-placing a video replaces its record,
+so measure again afterwards.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -975,6 +1003,26 @@ project (<code class="docutils literal notranslate"><span class="pre">renders/&l
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.service.rank_songs">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">rank_songs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#rank_songs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.rank_songs" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.rank_songs'">¶</a></dt>
+<dd><p>Which song the videos fit best (muvid#135): every song candidate, and the
+project’s song when it has one, ranked by planning the cut to each — nothing is
+rendered — on the planner’s own terms: the videos’ picture changing on the song’s
+beat, their feel (lively or calm) fitting its loud and quiet parts, the song left
+with no picture, and how many times over the footage must be shown to fill it.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">ranking</span></code> (best first): each song’s <code class="docutils literal notranslate"><span class="pre">candidate_id</span></code> (<code class="docutils literal notranslate"><span class="pre">null</span></code> for the
+project’s own song), <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">score</span></code> (higher fits better), the measures, and a
+<code class="docutils literal notranslate"><span class="pre">sentence</span></code> saying why; <code class="docutils literal notranslate"><span class="pre">best</span></code> names the first. Every video and photo is cut to
+the music for the comparison (a video synced to the project’s song is synced only
+to that one); the project’s song is cut on its declared beat grid when it has one.
+A candidate that IS the project’s song is ranked once.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.service.redo_edit">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">redo_edit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">edit_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#redo_edit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.redo_edit" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.redo_edit'">¶</a></dt>
 <dd><p>Redo the change <code class="docutils literal notranslate"><span class="pre">undo_edit</span></code> last took back. A new change after an undo
@@ -1005,6 +1053,16 @@ untouched. Removal INVALIDATES every measured offset and every footage score, as
 changing the song does — the alignment describes the clip set it was measured on —
 so run <code class="docutils literal notranslate"><span class="pre">align</span></code> again before cutting. Offsets a person DECLARED for the remaining
 clips are kept. An unknown <code class="docutils literal notranslate"><span class="pre">clip_id</span></code> is refused, naming the project’s clips.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.service.remove_song_candidate">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">remove_song_candidate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">candidate_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#remove_song_candidate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.remove_song_candidate" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.remove_song_candidate'">¶</a></dt>
+<dd><p>Forget a song candidate and its file (the project’s own song is untouched).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -1151,7 +1209,8 @@ where it was never measured). Nothing measured is not a low score, so read
 <code class="docutils literal notranslate"><span class="pre">composite</span></code> with <code class="docutils literal notranslate"><span class="pre">measured</span></code>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">reward</span></code> is what the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy itself would earn for the span (its own
 arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
-demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+demoted, so is a long stretch its measured spans do not confirm (muvid#16), a span
+past the longest shot is penalised), so ranking by it ranks takes
 as the selector does; it is <code class="docutils literal notranslate"><span class="pre">null</span></code> where the selector could never choose the span
 (the clip does not cover all of it, the span holds no grid frame, or no weighted
 metric is in the scores). <code class="docutils literal notranslate"><span class="pre">reliable</span></code> says whether the clip’s alignment is vouched
@@ -1381,6 +1440,20 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.service.use_song_candidate">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">use_song_candidate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">candidate_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#use_song_candidate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.use_song_candidate" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.use_song_candidate'">¶</a></dt>
+<dd><p>Make a song candidate the project’s song (<code class="docutils literal notranslate"><span class="pre">rank_songs</span></code> says which fits best).
+Exactly as <code class="docutils literal notranslate"><span class="pre">set_song</span></code> with that file: the previous song is REPLACED and every
+clip’s offset and footage score measured against it is thrown away — add the
+previous song as a candidate first to keep it to come back to. The candidate stays
+a candidate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
@@ -1396,6 +1469,7 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 </ul>
 </li>
 <li><a :data-current="activeSection === '#muvid.footage.service.add_clip'" class="reference internal" href="#muvid.footage.service.add_clip"><code class="docutils literal notranslate"><span class="pre">add_clip()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.service.add_song_candidate'" class="reference internal" href="#muvid.footage.service.add_song_candidate"><code class="docutils literal notranslate"><span class="pre">add_song_candidate()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.align'" class="reference internal" href="#muvid.footage.service.align"><code class="docutils literal notranslate"><span class="pre">align()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.assemble'" class="reference internal" href="#muvid.footage.service.assemble"><code class="docutils literal notranslate"><span class="pre">assemble()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.assemble_refusal'" class="reference internal" href="#muvid.footage.service.assemble_refusal"><code class="docutils literal notranslate"><span class="pre">assemble_refusal()</span></code></a></li>
@@ -1426,9 +1500,11 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 <li><a :data-current="activeSection === '#muvid.footage.service.peaks'" class="reference internal" href="#muvid.footage.service.peaks"><code class="docutils literal notranslate"><span class="pre">peaks()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.propose_edit'" class="reference internal" href="#muvid.footage.service.propose_edit"><code class="docutils literal notranslate"><span class="pre">propose_edit()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.public_render'" class="reference internal" href="#muvid.footage.service.public_render"><code class="docutils literal notranslate"><span class="pre">public_render()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.service.rank_songs'" class="reference internal" href="#muvid.footage.service.rank_songs"><code class="docutils literal notranslate"><span class="pre">rank_songs()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.redo_edit'" class="reference internal" href="#muvid.footage.service.redo_edit"><code class="docutils literal notranslate"><span class="pre">redo_edit()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.refresh_cover'" class="reference internal" href="#muvid.footage.service.refresh_cover"><code class="docutils literal notranslate"><span class="pre">refresh_cover()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.remove_clip'" class="reference internal" href="#muvid.footage.service.remove_clip"><code class="docutils literal notranslate"><span class="pre">remove_clip()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.service.remove_song_candidate'" class="reference internal" href="#muvid.footage.service.remove_song_candidate"><code class="docutils literal notranslate"><span class="pre">remove_song_candidate()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.rename_edit'" class="reference internal" href="#muvid.footage.service.rename_edit"><code class="docutils literal notranslate"><span class="pre">rename_edit()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.render'" class="reference internal" href="#muvid.footage.service.render"><code class="docutils literal notranslate"><span class="pre">render()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.renders'" class="reference internal" href="#muvid.footage.service.renders"><code class="docutils literal notranslate"><span class="pre">renders()</span></code></a></li>
@@ -1451,6 +1527,7 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 <li><a :data-current="activeSection === '#muvid.footage.service.strategies'" class="reference internal" href="#muvid.footage.service.strategies"><code class="docutils literal notranslate"><span class="pre">strategies()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.timeline'" class="reference internal" href="#muvid.footage.service.timeline"><code class="docutils literal notranslate"><span class="pre">timeline()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.service.undo_edit'" class="reference internal" href="#muvid.footage.service.undo_edit"><code class="docutils literal notranslate"><span class="pre">undo_edit()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.service.use_song_candidate'" class="reference internal" href="#muvid.footage.service.use_song_candidate"><code class="docutils literal notranslate"><span class="pre">use_song_candidate()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -1464,7 +1541,7 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5e4a978b"></script>
+<script src="../_static/documentation_options.js?v=95c30746"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
