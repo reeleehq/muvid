@@ -64,6 +64,11 @@ SLOW_TEMPO_BPM = 92.0
 SINGLE_PICTURE_ARCHETYPES = ("beat_cut", "ballad_dissolve", "stop_motion")
 #: A piece of a cut shorter than this (seconds) is folded into its neighbour.
 MIN_PIECE_S = 0.4
+#: The tolerance for comparing two times this module COPIED from one another (a piece's
+#: end and the next one's start, a beat and a bound read off it): float noise only, so
+#: finer than the gate's ``edl.COINCIDENT_S``, which is what a cut's own length is
+#: judged by (muvid#210).
+_SAME_FLOAT = 1e-6
 #: Weights of the source-in score: beats hit, liveliness matched to loudness, reuse,
 #: and focus (log of the stretch's sharpness over the video's own, so a whip-pan blur —
 #: which changes a lot and shows nothing — loses to a lively stretch in focus).
@@ -676,7 +681,9 @@ def fill_spans(
         analysis,
         media,
         treatment,
-        active=lambda d: any(d.start < b - 1e-6 and d.end > a + 1e-6 for a, b in spans),
+        active=lambda d: any(
+            d.start < b - _SAME_FLOAT and d.end > a + _SAME_FLOAT for a, b in spans
+        ),
     )
     order_used = plan.reuse.get("order", "planner")
     order_note = plan.reuse.get("order_note", "") or _mixed_clock_note(sources)
@@ -715,7 +722,7 @@ def fill_spans(
     for slot in plan.slots:
         for a, b in spans:
             lo, hi = max(slot.start, a), min(slot.end, b)
-            if hi - lo <= 1e-6:
+            if hi - lo <= _SAME_FLOAT:
                 continue
             tile = slot.tiles[0]
             fade = (
@@ -727,13 +734,14 @@ def fill_spans(
                 {
                     # a sliver a span boundary cut off a slot — not a slot the
                     # planner made short on purpose (a flip-book hold)
-                    "clipped": lo > slot.start + 1e-6 or hi < slot.end - 1e-6,
+                    "clipped": lo > slot.start + _SAME_FLOAT
+                    or hi < slot.end - _SAME_FLOAT,
                     "start": lo,
                     "end": hi,
                     "media": tile.media,
                     "motion": tile.motion,
                     "fade": fade,
-                    "first_in_span": abs(lo - a) < 1e-6,
+                    "first_in_span": abs(lo - a) < _SAME_FLOAT,
                 }
             )
     pieces = _fold_tiny(pieces)
@@ -741,7 +749,7 @@ def fill_spans(
     for this, nxt in zip(pieces, pieces[1:]):
         this["next"], nxt["prev"] = {"media": nxt["media"]}, {"media": this["media"]}
         # The next cut's blend reads past this cut's end in this cut's source.
-        if abs(this["end"] - nxt["start"]) < 1e-6 and not nxt["first_in_span"]:
+        if abs(this["end"] - nxt["start"]) < _SAME_FLOAT and not nxt["first_in_span"]:
             this["next_fade"] = nxt["fade"]
 
     entries = []
@@ -808,7 +816,11 @@ def _fades_start_on_the_beat(pieces: list[dict]) -> None:
 
     for prev, p in zip(pieces, pieces[1:]):
         fade = p.get("fade") or 0.0
-        if fade <= 0 or p["first_in_span"] or abs(prev["end"] - p["start"]) > 1e-6:
+        if (
+            fade <= 0
+            or p["first_in_span"]
+            or abs(prev["end"] - p["start"]) > _SAME_FLOAT
+        ):
             continue
         lead = blend_lead(Transition(duration_s=fade, curve="fade"))
         if p["end"] - (p["start"] + lead) < MIN_PIECE_S:
@@ -831,7 +843,7 @@ def _fold_tiny(pieces: list[dict]) -> list[dict]:
             short
             and out
             and not p["first_in_span"]
-            and abs(out[-1]["end"] - p["start"]) < 1e-6
+            and abs(out[-1]["end"] - p["start"]) < _SAME_FLOAT
         ):
             out[-1] = dict(out[-1], end=p["end"])
         else:
@@ -842,7 +854,7 @@ def _fold_tiny(pieces: list[dict]) -> list[dict]:
             merged
             and merged[-1].get("clipped", True)
             and merged[-1]["end"] - merged[-1]["start"] < MIN_PIECE_S
-            and abs(merged[-1]["end"] - p["start"]) < 1e-6
+            and abs(merged[-1]["end"] - p["start"]) < _SAME_FLOAT
             and not p["first_in_span"]
         ):
             p = dict(p, start=merged[-1]["start"], fade=0.0)
@@ -871,7 +883,7 @@ def _cuts_for_piece(
 ) -> list:
     """One planned piece -> one or more free cuts (more when its video is shorter than
     the piece: the rest goes to the longest other source)."""
-    from muvid.footage.edl import EdlEntry, Transition, longest_span
+    from muvid.footage.edl import COINCIDENT_S, EdlEntry, Transition, longest_span
 
     def fade_of(seconds):
         return Transition(duration_s=seconds, curve="fade") if seconds > 0 else None
@@ -882,8 +894,9 @@ def _cuts_for_piece(
     # the pictures either side of this piece, so a take-over does not repeat them
     avoid = {sources[q["media"]].clip_id for q in (p.get("prev"), p.get("next")) if q}
     fade = p["fade"] if not p["first_in_span"] else 0.0
+    next_blend = fade_of(p.get("next_fade", 0.0))  # the blend out of this piece
     steps, max_steps = 0, int((end - start) / MIN_PIECE_S) + 4
-    while end - start > 1e-6 and steps < max_steps:
+    while end - start > COINCIDENT_S and steps < max_steps:
         steps += 1
         no_trail = False
         length = end - start
@@ -891,10 +904,10 @@ def _cuts_for_piece(
         holds = longest_span(
             src.duration_s or 0.0,
             transition=own,
-            next_transition=fade_of(p.get("next_fade", 0.0)),
+            next_transition=next_blend,
             edge_s=EDGE_S,
         )
-        if not src.is_still and holds < length - 1e-6:
+        if not src.is_still and holds < length - _SAME_FLOAT:
             # The video cannot hold the whole piece: show what it has, ending on a beat
             # before the piece's end, so a take-over continues it with a hard cut and
             # this cut carries no next blend. Ending ON the piece's end would carry it
@@ -906,7 +919,7 @@ def _cuts_for_piece(
             # coverage is never what is traded (the #203 review).
             cap = longest_span(src.duration_s or 0.0, transition=own, edge_s=EDGE_S)
             cut_at = _last_beat_before(beats, start + cap, after=start + MIN_PIECE_S)
-            if cut_at is not None and cut_at >= end - 1e-6:
+            if cut_at is not None and cut_at >= end - COINCIDENT_S:
                 cut_at = _last_beat_before(
                     beats,
                     min(start + holds, end - MIN_PIECE_S),
@@ -915,7 +928,15 @@ def _cuts_for_piece(
                 if cut_at is None:
                     cut_at, no_trail = end, True
             if cut_at is None or cap < MIN_PIECE_S:
-                nxt = _take_over(sources, src, need=length, avoid=avoid, uses=uses)
+                nxt = _take_over(
+                    sources,
+                    src,
+                    need=length,
+                    avoid=avoid,
+                    uses=uses,
+                    transition=own,
+                    next_transition=next_blend,
+                )
                 if nxt.clip_id == src.clip_id:
                     break  # nothing else to show: the rest stays uncovered (reported)
                 avoid.add(src.clip_id)
@@ -924,9 +945,7 @@ def _cuts_for_piece(
             piece_end = min(cut_at, end)
         else:
             piece_end = end
-        trail = (
-            p.get("next_fade", 0.0) if piece_end >= end - 1e-6 and not no_trail else 0.0
-        )
+        trail = p.get("next_fade", 0.0) if piece_end == end and not no_trail else 0.0
         entry = _one_cut(
             src,
             start,
@@ -955,24 +974,46 @@ def _cuts_for_piece(
             entry = _replace(entry, crop=crop)
         out.append(entry)
         start, fade = piece_end, 0.0
-        if end - start > 1e-6:
+        if end - start > COINCIDENT_S:
             avoid.add(src.clip_id)
-            src = _take_over(sources, src, need=end - start, avoid=avoid, uses=uses)
+            # the take-over starts on a hard cut and may end carrying the next blend
+            src = _take_over(
+                sources,
+                src,
+                need=end - start,
+                avoid=avoid,
+                uses=uses,
+                next_transition=next_blend,
+            )
     return out
 
 
 def _last_beat_before(beats, t: float, *, after: float) -> Optional[float]:
-    cands = beats[(beats <= t + 1e-6) & (beats >= after)]
+    cands = beats[(beats <= t + _SAME_FLOAT) & (beats >= after)]
     if cands.size:
         return float(cands[-1])
     return t if t >= after else None
 
 
-def _take_over(sources, current, *, need: float, avoid: set, uses: Mapping[str, int]):
+def _take_over(
+    sources,
+    current,
+    *,
+    need: float,
+    avoid: set,
+    uses: Mapping[str, int],
+    transition=None,
+    next_transition=None,
+):
     """A source to take over the rest of a piece: one that can hold ``need`` seconds (a
     still always can) — preferably not a picture either side, the least used first —
     and only when nothing can hold it, the longest of the rest. ``current`` back means
-    there is nothing else at all."""
+    there is nothing else at all.
+
+    "Hold" counts the blends the piece carries — ``transition`` in, ``next_transition``
+    out — by the same rule :func:`_cuts_for_piece` then applies (``longest_span``), so a
+    clip that holds ``need`` only without its blends is not picked just to be found
+    short and replaced on the next pass (muvid#210)."""
     others = [s for s in sources if s.clip_id != current.clip_id]
     if not others:
         return current
@@ -980,7 +1021,16 @@ def _take_over(sources, current, *, need: float, avoid: set, uses: Mapping[str, 
     from muvid.footage.edl import longest_span
 
     def holds(s):
-        return s.is_still or longest_span(s.duration_s or 0.0, edge_s=EDGE_S) >= need
+        return (
+            s.is_still
+            or longest_span(
+                s.duration_s or 0.0,
+                transition=transition,
+                next_transition=next_transition,
+                edge_s=EDGE_S,
+            )
+            >= need
+        )
 
     able = [s for s in others if holds(s)]
     pool = [s for s in able if s.clip_id not in avoid] or able
@@ -1084,7 +1134,7 @@ def _back_on_the_beat(entries: list, shifted: Mapping[float, float], by_id) -> l
         if (
             not shift
             or e.transition is not None
-            or abs(prev.song_end - e.song_start) > 1e-6
+            or abs(prev.song_end - e.song_start) > _SAME_FLOAT
         ):
             continue
         at = e.song_start - shift
@@ -1101,7 +1151,7 @@ def _back_on_the_beat(entries: list, shifted: Mapping[float, float], by_id) -> l
         if src is not None and not src.is_still and moved.source_in is not None:
             if (
                 moved.source_in + (moved.song_end - at) * moved.rate
-                > (src.duration_s or 0.0) + 1e-6
+                > (src.duration_s or 0.0) + _SAME_FLOAT
             ):
                 continue
         out[i - 1], out[i] = replace(prev, song_end=at), moved
@@ -1130,7 +1180,7 @@ def _feasible_blends(entries: list, by_id: Mapping[str, FreeSource]) -> list:
             continue
         prev = out[i - 1] if i > 0 else None
         try:
-            if prev is None or abs(prev.song_end - e.song_start) > 1e-6:
+            if prev is None or abs(prev.song_end - e.song_start) > _SAME_FLOAT:
                 raise ValueError("no contiguous predecessor")
             _validate_transition(i, e, prev, places)
         except (ValueError, KeyError):

@@ -662,3 +662,72 @@ def test_the_re_cap_trades_a_blend_never_coverage_and_makes_no_sliver(song_s, bp
     assert min(lengths) >= MIN_PIECE_S - 1e-6, sorted(lengths)[:3]
     if len(durs) == 1:  # main covered all but 9.56 s of this song
         assert cut.report["uncovered_s"] <= 9.56 + 1e-6
+
+
+def test_a_beat_a_hair_before_the_piece_end_leaves_no_sliver_muvid_210():
+    """muvid#210 item 4: the cutter compared moments at 1 us while the gate calls
+    anything under ``COINCIDENT_S`` (1 ms) zero, so a beat 60 us before a piece's end
+    left a 60 us take-over — "EDL entry 15 has a non-positive span". The plan is the
+    census's (ballad_dissolve, 70.745 s at 106.014 bpm, four short videos)."""
+    from muvid.footage.edl import COINCIDENT_S, fill_gaps, unplaced, validate_edl
+
+    d, bpm = 70.74533549887813, 106.01423596998906
+    durs = [
+        3.356456034271889,
+        0.7314478274870594,
+        3.5525565513677266,
+        3.780584871995159,
+    ]
+    srcs = [
+        FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=x) for i, x in enumerate(durs)
+    ]
+    cut = fill_spans(
+        "/x/s.wav",
+        srcs,
+        analysis=_analysis(d, bpm),
+        envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1080, 1920),
+        canvas=(1080, 1920),
+        archetype="ballad_dissolve",
+    )
+    es = cut.entries
+    assert all(e.song_end - e.song_start > COINCIDENT_S for e in es)
+    # and no hole either: leaving the 60 us uncovered would pass the gate unseen
+    assert all(a.song_end == b.song_start for a, b in zip(es, es[1:]))
+    places = [unplaced(s.clip_id, s.duration_s) for s in srcs]
+    validate_edl(fill_gaps(cut.entries, d), places, d, canvas=(1080, 1920))
+
+
+def test_take_over_counts_the_blends_the_piece_carries_muvid_210():
+    """muvid#210 item 3: a clip that holds the rest of a piece only WITHOUT its blends
+    is not picked, to be found short and replaced on the next pass."""
+    from muvid.footage.edl import Transition, longest_span
+
+    fade = Transition(duration_s=1.0, curve="fade")
+    need = 2.0
+    edge = music_cut.EDGE_S
+    # `bare` holds `need` with no blend and not with the next one; `roomy` holds both
+    bare_s = need + 2 * edge + 0.1
+    assert longest_span(bare_s, edge_s=edge) >= need
+    assert longest_span(bare_s, next_transition=fade, edge_s=edge) < need
+    cur = FreeSource("cur", "/x/cur.mp4", duration_s=1.0)
+    bare = FreeSource("bare", "/x/bare.mp4", duration_s=bare_s)
+    roomy = FreeSource("roomy", "/x/roomy.mp4", duration_s=need + 2 * edge + 2.0)
+    uses = {"roomy": 5}  # least-used order alone would pick `bare`
+    picked = music_cut._take_over(
+        [cur, bare, roomy], cur, need=need, avoid=set(), uses=uses, next_transition=fade
+    )
+    assert picked.clip_id == "roomy"
+    assert (
+        music_cut._take_over(
+            [cur, bare, roomy], cur, need=need, avoid=set(), uses=uses
+        ).clip_id
+        == "bare"
+    )
+    # the blend IN counts too: the first take-over of a piece keeps the piece's fade
+    assert longest_span(bare_s, transition=fade, edge_s=edge) < need
+    picked_in = music_cut._take_over(
+        [cur, bare, roomy], cur, need=need, avoid=set(), uses=uses, transition=fade
+    )
+    assert picked_in.clip_id == "roomy"
