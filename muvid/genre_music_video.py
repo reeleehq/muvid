@@ -179,6 +179,7 @@ def _as_genre_op(spec) -> GenreOp:
         # an upload's server path and original name: the host's, never a client's
         host_params=spec.host_params,
         max_upload_bytes=spec.max_upload_bytes,
+        invalidates=spec.invalidates,
     )
 
 

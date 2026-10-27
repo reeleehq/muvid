@@ -4799,6 +4799,22 @@ class OpSpec:
     #: Whether the MCP transport serves it (:mod:`muvid.mcp._footage_ops`). ``False``
     #: for an op only a host that honours ``runs="job"`` should run.
     mcp: bool = True
+    #: The read ops whose answer this op can make stale (``nw.GenreOp.invalidates``,
+    #: reelee#750), so a client refreshes only those after it. ``None``: not said.
+    invalidates: Optional[tuple[str, ...]] = None
+
+
+#: The reads that answer from the beat grid a person set (:func:`declared_beat_grid`):
+#: what setting or forgetting it makes stale. ``test_beat_grid_invalidations`` derives
+#: the same set from the code, so a read that starts using the grid must join it.
+BEAT_GRID_READS: tuple[str, ...] = (
+    "beat_grid",
+    "rank_songs",
+    "scores",
+    "score_candidates",
+    "explain_edit",
+    "editor_document",
+)
 
 
 #: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.
@@ -4862,8 +4878,8 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
     OpSpec("beat_grid", "Find the beat", "read"),
-    OpSpec("set_beat_grid", "Set the beat by hand", "write"),
-    OpSpec("clear_beat_grid", "Forget the beat I set", "destroy"),
+    OpSpec("set_beat_grid", "Set the beat by hand", "write", invalidates=BEAT_GRID_READS),
+    OpSpec("clear_beat_grid", "Forget the beat I set", "destroy", invalidates=BEAT_GRID_READS),
     OpSpec("peaks", "Show the song's waveform", "read"),
     OpSpec("beat_signals", "Show where the beat is in the song or a video", "read"),
     OpSpec("filmstrips", "Show the videos' filmstrips", "read"),
