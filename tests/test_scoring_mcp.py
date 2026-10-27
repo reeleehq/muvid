@@ -203,3 +203,43 @@ def test_weighted_assemble_without_scores_is_a_clean_error(tmp_path, monkeypatch
         pytest.raises(ToolError, match="scoring first|valid edit"),
     ):
         ft.assemble_music_video("p", strategy="weighted")
+
+
+def test_status_without_job_id_reads_the_job_score_footage_started(
+    tmp_path, monkeypatch
+):
+    """muvid#264: the status reaches the last scoring job through ``get_job`` even once
+    ``list_jobs`` stops listing it — nw#169 archives a run 30 days after it ends, and
+    ``list_jobs`` returns 50 jobs of every kind before the kind filter runs."""
+    pytest.importorskip("fastmcp")
+    pytest.importorskip("nw")
+    from nw import jobs as nw_jobs
+
+    import muvid.mcp.scoring_tools as st
+    from muvid.footage import service
+    from muvid.footage.workspace import FootageWorkspace, MusicVideoFootageProject
+    from muvid.mcp.identity import use_email
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    monkeypatch.setattr(service, "require_scorable", lambda fp, metrics=None: [])
+    monkeypatch.setattr(service, "run_scoring", lambda fp, **kw: {"scored": True})
+    monkeypatch.setattr(MusicVideoFootageProject, "song_hash", lambda self: "h")
+    proj = FootageWorkspace.for_email("u@x.com").create_project("p")
+
+    with use_email("u@x.com"):
+        started = st.score_footage("p")
+        done = st.footage_score_status("p", job_id=started["job_id"], wait_s=25)
+        assert done["status"] == "succeeded", done
+
+        listed = nw_jobs.list_jobs
+        monkeypatch.setattr(nw_jobs, "list_jobs", lambda *a, **k: [])
+        assert st.footage_score_status("p")["job_id"] == started["job_id"]
+
+        # A record that is unreadable, or names a job nw no longer knows, falls back
+        # to the scan — which is all a project scored before the record existed has.
+        monkeypatch.setattr(nw_jobs, "list_jobs", listed)
+        for text in ("not json", '{"job_id": "gone"}', "[]"):
+            (proj.root / st._LAST_JOB_FILE).write_text(text)
+            assert st.footage_score_status("p")["job_id"] == started["job_id"]
+        (proj.root / st._LAST_JOB_FILE).unlink()
+        assert st.footage_score_status("p")["job_id"] == started["job_id"]

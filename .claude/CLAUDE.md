@@ -844,6 +844,7 @@ hole the size of the rest of the document.
                                               .../song/song.<ext>
                                               .../clips/{clip_id}.<ext>
                                               .../alignments.json
+                                              .../score_job.json         (the id of the job score_footage last started — the MCP transport's; muvid#264)
                                               .../beat_grid_declared.json  (a beat grid a person set, keyed on song_hash; muvid#123)
                                               .../scores/                (ScoreTensor .npz + manifest)
                                               .../renders/{render_id}/   (final.mp4 + meta.json)

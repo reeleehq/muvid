@@ -17,11 +17,17 @@ Key design decisions (LOCKED, see ``misc/docs/footage_scoring_design.md``):
 - **Bounded long-poll** status so an agent needs ~1 poll, not ~15.
 - **NaN never hits the wire** — masked entries serialize as ``null``; the ``mask`` array is
   authoritative.
+- **The status without a ``job_id`` reads the job ``score_footage`` last started**, recorded
+  in the project (``score_job.json``), through ``nw.jobs.get_job`` — never by scanning
+  ``list_jobs``, which stops listing a run 30 days after it ends (nw#169) and returns 50 jobs
+  of every kind, so a project with more newer jobs reported "no scoring job found"
+  (muvid#264). The scan stays only for a project scored before the record existed.
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import time
 
@@ -34,6 +40,8 @@ _SCORE_KIND = "footage.score"
 _MAX_WAIT_S = int(os.environ.get("MUVID_SCORING_MAX_WAIT_S", "25"))
 #: Default cap on points-per-(clip,metric) returned over the wire (the service's).
 _MAX_POINTS = service.MAX_WIRE_POINTS
+#: Where ``score_footage`` records the id of the job it last started (muvid#264).
+_LAST_JOB_FILE = "score_job.json"
 
 
 def _open(project_id: str):
@@ -103,7 +111,23 @@ def score_footage(
         label="Score footage",
         on_event=None,
     )
+    _remember_job(proj, job.job_id)
     return {"project_id": project_id, "job_id": job.job_id, "status": job.status}
+
+
+def _remember_job(proj, job_id: str) -> None:
+    from muvid.footage.workspace import atomic_write_text
+
+    atomic_write_text(proj.root / _LAST_JOB_FILE, json.dumps({"job_id": job_id}))
+
+
+def _remembered_job_id(proj) -> str | None:
+    """The id :func:`_remember_job` recorded, or ``None`` (absent or unreadable)."""
+    try:
+        job_id = json.loads((proj.root / _LAST_JOB_FILE).read_text()).get("job_id")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return job_id if isinstance(job_id, str) and job_id else None
 
 
 def footage_score_status(
@@ -111,7 +135,7 @@ def footage_score_status(
 ) -> dict:
     """The scoring job's status (bounded long-poll). Free.
 
-    Pass the ``job_id`` from ``score_footage`` (or omit for the newest scoring job). With
+    Pass the ``job_id`` from ``score_footage`` (or omit for the one it last started). With
     ``wait_s`` > 0 this blocks up to ~``wait_s`` seconds (capped), returning early on a
     terminal state — so an agent needs ~1 poll, not many.
     """
@@ -126,6 +150,9 @@ def footage_score_status(
     def _current():
         if job_id:
             return nw_jobs.get_job(proj, job_id)
+        remembered = _remembered_job_id(proj)
+        if remembered and (job := nw_jobs.get_job(proj, remembered)):
+            return job
         jobs = [j for j in nw_jobs.list_jobs(proj) if j.kind == _SCORE_KIND]
         return jobs[0] if jobs else None
 

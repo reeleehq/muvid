@@ -133,7 +133,9 @@ mcp = [
     # (nw#161), which the beat-grid writers declare (reelee#750). It stays in this extra,
     # not the base dependencies (muvid#248): a keyword is not an import, so
     # `genre_music_video` checks GenreOp's fields itself and names this extra.
-    "nw>=0.0.92",
+    # 0.0.102: `nw.jobs.get_job` answers for a run `list_jobs` no longer lists (archived
+    # 30 days after it ends, nw#169), which `footage_score_status` relies on (muvid#264).
+    "nw>=0.0.102",
 ]
 # The footage SCORING layer's TORCH-FREE core tier (thorwhalen/muvid#13): quality gates +
 # motion-to-beat + the Viterbi selector + editor score-tracks. This is what the prod
