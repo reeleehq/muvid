@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-27T20:45:09Z",
+  "built_at": "2026-10-27T20:46:51Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.139",
+    "version": "0.0.140",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "bf01d3e8e67f2cb253f19f2dd178f6959e983675",
-    "short_commit": "bf01d3e",
+    "commit": "ab462ddd7dfce4f7484af687327971055960edd4",
+    "short_commit": "ab462dd",
     "branch": "main",
     "tags": [
-      "0.0.139"
+      "0.0.140"
     ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/bf01d3e8e67f2cb253f19f2dd178f6959e983675",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/ab462ddd7dfce4f7484af687327971055960edd4",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "17a87ab18c05c858dbbe01ac5a6d5d04adda3dc5",
+    "sha": "3a45a7c5c25afbb13485eceee275bf7115abd9ec",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "40575357225",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40575357225",
+    "run_id": "40574951182",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40574951182",
     "server_url": "https://github.com"
   },
   "tools": {
@@ -63,15 +63,13 @@
   "pypi": {
     "checked": true,
     "latest": "0.0.140",
-    "relation": "behind",
+    "relation": "same",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout bf01d3e8e67f2cb253f19f2dd178f6959e983675\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout ab462ddd7dfce4f7484af687327971055960edd4\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
-    "aligned": false,
-    "notes": [
-      "The documented version (0.0.139) is behind the latest release on PyPI (0.0.140): `pip install muvid` gives newer code than these docs describe."
-    ]
+    "aligned": true,
+    "notes": []
   }
 }
