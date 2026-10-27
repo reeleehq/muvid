@@ -1134,9 +1134,9 @@ number beside its score.</p>
 it are a pickup, bar 0) number the bars.</p>
 <p>It is recorded as <code class="docutils literal notranslate"><span class="pre">source:</span> <span class="pre">"declared"</span></code> and returned by <code class="docutils literal notranslate"><span class="pre">beat_grid</span></code> from then on;
 re-estimating never replaces it (<code class="docutils literal notranslate"><span class="pre">clear_beat_grid</span></code> forgets it). The cut-to-the-music
-planner, <code class="docutils literal notranslate"><span class="pre">explain_edit</span></code>, <code class="docutils literal notranslate"><span class="pre">fit_to_beat</span></code> and the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy’s beat snap use
-it. <strong>Footage scores keep the estimate:</strong> their beat features (<code class="docutils literal notranslate"><span class="pre">motion_beat_*</span></code>) are
-measured on the estimator’s grid, also in a run made after this. A grid belongs to the
+planner, <code class="docutils literal notranslate"><span class="pre">explain_edit</span></code>, <code class="docutils literal notranslate"><span class="pre">fit_to_beat</span></code>, the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy’s beat snap and
+footage scoring use it: scores made before it are stale until <code class="docutils literal notranslate"><span class="pre">score</span></code> runs again (and
+current again if the grid is cleared) — <code class="docutils literal notranslate"><span class="pre">scores_stale:</span> <span class="pre">true</span></code> says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like <code class="docutils literal notranslate"><span class="pre">beat_grid</span></code> does, plus <code class="docutils literal notranslate"><span class="pre">changed</span></code>.</p>
 <dl class="field-list simple">
@@ -1392,7 +1392,7 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=6ba42da4"></script>
+<script src="../_static/documentation_options.js?v=83be8e66"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

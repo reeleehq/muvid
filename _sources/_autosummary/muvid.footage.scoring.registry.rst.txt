@@ -25,5 +25,6 @@ muvid.footage.scoring.registry
    .. autosummary::
    
       ClipContext
+      MasterBeats
       Scorer
    

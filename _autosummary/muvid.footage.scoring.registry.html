@@ -201,7 +201,10 @@ caller gives it a weight (<code class="docutils literal notranslate"><span class
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.ClipContext" title="muvid.footage.scoring.registry.ClipContext"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ClipContext</span></code></a>(clip_id, path, alignment, ...)</p></td>
 <td><p>What a scorer is handed for ONE clip.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.Scorer" title="muvid.footage.scoring.registry.Scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scorer</span></code></a>(name, metrics, run[, needs_frames, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.MasterBeats" title="muvid.footage.scoring.registry.MasterBeats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MasterBeats</span></code></a>(beat_times, downbeat_times, ...)</p></td>
+<td><p>The master beat grid a scoring run measures on, and the name of it (muvid#187).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.Scorer" title="muvid.footage.scoring.registry.Scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scorer</span></code></a>(name, metrics, run[, needs_frames, ...])</p></td>
 <td><p>One row of the registry.</p></td>
 </tr>
 </tbody>
@@ -222,6 +225,29 @@ stem path (<code class="docutils literal notranslate"><span class="pre">None</sp
 <code class="docutils literal notranslate"><span class="pre">{"t0",</span> <span class="pre">"hop_s",</span> <span class="pre">"n"}</span></code>.</p>
 <dl class="field-list simple">
 </dl>
+</dd></dl>
+<dl class="py class">
+<dt class="sig sig-object py" id="muvid.footage.scoring.registry.MasterBeats">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.registry.</span></span><span class="sig-name descname"><span class="pre">MasterBeats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">beat_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">downbeat_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tempo_bpm</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_hop_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fingerprint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/registry.html#MasterBeats"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.registry.MasterBeats" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.registry.MasterBeats'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
+<p>The master beat grid a scoring run measures on, and the name of it (muvid#187).</p>
+<p>One record, read once: <code class="docutils literal notranslate"><span class="pre">fingerprint</span></code> names THESE beats (<code class="docutils literal notranslate"><span class="pre">""</span></code> for the estimator’s,
+which <code class="docutils literal notranslate"><span class="pre">song_hash</span></code> already keys; else the declared grid’s), so the manifest can never
+record one grid’s key beside another grid’s beats. The fields are primitives, the
+shape muvid#184 wants <code class="docutils literal notranslate"><span class="pre">ClipContext</span></code> to hand plugins; <code class="docutils literal notranslate"><span class="pre">onset_env</span></code> is the
+estimator’s measurement of the song’s onsets, which a declared grid does not change.</p>
+<dl class="field-list simple">
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="muvid.footage.scoring.registry.MasterBeats.estimated">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">estimated</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/registry.html#MasterBeats.estimated"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.registry.MasterBeats.estimated" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.registry.MasterBeats.estimated'">¶</a></dt>
+<dd><p>From the estimator’s <code class="docutils literal notranslate"><span class="pre">mixing.audio.BeatGrid</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.footage.scoring.registry.MasterBeats" title="muvid.footage.scoring.registry.MasterBeats"><code class="xref py py-class docutils literal notranslate"><span class="pre">MasterBeats</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.footage.scoring.registry.Scorer">
@@ -296,6 +322,10 @@ names.</p>
 <ul>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.CORE_TIER'" class="reference internal" href="#muvid.footage.scoring.registry.CORE_TIER"><code class="docutils literal notranslate"><span class="pre">CORE_TIER</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.ClipContext'" class="reference internal" href="#muvid.footage.scoring.registry.ClipContext"><code class="docutils literal notranslate"><span class="pre">ClipContext</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.registry.MasterBeats'" class="reference internal" href="#muvid.footage.scoring.registry.MasterBeats"><code class="docutils literal notranslate"><span class="pre">MasterBeats</span></code></a><ul>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.registry.MasterBeats.estimated'" class="reference internal" href="#muvid.footage.scoring.registry.MasterBeats.estimated"><code class="docutils literal notranslate"><span class="pre">MasterBeats.estimated()</span></code></a></li>
+</ul>
+</li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.Scorer'" class="reference internal" href="#muvid.footage.scoring.registry.Scorer"><code class="docutils literal notranslate"><span class="pre">Scorer</span></code></a><ul>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.Scorer.available'" class="reference internal" href="#muvid.footage.scoring.registry.Scorer.available"><code class="docutils literal notranslate"><span class="pre">Scorer.available</span></code></a></li>
 </ul>
@@ -318,7 +348,7 @@ names.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=6ba42da4"></script>
+<script src="../_static/documentation_options.js?v=83be8e66"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

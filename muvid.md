@@ -1,4 +1,4 @@
-> built 2026-10-27 04:09 UTC from 2048448 (main) · muvid 0.0.107. Details: build_info.json
+> built 2026-10-27 04:37 UTC from 92ec079 (main) · muvid 0.0.108. Details: build_info.json
 
 # index.html.md
 
@@ -6420,7 +6420,7 @@ Pure numpy — no cv2/torch/ffmpeg here. Imported only under the `muvid[scoring]
 | [`grid_len`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.grid_len)(song_duration[, hop_s])                  | Number of grid frames spanning `[0, song_duration]` at `hop_s`.                                                                                                     |
 | `load_manifest`(project_root)                                                                      |                                                                                                                                                                     |
 | [`load_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.load_tensor)(project_root)                         | Reconstruct the [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) from persisted arrays + manifest, or `None`.                                           |
-| [`manifest_is_current`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether persisted scores match the CURRENT song + alignments (else they are stale).                                                                                 |
+| [`manifest_is_current`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether persisted scores match the CURRENT song + alignments + beat grid (else they are stale).                                                                     |
 | [`resample_to_grid`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.resample_to_grid)(sample_times, ...[, max_gap_s])  | Resample irregular `(song_time, value)` samples onto the fixed grid.                                                                                                |
 | [`save_scores`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.save_scores)(project_root, tracks, \*, t0, ...)    | Persist per-clip raw arrays + a manifest, crash-consistently.                                                                                                       |
 | `scores_dir`(project_root)                                                                         |                                                                                                                                                                     |
@@ -6536,13 +6536,20 @@ A clip/metric absent from a `.npz` is filled as an all-masked column.
 * **Return type:**
   [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint)
+### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint, beat_fingerprint)
 
-Whether persisted scores match the CURRENT song + alignments (else they are stale).
+Whether persisted scores match the CURRENT song + alignments + beat grid (else they
+are stale).
 
 Guards the read path: a re-align (or a new song) that raced the score job’s rmtree, or a
 manifest predating the fingerprint, is detected here so no stale/mislabeled scores are
 served to the editor or the weighted selector.
+
+`beat_fingerprint` names the beat grid the beat metrics were measured on: `""` for
+the estimator’s (a function of the song, already keyed by `song_hash`), else the
+grid a person declared (muvid#187). Required, so no reader can forget it: declaring a
+grid makes earlier scores stale, and clearing it makes the estimate’s scores current
+again. A manifest predating the key was measured on the estimate.
 
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
@@ -6566,7 +6573,7 @@ Outside `[first_sample, last_sample]` the grid is masked (no extrapolation).
 * **Returns:**
   `(values, mask)` — `values` float32[n] (NaN where masked), `mask` bool[n].
 
-### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), extra=None)
+### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), beat_fingerprint='', extra=None)
 
 Persist per-clip raw arrays + a manifest, crash-consistently.
 
@@ -6730,8 +6737,9 @@ The scoring orchestrator: a project (song + aligned clips) → the persisted sco
 Owns the shared, compute-once artifacts and the single decode pass per clip (the design
 review’s fix for the double-decode / camera-motion-sharing problem):
 
-1. **Master beat grid** (`mixing.audio.beat_grid`) — computed ONCE; every clip maps to it
-   via its offset.
+1. **Master beat grid** (`mixing.audio.beat_grid`, or the `beat_grid` a caller injects —
+   the footage service’s prefers a grid a person declared, muvid#187) — computed ONCE; every
+   clip maps to it via its offset.
 2. (opt-in) **Master vocal stem** (Demucs) — ONCE, for the lip-sync tier.
 3. **Per clip: ONE decode pass** ([`sample_clip_frames()`](_autosummary/muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.sample_clip_frames))
    feeds BOTH quality and motion-beat (sharpness/exposure/face + the camera-compensated motion
@@ -6772,7 +6780,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, beat_source=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -6785,6 +6793,12 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
   * **enable_lipsync** ([`bool`](https://docs.python.org/3/builtins/functions.html#bool) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – force the opt-in tier on/off (default: the env flag).
   * **progress_cb** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)], [`None`](https://docs.python.org/3/builtins/constants.html#None)]]) – sink for `{'kind':'progress', ...}` dict events (nw.jobs mirror shape).
   * **should_cancel** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[], [`bool`](https://docs.python.org/3/builtins/functions.html#bool)]]) – polled between clips/stages; a True short-circuits to a clean cancel.
+  * **beat_source** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)]]) – `project -> MasterBeats`, the master beat grid and its name,
+    read together (default: the estimator, `mixing.audio.beat_grid` on the
+    song). The footage service passes one that prefers a declared grid
+    (muvid#187). Its `fingerprint` goes into the manifest, so
+    [`manifest_is_current()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current) can tell scores
+    measured on one grid from another.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
@@ -6889,9 +6903,10 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Classes
 
-| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, alignment, ...)      | What a scorer is handed for ONE clip.   |
-|--------------------------------------------------------------------------------------------------|-----------------------------------------|
-| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...]) | One row of the registry.                |
+| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, alignment, ...)      | What a scorer is handed for ONE clip.                                           |
+|--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)(beat_times, downbeat_times, ...)    | The master beat grid a scoring run measures on, and the name of it (muvid#187). |
+| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...]) | One row of the registry.                                                        |
 
 ### muvid.footage.scoring.registry.CORE_TIER *= 'core'*
 
@@ -6907,6 +6922,25 @@ What a scorer is handed for ONE clip. Paths and primitives, never the project.
 `needs_frames`); `beat` is the master beat grid; `vocal_stem` the master vocal
 stem path (`None` unless the lip-sync tier is running); `grid` is
 `{"t0", "hop_s", "n"}`.
+
+### *class* muvid.footage.scoring.registry.MasterBeats(beat_times, downbeat_times, tempo_bpm, onset_env, onset_hop_s, fingerprint='')
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+The master beat grid a scoring run measures on, and the name of it (muvid#187).
+
+One record, read once: `fingerprint` names THESE beats (`""` for the estimator’s,
+which `song_hash` already keys; else the declared grid’s), so the manifest can never
+record one grid’s key beside another grid’s beats. The fields are primitives, the
+shape muvid#184 wants `ClipContext` to hand plugins; `onset_env` is the
+estimator’s measurement of the song’s onsets, which a declared grid does not change.
+
+#### *classmethod* estimated(bg)
+
+From the estimator’s `mixing.audio.BeatGrid`.
+
+* **Return type:**
+  [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)
 
 ### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None)
 
@@ -7976,9 +8010,9 @@ it are a pickup, bar 0) number the bars.
 
 It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
 re-estimating never replaces it (`clear_beat_grid` forgets it). The cut-to-the-music
-planner, `explain_edit`, `fit_to_beat` and the `weighted` strategy’s beat snap use
-it. **Footage scores keep the estimate:** their beat features (`motion_beat_*`) are
-measured on the estimator’s grid, also in a run made after this. A grid belongs to the
+planner, `explain_edit`, `fit_to_beat`, the `weighted` strategy’s beat snap and
+footage scoring use it: scores made before it are stale until `score` runs again (and
+current again if the grid is cleared) — `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 
@@ -12893,9 +12927,9 @@ it are a pickup, bar 0) number the bars.
 
 It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
 re-estimating never replaces it (`footage_clear_beat_grid` forgets it). The cut-to-the-music
-planner, `footage_explain_edit`, `footage_fit_to_beat` and the `weighted` strategy’s beat snap use
-it. **Footage scores keep the estimate:** their beat features (`motion_beat_*`) are
-measured on the estimator’s grid, also in a run made after this. A grid belongs to the
+planner, `footage_explain_edit`, `footage_fit_to_beat`, the `weighted` strategy’s beat snap and
+footage scoring use it: scores made before it are stale until `score_footage` runs again (and
+current again if the grid is cleared) — `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 
@@ -18078,20 +18112,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 04:09 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/20484486925a22e40241b8640e9812c944884203"><code>2048448</code></a> on branch <code>main</code>, for **muvid 0.0.107** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 04:37 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/92ec07915f8f94508c3f9a0cfdce98bcc9d52059"><code>92ec079</code></a> on branch <code>main</code>, for **muvid 0.0.108** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.107) is ahead of the latest release on PyPI (0.0.106): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/20484486925a22e40241b8640e9812c944884203"><code>20484486925a22e40241b8640e9812c944884203</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/92ec07915f8f94508c3f9a0cfdce98bcc9d52059"><code>92ec07915f8f94508c3f9a0cfdce98bcc9d52059</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.107</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.108</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18100,9 +18132,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40447378511">40447378511</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40449917635">40449917635</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>b652e076571f3d7e526b36b81a252f4958020c2d</code> (in the history of the built commit) |
+| Event commit | <code>b5680050404ef2baf4ed71b9bbf2ca29b4bdd9ea</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18127,13 +18159,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.106/">0.0.106</a>, older than the documented version (0.0.107).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.108/">0.0.108</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 20484486925a22e40241b8640e9812c944884203
+git checkout 92ec07915f8f94508c3f9a0cfdce98bcc9d52059
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

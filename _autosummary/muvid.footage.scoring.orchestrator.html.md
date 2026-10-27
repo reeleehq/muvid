@@ -5,8 +5,9 @@ The scoring orchestrator: a project (song + aligned clips) → the persisted sco
 Owns the shared, compute-once artifacts and the single decode pass per clip (the design
 review’s fix for the double-decode / camera-motion-sharing problem):
 
-1. **Master beat grid** (`mixing.audio.beat_grid`) — computed ONCE; every clip maps to it
-   via its offset.
+1. **Master beat grid** (`mixing.audio.beat_grid`, or the `beat_grid` a caller injects —
+   the footage service’s prefers a grid a person declared, muvid#187) — computed ONCE; every
+   clip maps to it via its offset.
 2. (opt-in) **Master vocal stem** (Demucs) — ONCE, for the lip-sync tier.
 3. **Per clip: ONE decode pass** ([`sample_clip_frames()`](muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.sample_clip_frames))
    feeds BOTH quality and motion-beat (sharpness/exposure/face + the camera-compensated motion
@@ -47,7 +48,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, beat_source=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -60,5 +61,11 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
   * **enable_lipsync** ([`bool`](https://docs.python.org/3/builtins/functions.html#bool) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – force the opt-in tier on/off (default: the env flag).
   * **progress_cb** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)], [`None`](https://docs.python.org/3/builtins/constants.html#None)]]) – sink for `{'kind':'progress', ...}` dict events (nw.jobs mirror shape).
   * **should_cancel** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[], [`bool`](https://docs.python.org/3/builtins/functions.html#bool)]]) – polled between clips/stages; a True short-circuits to a clean cancel.
+  * **beat_source** ([`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`Any`](https://docs.python.org/3/library/typing.html#typing.Any)], [`MasterBeats`](muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)]]) – `project -> MasterBeats`, the master beat grid and its name,
+    read together (default: the estimator, `mixing.audio.beat_grid` on the
+    song). The footage service passes one that prefers a declared grid
+    (muvid#187). Its `fingerprint` goes into the manifest, so
+    [`manifest_is_current()`](muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current) can tell scores
+    measured on one grid from another.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

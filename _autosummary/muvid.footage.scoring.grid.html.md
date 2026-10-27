@@ -46,7 +46,7 @@ Pure numpy — no cv2/torch/ffmpeg here. Imported only under the `muvid[scoring]
 | [`grid_len`](#muvid.footage.scoring.grid.grid_len)(song_duration[, hop_s])                  | Number of grid frames spanning `[0, song_duration]` at `hop_s`.                                                                                                     |
 | `load_manifest`(project_root)                                                                      |                                                                                                                                                                     |
 | [`load_tensor`](#muvid.footage.scoring.grid.load_tensor)(project_root)                         | Reconstruct the [`ScoreTensor`](#muvid.footage.scoring.grid.ScoreTensor) from persisted arrays + manifest, or `None`.                                           |
-| [`manifest_is_current`](#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether persisted scores match the CURRENT song + alignments (else they are stale).                                                                                 |
+| [`manifest_is_current`](#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether persisted scores match the CURRENT song + alignments + beat grid (else they are stale).                                                                     |
 | [`resample_to_grid`](#muvid.footage.scoring.grid.resample_to_grid)(sample_times, ...[, max_gap_s])  | Resample irregular `(song_time, value)` samples onto the fixed grid.                                                                                                |
 | [`save_scores`](#muvid.footage.scoring.grid.save_scores)(project_root, tracks, \*, t0, ...)    | Persist per-clip raw arrays + a manifest, crash-consistently.                                                                                                       |
 | `scores_dir`(project_root)                                                                         |                                                                                                                                                                     |
@@ -162,13 +162,20 @@ A clip/metric absent from a `.npz` is filled as an all-masked column.
 * **Return type:**
   [`ScoreTensor`](#muvid.footage.scoring.grid.ScoreTensor) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint)
+### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint, beat_fingerprint)
 
-Whether persisted scores match the CURRENT song + alignments (else they are stale).
+Whether persisted scores match the CURRENT song + alignments + beat grid (else they
+are stale).
 
 Guards the read path: a re-align (or a new song) that raced the score job’s rmtree, or a
 manifest predating the fingerprint, is detected here so no stale/mislabeled scores are
 served to the editor or the weighted selector.
+
+`beat_fingerprint` names the beat grid the beat metrics were measured on: `""` for
+the estimator’s (a function of the song, already keyed by `song_hash`), else the
+grid a person declared (muvid#187). Required, so no reader can forget it: declaring a
+grid makes earlier scores stale, and clearing it makes the estimate’s scores current
+again. A manifest predating the key was measured on the estimate.
 
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
@@ -192,7 +199,7 @@ Outside `[first_sample, last_sample]` the grid is masked (no extrapolation).
 * **Returns:**
   `(values, mask)` — `values` float32[n] (NaN where masked), `mask` bool[n].
 
-### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), extra=None)
+### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), beat_fingerprint='', extra=None)
 
 Persist per-clip raw arrays + a manifest, crash-consistently.
 

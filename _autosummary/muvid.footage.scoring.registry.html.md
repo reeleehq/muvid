@@ -46,9 +46,10 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Classes
 
-| [`ClipContext`](#muvid.footage.scoring.registry.ClipContext)(clip_id, path, alignment, ...)      | What a scorer is handed for ONE clip.   |
-|--------------------------------------------------------------------------------------------------|-----------------------------------------|
-| [`Scorer`](#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...]) | One row of the registry.                |
+| [`ClipContext`](#muvid.footage.scoring.registry.ClipContext)(clip_id, path, alignment, ...)      | What a scorer is handed for ONE clip.                                           |
+|--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| [`MasterBeats`](#muvid.footage.scoring.registry.MasterBeats)(beat_times, downbeat_times, ...)    | The master beat grid a scoring run measures on, and the name of it (muvid#187). |
+| [`Scorer`](#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...]) | One row of the registry.                                                        |
 
 ### muvid.footage.scoring.registry.CORE_TIER *= 'core'*
 
@@ -64,6 +65,25 @@ What a scorer is handed for ONE clip. Paths and primitives, never the project.
 `needs_frames`); `beat` is the master beat grid; `vocal_stem` the master vocal
 stem path (`None` unless the lip-sync tier is running); `grid` is
 `{"t0", "hop_s", "n"}`.
+
+### *class* muvid.footage.scoring.registry.MasterBeats(beat_times, downbeat_times, tempo_bpm, onset_env, onset_hop_s, fingerprint='')
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+The master beat grid a scoring run measures on, and the name of it (muvid#187).
+
+One record, read once: `fingerprint` names THESE beats (`""` for the estimator’s,
+which `song_hash` already keys; else the declared grid’s), so the manifest can never
+record one grid’s key beside another grid’s beats. The fields are primitives, the
+shape muvid#184 wants `ClipContext` to hand plugins; `onset_env` is the
+estimator’s measurement of the song’s onsets, which a declared grid does not change.
+
+#### *classmethod* estimated(bg)
+
+From the estimator’s `mixing.audio.BeatGrid`.
+
+* **Return type:**
+  [`MasterBeats`](#muvid.footage.scoring.registry.MasterBeats)
 
 ### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None)
 
