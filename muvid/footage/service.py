@@ -1301,9 +1301,9 @@ def set_beat_grid(
 
     It is recorded as ``source: "declared"`` and returned by ``beat_grid`` from then on;
     re-estimating never replaces it (``clear_beat_grid`` forgets it). The cut-to-the-music
-    planner, ``explain_edit``, ``fit_to_beat`` and the ``weighted`` strategy's beat snap use
-    it. **Footage scores keep the estimate:** their beat features (``motion_beat_*``) are
-    measured on the estimator's grid, also in a run made after this. A grid belongs to the
+    planner, ``explain_edit``, ``fit_to_beat``, the ``weighted`` strategy's beat snap and
+    footage scoring use it: scores made before it are stale until ``score`` runs again (and
+    current again if the grid is cleared). A grid belongs to the
     song it was set for: with another song set it does not apply (and comes back if that
     song is set again). Returns the grid like ``beat_grid`` does, plus ``changed``.
     """
@@ -1428,6 +1428,10 @@ def _beat_grid_from_scores(fp, song_hash: str) -> Optional[dict]:
     manifest = load_manifest(fp.root)
     if not manifest or manifest.get("song_hash") != song_hash:
         return None
+    if manifest.get("beat_fingerprint"):
+        # measured on a DECLARED grid (muvid#187): served as the estimate, it would bring
+        # a forgotten declaration back under another name
+        return None
     beats = manifest.get("beats")
     if not isinstance(beats, dict) or not isinstance(beats.get("beat_times"), list):
         return None
@@ -1538,7 +1542,53 @@ def run_scoring(
         enable_lipsync=enable_lipsync,
         progress_cb=progress_cb,
         should_cancel=should_cancel,
+        beat_grid=_master_beat_grid,
+        beat_fingerprint=declared_beat_fingerprint(fp),
     )
+
+
+def _master_beat_grid(fp):
+    """THE beat grid scoring measures on (muvid#187): the estimator's analysis of the song,
+    with a declared grid's beats, downbeats and tempo in place of the estimated ones.
+
+    The onset envelope stays the estimator's, deliberately: it is a measurement of where
+    the song has onsets, which a person declaring where the BEATS are does not correct. So
+    ``motion_beat_bas`` (picture changes on the beats) follows the declared grid, and
+    ``motion_onset_xcorr`` (picture energy against onset energy) does not depend on it."""
+    from dataclasses import replace
+
+    import numpy as np
+    from mixing.audio import beat_grid as estimate
+
+    from muvid.footage.beats import fitted_tempo
+
+    bg = estimate(str(fp.song_path()))
+    declared = declared_beat_grid(fp)
+    if declared is None:
+        return bg
+    beats = declared["beat_times"]
+    return replace(
+        bg,
+        beat_times=np.asarray(beats, dtype=float),
+        downbeat_times=np.asarray(declared["downbeat_times"], dtype=float),
+        tempo_bpm=float(
+            declared.get("tempo_bpm") or fitted_tempo(beats) or bg.tempo_bpm
+        ),
+    )
+
+
+def declared_beat_fingerprint(fp) -> str:
+    """Names the declared beat grid scores would be measured on; ``""`` for none (the
+    estimator's grid, which ``song_hash`` already keys). The score manifest records it,
+    and :func:`muvid.footage.scoring.grid.manifest_is_current` compares it (muvid#187)."""
+    declared = declared_beat_grid(fp)
+    if declared is None:
+        return ""
+    import hashlib
+
+    key = {k: declared[k] for k in ("beat_times", "downbeat_times", "tempo_bpm")}
+    blob = json.dumps(key, sort_keys=True).encode()
+    return hashlib.sha256(blob).hexdigest()[:16]
 
 
 def score(
@@ -1602,9 +1652,11 @@ def scores(
         manifest,
         song_hash=fp.song_hash(),
         align_fingerprint=align_fingerprint(fp.load_alignments()),
+        beat_fingerprint=declared_beat_fingerprint(fp),
     ):
         raise FootageError(
-            "scores are stale (song or alignment changed) — re-run score_footage"
+            "scores are stale (the song, an alignment or the beat grid changed) — "
+            "re-run score_footage"
         )
     tensor = load_tensor(fp.root)
     if tensor is None:
@@ -1653,7 +1705,12 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
             for cid in tensor.clip_ids
         ],
         "metric_coverage": manifest.get("coverage", {}),
-        "beats": {"count": len(beats), "times": _decimate_list(beats, max_points)},
+        "beats": {
+            "count": len(beats),
+            "times": _decimate_list(beats, max_points),
+            # the grid the beat metrics were measured on (muvid#187)
+            "source": DECLARED if manifest.get("beat_fingerprint") else "estimated",
+        },
         "tempo_bpm": manifest.get("tempo_bpm"),
         "selection_margin": _decimate_values(margin, max_points, pool="min"),
         "weights": weights,
@@ -2064,6 +2121,7 @@ def _selection_context(fp, strat, preset, weights, config):
         manifest,
         song_hash=fp.song_hash() if fp.has_song() else "",
         align_fingerprint=align_fingerprint(fp.load_alignments()),
+        beat_fingerprint=declared_beat_fingerprint(fp),
     )
     beat_times, downbeat_times = (
         beats.get("beat_times", []),

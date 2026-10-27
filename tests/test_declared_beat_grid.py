@@ -212,3 +212,97 @@ def test_the_connector_beat_grid_keeps_a_declared_grids_bars(proj, monkeypatch):
     out = ft.beat_grid("p")
     assert out["source"] == "declared" and out["downbeats"][:2] == [0.0, 2.0]
     assert out["beats_per_bar"] == 4 and out["bar_of_beat"][:5] == [1, 1, 1, 1, 2]
+
+
+# -- scoring reads the declared grid (muvid#187) --------------------------------------
+
+
+@pytest.fixture
+def scored_proj(proj, tmp_path, monkeypatch):
+    """``proj`` with one clip at a declared offset, an estimator that returns a real
+    ``BeatGrid`` (beats every 0.5 s, an onset envelope), and ONE registered scorer that
+    records the beats it was handed. No frames, no ffmpeg, no librosa."""
+    import numpy as np
+    from mixing.audio.beats import BeatGrid
+
+    from muvid.footage.scoring import registry as R
+
+    clip = tmp_path / "A.mp4"
+    clip.write_bytes(b"clip-a")
+    service.add_clip(proj, path=str(clip), clip_id="A", duration_s=SONG_DURATION)
+    service.set_offset(proj, clip_id="A", offset_s=0.0)
+    estimate = BeatGrid(
+        beat_times=np.arange(0.0, SONG_DURATION, 0.5),
+        downbeat_times=np.array([]),
+        onset_env=np.ones(10),
+        onset_hop_s=0.1,
+        sample_rate=22050,
+        tempo_bpm=120.0,
+    )
+    monkeypatch.setattr("mixing.audio.beat_grid", lambda audio, **kw: estimate)
+    monkeypatch.setattr(
+        "muvid.footage.scoring.segment.shot_boundaries", lambda p, **kw: []
+    )
+    seen = []
+
+    def run(ctx):
+        from muvid.footage.scoring.grid import ScoreTrack
+
+        seen.append((list(ctx.beat.beat_times), ctx.beat.onset_env))
+        n = ctx.grid["n"]
+        raw = np.ones(n, dtype="float32")
+        return [
+            ScoreTrack(
+                ctx.clip_id,
+                "beats_seen",
+                ctx.grid["t0"],
+                ctx.grid["hop_s"],
+                raw,
+                np.isfinite(raw),
+                "higher_better",
+            )
+        ]
+
+    before = dict(R._SCORERS)
+    R.register_scorer(
+        R.Scorer("beats_seen", ("beats_seen",), run, needs_frames=False, gated=False)
+    )
+    yield proj, seen, estimate
+    R._SCORERS.clear()
+    R._SCORERS.update(before)
+
+
+def test_scoring_measures_on_the_declared_grid_and_keeps_the_onset_envelope(
+    scored_proj,
+):
+    proj, seen, estimate = scored_proj
+    out = service.run_scoring(proj, metrics=["beats_seen"])
+    assert out["status"] == "ok" and out["clips_scored"] == ["A"], out
+    assert seen[-1][0] == list(estimate.beat_times)  # no declaration: the estimate
+    assert service.scores(proj)["beats"]["source"] == "estimated"
+
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    declared = service.declared_beat_grid(proj)["beat_times"]
+    with pytest.raises(FootageError, match="beat grid changed"):
+        service.scores(proj)  # measured on the estimate: stale now
+
+    service.run_scoring(proj, metrics=["beats_seen"])
+    beats, onset_env = seen[-1]
+    assert beats == declared and onset_env is estimate.onset_env
+    out = service.scores(proj)
+    assert out["beats"]["source"] == "declared" and out["tempo_bpm"] == 100.0
+
+
+def test_clearing_the_grid_makes_declared_scores_stale_and_never_leaks_its_beats(
+    scored_proj,
+):
+    proj, _seen, estimate = scored_proj
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    service.run_scoring(proj, metrics=["beats_seen"])
+    service.clear_beat_grid(proj)
+    with pytest.raises(FootageError, match="stale"):
+        service.scores(proj)
+    # the manifest's beats were a person's grid: not served back as the estimate
+    assert service.beat_grid(proj)["beats"] == [
+        round(float(t), 4) for t in estimate.beat_times
+    ]

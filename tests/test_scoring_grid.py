@@ -60,14 +60,30 @@ def test_manifest_is_current_guards_song_and_alignment():
     from muvid.footage.scoring.grid import manifest_is_current
 
     m = {"song_hash": "h1", "align_fingerprint": "f1"}
-    assert manifest_is_current(m, song_hash="h1", align_fingerprint="f1")
+    kw = {"beat_fingerprint": ""}
+    assert manifest_is_current(m, song_hash="h1", align_fingerprint="f1", **kw)
     assert not manifest_is_current(
-        m, song_hash="h2", align_fingerprint="f1"
+        m, song_hash="h2", align_fingerprint="f1", **kw
     )  # new song
     assert not manifest_is_current(
-        m, song_hash="h1", align_fingerprint="f2"
+        m, song_hash="h1", align_fingerprint="f2", **kw
     )  # re-aligned
-    assert not manifest_is_current(None, song_hash="h1", align_fingerprint="f1")
+    assert not manifest_is_current(None, song_hash="h1", align_fingerprint="f1", **kw)
+
+
+def test_manifest_is_current_guards_the_beat_grid_it_was_measured_on():
+    """muvid#187: a manifest measured on the estimate (no key) is stale once a grid is
+    declared, and one measured on a declared grid is stale once it changes or goes."""
+    from muvid.footage.scoring.grid import manifest_is_current
+
+    kw = {"song_hash": "h1", "align_fingerprint": "f1"}
+    estimated = {"song_hash": "h1", "align_fingerprint": "f1"}
+    declared = {**estimated, "beat_fingerprint": "b1"}
+    assert manifest_is_current(estimated, beat_fingerprint="", **kw)
+    assert not manifest_is_current(estimated, beat_fingerprint="b1", **kw)
+    assert manifest_is_current(declared, beat_fingerprint="b1", **kw)
+    assert not manifest_is_current(declared, beat_fingerprint="b2", **kw)
+    assert not manifest_is_current(declared, beat_fingerprint="", **kw)
 
 
 def test_resample_empty_and_all_nan():

@@ -393,6 +393,7 @@ def save_scores(
     align_fingerprint: str = "",
     beat_times: Sequence[float] = (),
     downbeat_times: Sequence[float] = (),
+    beat_fingerprint: str = "",
     extra: Mapping | None = None,
 ) -> None:
     """Persist per-clip raw arrays + a manifest, crash-consistently.
@@ -450,6 +451,8 @@ def save_scores(
             "beat_times": [round(float(t), 4) for t in beat_times],
             "downbeat_times": [round(float(t), 4) for t in downbeat_times],
         },
+        # omit-when-absent: a run on the estimator's grid writes the manifest it always did
+        **({"beat_fingerprint": beat_fingerprint} if beat_fingerprint else {}),
         **(dict(extra) if extra else {}),
     }
     # manifest LAST — its presence signals a complete scores/ dir. allow_nan=False makes any
@@ -462,19 +465,31 @@ def save_scores(
 
 
 def manifest_is_current(
-    manifest: dict | None, *, song_hash: str, align_fingerprint: str
+    manifest: dict | None,
+    *,
+    song_hash: str,
+    align_fingerprint: str,
+    beat_fingerprint: str,
 ) -> bool:
-    """Whether persisted scores match the CURRENT song + alignments (else they are stale).
+    """Whether persisted scores match the CURRENT song + alignments + beat grid (else they
+    are stale).
 
     Guards the read path: a re-align (or a new song) that raced the score job's rmtree, or a
     manifest predating the fingerprint, is detected here so no stale/mislabeled scores are
     served to the editor or the weighted selector.
+
+    ``beat_fingerprint`` names the beat grid the beat metrics were measured on: ``""`` for
+    the estimator's (a function of the song, already keyed by ``song_hash``), else the
+    grid a person declared (muvid#187). Required, so no reader can forget it: declaring a
+    grid makes earlier scores stale, and clearing it makes the estimate's scores current
+    again. A manifest predating the key was measured on the estimate.
     """
     if not manifest:
         return False
     return (
         manifest.get("song_hash") == song_hash
         and manifest.get("align_fingerprint") == align_fingerprint
+        and manifest.get("beat_fingerprint", "") == beat_fingerprint
     )
 
 
