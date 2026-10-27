@@ -68,7 +68,9 @@ def beat_alignment_score(
     0.5
     """
     if direction not in BAS_DIRECTIONS:
-        raise ValueError(f"direction must be one of {BAS_DIRECTIONS}, got {direction!r}")
+        raise ValueError(
+            f"direction must be one of {BAS_DIRECTIONS}, got {direction!r}"
+        )
     if not sigma_s > 0:
         raise ValueError(f"sigma_s must be positive, got {sigma_s}")
     events = np.asarray(event_times, dtype=float)
@@ -79,7 +81,9 @@ def beat_alignment_score(
         raise ValueError("event_times and beat_times must be finite")
     if events.size == 0 or beats.size == 0:
         return float("nan")
-    sources, targets = (events, beats) if direction == "motion_to_music" else (beats, events)
+    sources, targets = (
+        (events, beats) if direction == "motion_to_music" else (beats, events)
+    )
     return float(np.mean(_proximity(sources, targets, sigma_s)))
 
 
@@ -88,8 +92,10 @@ def _proximity(sources: np.ndarray, targets: np.ndarray, sigma_s: float) -> np.n
     by bisection on the sorted targets (memory O(n), not sources x targets)."""
     ts = np.sort(targets)
     i = np.clip(np.searchsorted(ts, sources), 1, ts.size - 1) if ts.size > 1 else 0
-    d = np.abs(sources - ts[i]) if ts.size == 1 else np.minimum(
-        np.abs(sources - ts[i - 1]), np.abs(sources - ts[i])
+    d = (
+        np.abs(sources - ts[i])
+        if ts.size == 1
+        else np.minimum(np.abs(sources - ts[i - 1]), np.abs(sources - ts[i]))
     )
     return np.exp(-0.5 * (d / sigma_s) ** 2)
 

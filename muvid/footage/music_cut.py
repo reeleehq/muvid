@@ -920,7 +920,10 @@ def fill_spans(
         pieces = _fold_tiny(pieces)
         _fades_start_on_the_beat(pieces)
         for this, nxt in zip(pieces, pieces[1:]):
-            this["next"], nxt["prev"] = {"media": nxt["media"]}, {"media": this["media"]}
+            this["next"], nxt["prev"] = (
+                {"media": nxt["media"]},
+                {"media": this["media"]},
+            )
             # The next cut's blend reads past this cut's end in this cut's source.
             if (
                 abs(this["end"] - nxt["start"]) < _SAME_FLOAT
