@@ -25,14 +25,18 @@ source is read here first (:func:`read_source_colour`):
   against the SDR original). So it is TONE MAPPED (muvid#201, :func:`tonemap_chain`):
   to linear light with :data:`HDR_REFERENCE_WHITE_NITS` as SDR white, to BT.709
   primaries, :data:`TONEMAP` with :data:`TONEMAP_PARAM`, then BT.709 limited — 24.7 dB
-  on the same clip. A build without ``zscale`` / ``tonemap`` cannot, and the assembler
-  then reports each HDR clip it delivers washed out.
+  on the same clip. Those three are the defaults of a :class:`ToneMap`, which a caller
+  can replace (muvid#215: more highlight detail, or a brighter mid-range). A build
+  without ``zscale`` / ``tonemap`` cannot, and the assembler then reports each HDR
+  clip it delivers washed out.
 
 Import-light (stdlib only at module top): the look compiler imports the constants.
 """
 
 from __future__ import annotations
 
+import math
+import numbers
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -75,26 +79,126 @@ HDR_REFERENCE_WHITE_NITS = 203
 #: top five; ``mobius`` 0.5 sends none but costs 8 codes at signal 0.70.
 TONEMAP = "mobius"
 TONEMAP_PARAM = 0.85
+#: The curves ffmpeg's ``tonemap`` filter offers (``ffmpeg -h filter=tonemap``) — a
+#: closed vocabulary, because the curve is spliced into a filter string.
+TONEMAP_CURVES = frozenset(
+    {"none", "linear", "gamma", "clip", "reinhard", "hable", "mobius"}
+)
+#: The curves that ignore ``param`` (ffmpeg's ``tonemap`` docs): one given for them
+#: would be a direction that does nothing, so it is refused.
+_CURVES_WITHOUT_PARAM = frozenset({"none", "hable"})
+#: muvid's measured ``param`` per curve, where it has one; every other curve gets
+#: ffmpeg's own default for that curve (the #215 review: an inherited mobius 0.85 made
+#: ``gamma`` render 18% grey at Y 44 and ``reinhard`` at 177, against 117).
+_MEASURED_PARAMS = {TONEMAP: TONEMAP_PARAM}
+#: ``mobius``'s param is the point below which the map is 1:1, a fraction of white;
+#: above 1 it renders exactly like the default (measured), so it is refused.
+_PARAM_MAX = {"mobius": 1.0}
+#: The range a reference white may take. Below the floor most of an HDR picture is
+#: pushed to white (1e-7 nits renders solid white); the ceiling is PQ's own peak
+#: (10,000 nits — above it, solid black). 203 (BT.2408) sits well inside.
+MIN_REFERENCE_WHITE_NITS = 50
+MAX_REFERENCE_WHITE_NITS = 10_000
 #: The filters :func:`tonemap_chain` needs (``zscale`` is libzimg, WTFPL).
 TONEMAP_FILTERS = ("zscale", "tonemap")
 
 
-def tonemap_chain(fill: "tuple[tuple[str, str], ...]" = ()) -> str:
+@dataclass(frozen=True)
+class ToneMap:
+    """How an HDR source is brought to the SDR delivery (muvid#215): the ``tonemap``
+    ``curve`` and its ``param`` for the highlights, and the HDR luminance (nits) that
+    becomes SDR white — lower it for a brighter mid-range. The defaults are the
+    measured choice above; ``ToneMap(param=0.5)`` keeps every highlight below white at
+    the cost of some mid-tone codes. ``param=None`` means the curve's default: muvid's
+    measured one for ``mobius``, ffmpeg's for the rest.
+
+    Checked on construction, because every field lands in a filter string:
+
+    >>> ToneMap(curve="gamma").effective_param is None, ToneMap().effective_param
+    (True, 0.85)
+    >>> ToneMap(curve="mobius:desat=9")
+    Traceback (most recent call last):
+    ...
+    ValueError: unknown tone curve 'mobius:desat=9'; one of ['clip', 'gamma', 'hable', 'linear', 'mobius', 'none', 'reinhard']
+    """
+
+    curve: str = TONEMAP
+    param: Optional[float] = None
+    reference_white_nits: float = HDR_REFERENCE_WHITE_NITS
+
+    def __post_init__(self):
+        if self.curve not in TONEMAP_CURVES:
+            raise ValueError(
+                f"unknown tone curve {self.curve!r}; one of {sorted(TONEMAP_CURVES)}"
+            )
+        # `None` is kept as given and resolved per curve in `effective_param`, so
+        # `replace(DEFAULT_TONE_MAP, curve=...)` gets the NEW curve's default
+        param = self.param
+        if param is not None and self.curve in _CURVES_WITHOUT_PARAM:
+            raise ValueError(f"the {self.curve!r} tone curve takes no param")
+        if param is not None:
+            param = _real("param", param, low=0.0, high=_PARAM_MAX.get(self.curve))
+        nits = _real(
+            "reference_white_nits",
+            self.reference_white_nits,
+            low=MIN_REFERENCE_WHITE_NITS,
+            high=MAX_REFERENCE_WHITE_NITS,
+            low_inclusive=True,
+        )
+        # stored as plain floats: what lands in the filter is float formatting, never
+        # a caller type's own `__format__`
+        object.__setattr__(self, "param", param)
+        object.__setattr__(self, "reference_white_nits", nits)
+
+    @property
+    def effective_param(self) -> Optional[float]:
+        """The ``param`` the filter gets: the given one, else the curve's default
+        (muvid's measured one, or ``None`` for ffmpeg's own)."""
+        return (
+            self.param if self.param is not None else _MEASURED_PARAMS.get(self.curve)
+        )
+
+
+def _real(name, v, *, low, high=None, low_inclusive=False) -> float:
+    """``v`` as a finite float in ``(low, high]`` (``[low, high]`` if ``low_inclusive``)."""
+    if isinstance(v, bool) or not isinstance(v, numbers.Real):
+        raise ValueError(f"tone map {name} must be a number, got {v!r}")
+    v = float(v)
+    above = v >= low if low_inclusive else v > low
+    if not (math.isfinite(v) and above and (high is None or v <= high)):
+        span = f"{'[' if low_inclusive else '('}{low:g}, {'inf)' if high is None else f'{high:g}]'}"
+        raise ValueError(f"tone map {name} must be in {span}: {v!r}")
+    return v
+
+
+#: Today's tone mapping, the one every render gets unless it asks for another.
+DEFAULT_TONE_MAP = ToneMap()
+
+
+def tonemap_chain(
+    fill: "tuple[tuple[str, str], ...]" = (), *, tone_map: ToneMap = DEFAULT_TONE_MAP
+) -> str:
     """HDR -> the SDR delivery colour, for a frame already at the canvas size (float
     frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. ``fill``
-    names the colour tags the source left out (:attr:`SourceColour.hdr_fill`).
+    names the colour tags the source left out (:attr:`SourceColour.hdr_fill`);
+    ``tone_map`` is how the highlights are brought down (:class:`ToneMap`).
 
     >>> tonemap_chain().split(",")[0]
     'zscale=t=linear:npl=203'
     >>> tonemap_chain((("color_primaries", "bt2020"),)).split(",")[0]
     'setparams=color_primaries=bt2020'
+    >>> tonemap_chain(tone_map=ToneMap(param=0.5)).split(",")[3]
+    'tonemap=mobius:param=0.5:desat=0'
     """
     d = DELIVERY_COLOR_SPACE
     tags = ":".join(f"{k}={v}" for k, v in fill)
+    t = tone_map
     return (
         (f"setparams={tags}," if tags else "")
-        + f"zscale=t=linear:npl={HDR_REFERENCE_WHITE_NITS},format=gbrpf32le,"
-        f"zscale=p={d},tonemap={TONEMAP}:param={TONEMAP_PARAM}:desat=0,"
+        + f"zscale=t=linear:npl={t.reference_white_nits:g},format=gbrpf32le,"
+        f"zscale=p={d},tonemap={t.curve}"
+        + (f":param={t.effective_param:g}" if t.effective_param is not None else "")
+        + ":desat=0,"
         f"zscale=t={d}:m={d}:r={DELIVERY_COLOR_RANGE},format=yuv420p"
     )
 
@@ -211,8 +315,13 @@ __all__ = [
     "SD_MAX_HEIGHT",
     "HDR_TRANSFERS",
     "SourceColour",
+    "ToneMap",
+    "DEFAULT_TONE_MAP",
     "TONEMAP",
+    "TONEMAP_CURVES",
     "TONEMAP_PARAM",
+    "MIN_REFERENCE_WHITE_NITS",
+    "MAX_REFERENCE_WHITE_NITS",
     "HDR_REFERENCE_WHITE_NITS",
     "can_tonemap",
     "tonemap_chain",

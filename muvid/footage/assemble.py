@@ -98,6 +98,8 @@ from muvid.footage.colour import (
     DELIVERY_COLOR_RANGE,
     DELIVERY_COLOR_SPACE,
     DELIVERY_TAG,
+    DEFAULT_TONE_MAP,
+    ToneMap,
     can_tonemap,
     read_source_colour,
     tonemap_chain,
@@ -492,9 +494,12 @@ def _part_filter(
     colour = getattr(cut, "source_colour", None)
     retime = f"setpts=(PTS-STARTPTS)/{rate:.6f}," if rate != 1.0 else ""
     fit = f"scale={w}:{h}:force_original_aspect_ratio=decrease"
-    if getattr(cut, "source_tonemap", False):
-        # HDR: fit at the source's own colour, then tone-map at canvas size (muvid#201)
-        convert = f"{fit},{tonemap_chain(colour.hdr_fill if colour else ())},"
+    tone_map = getattr(cut, "source_tonemap", None)
+    if tone_map:
+        # HDR: fit at the source's own colour, then tone-map at canvas size (muvid#201),
+        # by the render's curve (muvid#215)
+        fill = colour.hdr_fill if colour else ()
+        convert = f"{fit},{tonemap_chain(fill, tone_map=tone_map)},"
     else:
         in_matrix = colour.in_matrix if colour else None
         convert = (
@@ -567,12 +572,17 @@ def _source_input(path: str, clip_in: float, seconds: float, *, fps: int) -> lis
     return ["-ss", f"{clip_in:.6f}", "-t", f"{seconds:.6f}", "-i", path]
 
 
-def _with_source_colour(cuts: Sequence[AssemblyCut], note=None) -> list[AssemblyCut]:
+def _with_source_colour(
+    cuts: Sequence[AssemblyCut],
+    note=None,
+    *,
+    tone_map: ToneMap = DEFAULT_TONE_MAP,
+) -> list[AssemblyCut]:
     """``cuts`` with each source's colour read once
     (:func:`~muvid.footage.colour.read_source_colour`, one ``ffprobe`` per source, not
     per cut): the matrix to convert FROM where the source's tag cannot be trusted, and
-    whether to tone-map an HDR source (muvid#201). A build that cannot tone-map delivers
-    an HDR clip washed out, and says so per clip."""
+    for an HDR source the ``tone_map`` it is brought to SDR by (muvid#201, #215). A
+    build that cannot tone-map delivers an HDR clip washed out, and says so per clip."""
     seen: "dict[str, str]" = {}  # path -> clip id, first cut that shows it
     for cut in cuts:
         if cut.clip_path and cut.clip_path not in seen:
@@ -595,7 +605,7 @@ def _with_source_colour(cuts: Sequence[AssemblyCut], note=None) -> list[Assembly
         return replace(
             c,
             source_colour=colour,
-            source_tonemap=bool(colour.hdr_transfer) and tonemap,
+            source_tonemap=tone_map if colour.hdr_transfer and tonemap else None,
         )
 
     return [coloured(c) for c in cuts]
@@ -840,6 +850,7 @@ def assemble_music_video(
     on_note=None,
     fade_out_s: float = 0.0,
     should_cancel=None,
+    tone_map: ToneMap = DEFAULT_TONE_MAP,
 ) -> Path:
     """Render ``cuts`` (a validated, contiguous, gap-filled EDL) into ``out_path``.
 
@@ -868,11 +879,17 @@ def assemble_music_video(
             mux; when it returns True the render stops there (its parts are removed)
             and :class:`~muvid.footage.errors.FootageCancelled` is raised — so a
             cancelled render ends within one cut's encode rather than minutes later.
+        tone_map: how an HDR (HLG/PQ) source is brought to the SDR delivery — a
+            :class:`~muvid.footage.colour.ToneMap` (curve, its parameter, the HDR
+            luminance that becomes SDR white). The default is the measured choice of
+            muvid#201; an SDR source never reads it.
     """
     from muvid.visualize.ffmpeg import require_ffmpeg, require_filter, run_ffmpeg
 
     if not cuts:
         raise ValueError("no cuts to assemble")
+    if not isinstance(tone_map, ToneMap):  # before any probe or encode (#215 review)
+        raise TypeError(f"tone_map must be a ToneMap, got {tone_map!r}")
     require_ffmpeg("ffmpeg")
     require_ffmpeg("ffprobe")
     w, h = _even(canvas[0]), _even(canvas[1])
@@ -886,7 +903,7 @@ def assemble_music_video(
     try:
         # Planned in full BEFORE any encoding, so a transition that does not fit at
         # this fps fails on cut 0 rather than after forty parts are on disk.
-        cuts = _with_source_colour(cuts, on_note)
+        cuts = _with_source_colour(cuts, on_note, tone_map=tone_map)
         plan = _part_plan(cuts, fps, on_note)
         if any(p.kind == "xfade" for p in plan):
             require_filter("xfade", needed_for="EDL transitions")
