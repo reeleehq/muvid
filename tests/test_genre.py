@@ -112,23 +112,33 @@ def test_old_hyphenated_visualizer_slug_is_not_an_alias():
         nw.get_genre("music-visualizer")
 
 
-def test_an_nw_older_than_the_floor_is_refused_with_the_remedy(monkeypatch):
+def test_an_nw_older_than_the_floor_is_refused_with_the_remedy_and_registers_nothing():
     """muvid#248: a ``GenreOp`` without a field the genre passes (``invalidates`` before
-    nw 0.0.92) must fail naming the field and the extra, not as a bare ``TypeError``."""
-    import dataclasses
+    nw 0.0.92) fails the import naming the field and the extra, not as a bare
+    ``TypeError`` — and BEFORE the genre is registered, so no genre with zero operations
+    (or a factory that still creates projects) is left in the host's catalogue."""
+    import subprocess
+    import sys
 
-    import muvid.genre_music_video as g
-    from muvid.footage import service
-
-    old_genre_op = dataclasses.make_dataclass(
-        "GenreOp",
-        [
-            (f.name, object, dataclasses.field(default=None))
-            for f in dataclasses.fields(nw.GenreOp)
-            if f.name != "invalidates"
-        ],
-    )
-    monkeypatch.setattr(g, "GenreOp", old_genre_op)
-    spec = next(s for s in service.FOOTAGE_OP_SPECS if s.invalidates)
-    with pytest.raises(ImportError, match=r"invalidates.*muvid\[mcp\]"):
-        g._as_genre_op(spec)
+    code = """
+import dataclasses, nw
+nw.GenreOp = dataclasses.make_dataclass(
+    "GenreOp",
+    [(f.name, object, dataclasses.field(default=None))
+     for f in dataclasses.fields(nw.GenreOp) if f.name != "invalidates"],
+)
+try:
+    import muvid.genre_music_video
+except ImportError as exc:
+    print("refused:", exc)
+try:
+    nw.get_genre("music_video")
+    print("registered")
+except Exception:
+    print("absent")
+"""
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    ).stdout
+    assert "refused:" in out and "invalidates" in out and "'mcp' extra" in out, out
+    assert out.strip().endswith("absent"), out

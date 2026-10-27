@@ -367,12 +367,9 @@ so **one** `import muvid.genre` surfaces both genres and both project factories.
 - `muvid` CORE never imports `nw`. The floor is pinned in the `[mcp]` extra
   (`nw>=0.0.15`, which is where `register_genre_project_factory` exists — the import
   doubles as the version guard). **Not in the base dependencies, deliberately** (muvid#248):
-  nw brings falaw, lacing and pydantic, and the visualizer is ffmpeg-only. An import is a
-  guard only for a missing NAME; a missing KEYWORD (`GenreOp(invalidates=)`, nw 0.0.92)
-  is a bare `TypeError`, so `genre_music_video._require_genre_op_fields` checks the
-  fields it passes against the installed `GenreOp` and refuses naming the extra. It asks
-  the class, never a version number: editable checkouts record stale versions (a dev venv
-  was measured reporting nw 0.0.69 over a current source tree).
+  nw brings falaw, lacing and pydantic to an ffmpeg-only core. A missing KEYWORD is not an
+  import error, so `genre_music_video._require_genre_op_fields` asks the installed
+  `GenreOp` (never a version number) before anything registers.
 - `muvid/mcp/scoring_tools.py:80` uses `nw.jobs` as the durable/cancellable async job
   substrate. Reuse it; do not grow a second job system.
 

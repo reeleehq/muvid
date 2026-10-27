@@ -25,7 +25,6 @@ per-caller workspace, unchanged.
 
 from __future__ import annotations
 
-import dataclasses
 import inspect
 
 from nw import (
@@ -57,36 +56,6 @@ _CANVAS_INFO: dict[str, dict] = {
     },
     "square": {"title": "Square 1:1", "description": "1080×1080."},
 }
-
-
-MUSIC_VIDEO: Genre = register_genre(
-    Genre(
-        slug=MUSIC_VIDEO_SLUG,
-        title="Music Video (footage)",
-        description=(
-            "Assemble a music video for a fixed song from several uploaded video clips — "
-            "each a different-device recording of that song. Clips are aligned to the "
-            "song by audio, overlaps are resolved by a selection strategy, and the edit "
-            "is rendered over the clean song audio."
-        ),
-        transform_names=(),
-        strategy_names=(),
-        projection_entrypoint=None,
-        status="available",
-        intake_kinds=("music-video", "footage", "multicam", "performance"),
-        cost_profile=None,  # ffmpeg-only, no AI/keys — free
-        defaults={"canvas": "landscape"},
-        templates=tuple(
-            Template(
-                slug=name,
-                title=info["title"],
-                description=info["description"],
-                params={"canvas": name},
-            )
-            for name, info in _CANVAS_INFO.items()
-        ),
-    )
-)
 
 
 def _music_video_project_factory(
@@ -127,9 +96,6 @@ def _music_video_project_factory(
         "title": title,
         "canvas": canvas,
     }
-
-
-register_genre_project_factory(MUSIC_VIDEO_SLUG, _music_video_project_factory)
 
 
 # -- the operations a host serves on a music video (nw genre ops) --------------------
@@ -197,19 +163,55 @@ def _require_genre_op_fields(op_cls, fields) -> None:
     rather than a version number on purpose: an editable checkout's recorded version
     goes stale, so a version compare would refuse a working source tree.
     """
-    missing = sorted(fields.keys() - {f.name for f in dataclasses.fields(op_cls)})
+    missing = sorted(fields.keys() - inspect.signature(op_cls).parameters.keys())
     if missing:
         raise ImportError(
             f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs an nw whose GenreOp has "
             f"{', '.join(missing)}; the installed nw is older than the floor muvid's "
-            "'mcp' extra declares. Upgrade it: pip install -U 'muvid[mcp]'"
+            "'mcp' extra declares. Upgrade nw to that floor (update an editable "
+            "checkout, or install muvid's 'mcp' extra)."
         )
 
 
-#: The catalogue a host serves for ``music_video`` — one ``nw.GenreOp`` per operation.
-FOOTAGE_OPS: tuple[GenreOp, ...] = register_genre_ops(
-    MUSIC_VIDEO_SLUG, [_as_genre_op(spec) for spec in _service.FOOTAGE_OP_SPECS]
+# Built BEFORE anything is registered: an nw too old for these ops refuses here
+# (``_require_genre_op_fields``), and must not leave a genre with no operations, or a
+# project factory, behind it (muvid#248).
+_ops = [_as_genre_op(spec) for spec in _service.FOOTAGE_OP_SPECS]
+
+MUSIC_VIDEO: Genre = register_genre(
+    Genre(
+        slug=MUSIC_VIDEO_SLUG,
+        title="Music Video (footage)",
+        description=(
+            "Assemble a music video for a fixed song from several uploaded video clips — "
+            "each a different-device recording of that song. Clips are aligned to the "
+            "song by audio, overlaps are resolved by a selection strategy, and the edit "
+            "is rendered over the clean song audio."
+        ),
+        transform_names=(),
+        strategy_names=(),
+        projection_entrypoint=None,
+        status="available",
+        intake_kinds=("music-video", "footage", "multicam", "performance"),
+        cost_profile=None,  # ffmpeg-only, no AI/keys — free
+        defaults={"canvas": "landscape"},
+        templates=tuple(
+            Template(
+                slug=name,
+                title=info["title"],
+                description=info["description"],
+                params={"canvas": name},
+            )
+            for name, info in _CANVAS_INFO.items()
+        ),
+    )
 )
+
+
+register_genre_project_factory(MUSIC_VIDEO_SLUG, _music_video_project_factory)
+
+#: The catalogue a host serves for ``music_video`` — one ``nw.GenreOp`` per operation.
+FOOTAGE_OPS: tuple[GenreOp, ...] = register_genre_ops(MUSIC_VIDEO_SLUG, _ops)
 
 
 #: The numeric bounds and constants the operations use, for a frontend that must agree
