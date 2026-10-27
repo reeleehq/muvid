@@ -293,6 +293,8 @@ class MusicVideoFootageProject:
         )
         os.close(fd)
         staged = Path(staged_name)
+        # One cleanup for every phase, the lock's acquisition included: after os.replace
+        # the staged name no longer exists and the unlink does nothing.
         try:
             shutil.copyfile(src_path, staged)
             duration = (
@@ -301,32 +303,40 @@ class MusicVideoFootageProject:
             # Compute the song hash ONCE here (chunked) and cache it — scoring/reads
             # compare the stored hash rather than re-hashing a 100 MB file on every poll.
             digest = _hash_file(staged)
-            # Phase 2: invalidate what the OLD song vouched for, before anything can name
-            # the new one. footage_timeline/assemble then demand a fresh align_footage
-            # rather than silently cutting to a song the offsets no longer match.
-            (self.root / "alignments.json").unlink(missing_ok=True)
-            self.invalidate_scores()
-            # Phase 3a: the file. Replace the whole dir so a prior song under a different
-            # extension cannot be orphaned beside the new one.
-            if song_dir.exists():
-                shutil.rmtree(song_dir)
-            song_dir.mkdir(parents=True, exist_ok=True)
-            os.replace(staged, dest)
-        except BaseException:
+            # Phases 2-3b under the alignments lock (muvid#236). A writer merging under
+            # it checks the song hash first, so once phase 2 has dropped the old
+            # alignment none can save offsets until phase 3b has named the new song.
+            # That holds only when 3b completes: if it raises (the catalog, the
+            # manifest write), the lock is released with the NEW file in place, the
+            # alignment dropped and the manifest still carrying the OLD hash, so a
+            # writer may then save offsets under that hash. set_song again repairs it.
+            with self.alignments_lock():
+                # Phase 2: invalidate what the OLD song vouched for, before anything can
+                # name the new one. footage_timeline/assemble then demand a fresh
+                # align_footage rather than silently cutting to a song the offsets no
+                # longer match.
+                (self.root / "alignments.json").unlink(missing_ok=True)
+                self.invalidate_scores()
+                # Phase 3a: the file. Replace the whole dir so a prior song under a
+                # different extension cannot be orphaned beside the new one.
+                if song_dir.exists():
+                    shutil.rmtree(song_dir)
+                song_dir.mkdir(parents=True, exist_ok=True)
+                os.replace(staged, dest)
+                # Phase 3b: the manifest, LAST — after the catalog, so a manifest never
+                # names an artifact id the host cannot resolve.
+                artifact_id = self._register(
+                    dest, kind="audio", artifact_id=digest, duration_s=duration
+                )
+                m = self.manifest()
+                m["song"] = dest.name
+                m["song_duration"] = duration
+                m["song_hash"] = digest
+                _set_or_drop(m, "song_name", name or None)
+                _set_or_drop(m, "song_artifact_id", artifact_id)
+                self._write_manifest(m)
+        finally:
             staged.unlink(missing_ok=True)
-            raise
-        # Phase 3b: the manifest, LAST — after the catalog, so a manifest never names an
-        # artifact id the host cannot resolve.
-        artifact_id = self._register(
-            dest, kind="audio", artifact_id=digest, duration_s=duration
-        )
-        m = self.manifest()
-        m["song"] = dest.name
-        m["song_duration"] = duration
-        m["song_hash"] = digest
-        _set_or_drop(m, "song_name", name or None)
-        _set_or_drop(m, "song_artifact_id", artifact_id)
-        self._write_manifest(m)
 
     def song_hash(self) -> str:
         """The clean song's content hash (cached in the manifest; computed if missing)."""
@@ -487,27 +497,33 @@ class MusicVideoFootageProject:
         not hold; the MCP tool turns that into a refusal naming the known ids.
         """
         cid = normalise_id(clip_id, label="clip_id")
-        m = self.manifest()
-        clips = list(m.get("clips", []))
-        entry = next((c for c in clips if c.get("clip_id") == cid), None)
-        if entry is None:
-            raise KeyError(cid)
         alignment = self.root / "alignments.json"
-        had_alignment = alignment.exists()
-        # A DECLARED offset is not a measurement of the clip set — a person set it for
-        # one clip — so it outlives another clip's removal. Only measurements go.
-        kept = [
-            a
-            for a in self.load_alignments()
-            if a.source == DECLARED and a.clip_id != cid
-        ]
-        alignment.unlink(missing_ok=True)
-        if kept:
-            self.save_alignments(kept)
-        had_scores = (self.root / "scores").exists()
-        self.invalidate_scores()
-        m["clips"] = [c for c in clips if c.get("clip_id") != cid]
-        self._write_manifest(m)
+        # Held through the manifest write: an `align` merging under the lock re-reads
+        # the clip list, so it must not see this clip after its records are dropped.
+        # This orders remove_clip against the other alignments writers only —
+        # add_clip and set_has_song write the manifest without the lock.
+        with self.alignments_lock():
+            # Look the clip up UNDER the lock: a second remove that overlapped this one
+            # must refuse, not drop the measured records made since the first (muvid#236).
+            m = self.manifest()
+            entry = next((c for c in m.get("clips", []) if c.get("clip_id") == cid), None)
+            if entry is None:
+                raise KeyError(cid)
+            had_alignment = alignment.exists()
+            # A DECLARED offset is not a measurement of the clip set — a person set it
+            # for one clip — so it outlives another clip's removal. Only measurements go.
+            kept = [
+                a
+                for a in self.load_alignments()
+                if a.source == DECLARED and a.clip_id != cid
+            ]
+            alignment.unlink(missing_ok=True)
+            if kept:
+                self.save_alignments(kept)
+            had_scores = (self.root / "scores").exists()
+            self.invalidate_scores()
+            m["clips"] = [c for c in m.get("clips", []) if c.get("clip_id") != cid]
+            self._write_manifest(m)
         removed_files = []
         # The same sweep add_clip uses: any extension this id was ever stored under.
         for old in _files_with_stem(self.root / "clips", cid):
@@ -646,6 +662,19 @@ class MusicVideoFootageProject:
         return artifact_id
 
     # -- alignments ----------------------------------------------------------
+    def alignments_lock(self):
+        """Serialise a read-modify-write of ``alignments.json`` (see :func:`file_lock`).
+
+        Taken by EVERY writer — ``align``, ``set_offset``, ``clear_offset``,
+        ``measure_spans``, :meth:`remove_clip`, :meth:`set_song` — and never across a
+        measurement: a writer measures first, then re-reads and merges under the lock
+        (muvid#236). Not re-entrant (``flock`` on a second descriptor waits on the first),
+        so nothing holding it may call another writer. The lock file lives in its own
+        ``locks/`` folder, as the edits lock lives in ``edits/``: a dotfile in the project
+        root is what a torn atomic write leaves behind, and must stay readable as that.
+        """
+        return file_lock(self.root / "locks" / "alignments.lock")
+
     def save_alignments(self, aligns: list[FootageAlignment]) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
         atomic_write_text(
