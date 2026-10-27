@@ -1480,3 +1480,65 @@ def test_the_video_refusal_names_the_limit_and_how_many_are_held(fp, tmp_path, m
     msg = str(err.value)
     assert "2 of 2" in msg and "videos" in msg and "Remove a video" in msg
     assert "bounded v1" not in msg
+
+
+# -- the host's one status door (muvid#232) -------------------------------------------
+
+
+def test_genre_status_summarises_a_music_video_without_paths(tmp_path, monkeypatch):
+    """muvid#232: reelee's ``project_status`` asks ``nw.genre_status_of(project)``,
+    which refuses a dict naming the project root, a non-JSON one or one over 8 KiB."""
+    import muvid
+    import muvid.footage.service as S
+
+    muvid.create_project_at(tmp_path, "mv")
+    project = muvid.Project(tmp_path / "mv")
+    before = sorted(p.name for p in project.root.iterdir())
+    empty = nw.genre_status_of(project)
+    assert empty["genre"] == "music_video" and empty["has_song"] is False
+    assert empty["next_step"]["op"] == "set_song"
+    assert sorted(p.name for p in project.root.iterdir()) == before  # read-only
+
+    monkeypatch.setattr(S, "_probe_duration", lambda p: 30.0)
+    # placeholder bytes: no cover frame or filmstrip to cut from them (ffmpeg-free)
+    monkeypatch.setattr(S, "_ensure_cover", lambda fp: None)
+    monkeypatch.setattr(S, "_prepare_filmstrip", lambda fp, cid: None)
+    service.set_song(
+        project.footage, path=str(_bytes_file(tmp_path / "s.wav", b"RIFF"))
+    )
+    for cid in ("A", "B"):
+        clip = _bytes_file(tmp_path / f"{cid}.mp4", cid.encode())
+        service.add_clip(project.footage, path=str(clip), clip_id=cid, duration_s=20.0)
+    service.set_offset(project.footage, clip_id="A", offset_s=0.0)
+    out = nw.genre_status_of(project)
+    assert out is not None  # passed nw's checks: JSON, small, no project path
+    assert {
+        k: out[k] for k in ("has_song", "videos", "photos", "placed", "renders")
+    } == {
+        "has_song": True,
+        "videos": 2,
+        "photos": 0,
+        "placed": 1,
+        "renders": 0,
+    }
+    assert out["unreliable"] == 0 and out["song_duration_s"] == 30.0
+    assert len(json.dumps(out)) < 1024
+
+
+def test_genre_status_summarises_a_lyric_video(tmp_path):
+    import muvid
+
+    muvid.create_project_at(tmp_path, "lv", genre="lyric-video")
+    project = muvid.Project(tmp_path / "lv")
+    assert nw.genre_status_of(project) == {
+        "genre": "lyric-video",
+        "has_song": False,
+        "sources": {},
+        "renders": 0,
+    }
+    project.lyric.add_source(
+        _bytes_file(tmp_path / "words.md", b"la la"), role="lyrics"
+    )
+    project.lyric.add_source(_bytes_file(tmp_path / "poem.txt", b"la"), role="poem")
+    out = nw.genre_status_of(project)
+    assert out["sources"] == {"lyrics": 1, "poem": 1}

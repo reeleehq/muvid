@@ -100,6 +100,21 @@ class Project(nw.Project):
             self.root / LYRIC_DIRNAME, media_catalog=self.media_catalog
         )
 
+    def genre_status(self) -> Optional[dict]:
+        """Where this production stands, for the host's one ``project_status`` door
+        (``nw.Project.genre_status``, nw#133; muvid#232).
+
+        A compact summary in muvid's terms — counts, trust, the next step — never a
+        path, a server-side layout or a per-item list: the host caps the reply (8 KiB)
+        and lists the items through the genre's own operations. ``None`` for a project
+        of no muvid production genre.
+        """
+        if self.genre == "music_video":
+            return _footage_status_summary(self.footage)
+        if self.genre == "lyric-video":
+            return _lyric_status_summary(self.lyric)
+        return None
+
     def cover_artifact_id(self) -> Optional[str]:
         """The artifact id of the frame that stands for this production on a card.
 
@@ -310,6 +325,42 @@ class LyricVideoProduction:
         ):
             row["text"] = path.read_text(encoding="utf-8", errors="replace")
         return row
+
+
+def _footage_status_summary(fp: MusicVideoFootageProject) -> dict:
+    """``genre_status`` for a music video: :func:`muvid.footage.service.status`,
+    counted rather than listed."""
+    from muvid.footage.service import STILL_KIND, status
+
+    s = status(fp)
+    stills = sum(1 for c in s["clips"] if c.get("kind") == STILL_KIND)
+    return {
+        "genre": "music_video",
+        "has_song": s["has_song"],
+        "song_duration_s": s["song_duration"],
+        "videos": len(s["clips"]) - stills,
+        "photos": stills,
+        "placed": len(s["aligned"]),
+        "unreliable": sum(1 for a in s["alignments"] if not a.get("reliable", True)),
+        "edits": len(s["edits"]),
+        "renders": len(s["renders"]),
+        "next_step": s["next_step"],
+    }
+
+
+def _lyric_status_summary(production: "LyricVideoProduction") -> dict:
+    """``genre_status`` for a lyric video: what it holds, counted."""
+    m = production.manifest()
+    roles: dict[str, int] = {}
+    for source in m.get("sources", []):
+        role = source.get("role", "other")
+        roles[role] = roles.get(role, 0) + 1
+    return {
+        "genre": "lyric-video",
+        "has_song": bool(m.get("song")),
+        "sources": roles,
+        "renders": len(m.get("renders", [])),
+    }
 
 
 def _read_json(path: Path) -> Optional[dict]:
