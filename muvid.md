@@ -1,4 +1,4 @@
-> built 2026-10-27 18:00 UTC from f06cb50 (main) · muvid 0.0.138. Details: build_info.json
+> built 2026-10-27 20:45 UTC from bf01d3e (main) · muvid 0.0.139. Details: build_info.json
 
 # index.html.md
 
@@ -9294,6 +9294,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`fresh_output`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.fresh_output)(dest)                                | A temp path beside `dest` for a writer that cannot be told to be careful (ffmpeg); on success it is renamed onto `dest` — a new inode, as in [`replace_file()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.replace_file) — and on failure removed. |
 | [`init_footage_project`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.init_footage_project)(root, \*, project_id[, ...]) | A footage project rooted at `root`, writing its manifest if there is none yet.                                                                                                                                                         |
 | [`normalise_id`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.ID_PATTERN).                                                                                                            |
+| [`read_json_dict`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                    |
 | [`replace_file`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                             |
 
 ### Classes
@@ -9690,6 +9691,15 @@ ValueError: invalid clip_id '*': use 1-64 letters, digits, '_' or '-'
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
+### muvid.footage.workspace.read_json_dict(path)
+
+The JSON object at `path`, or `None` when it is absent, unreadable or not an
+object — the read side of [`atomic_write_text()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.atomic_write_text) for a record a reader may
+find missing.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.workspace.replace_file(src, dest)
 
@@ -14371,6 +14381,13 @@ Key design decisions (LOCKED, see `misc/docs/footage_scoring_design.md`):
 - **Bounded long-poll** status so an agent needs ~1 poll, not ~15.
 - **NaN never hits the wire** — masked entries serialize as `null`; the `mask` array is
   authoritative.
+- \*\*The status without a `job_id` reads the job `score_footage` last started\*\*, recorded
+  in the project (`score_job.json`), through `nw.jobs.get_job`, which answers for an
+  archived run. `list_jobs` alone stops listing a run 30 days after it ends (nw#169) and
+  returns 50 jobs of every kind, so an old or busy project read “no scoring job found”
+  (muvid#264). Its head is still a candidate, the newer of the two wins: it covers a
+  project scored before the record existed and a job a build without it enqueued.
+  nw#185 would make both the record and the scan nw’s.
 
 ### Functions
 
@@ -14383,9 +14400,10 @@ Key design decisions (LOCKED, see `misc/docs/footage_scoring_design.md`):
 
 The scoring job’s status (bounded long-poll). Free.
 
-Pass the `job_id` from `score_footage` (or omit for the newest scoring job). With
-`wait_s` > 0 this blocks up to ~\`\`wait_s\`\` seconds (capped), returning early on a
-terminal state — so an agent needs ~1 poll, not many.
+Pass the `job_id` from `score_footage` (or omit for the one it last started — which
+may predate a later `set_song`, which drops the scores that job made).
+With `wait_s` > 0 this blocks up to ~\`\`wait_s\`\` seconds (capped), returning early on
+a terminal state — so an agent needs ~1 poll, not many.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -19199,20 +19217,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 18:00 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f06cb507e67a0b1a18c8f36ce5ba645c412d2d74"><code>f06cb50</code></a> on branch <code>main</code>, for **muvid 0.0.138** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 20:45 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/bf01d3e8e67f2cb253f19f2dd178f6959e983675"><code>bf01d3e</code></a> on branch <code>main</code>, for **muvid 0.0.139** (from <code>pyproject.toml</code>).
 
 #### WARNING
 The documentation and the package may be misaligned:
 
-- The documented version (0.0.138) is ahead of the latest release on PyPI (0.0.137): these docs describe unreleased code.
+- The documented version (0.0.139) is behind the latest release on PyPI (0.0.140): `pip install muvid` gives newer code than these docs describe.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f06cb507e67a0b1a18c8f36ce5ba645c412d2d74"><code>f06cb507e67a0b1a18c8f36ce5ba645c412d2d74</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/bf01d3e8e67f2cb253f19f2dd178f6959e983675"><code>bf01d3e8e67f2cb253f19f2dd178f6959e983675</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.138</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.139</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19221,9 +19239,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40553392475">40553392475</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40575357225">40575357225</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>1455cba71f1b6d707ac0d4cbcefcf6e01c85d14c</code> (in the history of the built commit) |
+| Event commit | <code>17a87ab18c05c858dbbe01ac5a6d5d04adda3dc5</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19248,13 +19266,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.137/">0.0.137</a>, older than the documented version (0.0.138).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.140/">0.0.140</a>, newer than the documented version (0.0.139).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f06cb507e67a0b1a18c8f36ce5ba645c412d2d74
+git checkout bf01d3e8e67f2cb253f19f2dd178f6959e983675
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

@@ -67,6 +67,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`fresh_output`](#muvid.footage.workspace.fresh_output)(dest)                                | A temp path beside `dest` for a writer that cannot be told to be careful (ffmpeg); on success it is renamed onto `dest` — a new inode, as in [`replace_file()`](#muvid.footage.workspace.replace_file) — and on failure removed. |
 | [`init_footage_project`](#muvid.footage.workspace.init_footage_project)(root, \*, project_id[, ...]) | A footage project rooted at `root`, writing its manifest if there is none yet.                                                                                                                                                         |
 | [`normalise_id`](#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).                                                                                                            |
+| [`read_json_dict`](#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                    |
 | [`replace_file`](#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                             |
 
 ### Classes
@@ -463,6 +464,15 @@ ValueError: invalid clip_id '*': use 1-64 letters, digits, '_' or '-'
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
+### muvid.footage.workspace.read_json_dict(path)
+
+The JSON object at `path`, or `None` when it is absent, unreadable or not an
+object — the read side of [`atomic_write_text()`](#muvid.footage.workspace.atomic_write_text) for a record a reader may
+find missing.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.workspace.replace_file(src, dest)
 

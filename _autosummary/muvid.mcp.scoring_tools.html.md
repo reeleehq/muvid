@@ -19,6 +19,13 @@ Key design decisions (LOCKED, see `misc/docs/footage_scoring_design.md`):
 - **Bounded long-poll** status so an agent needs ~1 poll, not ~15.
 - **NaN never hits the wire** — masked entries serialize as `null`; the `mask` array is
   authoritative.
+- \*\*The status without a `job_id` reads the job `score_footage` last started\*\*, recorded
+  in the project (`score_job.json`), through `nw.jobs.get_job`, which answers for an
+  archived run. `list_jobs` alone stops listing a run 30 days after it ends (nw#169) and
+  returns 50 jobs of every kind, so an old or busy project read “no scoring job found”
+  (muvid#264). Its head is still a candidate, the newer of the two wins: it covers a
+  project scored before the record existed and a job a build without it enqueued.
+  nw#185 would make both the record and the scan nw’s.
 
 ### Functions
 
@@ -31,9 +38,10 @@ Key design decisions (LOCKED, see `misc/docs/footage_scoring_design.md`):
 
 The scoring job’s status (bounded long-poll). Free.
 
-Pass the `job_id` from `score_footage` (or omit for the newest scoring job). With
-`wait_s` > 0 this blocks up to ~\`\`wait_s\`\` seconds (capped), returning early on a
-terminal state — so an agent needs ~1 poll, not many.
+Pass the `job_id` from `score_footage` (or omit for the one it last started — which
+may predate a later `set_song`, which drops the scores that job made).
+With `wait_s` > 0 this blocks up to ~\`\`wait_s\`\` seconds (capped), returning early on
+a terminal state — so an agent needs ~1 poll, not many.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

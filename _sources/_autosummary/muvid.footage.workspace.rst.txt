@@ -23,6 +23,7 @@ muvid.footage.workspace
       fresh_output
       init_footage_project
       normalise_id
+      read_json_dict
       replace_file
    
    .. rubric:: Classes

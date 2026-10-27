@@ -2,20 +2,20 @@
 
 # About this build
 
-This documentation was built on **2026-10-27 18:00 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f06cb507e67a0b1a18c8f36ce5ba645c412d2d74"><code>f06cb50</code></a> on branch <code>main</code>, for **muvid 0.0.138** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 20:45 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/bf01d3e8e67f2cb253f19f2dd178f6959e983675"><code>bf01d3e</code></a> on branch <code>main</code>, for **muvid 0.0.139** (from <code>pyproject.toml</code>).
 
 #### WARNING
 The documentation and the package may be misaligned:
 
-- The documented version (0.0.138) is ahead of the latest release on PyPI (0.0.137): these docs describe unreleased code.
+- The documented version (0.0.139) is behind the latest release on PyPI (0.0.140): `pip install muvid` gives newer code than these docs describe.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f06cb507e67a0b1a18c8f36ce5ba645c412d2d74"><code>f06cb507e67a0b1a18c8f36ce5ba645c412d2d74</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/bf01d3e8e67f2cb253f19f2dd178f6959e983675"><code>bf01d3e8e67f2cb253f19f2dd178f6959e983675</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.138</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.139</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -24,9 +24,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40553392475">40553392475</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40575357225">40575357225</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>1455cba71f1b6d707ac0d4cbcefcf6e01c85d14c</code> (in the history of the built commit) |
+| Event commit | <code>17a87ab18c05c858dbbe01ac5a6d5d04adda3dc5</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -51,13 +51,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.137/">0.0.137</a>, older than the documented version (0.0.138).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.140/">0.0.140</a>, newer than the documented version (0.0.139).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f06cb507e67a0b1a18c8f36ce5ba645c412d2d74
+git checkout bf01d3e8e67f2cb253f19f2dd178f6959e983675
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
