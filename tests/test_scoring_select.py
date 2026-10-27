@@ -645,3 +645,194 @@ def test_composite_lane_is_the_composite_with_nan_where_nothing_was_measured():
     assert np.isnan(composite_lane(nothing, weights, "A")).all()
     assert np.isnan(composite_lane(nothing, weights, "Z")).all()
     assert np.isnan(composite_lane(nothing, {"m3": 1.0}, "A")).all()  # no weight
+
+
+# ---------------------------------------------------------------------------
+# muvid#217: causes worded beside their source, the DP value pinned to span_rewards
+# ---------------------------------------------------------------------------
+
+
+def _emitted_causes() -> set[str]:
+    """Every cause literal ``select_score`` can hand back: a ``cause=`` argument (every
+    ``_Solved`` and ``_fallback`` names it), an assignment to ``cause``, and a
+    ``"cause":`` dict value."""
+    import ast
+    import inspect
+
+    from muvid.footage import select_score
+
+    def strings(node):  # a literal, or literals joined by `or` / `x if c else y`
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return {node.value}
+        if isinstance(node, ast.BoolOp):
+            return set().union(*map(strings, node.values))
+        if isinstance(node, ast.IfExp):
+            return strings(node.body) | strings(node.orelse)
+        return (
+            set()
+        )  # a value read from elsewhere (`report.get("cause")`) is not a cause
+
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(inspect.getsource(select_score))):
+        if isinstance(node, ast.keyword) and node.arg == "cause":
+            found |= strings(node.value)
+        elif isinstance(node, ast.Dict):
+            for k, v in zip(node.keys, node.values):
+                if isinstance(k, ast.Constant) and k.value == "cause":
+                    found |= strings(v)
+        elif isinstance(node, ast.Assign) and any(
+            isinstance(t, ast.Name) and t.id == "cause" for t in node.targets
+        ):
+            found |= strings(node.value)
+    return found
+
+
+def test_every_cause_the_dp_emits_is_worded_and_every_worded_cause_is_emitted():
+    from muvid.footage.select_score import FALLBACK_CAUSES, RUN_CAUSES
+
+    emitted = _emitted_causes()
+    assert {"coverage_gap", "infeasible", "optimal"} <= emitted  # the scan works
+    assert emitted <= set(FALLBACK_CAUSES) | set(RUN_CAUSES), (
+        "a cause with no words: add it to select_score.FALLBACK_CAUSES"
+    )
+    assert set(FALLBACK_CAUSES) | set(RUN_CAUSES) <= emitted, (
+        "a worded cause nothing emits"
+    )
+    assert not set(FALLBACK_CAUSES) & set(RUN_CAUSES)
+
+
+def _random_fixture(seed, *, n_clips=3, song=24.0, hop=0.1, beat=0.5, **cfg_kw):
+    from muvid.footage.select_score import SelectionContext, WeightedSelectionConfig
+
+    rng = np.random.default_rng(seed)
+    n = int(np.ceil(song / hop)) + 1
+    aligns = [_align(chr(65 + c), 0.0, song, song) for c in range(n_clips)]
+    comps = {
+        a.clip_id: np.clip(
+            np.repeat(rng.random(n // 20 + 1), 20)[:n] + 0.1 * rng.random(n), 0, 1
+        )
+        for a in aligns
+    }
+    tensor = make_tensor(aligns, comps, hop=hop, n=n)
+    cfg = WeightedSelectionConfig(weights={"m": 1.0}, **cfg_kw)
+    beats = list(np.arange(beat, song, beat))
+    return (
+        aligns,
+        song,
+        tensor,
+        SelectionContext(tensor=tensor, beat_times=beats, config=cfg),
+    )
+
+
+def _relaxed_fixture():
+    """C is the only clip over [5.0, 5.5): a 0.5 s shot below ``l_min_s`` = 2 that the
+    DP can only take with the minimum dropped (``dwell_relaxed``)."""
+    from muvid.footage.select_score import SelectionContext, WeightedSelectionConfig
+
+    hop, song = 0.1, 10.0
+    n = int(np.ceil(song / hop)) + 1
+    aligns = [
+        _align("A", 0.0, 5.0, song),
+        _align("C", 4.9, 0.7, song),
+        _align("B", 5.5, 4.5, song),
+    ]
+    tensor = make_tensor(
+        aligns, {a.clip_id: np.full(n, 0.6) for a in aligns}, hop=hop, n=n
+    )
+    cfg = WeightedSelectionConfig(weights={"m": 1.0}, l_min_s=2.0, l_max_s=8.0)
+    beats = list(np.arange(0.5, song, 0.5))
+    return (
+        aligns,
+        song,
+        tensor,
+        SelectionContext(tensor=tensor, beat_times=beats, config=cfg),
+    )
+
+
+@pytest.mark.parametrize(
+    "seed, cfg_kw, cause, max_entries",
+    [
+        (0, {}, "optimal", None),
+        (1, {"lambda_switch": 0.1, "l_min_s": 0.5, "l_max_s": 3.0}, "optimal", None),
+        # a long l_max overrun is charged: the penalty term must agree too
+        (
+            2,
+            {"lambda_switch": 2.0, "l_max_s": 2.0, "l_max_overrun_penalty": 0.3},
+            "optimal",
+            None,
+        ),
+        (3, {"lambda_switch": 0.0, "l_min_s": 1.0}, "optimal", None),
+        # the cut-count cap forces λ up: the objective must be the escalated λ's
+        (1, {"lambda_switch": 0.05, "l_min_s": 0.5, "l_max_s": 3.0}, "optimal", 3),
+        ("relaxed", {}, "dwell_relaxed", None),
+    ],
+)
+def test_the_objective_is_the_span_rewards_of_its_edit_minus_a_switch_cost_per_cut(
+    seed, cfg_kw, cause, max_entries, monkeypatch
+):
+    """muvid#217 item 3: ``span_rewards`` and the DP share one arithmetic, measured on
+    the DP's own answer — so a candidate's reward is the reward the DP optimised. On
+    every path that solves: optimal, λ escalated by the cut cap, minimum dropped."""
+    from muvid.footage import select_score
+    from muvid.footage.select_score import run_weighted, span_rewards
+
+    if seed == "relaxed":
+        aligns, song, tensor, ctx = _relaxed_fixture()
+    else:
+        aligns, song, tensor, ctx = _random_fixture(seed, **cfg_kw)
+    if max_entries is not None:
+        unescalated, _ = run_weighted(aligns, song, ctx)
+        assert len(unescalated) > max_entries  # the premise: the cap bites
+        monkeypatch.setattr(select_score, "MAX_EDL_ENTRIES", max_entries)
+    entries, meta = run_weighted(aligns, song, ctx)
+    assert meta["cause"] == cause
+    if max_entries is not None:
+        assert meta["lambda_effective"] > ctx.config.lambda_switch
+    rewards = span_rewards(
+        tensor,
+        aligns,
+        [(e.clip_id, e.song_start, e.song_end) for e in entries],
+        config=ctx.config,
+    )
+    assert None not in rewards
+    cuts = len(entries) - 1
+    assert sum(rewards) - meta["lambda_effective"] * cuts == pytest.approx(
+        meta["objective"], abs=1e-6
+    )
+
+
+def test_a_fallback_carries_no_objective():
+    from muvid.footage.select_score import run_weighted
+
+    aligns, song, tensor, ctx = _random_fixture(0)
+    gap = [_align("A", 0.0, 8.0, song), _align("B", 12.0, 12.0, song)]
+    _, meta = run_weighted(gap, song, ctx)
+    assert meta["fallback"] == "best_confidence" and "objective" not in meta
+
+
+def test_strategies_have_titles_shared_by_the_registry_and_the_strategies_op():
+    from muvid.footage import service
+
+    out = service.strategies()
+    assert set(out["titles"]) == set(out["strategies"])
+    assert out["titles"]["best_confidence"] == "Best-aligned video at each moment"
+    assert out["titles"]["weighted"] == "Best footage by its scores"
+    S.register_selection_strategy("my_rule_217", S.best_confidence)
+    try:
+        assert S.strategy_title("my_rule_217") == "My rule 217"
+        S.register_selection_strategy("my_rule_217", S.best_confidence, title="Mine")
+        assert S.strategy_title("my_rule_217") == "Mine"
+        S.register_selection_strategy("my_rule_217", S.best_confidence)
+        assert S.strategy_title("my_rule_217") == "My rule 217"  # not the old words
+        assert S.strategy_title("_test_only") == "Test only"
+        for blank in ("", "  "):
+            with pytest.raises(ValueError, match="title"):
+                S.register_selection_strategy("my_rule_217", S.fewest_cuts, title=blank)
+            with pytest.raises(ValueError, match="title"):
+                S.register_lazy_strategy("my_rule_217", "x:y", title=blank)
+            # a refused call changed nothing
+            assert S.resolve_strategy("my_rule_217") is S.best_confidence
+            assert "my_rule_217" not in S._LAZY_STRATEGIES
+    finally:
+        S._STRATEGIES.pop("my_rule_217", None)
+        S._TITLES.pop("my_rule_217", None)
