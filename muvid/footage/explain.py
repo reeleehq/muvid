@@ -372,8 +372,10 @@ _STRATEGY_WORDS = {
 _FALLBACK_CAUSES = {
     "no_weighted_metrics": "no score it was asked to weigh was measured",
     "coverage_gap": "the videos leave part of the song uncovered",
-    "infeasible": "no cut kept every shot long enough",
-    "dwell_infeasible": "no cut kept every shot long enough",
+    # both come after the minimum shot length was already dropped: what is left that
+    # can fail is a video having to hold longer than the longest shot the cut allows
+    "infeasible": "no cut fitted the shot-length limits",
+    "dwell_infeasible": "a video would have had to hold longer than the longest shot allowed",
     "empty_span": "there was no song to cut",
     "reconstruct_failed": "the cut could not be assembled",
 }

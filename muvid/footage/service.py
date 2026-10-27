@@ -50,7 +50,12 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Literal, Optional, TypedDict, Union
+from typing import Literal, Optional, Union
+
+try:  # pydantic (which describes the ops for hosts) refuses typing.TypedDict below 3.12
+    from typing_extensions import TypedDict
+except ImportError:  # core-only install: no host builds a schema from it
+    from typing import TypedDict
 
 from muvid.footage.edl import (
     DECLARED,
@@ -1813,9 +1818,12 @@ def score_candidates(
     ``reward`` is what the ``weighted`` strategy itself would earn for the span (its own
     arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
     demoted, a span past the longest shot is penalised), so ranking by it ranks takes
-    as the selector does; ``reliable`` says whether the clip's alignment is vouched for
-    and ``coverage`` how much of the span the clip's placement covers. All three are
-    ``null`` for a video with no place on the song (one cut to the music).
+    as the selector does; it is ``null`` where the selector could never choose the span
+    (the clip does not cover all of it, the span holds no grid frame, or no weighted
+    metric is in the scores). ``reliable`` says whether the clip's alignment is vouched
+    for and ``coverage`` how much of the span its placement covers; both are ``null``
+    for a video with no place on the song (one cut to the music). The selector's
+    ``config=`` overrides are not taken here; ``weights`` / ``preset`` are.
 
     ``weights`` / ``preset`` as for ``scores``; the reply's ``weights`` says which
     applied. Needs current scores (``score`` first). A span off the song, or a video the
@@ -1824,7 +1832,7 @@ def score_candidates(
     import numpy as np
 
     from muvid.footage.edl import MAX_EDL_ENTRIES
-    from muvid.footage.select_score import composite_lane, resolve_config, span_reward
+    from muvid.footage.select_score import composite_lane, resolve_config, span_rewards
 
     if not isinstance(candidates, list) or not candidates:
         raise FootageError("candidates must be a non-empty list of spans")
@@ -1837,10 +1845,11 @@ def score_candidates(
     config = resolve_config(preset=preset or None, weights=weights)
     placed = {a.clip_id: a for a in fp.load_alignments() if a.overlaps}
     song_end = tensor.t0 + tensor.n * tensor.hop_s
+    spans = [_candidate(c, i, song_end=song_end) for i, c in enumerate(candidates)]
+    rewards = span_rewards(tensor, list(placed.values()), spans, config=config)
     lanes: dict[str, "np.ndarray"] = {}
     out = []
-    for i, c in enumerate(candidates):
-        cid, start, end = _candidate(c, i, song_end=song_end)
+    for i, (cid, start, end) in enumerate(spans):
         if cid not in tensor.clip_ids:
             raise FootageError(
                 f"candidate {i}: the scores hold no video {cid!r} — "
@@ -1870,7 +1879,8 @@ def score_candidates(
                     )
                     for mi, m in enumerate(tensor.metrics)
                 },
-                **_placement_fields(placed.get(cid), start, end, tensor, config),
+                "reward": None if rewards[i] is None else round(rewards[i], 4),
+                **_placement_fields(placed.get(cid), start, end),
             }
         )
     return {
@@ -1880,17 +1890,14 @@ def score_candidates(
     }
 
 
-def _placement_fields(alignment, start, end, tensor, config) -> dict:
-    """``reward`` / ``reliable`` / ``coverage`` of one candidate (:func:`score_candidates`)
-    — ``null`` for a video with no place on the song."""
+def _placement_fields(alignment, start, end) -> dict:
+    """``reliable`` / ``coverage`` of one candidate (:func:`score_candidates`) — ``null``
+    for a video with no place on the song."""
     if alignment is None:
-        return {"reward": None, "reliable": None, "coverage": None}
-    from muvid.footage.select_score import span_reward
-
+        return {"reliable": None, "coverage": None}
     lo, hi = alignment.coverage
     inside = max(0.0, min(end, hi) - max(start, lo))
     return {
-        "reward": round(span_reward(tensor, alignment, start, end, config=config), 4),
         "reliable": bool(alignment.reliable),
         "coverage": round(inside / (end - start), 4),
     }

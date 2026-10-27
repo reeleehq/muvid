@@ -162,7 +162,7 @@ def test_span_reward_demotes_an_unvouched_clip_and_charges_the_overrun():
     from muvid.footage.select_score import (
         UNVOUCHED_REWARD_PENALTY,
         resolve_config,
-        span_reward,
+        span_rewards,
     )
 
     n, hop = 100, 0.1
@@ -170,9 +170,22 @@ def test_span_reward_demotes_an_unvouched_clip_and_charges_the_overrun():
     tensor = ScoreTensor(["A"], ["m"], 0.0, hop, n, S, np.ones((1, n, 1), bool), S, {})
     vouched = FootageAlignment("A", 0.0, 1.0, 10.0, (0.0, 10.0), reliable=True)
     cfg = resolve_config(weights={"m": 1.0})
-    full = span_reward(tensor, vouched, 0.0, 2.0, config=cfg)
-    assert full == pytest.approx(2.0)  # 2 s of perfect footage
-    down = span_reward(tensor, replace(vouched, reliable=False), 0.0, 2.0, config=cfg)
+
+    def reward(a, start, end):
+        return span_rewards(tensor, [a], [("A", start, end)], config=cfg)[0]
+
+    assert reward(vouched, 0.0, 2.0) == pytest.approx(2.0)  # 2 s of perfect footage
+    down = reward(replace(vouched, reliable=False), 0.0, 2.0)
     assert down == pytest.approx(2.0 - 2.0 * UNVOUCHED_REWARD_PENALTY)
-    long = span_reward(tensor, vouched, 0.0, cfg.l_max_s + 1.0, config=cfg)
-    assert long < cfg.l_max_s + 1.0  # past the longest shot is penalised
+    assert reward(vouched, 0.0, cfg.l_max_s + 1.0) < cfg.l_max_s + 1.0  # overrun
+    # the DP refuses a segment its clip does not contain: no reward to rank by
+    assert reward(vouched, 5.0, 11.0) is None
+    assert reward(vouched, 2.01, 2.06) is None  # holds no grid frame
+    none_weighed = resolve_config(weights={"zz": 1.0}, preset=None)
+    no_w = span_rewards(
+        tensor,
+        [vouched],
+        [("A", 0.0, 2.0)],
+        config=replace(none_weighed, weights={"zz": 1.0}),
+    )
+    assert no_w == [None]
