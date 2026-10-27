@@ -804,12 +804,16 @@ shape of a bound that measures the wrong quantity.</p>
 <p>TWO caps rather than one, because they bound different things and one number
 cannot do both: the total bounds the graph, and the resize count bounds how
 many LARGE frames can exist in it. Together the measured worst case is
-<strong>292 MB</strong> (2 links at the size cap plus 14 cheap ones) against 3171 MB
+<strong>292 MB</strong> (2 links at the size cap plus 14 cheap ones — but not cheap when
+each forces an RGB&lt;-&gt;YUV conversion at the large size: 2.46 GB, muvid#199)
+against 3171 MB
 today. A single total-link cap loose enough for a rich grade would leave the
 multiplicative worst case an order of magnitude higher.</p>
 <p>The values are generous by construction: muvid’s own compilers emit <strong>1</strong>
-link for <code class="docutils literal notranslate"><span class="pre">punch_in</span></code> and <strong>2</strong> for a two-effect <code class="docutils literal notranslate"><span class="pre">stylize</span></code>, and at most one
-of those ever sets a size.</p>
+link for <code class="docutils literal notranslate"><span class="pre">punch_in</span></code> and at most <strong>7</strong> for a <code class="docutils literal notranslate"><span class="pre">stylize</span></code> (the named look
+<code class="docutils literal notranslate"><span class="pre">cartoon</span></code>: three steps, each wrapped in <code class="docutils literal notranslate"><span class="pre">looks</span></code> Rule 22’s colour-only
+<code class="docutils literal notranslate"><span class="pre">scale</span></code>), and at most one of those ever sets a size. A link that declares no
+size is not a resize while the frame fits the canvas (<code class="xref py py-func docutils literal notranslate"><span class="pre">_look_resizes()</span></code>).</p>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_SCALE">
@@ -1567,7 +1571,7 @@ render-time window that is never stored.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=97d53703"></script>
+<script src="../_static/documentation_options.js?v=5c5ca7ce"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

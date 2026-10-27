@@ -541,13 +541,17 @@ shape of a bound that measures the wrong quantity.
 TWO caps rather than one, because they bound different things and one number
 cannot do both: the total bounds the graph, and the resize count bounds how
 many LARGE frames can exist in it. Together the measured worst case is
-**292 MB** (2 links at the size cap plus 14 cheap ones) against 3171 MB
+**292 MB** (2 links at the size cap plus 14 cheap ones — but not cheap when
+each forces an RGB<->YUV conversion at the large size: 2.46 GB, muvid#199)
+against 3171 MB
 today. A single total-link cap loose enough for a rich grade would leave the
 multiplicative worst case an order of magnitude higher.
 
 The values are generous by construction: muvid’s own compilers emit **1**
-link for `punch_in` and **2** for a two-effect `stylize`, and at most one
-of those ever sets a size.
+link for `punch_in` and at most **7** for a `stylize` (the named look
+`cartoon`: three steps, each wrapped in `looks` Rule 22’s colour-only
+`scale`), and at most one of those ever sets a size. A link that declares no
+size is not a resize while the frame fits the canvas (`_look_resizes()`).
 
 ### muvid.footage.edl.MAX_LOOK_SCALE *= 4*
 

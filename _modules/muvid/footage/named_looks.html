@@ -198,7 +198,7 @@
 </span><span id="line-11"><span class="sd">  tighter framing), ``slow_push`` / ``slow_pull`` (zoom in / out across the cut),</span>
 </span><span id="line-12"><span class="sd">  ``pan_left`` / ``pan_right`` (drift sideways at a slight zoom);</span>
 </span><span id="line-13"><span class="sd">- grades, which do not: ``vivid``, ``black_and_white``, ``posterize`` and ``cartoon``</span>
-</span><span id="line-14"><span class="sd">  (flatten + posterize + a little colour — in the spirit of Que Calor's V2, whose real</span>
+</span><span id="line-14"><span class="sd">  (a little colour + flatten + posterize — in the spirit of Que Calor's V2, whose real</span>
 </span><span id="line-15"><span class="sd">  stylizer was a Python mean-shift and a palette LUT that no filter chain reproduces).</span>
 </span><span id="line-16">
 </span><span id="line-17"><span class="sd">**Tasteful by construction**: every zoom is bounded at :data:`MAX_ZOOM` (1.15) by the</span>
@@ -444,69 +444,72 @@
 </span><span id="line-251">        <span class="s2">"Cartoon"</span><span class="p">,</span>
 </span><span id="line-252">        <span class="s2">"Smoothed, banded, a little brighter in colour — a painted look."</span><span class="p">,</span>
 </span><span id="line-253">        <span class="s2">"grade"</span><span class="p">,</span>
-</span><span id="line-254">        <span class="n">_grade</span><span class="p">(</span>
-</span><span id="line-255">            <span class="p">(</span><span class="s2">"flatten"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"scale"</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">}),</span>
-</span><span id="line-256">            <span class="p">(</span><span class="s2">"posterize"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"levels"</span><span class="p">])}),</span>
-</span><span id="line-257">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">1.15</span><span class="p">}),</span>
-</span><span id="line-258">        <span class="p">),</span>
-</span><span id="line-259">        <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"Colour levels"</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
-</span><span id="line-260">    <span class="p">),</span>
-</span><span id="line-261"><span class="p">)</span>
-</span><span id="line-262">
-</span><span id="line-263"><span class="n">_BY_NAME</span> <span class="o">=</span> <span class="p">{</span><span class="n">look</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">look</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">}</span>
-</span><span id="line-264">
+</span><span id="line-254">        <span class="c1"># looks' canonical stage order: the grade (saturation) before the</span>
+</span><span id="line-255">        <span class="c1"># flatten, the flatten before the posterize. ``flatten`` keeps looks'</span>
+</span><span id="line-256">        <span class="c1"># own measured defaults (spatial, range, all three planes).</span>
+</span><span id="line-257">        <span class="n">_grade</span><span class="p">(</span>
+</span><span id="line-258">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">1.15</span><span class="p">}),</span>
+</span><span id="line-259">            <span class="p">(</span><span class="s2">"flatten"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{}),</span>
+</span><span id="line-260">            <span class="p">(</span><span class="s2">"posterize"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"levels"</span><span class="p">])}),</span>
+</span><span id="line-261">        <span class="p">),</span>
+</span><span id="line-262">        <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"Colour levels"</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+</span><span id="line-263">    <span class="p">),</span>
+</span><span id="line-264"><span class="p">)</span>
 </span><span id="line-265">
+</span><span id="line-266"><span class="n">_BY_NAME</span> <span class="o">=</span> <span class="p">{</span><span class="n">look</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">look</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">}</span>
+</span><span id="line-267">
+</span><span id="line-268">
 <div class="viewcode-block" id="named_look_catalogue">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.named_looks.html#muvid.footage.named_looks.named_look_catalogue">[docs]</a>
-</span><span id="line-266"><span class="k">def</span><span class="w"> </span><span class="nf">named_look_catalogue</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-</span><span id="line-267"><span class="w">    </span><span class="sd">"""The menu as JSON rows (name, title, description, kind, params_schema)."""</span>
-</span><span id="line-268">    <span class="k">return</span> <span class="p">[</span><span class="n">look</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">]</span></div>
+</span><span id="line-269"><span class="k">def</span><span class="w"> </span><span class="nf">named_look_catalogue</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+</span><span id="line-270"><span class="w">    </span><span class="sd">"""The menu as JSON rows (name, title, description, kind, params_schema)."""</span>
+</span><span id="line-271">    <span class="k">return</span> <span class="p">[</span><span class="n">look</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">]</span></div>
 
-</span><span id="line-269">
-</span><span id="line-270">
+</span><span id="line-272">
+</span><span id="line-273">
 <div class="viewcode-block" id="resolve_named_look">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.named_looks.html#muvid.footage.named_looks.resolve_named_look">[docs]</a>
-</span><span id="line-271"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-272"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` checked, with every parameter's value filled in (the</span>
-</span><span id="line-273"><span class="sd">    defaults included) — the spec a cut records so a screen can show the choice."""</span>
-</span><span id="line-274">    <span class="n">spec</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
-</span><span id="line-275">    <span class="n">name</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-276">    <span class="n">look</span> <span class="o">=</span> <span class="n">_BY_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-277">    <span class="k">if</span> <span class="n">look</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-278">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; the looks are </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_BY_NAME</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-279">    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">))</span>
-</span><span id="line-280">    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
-</span><span id="line-281">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span>
-</span><span id="line-282">            <span class="sa">f</span><span class="s2">"look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> takes </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'no parameters'</span><span class="si">}</span><span class="s2">, "</span>
-</span><span id="line-283">            <span class="sa">f</span><span class="s2">"not </span><span class="si">{</span><span class="n">unknown</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-284">        <span class="p">)</span>
-</span><span id="line-285">    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">coerce</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">default</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-</span><span id="line-286">    <span class="k">return</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">}</span></div>
+</span><span id="line-274"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-275"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` checked, with every parameter's value filled in (the</span>
+</span><span id="line-276"><span class="sd">    defaults included) — the spec a cut records so a screen can show the choice."""</span>
+</span><span id="line-277">    <span class="n">spec</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+</span><span id="line-278">    <span class="n">name</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-279">    <span class="n">look</span> <span class="o">=</span> <span class="n">_BY_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-280">    <span class="k">if</span> <span class="n">look</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-281">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; the looks are </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_BY_NAME</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-282">    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">))</span>
+</span><span id="line-283">    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+</span><span id="line-284">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span>
+</span><span id="line-285">            <span class="sa">f</span><span class="s2">"look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> takes </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'no parameters'</span><span class="si">}</span><span class="s2">, "</span>
+</span><span id="line-286">            <span class="sa">f</span><span class="s2">"not </span><span class="si">{</span><span class="n">unknown</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-287">        <span class="p">)</span>
+</span><span id="line-288">    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">coerce</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">default</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+</span><span id="line-289">    <span class="k">return</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">}</span></div>
 
-</span><span id="line-287">
-</span><span id="line-288">
+</span><span id="line-290">
+</span><span id="line-291">
 <div class="viewcode-block" id="compile_named_look">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.named_looks.html#muvid.footage.named_looks.compile_named_look">[docs]</a>
-</span><span id="line-289"><span class="k">def</span><span class="w"> </span><span class="nf">compile_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-</span><span id="line-290"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` → the cut's filter fragment (a ``LookFragment``,</span>
-</span><span id="line-291"><span class="sd">    which says whether it is time-varying). Unknown names and parameters are refused."""</span>
-</span><span id="line-292">    <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
-</span><span id="line-293">    <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
-</span><span id="line-294">    <span class="k">return</span> <span class="n">_BY_NAME</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-</span><span id="line-295">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span> <span class="o">**</span><span class="n">resolved</span>
-</span><span id="line-296">    <span class="p">)</span></div>
+</span><span id="line-292"><span class="k">def</span><span class="w"> </span><span class="nf">compile_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+</span><span id="line-293"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` → the cut's filter fragment (a ``LookFragment``,</span>
+</span><span id="line-294"><span class="sd">    which says whether it is time-varying). Unknown names and parameters are refused."""</span>
+</span><span id="line-295">    <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+</span><span id="line-296">    <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
+</span><span id="line-297">    <span class="k">return</span> <span class="n">_BY_NAME</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
+</span><span id="line-298">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span> <span class="o">**</span><span class="n">resolved</span>
+</span><span id="line-299">    <span class="p">)</span></div>
 
-</span><span id="line-297">
-</span><span id="line-298">
-</span><span id="line-299"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-300">    <span class="s2">"NAMED_LOOKS"</span><span class="p">,</span>
-</span><span id="line-301">    <span class="s2">"NamedLook"</span><span class="p">,</span>
-</span><span id="line-302">    <span class="s2">"NamedLookError"</span><span class="p">,</span>
-</span><span id="line-303">    <span class="s2">"MAX_ZOOM"</span><span class="p">,</span>
-</span><span id="line-304">    <span class="s2">"named_look_catalogue"</span><span class="p">,</span>
-</span><span id="line-305">    <span class="s2">"resolve_named_look"</span><span class="p">,</span>
-</span><span id="line-306">    <span class="s2">"compile_named_look"</span><span class="p">,</span>
-</span><span id="line-307"><span class="p">]</span>
+</span><span id="line-300">
+</span><span id="line-301">
+</span><span id="line-302"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-303">    <span class="s2">"NAMED_LOOKS"</span><span class="p">,</span>
+</span><span id="line-304">    <span class="s2">"NamedLook"</span><span class="p">,</span>
+</span><span id="line-305">    <span class="s2">"NamedLookError"</span><span class="p">,</span>
+</span><span id="line-306">    <span class="s2">"MAX_ZOOM"</span><span class="p">,</span>
+</span><span id="line-307">    <span class="s2">"named_look_catalogue"</span><span class="p">,</span>
+</span><span id="line-308">    <span class="s2">"resolve_named_look"</span><span class="p">,</span>
+</span><span id="line-309">    <span class="s2">"compile_named_look"</span><span class="p">,</span>
+</span><span id="line-310"><span class="p">]</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -520,7 +523,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=97d53703"></script>
+    <script src="../../../_static/documentation_options.js?v=5c5ca7ce"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -13,7 +13,7 @@ each entry a function of a few bounded parameters compiled through
   tighter framing), `slow_push` / `slow_pull` (zoom in / out across the cut),
   `pan_left` / `pan_right` (drift sideways at a slight zoom);
 - grades, which do not: `vivid`, `black_and_white`, `posterize` and `cartoon`
-  (flatten + posterize + a little colour — in the spirit of Que Calor’s V2, whose real
+  (a little colour + flatten + posterize — in the spirit of Que Calor’s V2, whose real
   stylizer was a Python mean-shift and a palette LUT that no filter chain reproduces).
 
 **Tasteful by construction**: every zoom is bounded at [`MAX_ZOOM`](#muvid.footage.named_looks.MAX_ZOOM) (1.15) by the

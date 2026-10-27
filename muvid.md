@@ -1,4 +1,4 @@
-> built 2026-10-27 01:50 UTC from a2eded1 (main) · muvid 0.0.103. Details: build_info.json
+> built 2026-10-27 02:59 UTC from dcf5d8f (main) · muvid 0.0.104. Details: build_info.json
 
 # index.html.md
 
@@ -3608,13 +3608,17 @@ shape of a bound that measures the wrong quantity.
 TWO caps rather than one, because they bound different things and one number
 cannot do both: the total bounds the graph, and the resize count bounds how
 many LARGE frames can exist in it. Together the measured worst case is
-**292 MB** (2 links at the size cap plus 14 cheap ones) against 3171 MB
+**292 MB** (2 links at the size cap plus 14 cheap ones — but not cheap when
+each forces an RGB<->YUV conversion at the large size: 2.46 GB, muvid#199)
+against 3171 MB
 today. A single total-link cap loose enough for a rich grade would leave the
 multiplicative worst case an order of magnitude higher.
 
 The values are generous by construction: muvid’s own compilers emit **1**
-link for `punch_in` and **2** for a two-effect `stylize`, and at most one
-of those ever sets a size.
+link for `punch_in` and at most **7** for a `stylize` (the named look
+`cartoon`: three steps, each wrapped in `looks` Rule 22’s colour-only
+`scale`), and at most one of those ever sets a size. A link that declares no
+size is not a resize while the frame fits the canvas (`_look_resizes()`).
 
 ### muvid.footage.edl.MAX_LOOK_SCALE *= 4*
 
@@ -6009,7 +6013,7 @@ each entry a function of a few bounded parameters compiled through
   tighter framing), `slow_push` / `slow_pull` (zoom in / out across the cut),
   `pan_left` / `pan_right` (drift sideways at a slight zoom);
 - grades, which do not: `vivid`, `black_and_white`, `posterize` and `cartoon`
-  (flatten + posterize + a little colour — in the spirit of Que Calor’s V2, whose real
+  (a little colour + flatten + posterize — in the spirit of Que Calor’s V2, whose real
   stylizer was a Python mean-shift and a palette LUT that no filter chain reproduces).
 
 **Tasteful by construction**: every zoom is bounded at [`MAX_ZOOM`](_autosummary/muvid.footage.named_looks.html.md#muvid.footage.named_looks.MAX_ZOOM) (1.15) by the
@@ -17866,7 +17870,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 01:50 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/a2eded179feb63e3caaea7b4edb9325ef574484f"><code>a2eded1</code></a> on branch <code>main</code>, for **muvid 0.0.103** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 02:59 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/dcf5d8feca3cc0cdc60715cc826fbe6ff7677801"><code>dcf5d8f</code></a> on branch <code>main</code>, for **muvid 0.0.104** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -17875,9 +17879,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/a2eded179feb63e3caaea7b4edb9325ef574484f"><code>a2eded179feb63e3caaea7b4edb9325ef574484f</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/dcf5d8feca3cc0cdc60715cc826fbe6ff7677801"><code>dcf5d8feca3cc0cdc60715cc826fbe6ff7677801</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.103</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.104</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -17886,9 +17890,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40430375844">40430375844</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40438485821">40438485821</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>ff1536889a47cbc81cbe191bc1b9bd933b152167</code> (in the history of the built commit) |
+| Event commit | <code>e870a7a95aeead02feb5bc7d08a3143820aadf52</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -17913,13 +17917,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.103/">0.0.103</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.104/">0.0.104</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout a2eded179feb63e3caaea7b4edb9325ef574484f
+git checkout dcf5d8feca3cc0cdc60715cc826fbe6ff7677801
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
