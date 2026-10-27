@@ -45,7 +45,7 @@ MUSIC_VIDEO_SLUG = "music_video"
 #: What to do about an nw older than this module needs: nw's floor lives in muvid's
 #: ``mcp`` extra, not the base dependencies (muvid#248).
 _NW_REMEDY = (
-    f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs it: upgrade nw to the floor muvid's "
+    f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs a newer nw: upgrade it to the floor muvid's "
     "'mcp' extra declares (update an editable checkout, or install muvid's 'mcp' extra)"
 )
 
