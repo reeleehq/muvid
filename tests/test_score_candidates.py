@@ -118,3 +118,11 @@ def test_an_odd_clip_id_is_refused_without_echoing_it_whole(ramp_scores):
             candidates=[{"clip_id": huge, "song_start": 0.0, "song_end": 1.0}],
         )
     assert len(str(e.value)) < 300
+
+
+def test_a_clip_id_is_stripped_like_every_other_op_strips_it(ramp_scores):
+    out = service.score_candidates(
+        ramp_scores,
+        candidates=[{"clip_id": " A ", "song_start": 20.0, "song_end": 21.0}],
+    )
+    assert out["candidates"][0]["clip_id"] == "A"

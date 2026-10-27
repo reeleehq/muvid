@@ -1822,17 +1822,7 @@ def _candidate(c, i: int, *, song_end: float) -> "tuple[str, float, float]":
     """``(clip_id, song_start, song_end)`` of candidate ``i``, checked, or a refusal."""
     if not isinstance(c, dict):
         raise FootageError(f"candidate {i} must be {{clip_id, song_start, song_end}}")
-    from muvid.footage.workspace import ID_PATTERN
-
-    cid = c.get("clip_id")
-    if not isinstance(cid, str) or not ID_PATTERN.fullmatch(cid):
-        shown = repr(cid)[
-            :66
-        ]  # an id is a name of at most 64 characters: never echo more
-        raise FootageError(
-            f"candidate {i} needs a clip_id of 1-64 letters, digits, '_' or '-', "
-            f"got {shown}"
-        )
+    cid = _normalised_id(c.get("clip_id"), label=f"candidate {i} clip_id")
     start = _finite(c.get("song_start"), f"candidate {i} song_start")
     end = _finite(c.get("song_end"), f"candidate {i} song_end")
     if not 0.0 <= start < end <= song_end + _SONG_END_SLACK_S:
