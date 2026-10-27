@@ -110,3 +110,25 @@ def test_old_hyphenated_visualizer_slug_is_not_an_alias():
 
     with pytest.raises(KeyError):
         nw.get_genre("music-visualizer")
+
+
+def test_an_nw_older_than_the_floor_is_refused_with_the_remedy(monkeypatch):
+    """muvid#248: a ``GenreOp`` without a field the genre passes (``invalidates`` before
+    nw 0.0.92) must fail naming the field and the extra, not as a bare ``TypeError``."""
+    import dataclasses
+
+    import muvid.genre_music_video as g
+    from muvid.footage import service
+
+    old_genre_op = dataclasses.make_dataclass(
+        "GenreOp",
+        [
+            (f.name, object, dataclasses.field(default=None))
+            for f in dataclasses.fields(nw.GenreOp)
+            if f.name != "invalidates"
+        ],
+    )
+    monkeypatch.setattr(g, "GenreOp", old_genre_op)
+    spec = next(s for s in service.FOOTAGE_OP_SPECS if s.invalidates)
+    with pytest.raises(ImportError, match=r"invalidates.*muvid\[mcp\]"):
+        g._as_genre_op(spec)

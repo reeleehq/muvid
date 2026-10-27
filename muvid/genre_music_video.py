@@ -25,6 +25,7 @@ per-caller workspace, unchanged.
 
 from __future__ import annotations
 
+import dataclasses
 import inspect
 
 from nw import (
@@ -170,7 +171,7 @@ def _as_genre_op(spec) -> GenreOp:
     fn.__name__ = fn.__qualname__ = spec.name
     fn.__doc__ = _with_limits(inspect.getdoc(op), spec.limits)
     fn.__signature__ = sig.replace(parameters=params)
-    return GenreOp(
+    fields = dict(
         name=spec.name,
         fn=fn,
         title=spec.title,
@@ -181,6 +182,28 @@ def _as_genre_op(spec) -> GenreOp:
         max_upload_bytes=spec.max_upload_bytes,
         invalidates=spec.invalidates,
     )
+    _require_genre_op_fields(GenreOp, fields)
+    return GenreOp(**fields)
+
+
+def _require_genre_op_fields(op_cls, fields) -> None:
+    """Refuse, naming the remedy, when the installed nw's ``GenreOp`` lacks a field
+    this module passes (muvid#248).
+
+    nw's floor lives in muvid's ``mcp`` extra, and a missing NAME fails ``import nw``
+    loudly on its own. A missing keyword does not: ``invalidates`` (nw 0.0.92, nw#161)
+    reached a host that has nw without the extra as ``TypeError: unexpected keyword
+    argument``, which names neither the package nor the fix. The check asks the class
+    rather than a version number on purpose: an editable checkout's recorded version
+    goes stale, so a version compare would refuse a working source tree.
+    """
+    missing = sorted(fields.keys() - {f.name for f in dataclasses.fields(op_cls)})
+    if missing:
+        raise ImportError(
+            f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs an nw whose GenreOp has "
+            f"{', '.join(missing)}; the installed nw is older than the floor muvid's "
+            "'mcp' extra declares. Upgrade it: pip install -U 'muvid[mcp]'"
+        )
 
 
 #: The catalogue a host serves for ``music_video`` — one ``nw.GenreOp`` per operation.
