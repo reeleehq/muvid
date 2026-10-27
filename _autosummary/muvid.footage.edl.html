@@ -178,72 +178,69 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 <td><p>How many times the delivery canvas a <code class="docutils literal notranslate"><span class="pre">look</span></code> may ask for, PER DIMENSION (env-tunable).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LINKS" title="muvid.footage.edl.MAX_LOOK_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_LINKS</span></code></a></p></td>
-<td><p>How many filter links one look may carry, and how many of those may set a size.</p></td>
+<td><p>How many filter links one look may carry.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LARGE_LINKS" title="muvid.footage.edl.MAX_LOOK_LARGE_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_LARGE_LINKS</span></code></a></p></td>
-<td><p>How many links of a look may hold a frame LARGER than the canvas (by area) — the bound on what actually costs memory (muvid#199).</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_COST" title="muvid.footage.edl.MAX_LOOK_COST"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_COST</span></code></a></p></td>
+<td><p>The memory a look may cost, in canvas-sized YUV frames (<code class="xref py py-func docutils literal notranslate"><span class="pre">_look_cost()</span></code>) — ONE budget in place of the three counts of muvid#196/#199 (resizes, links holding a large frame, heavy filters), which each answered one version of this question (#229).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS" title="muvid.footage.edl.MAX_LOOK_HEAVY_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code></a></p></td>
-<td><p>How many heavy links a look may carry — and none of them on a frame larger than the canvas.</p></td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.DFLT_LOOK_CANVAS" title="muvid.footage.edl.DFLT_LOOK_CANVAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DFLT_LOOK_CANVAS</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.DFLT_LOOK_CANVAS" title="muvid.footage.edl.DFLT_LOOK_CANVAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DFLT_LOOK_CANVAS</span></code></a></p></td>
 <td><p>The canvas <a class="reference internal" href="#muvid.footage.edl.validate_edl" title="muvid.footage.edl.validate_edl"><code class="xref py py-func docutils literal notranslate"><span class="pre">validate_edl()</span></code></a> bounds a look against when its caller names none: the element-wise maximum of <code class="docutils literal notranslate"><span class="pre">workspace.CANVASES</span></code>, so the default is the LOOSEST bound that is still a bound — never an absent one.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_SPLIT" title="muvid.footage.edl.TRANSITION_SPLIT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_SPLIT</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_SPLIT" title="muvid.footage.edl.TRANSITION_SPLIT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_SPLIT</span></code></a></p></td>
 <td><p>the fraction taken from BEFORE the boundary.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_TRANSITION_S" title="muvid.footage.edl.MIN_TRANSITION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_TRANSITION_S</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_TRANSITION_S" title="muvid.footage.edl.MIN_TRANSITION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_TRANSITION_S</span></code></a></p></td>
 <td><p>Shortest transition that is not a lie.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_CURVES" title="muvid.footage.edl.TRANSITION_CURVES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_CURVES</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_CURVES" title="muvid.footage.edl.TRANSITION_CURVES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_CURVES</span></code></a></p></td>
 <td><p>The transition curves muvid offers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_CONFIDENCE" title="muvid.footage.edl.MIN_CONFIDENCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_CONFIDENCE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_CONFIDENCE" title="muvid.footage.edl.MIN_CONFIDENCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_CONFIDENCE</span></code></a></p></td>
 <td><p>Below this, a whole-clip correlation coefficient does not vouch for its offset (env <code class="docutils literal notranslate"><span class="pre">MUVID_FOOTAGE_MIN_CONFIDENCE</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_SUPPORT" title="muvid.footage.edl.MIN_SUPPORT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_SUPPORT</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_SUPPORT" title="muvid.footage.edl.MIN_SUPPORT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_SUPPORT</span></code></a></p></td>
 <td><p>Support must EXCEED this for an offset to be vouched for (env <code class="docutils literal notranslate"><span class="pre">MUVID_FOOTAGE_MIN_SUPPORT</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_MARGIN" title="muvid.footage.edl.MIN_MARGIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_MARGIN</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_MARGIN" title="muvid.footage.edl.MIN_MARGIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_MARGIN</span></code></a></p></td>
 <td><p>Margin must EXCEED this for an offset to be vouched for (env <code class="docutils literal notranslate"><span class="pre">MUVID_FOOTAGE_MIN_MARGIN</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MEASURED" title="muvid.footage.edl.MEASURED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MEASURED</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MEASURED" title="muvid.footage.edl.MEASURED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MEASURED</span></code></a></p></td>
 <td><p>the aligner found the offset, or a person set it.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.UNPLACED" title="muvid.footage.edl.UNPLACED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNPLACED</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.UNPLACED" title="muvid.footage.edl.UNPLACED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNPLACED</span></code></a></p></td>
 <td><p>Two more <code class="docutils literal notranslate"><span class="pre">source</span></code> values, for records that are NEVER persisted.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.STILL_DURATION_S" title="muvid.footage.edl.STILL_DURATION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STILL_DURATION_S</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.STILL_DURATION_S" title="muvid.footage.edl.STILL_DURATION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STILL_DURATION_S</span></code></a></p></td>
 <td><p>it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S" title="muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SPAN_OFFSET_TOLERANCE_S</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S" title="muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SPAN_OFFSET_TOLERANCE_S</span></code></a></p></td>
 <td><p>How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — <code class="docutils literal notranslate"><span class="pre">mixing</span></code>'s own span tolerance (<code class="docutils literal notranslate"><span class="pre">SPAN_OFFSET_TOLERANCE_S</span></code>), restated so this module stays import-light.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.SPAN_EDGE_ACCURACY_S" title="muvid.footage.edl.SPAN_EDGE_ACCURACY_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SPAN_EDGE_ACCURACY_S</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.SPAN_EDGE_ACCURACY_S" title="muvid.footage.edl.SPAN_EDGE_ACCURACY_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SPAN_EDGE_ACCURACY_S</span></code></a></p></td>
 <td><p>How accurate a measured span's edges are, in seconds — <code class="docutils literal notranslate"><span class="pre">mixing</span></code>'s span window (<code class="docutils literal notranslate"><span class="pre">SPAN_WINDOW_S</span></code>), restated so this module stays import-light (a test pins it).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.SLIP_MAX_S" title="muvid.footage.edl.SLIP_MAX_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SLIP_MAX_S</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.SLIP_MAX_S" title="muvid.footage.edl.SLIP_MAX_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SLIP_MAX_S</span></code></a></p></td>
 <td><p>about one beat at 128 BPM.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.RATE_MAX_DEV" title="muvid.footage.edl.RATE_MAX_DEV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RATE_MAX_DEV</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.RATE_MAX_DEV" title="muvid.footage.edl.RATE_MAX_DEV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RATE_MAX_DEV</span></code></a></p></td>
 <td><p>8 %, a nudge that keeps a dancer looking like themselves.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.EDGE_S" title="muvid.footage.edl.EDGE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.EDGE_S" title="muvid.footage.edl.EDGE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></p></td>
 <td><p>phone clips start and stop with the shake of a thumb on the button.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.NO_VOUCHED_COVERAGE" title="muvid.footage.edl.NO_VOUCHED_COVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_VOUCHED_COVERAGE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.NO_VOUCHED_COVERAGE" title="muvid.footage.edl.NO_VOUCHED_COVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_VOUCHED_COVERAGE</span></code></a></p></td>
 <td><p>nothing the aligner vouches for covers it at all.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.UNVOUCHED_SELECTION" title="muvid.footage.edl.UNVOUCHED_SELECTION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_SELECTION</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.UNVOUCHED_SELECTION" title="muvid.footage.edl.UNVOUCHED_SELECTION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_SELECTION</span></code></a></p></td>
 <td><p>A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS" title="muvid.footage.edl.EXCLUSION_REASONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS" title="muvid.footage.edl.EXCLUSION_REASONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></p></td>
 <td><p>Every reason <a class="reference internal" href="#muvid.footage.edl.exclude_unvouched" title="muvid.footage.edl.exclude_unvouched"><code class="xref py py-func docutils literal notranslate"><span class="pre">exclude_unvouched()</span></code></a> can give, for a caller matching on the value.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></p></td>
 <td><p>The filters a <code class="docutils literal notranslate"><span class="pre">look</span></code> may name.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED" title="muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED" title="muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">looks</span></code> effects muvid's gate does not offer, each with why.</p></td>
 </tr>
 </tbody>
@@ -852,71 +849,51 @@ stays on cuts deliberately — it is the number the caller wrote and can act on 
 read it as bounding work only to within that factor.</p>
 </dd></dl>
 <dl class="py data">
-<dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_HEAVY_LINKS">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS'">¶</a></dt>
-<dd><p>How many heavy links a look may carry — and none of them on a frame larger than the
-canvas.</p>
-</dd></dl>
-<dl class="py data">
-<dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_LARGE_LINKS">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">MAX_LOOK_LARGE_LINKS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.MAX_LOOK_LARGE_LINKS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.MAX_LOOK_LARGE_LINKS'">¶</a></dt>
-<dd><p>How many links of a look may hold a frame LARGER than the canvas (by area) — the
-bound on what actually costs memory (muvid#199). Neither cap above is it: after one
-resize to the size cap, every following link that makes ffmpeg convert between RGB
-and YUV allocates a frame that size, and those conversions are not links at all.
-Measured on ffmpeg 8.0.1, a 1920x1080 canvas, one second, peak RSS:</p>
-<p>Of the frame-size-independent costs, one filter is an outlier: see
-<a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS" title="muvid.footage.edl.MAX_LOOK_HEAVY_LINKS"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code></a>. muvid’s own compilers never upsize (<code class="docutils literal notranslate"><span class="pre">punch_in</span></code> crops and scales back to the
-canvas), so the bound costs them nothing; a supersampling look keeps two links.</p>
-</dd></dl>
-<dl class="py data">
-<dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_LINKS">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">MAX_LOOK_LINKS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">16</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.MAX_LOOK_LINKS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.MAX_LOOK_LINKS'">¶</a></dt>
-<dd><p>How many filter links one look may carry, and how many of those may set a
-size. <strong>Bounding the frame does not bound the memory</strong> — that is the half
-<a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_SCALE" title="muvid.footage.edl.MAX_LOOK_SCALE"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_SCALE</span></code></a> misses, and it misses it by a factor of ten.</p>
-<p>Measured, ffmpeg 9.0.1, three frames, <code class="docutils literal notranslate"><span class="pre">/usr/bin/time</span> <span class="pre">-l</span></code> peak RSS, every
-link sitting exactly AT the size cap (7680x4320 for a 1920x1080 canvas), so
-every fragment below is one <code class="xref py py-func docutils literal notranslate"><span class="pre">_validate_look_size()</span></code> accepts:</p>
+<dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_COST">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">MAX_LOOK_COST</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">150.0</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.MAX_LOOK_COST" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.MAX_LOOK_COST'">¶</a></dt>
+<dd><p>The memory a look may cost, in canvas-sized YUV frames (<code class="xref py py-func docutils literal notranslate"><span class="pre">_look_cost()</span></code>) — ONE
+budget in place of the three counts of muvid#196/#199 (resizes, links holding a large
+frame, heavy filters), which each answered one version of this question (#229).</p>
+<p>Calibrated against measurements (ffmpeg 8.0.1, a 1920x1080 canvas, peak RSS):</p>
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>look</p></th>
+<th class="head"><p>cost</p></th>
 <th class="head"><p>peak RSS</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale=7680:4320</span></code> x1</p></td>
-<td><p>171 MB</p></td>
+<tr class="row-even"><td><p>the worst look the three caps kept (zoompan to 16x, vignette…)</p></td>
+<td><p>~121</p></td>
+<td><p>649 MB</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scale=7680:4320</span></code> x8</p></td>
-<td><p>505 MB</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">bilateral</span></code> at 16x the canvas (the #199 review)</p></td>
+<td><p>~284</p></td>
+<td><p>940 MB</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale=7680:4320</span></code> x32</p></td>
-<td><p>1648 MB</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scale=7680:4320</span></code> x64</p></td>
-<td><p>3171 MB</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale,pad</span></code> to 16x + 7x (colorchannelmixer, eq) (muvid#199)</p></td>
+<td><p>~819</p></td>
+<td><p>2527 MB</p></td>
 </tr>
 </tbody>
 </table>
-<p>~47 MB per additional link, unbounded, on a box that has been OOM-killed at
-30 cuts (muvid#21/#24). The size cap refuses <code class="docutils literal notranslate"><span class="pre">scale=8000:8000</span></code> at 241 MB
-while accepting thirty-two links of 7680x4320 at 1648 MB — which is the
-shape of a bound that measures the wrong quantity.</p>
-<p>The total bounds the graph; it does not bound memory on its own, and neither
-does the resize count below — <a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LARGE_LINKS" title="muvid.footage.edl.MAX_LOOK_LARGE_LINKS"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_LARGE_LINKS</span></code></a> and
-<a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS" title="muvid.footage.edl.MAX_LOOK_HEAVY_LINKS"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code></a> are what do (muvid#199). Together the measured worst
-look found that the gate keeps is <strong>649 MB</strong> (an RGB link, <code class="docutils literal notranslate"><span class="pre">zoompan</span></code> to the size
-cap and a <code class="docutils literal notranslate"><span class="pre">vignette</span></code> there, back to canvas size, the one <code class="docutils literal notranslate"><span class="pre">bilateral</span></code>, then
-<code class="docutils literal notranslate"><span class="pre">vignette</span></code>/<code class="docutils literal notranslate"><span class="pre">gblur</span></code> — which keep a frame-sized float buffer of their own; ffmpeg
-8.0.1, 1920x1080, measured by <code class="docutils literal notranslate"><span class="pre">test_the_worst_look_the_gate_keeps_is_measured_</span>
-<span class="pre">under_its_ceiling</span></code>) against 3171 MB before any cap. A single total-link cap loose enough for
-a rich grade would leave the multiplicative worst case an order of magnitude higher.</p>
-<p>The values are generous by construction: muvid’s own compilers emit <strong>1</strong>
-link for <code class="docutils literal notranslate"><span class="pre">punch_in</span></code> and at most <strong>7</strong> for a <code class="docutils literal notranslate"><span class="pre">stylize</span></code> (the named look
-<code class="docutils literal notranslate"><span class="pre">cartoon</span></code>: three steps, each wrapped in <code class="docutils literal notranslate"><span class="pre">looks</span></code> Rule 22’s colour-only
-<code class="docutils literal notranslate"><span class="pre">scale</span></code>), and at most one of those ever sets a size. A link that declares no
-size is not a resize while the frame fits the canvas (<code class="xref py py-func docutils literal notranslate"><span class="pre">_look_resizes()</span></code>).</p>
+<p>150 keeps the first with room and refuses the others. Encoding (libx264, the
+assembler’s shape), the worst of 230 looks a search found under it measured 1084 MB,
+against 1034 for the worst look the three caps kept and 640 with no look: the budget
+holds memory where the caps did. That look is measured in CI under a ceiling
+(<code class="docutils literal notranslate"><span class="pre">test_the_worst_look_the_budget_keeps_...</span></code>). <code class="docutils literal notranslate"><span class="pre">bilateral</span></code> keeps its count
+(<code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code>): its working set follows the format, which no flat
+price bounds.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_LINKS">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">MAX_LOOK_LINKS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">16</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.MAX_LOOK_LINKS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.MAX_LOOK_LINKS'">¶</a></dt>
+<dd><p>How many filter links one look may carry. **Bounding the frame does not bound the
+memory** — that is the half <a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_SCALE" title="muvid.footage.edl.MAX_LOOK_SCALE"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_SCALE</span></code></a> misses: thirty-two links of
+<code class="docutils literal notranslate"><span class="pre">scale=7680:4320</span></code> on a 1920x1080 canvas measured 1648 MB, every one inside the
+size cap. This total bounds the GRAPH; what bounds the memory is
+<a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_COST" title="muvid.footage.edl.MAX_LOOK_COST"><code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_LOOK_COST</span></code></a> below. muvid’s own compilers emit 1 link for <code class="docutils literal notranslate"><span class="pre">punch_in</span></code> and at
+most 7 for a <code class="docutils literal notranslate"><span class="pre">stylize</span></code> (the named look <code class="docutils literal notranslate"><span class="pre">cartoon</span></code>).</p>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.edl.MAX_LOOK_SCALE">
@@ -1805,8 +1782,7 @@ render-time window that is never stored.</p>
 <li><a :data-current="activeSection === '#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED'" class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.LOOK_FILTERS'" class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS"><code class="docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.MAX_EDL_ENTRIES'" class="reference internal" href="#muvid.footage.edl.MAX_EDL_ENTRIES"><code class="docutils literal notranslate"><span class="pre">MAX_EDL_ENTRIES</span></code></a></li>
-<li><a :data-current="activeSection === '#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS'" class="reference internal" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS"><code class="docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code></a></li>
-<li><a :data-current="activeSection === '#muvid.footage.edl.MAX_LOOK_LARGE_LINKS'" class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LARGE_LINKS"><code class="docutils literal notranslate"><span class="pre">MAX_LOOK_LARGE_LINKS</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.edl.MAX_LOOK_COST'" class="reference internal" href="#muvid.footage.edl.MAX_LOOK_COST"><code class="docutils literal notranslate"><span class="pre">MAX_LOOK_COST</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.MAX_LOOK_LINKS'" class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LINKS"><code class="docutils literal notranslate"><span class="pre">MAX_LOOK_LINKS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.MAX_LOOK_SCALE'" class="reference internal" href="#muvid.footage.edl.MAX_LOOK_SCALE"><code class="docutils literal notranslate"><span class="pre">MAX_LOOK_SCALE</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.MEASURED'" class="reference internal" href="#muvid.footage.edl.MEASURED"><code class="docutils literal notranslate"><span class="pre">MEASURED</span></code></a></li>
@@ -1863,7 +1839,7 @@ render-time window that is never stored.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=a23b8d2c"></script>
+<script src="../_static/documentation_options.js?v=4a212eee"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

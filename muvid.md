@@ -1,4 +1,4 @@
-> built 2026-10-27 14:14 UTC from b93e76b (main) · muvid 0.0.127. Details: build_info.json
+> built 2026-10-27 14:29 UTC from c9060ea (main) · muvid 0.0.128. Details: build_info.json
 
 # index.html.md
 
@@ -3431,9 +3431,8 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 |----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES)           | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
 | [`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE)            | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
-| [`MAX_LOOK_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LINKS)            | How many filter links one look may carry, and how many of those may set a size.                                                                                                                                                                                 |
-| [`MAX_LOOK_LARGE_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LARGE_LINKS)      | How many links of a look may hold a frame LARGER than the canvas (by area) — the bound on what actually costs memory (muvid#199).                                                                                                                               |
-| [`MAX_LOOK_HEAVY_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS)      | How many heavy links a look may carry — and none of them on a frame larger than the canvas.                                                                                                                                                                     |
+| [`MAX_LOOK_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LINKS)            | How many filter links one look may carry.                                                                                                                                                                                                                       |
+| [`MAX_LOOK_COST`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_COST)             | The memory a look may cost, in canvas-sized YUV frames (`_look_cost()`) — ONE budget in place of the three counts of muvid#196/#199 (resizes, links holding a large frame, heavy filters), which each answered one version of this question (#229).             |
 | [`DFLT_LOOK_CANVAS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.DFLT_LOOK_CANVAS)          | The canvas [`validate_edl()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl) bounds a look against when its caller names none: the element-wise maximum of `workspace.CANVASES`, so the default is the LOOSEST bound that is still a bound — never an absent one. |
 | [`TRANSITION_SPLIT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.TRANSITION_SPLIT)          | the fraction taken from BEFORE the boundary.                                                                                                                                                                                                                    |
 | [`MIN_TRANSITION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_TRANSITION_S)          | Shortest transition that is not a lie.                                                                                                                                                                                                                          |
@@ -3961,60 +3960,36 @@ adds a part, so a fully-transitioned edit approaches `2 * cuts` invocations. The
 stays on cuts deliberately — it is the number the caller wrote and can act on — but
 read it as bounding work only to within that factor.
 
-### muvid.footage.edl.MAX_LOOK_HEAVY_LINKS *= 1*
+### muvid.footage.edl.MAX_LOOK_COST *= 150.0*
 
-How many heavy links a look may carry — and none of them on a frame larger than the
-canvas.
+The memory a look may cost, in canvas-sized YUV frames (`_look_cost()`) — ONE
+budget in place of the three counts of muvid#196/#199 (resizes, links holding a large
+frame, heavy filters), which each answered one version of this question (#229).
 
-### muvid.footage.edl.MAX_LOOK_LARGE_LINKS *= 2*
+Calibrated against measurements (ffmpeg 8.0.1, a 1920x1080 canvas, peak RSS):
 
-How many links of a look may hold a frame LARGER than the canvas (by area) — the
-bound on what actually costs memory (muvid#199). Neither cap above is it: after one
-resize to the size cap, every following link that makes ffmpeg convert between RGB
-and YUV allocates a frame that size, and those conversions are not links at all.
-Measured on ffmpeg 8.0.1, a 1920x1080 canvas, one second, peak RSS:
+| look                                                           | cost   | peak RSS   |
+|----------------------------------------------------------------|--------|------------|
+| the worst look the three caps kept (zoompan to 16x, vignette…) | ~121   | 649 MB     |
+| `bilateral` at 16x the canvas (the #199 review)                | ~284   | 940 MB     |
+| `scale,pad` to 16x + 7x (colorchannelmixer, eq) (muvid#199)    | ~819   | 2527 MB    |
 
-Of the frame-size-independent costs, one filter is an outlier: see
-[`MAX_LOOK_HEAVY_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS). muvid’s own compilers never upsize (`punch_in` crops and scales back to the
-canvas), so the bound costs them nothing; a supersampling look keeps two links.
+150 keeps the first with room and refuses the others. Encoding (libx264, the
+assembler’s shape), the worst of 230 looks a search found under it measured 1084 MB,
+against 1034 for the worst look the three caps kept and 640 with no look: the budget
+holds memory where the caps did. That look is measured in CI under a ceiling
+(`test_the_worst_look_the_budget_keeps_...`). `bilateral` keeps its count
+(`MAX_LOOK_HEAVY_LINKS`): its working set follows the format, which no flat
+price bounds.
 
 ### muvid.footage.edl.MAX_LOOK_LINKS *= 16*
 
-How many filter links one look may carry, and how many of those may set a
-size. **Bounding the frame does not bound the memory** — that is the half
-[`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE) misses, and it misses it by a factor of ten.
-
-Measured, ffmpeg 9.0.1, three frames, `/usr/bin/time -l` peak RSS, every
-link sitting exactly AT the size cap (7680x4320 for a 1920x1080 canvas), so
-every fragment below is one `_validate_look_size()` accepts:
-
-| look                  | peak RSS   |
-|-----------------------|------------|
-| `scale=7680:4320` x1  | 171 MB     |
-| `scale=7680:4320` x8  | 505 MB     |
-| `scale=7680:4320` x32 | 1648 MB    |
-| `scale=7680:4320` x64 | 3171 MB    |
-
-~47 MB per additional link, unbounded, on a box that has been OOM-killed at
-30 cuts (muvid#21/#24). The size cap refuses `scale=8000:8000` at 241 MB
-while accepting thirty-two links of 7680x4320 at 1648 MB — which is the
-shape of a bound that measures the wrong quantity.
-
-The total bounds the graph; it does not bound memory on its own, and neither
-does the resize count below — [`MAX_LOOK_LARGE_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LARGE_LINKS) and
-[`MAX_LOOK_HEAVY_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS) are what do (muvid#199). Together the measured worst
-look found that the gate keeps is **649 MB** (an RGB link, `zoompan` to the size
-cap and a `vignette` there, back to canvas size, the one `bilateral`, then
-`vignette`/`gblur` — which keep a frame-sized float buffer of their own; ffmpeg
-8.0.1, 1920x1080, measured by `test_the_worst_look_the_gate_keeps_is_measured_
-under_its_ceiling`) against 3171 MB before any cap. A single total-link cap loose enough for
-a rich grade would leave the multiplicative worst case an order of magnitude higher.
-
-The values are generous by construction: muvid’s own compilers emit **1**
-link for `punch_in` and at most **7** for a `stylize` (the named look
-`cartoon`: three steps, each wrapped in `looks` Rule 22’s colour-only
-`scale`), and at most one of those ever sets a size. A link that declares no
-size is not a resize while the frame fits the canvas (`_look_resizes()`).
+How many filter links one look may carry. \*\*Bounding the frame does not bound the
+memory\*\* — that is the half [`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE) misses: thirty-two links of
+`scale=7680:4320` on a 1920x1080 canvas measured 1648 MB, every one inside the
+size cap. This total bounds the GRAPH; what bounds the memory is
+[`MAX_LOOK_COST`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_COST) below. muvid’s own compilers emit 1 link for `punch_in` and at
+most 7 for a `stylize` (the named look `cartoon`).
 
 ### muvid.footage.edl.MAX_LOOK_SCALE *= 4*
 
@@ -19038,20 +19013,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 14:14 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/b93e76bdcc809df19a79a84fdfd5581902165a2f"><code>b93e76b</code></a> on branch <code>main</code>, for **muvid 0.0.127** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 14:29 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/c9060ea87805383dc66702049170bd14bccb1027"><code>c9060ea</code></a> on branch <code>main</code>, for **muvid 0.0.128** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.127) is ahead of the latest release on PyPI (0.0.126): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/b93e76bdcc809df19a79a84fdfd5581902165a2f"><code>b93e76bdcc809df19a79a84fdfd5581902165a2f</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/c9060ea87805383dc66702049170bd14bccb1027"><code>c9060ea87805383dc66702049170bd14bccb1027</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.127</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.128</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19060,9 +19033,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40517852053">40517852053</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40517780253">40517780253</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>a59cae9ec66539c667483f0500afa824c7be3281</code> (in the history of the built commit) |
+| Event commit | <code>5c0d8c4f3d673df5b98fbfb9c302457d8029fa80</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19087,13 +19060,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.126/">0.0.126</a>, older than the documented version (0.0.127).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.128/">0.0.128</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout b93e76bdcc809df19a79a84fdfd5581902165a2f
+git checkout c9060ea87805383dc66702049170bd14bccb1027
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
