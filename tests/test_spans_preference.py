@@ -15,7 +15,7 @@ def _clip(cid, conf, *, spans=None, duration=40.0):
     return FootageAlignment(cid, 0.0, conf, duration, (0.0, duration), spans=spans)
 
 
-# the stretches must be at least SPAN_EDGE_ACCURACY_S (20 s) long to steer selection
+# the stretches must be at least SELECTION_MIN_UNVERIFIED_S (10 s) long to steer selection
 A_CONFIRMED_TO_15 = (MeasuredSpan(0.0, 15.0, 0.0, 0.9),)  # unverified 15-40: 25 s
 
 
@@ -155,3 +155,68 @@ def test_the_span_edge_accuracy_is_mixings_window():
     from muvid.footage.edl import SPAN_EDGE_ACCURACY_S
 
     assert SPAN_EDGE_ACCURACY_S == SPAN_WINDOW_S
+
+
+# -- muvid#241: a finer threshold, and a warning where the auto edit keeps a stretch ----
+
+
+def test_the_18_s_end_of_a_take_that_stopped_matching_now_steers():
+    """#16's own example, which the 20 s threshold dropped."""
+    a = FootageAlignment(
+        "A", 0.0, 0.9, 78.0, (0.0, 78.0), spans=(MeasuredSpan(0.0, 60.0, 0.0, 0.9),)
+    )
+    b = FootageAlignment("B", 0.0, 0.5, 78.0, (0.0, 78.0))
+    assert _cuts(S.select_edl("best_confidence", [a, b], 78.0)) == [
+        (0.0, 60.0, "A"),
+        (60.0, 78.0, "B"),
+    ]
+
+
+def test_close_short_stretches_merge_and_a_lone_short_one_does_not_steer():
+    from muvid.footage.edl import SELECTION_MIN_UNVERIFIED_S, selection_unverified_stretches
+
+    h = SELECTION_MIN_UNVERIFIED_S
+    # two stretches of 0.6h, h/4 apart: one stretch of 1.45h
+    spans = (
+        MeasuredSpan(0.0, 30.0, 0.0, 0.9),
+        MeasuredSpan(30.0 + 0.6 * h, 30.0 + 0.85 * h, 0.0, 0.9),
+        MeasuredSpan(30.0 + 1.45 * h, 100.0, 0.0, 0.9),
+    )
+    a = FootageAlignment("A", 0.0, 0.9, 100.0, (0.0, 100.0), spans=spans)
+    assert selection_unverified_stretches(a) == [(30.0, 30.0 + 1.45 * h)]
+    lone = (MeasuredSpan(0.0, 30.0, 0.0, 0.9), MeasuredSpan(30.0 + 0.9 * h, 100.0, 0.0, 0.9))
+    b = FootageAlignment("B", 0.0, 0.9, 100.0, (0.0, 100.0), spans=lone)
+    assert selection_unverified_stretches(b) == []
+
+
+def test_the_auto_edit_warns_where_it_still_uses_an_unverified_stretch():
+    from muvid.footage.edl import EdlEntry
+    from muvid.footage.service import _unverified_notes
+
+    a = _clip("A", 0.9, spans=A_CONFIRMED_TO_15)  # unverified 15-40
+    [note] = _unverified_notes([EdlEntry(0.0, 40.0, "A")], [a])
+    assert "25.0 s of clip 'A' at 15.0-40.0 s" in note
+    # a cut that avoids it, a gap, and a cut to the music (its own source moment) do not
+    assert _unverified_notes([EdlEntry(0.0, 15.0, "A"), EdlEntry(15.0, 40.0, "")], [a]) == []
+    assert _unverified_notes([EdlEntry(15.0, 40.0, "A", source_in=0.0)], [a]) == []
+    # the edit the strategy builds over A alone carries it
+    entries = S.select_edl("best_confidence", [a], 40.0)
+    assert len(_unverified_notes(entries, [a])) == 1
+
+
+def test_propose_edit_reports_the_unverified_stretch_it_kept(tmp_path, monkeypatch):
+    pytest.importorskip("nw")
+    from muvid.footage import service
+    from muvid.footage.workspace import FootageWorkspace
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path / "data"))
+    fp = FootageWorkspace.for_email("u@x.com").create_project("p")
+    song = tmp_path / "song.wav"
+    song.write_bytes(b"RIFF-song")
+    service.set_song(fp, path=str(song), duration_s=40.0)
+    clip = tmp_path / "A.mp4"
+    clip.write_bytes(b"A")
+    service.add_clip(fp, path=str(clip), clip_id="A", duration_s=40.0)
+    fp.save_alignments([_clip("A", 0.9, spans=A_CONFIRMED_TO_15)])
+    out = service.propose_edit(fp)
+    assert any("of clip 'A' at 15.0-40.0 s" in w for w in out["warnings"]), out["warnings"]

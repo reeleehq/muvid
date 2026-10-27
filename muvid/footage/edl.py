@@ -830,19 +830,43 @@ def unverified_song_stretches(
 SPAN_EDGE_ACCURACY_S = 20.0
 
 
+#: The shortest unverified stretch SELECTION steers away from, and the widest confirmed
+#: gap between two that it reads as one (muvid#241): half the span window. A whole
+#: window (the first threshold) dropped stretches the measurement does see — #16's own
+#: example, the 18 s end of a 78 s take that stopped matching, no longer steered — while
+#: the 0.6 s flash it was raised against is still far below this.
+SELECTION_MIN_UNVERIFIED_S = SPAN_EDGE_ACCURACY_S / 2
+
+
 def selection_unverified_stretches(a: FootageAlignment) -> "list[tuple[float, float]]":
-    """The unverified stretches SELECTION acts on (muvid#16 slice 2): those at least
-    :data:`SPAN_EDGE_ACCURACY_S` long — a shorter one is below what the measurement
-    resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and
-    none on a DECLARED offset, which a person vouched for, usually because the windows
-    land on an alias there (muvid#59). The report (``measure_spans``) still lists them."""
+    """The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241).
+
+    Stretches closer than :data:`SELECTION_MIN_UNVERIFIED_S` are merged — the confirmed
+    sliver between them is below what the measurement resolves — and what is still
+    shorter than that is dropped, because preferring away from it cut a 0.6 s flash into
+    a confirmed take. None on a DECLARED offset, which a person vouched for, usually
+    because the windows land on an alias there (muvid#59). The report (``measure_spans``)
+    still lists every stretch.
+
+    >>> a = FootageAlignment("c", 0.0, 0.9, 78.0, (0.0, 78.0),
+    ...     spans=(MeasuredSpan(0.0, 60.0, 0.0, 0.8),))
+    >>> selection_unverified_stretches(a)  # the 18 s end that stopped matching
+    [(60.0, 78.0)]
+    >>> b = FootageAlignment("c", 0.0, 0.9, 78.0, (0.0, 78.0), spans=(
+    ...     MeasuredSpan(0.0, 30.0, 0.0, 0.8), MeasuredSpan(36.0, 38.0, 0.0, 0.8),
+    ...     MeasuredSpan(44.0, 78.0, 0.0, 0.8)))
+    >>> selection_unverified_stretches(b)  # 6 s + 6 s, 2 s apart: one stretch
+    [(30.0, 44.0)]
+    """
     if a.source == DECLARED:
         return []
-    return [
-        (start, end)
-        for start, end in unverified_song_stretches(a)
-        if end - start >= SPAN_EDGE_ACCURACY_S
-    ]
+    merged: "list[tuple[float, float]]" = []
+    for start, end in unverified_song_stretches(a):
+        if merged and start - merged[-1][1] < SELECTION_MIN_UNVERIFIED_S:
+            merged[-1] = (merged[-1][0], end)
+        else:
+            merged.append((start, end))
+    return [(s, e) for s, e in merged if e - s >= SELECTION_MIN_UNVERIFIED_S]
 
 
 @dataclass(frozen=True)
