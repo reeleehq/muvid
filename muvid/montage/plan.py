@@ -908,6 +908,9 @@ def assign_media(
             recent.clear()
         return m, use
 
+    # per section OCCURRENCE: what affect alone kept out of a slot, and what was shown
+    withheld: dict[int, set[int]] = {}
+
     def pick(
         hard: set[int], soft: set[int], in_finale: bool, draft: SlotDraft
     ) -> tuple[int, int]:
@@ -932,20 +935,38 @@ def assign_media(
         # "fits the feel" is the FIRST thing relaxed (muvid#134): affect chooses among
         # what the gap allows and never causes a repeat, two tiles alike or a lost
         # picture — the #134 review found a pre-filter doing all three
-        for exclude in (
-            hard | soft | blocked | misfits,
-            hard | soft | blocked,
-            hard | soft,
-            hard | blocked,
-            hard,
-            set(),
+        for tier, exclude in enumerate(
+            (
+                hard | soft | blocked | misfits,
+                hard | soft | blocked,
+                hard | soft,
+                hard | blocked,
+                hard,
+                set(),
+            )
         ):
             avail = [m for m in candidates if m not in exclude]
             if avail:
                 break
+        if tier == 0 and occurrence[id(draft)] is not None:  # muvid#234
+            kept_out = {m for m in candidates if m in misfits} - hard - soft - blocked
+            withheld.setdefault(occurrence[id(draft)], set()).update(kept_out)
         least = min(uses[m] for m in avail)
         tied = [m for m in avail if uses[m] == least]
         return take(_stride_pick(tied, ordinal))
+
+    # Each draft's section occurrence (consecutive drafts of one label), ``None`` for a
+    # draft outside the cut (``active``), so the report names only what is shown.
+    occurrence: dict[int, int | None] = {}
+    spans: list[list] = []  # [label, start, end, shown media]
+    for d in drafts:
+        if active is not None and not active(d):
+            occurrence[id(d)] = None
+            continue
+        if not spans or spans[-1][0] != d.section or spans[-1][2] < d.start - 1e-9:
+            spans.append([d.section, d.start, d.end, set()])
+        spans[-1][2] = d.end
+        occurrence[id(d)] = len(spans) - 1
 
     last = len(drafts) - 1
     for k, d in enumerate(drafts):
@@ -974,6 +995,8 @@ def assign_media(
                 assigned[r] = shown[r]
         shown = dict(assigned)
         out.append(assigned)
+        if occurrence[id(d)] is not None:
+            spans[occurrence[id(d)]][3].update(v[0] for v in assigned.values())
 
     stats = {
         "pool": len(pool_idx),
@@ -984,6 +1007,18 @@ def assign_media(
         "uses": {str(m): uses[m] for m in pool_idx},
         "n_assignments": ordinal,
         "affect": affect_fit is not None,
+        # per section occurrence, media its slots never showed because their feel did
+        # not fit it, where the gap rules would otherwise have allowed them (muvid#234)
+        "affect_withheld": [
+            {
+                "section": spans[o][0],
+                "start": round(spans[o][1], 4),
+                "end": round(spans[o][2], 4),
+                "media": sorted(ms - spans[o][3]),  # never shown there at all
+            }
+            for o, ms in sorted(withheld.items())
+            if ms - spans[o][3]
+        ],
         "min_observed_gap": min_observed_gap,
     }
     return out, stats

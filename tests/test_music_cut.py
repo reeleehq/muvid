@@ -944,3 +944,84 @@ def test_repeated_section_labels_with_short_clips_terminate_with_an_honest_note(
 def test_a_cap_below_one_is_refused():
     with pytest.raises(ValueError, match="max_cuts"):
         _fill(max_cuts=0)
+
+
+# -- muvid#234: a trimmed scale for arousal, and what affect withheld --------------------
+
+
+def _loud_half_seconds(cut, *, boundary=20.0):
+    out = {}
+    for e in cut.entries:
+        if (e.song_start + e.song_end) / 2 >= boundary:
+            kind = e.clip_id.rstrip("0123456789")
+            out[kind] = out.get(kind, 0.0) + e.song_end - e.song_start
+    return out
+
+
+@pytest.mark.parametrize(
+    "levels",
+    [
+        {"calm": (6, 0.05), "lively": (6, 0.6), "wild": (1, 10.0)},
+        {"calm": (3, 0.05), "lively": (4, 0.6), "wild": (1, 10.0)},
+        {"calm": (6, 0.05), "lively": (6, 0.6), "wild": (2, 10.0)},  # two outliers
+    ],
+)
+def test_wild_clips_do_not_squash_the_lively_ones_into_misfits(levels):
+    """On the pool's min-max scale the outlier put the lively clips near 0, so the loud
+    half went to calm clips whenever it was blocked (measured on main, 13 clips: calm
+    9 s, lively 8 s). Trimmed by COUNT, the lively clips take it at any pool size."""
+    srcs, envelope_of = _affect_pool(levels)
+    loud = _loud_half_seconds(_affect_cut(srcs, envelope_of))
+    assert loud.get("lively", 0.0) > loud.get("calm", 0.0)
+
+
+@pytest.mark.parametrize(
+    "pool",
+    [[0.05, 0.05, 0.6, 0.6, 10.0], [0.05] * 4 + [0.6] * 3 + [10.0], [0.05] * 6 + [0.6] * 6 + [10.0] * 2],
+)
+def test_the_band_trims_the_outliers_at_any_pool_size(pool):
+    """In five clips the reuse gap leaves affect no room in the PLAN, so the scale is
+    asserted on the band: the lively clips sit at the top, not near 0."""
+    from muvid.footage.music_cut import _affect_band
+
+    assert _affect_band(pool) == (0.05, 0.6)
+
+
+def test_noise_beside_one_outlier_is_not_stretched_to_the_full_scale():
+    """The #234 review: the guard read the raw range, so one outlier let the band of
+    near-identical clips (0.49-0.51) be scaled onto [0, 1]."""
+    from muvid.footage.music_cut import _affect_band
+
+    lo, hi = _affect_band([0.49, 0.495, 0.5, 0.505, 0.51] * 2 + [10.0])
+    assert (lo, hi) == (0.49, 10.0)  # the 10 clips all read as calm, not as a spread
+
+
+def _shown_and_withheld(cut):
+    report = cut.report["affect_withheld"]
+    shown = {}
+    for w in report:
+        shown[(w["start"], w["end"])] = {
+            e.clip_id for e in cut.entries
+            if e.song_start < w["end"] - 1e-6 and e.song_end > w["start"] + 1e-6
+        }
+    return report, shown
+
+
+def test_the_report_names_only_pictures_never_shown_in_that_section():
+    srcs, envelope_of = _affect_pool({"calm": (4, 0.05), "mid": (4, 0.5), "live": (4, 1.0)})
+    report, shown = _shown_and_withheld(_affect_cut(srcs, envelope_of))
+    assert report
+    for w in report:
+        assert w["clips"] and not set(w["clips"]) & shown[(w["start"], w["end"])], w
+    clean, _ = _shown_and_withheld(_affect_cut(*_affect_pool()))
+    assert {w["section"] for w in clean} == {"verse", "chorus"}
+    by = {w["section"]: w["clips"] for w in clean}
+    assert all(c.startswith("calm") for c in by["chorus"])
+    assert all(c.startswith("live") for c in by["verse"])
+    assert _affect_cut(*_affect_pool(), affect_of=None).report["affect_withheld"] == []
+
+
+def test_the_report_names_only_sections_in_the_cut():
+    srcs, envelope_of = _affect_pool()
+    cut = _affect_cut(srcs, envelope_of, spans=[(0.0, 20.0)])  # the verse alone
+    assert {w["section"] for w in cut.report["affect_withheld"]} <= {"verse"}
