@@ -42,6 +42,22 @@ from muvid.footage.edl import EDGE_S, RATE_MAX_DEV, SLIP_MAX_S, TRANSITION_SPLIT
 
 MUSIC_VIDEO_SLUG = "music_video"
 
+#: What to do about an nw older than this module needs: nw's floor lives in muvid's
+#: ``mcp`` extra, not the base dependencies (muvid#248).
+_NW_REMEDY = (
+    "upgrade nw to the floor muvid's 'mcp' extra declares (update an editable "
+    "checkout, or install muvid's 'mcp' extra)"
+)
+
+# nw's own check for a keyword its types lack (nw#164) is newer than some nw a host
+# may carry, so its import is guarded the way ``nw.compat`` documents.
+try:
+    from nw import require_fields
+except ImportError as e:  # an nw from before nw#164
+    raise ImportError(
+        f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs a newer nw: {_NW_REMEDY}"
+    ) from e
+
 #: Output canvas presets, exposed as the genre's Templates. params carries the canvas name
 #: muvid resolves to a pixel size at assemble time (mixed-orientation phone clips are
 #: scaled+padded onto this fixed canvas — never clip-0's size).
@@ -148,33 +164,14 @@ def _as_genre_op(spec) -> GenreOp:
         max_upload_bytes=spec.max_upload_bytes,
         invalidates=spec.invalidates,
     )
-    _require_genre_op_fields(GenreOp, fields)
+    # a missing NAME fails ``import nw`` loudly; a missing KEYWORD would otherwise reach
+    # the host as a bare ``TypeError`` naming neither nw nor the fix (muvid#248)
+    require_fields(GenreOp, fields, remedy=_NW_REMEDY)
     return GenreOp(**fields)
 
 
-def _require_genre_op_fields(op_cls, fields) -> None:
-    """Refuse, naming the remedy, when the installed nw's ``GenreOp`` lacks a field
-    this module passes (muvid#248).
-
-    nw's floor lives in muvid's ``mcp`` extra, and a missing NAME fails ``import nw``
-    loudly on its own. A missing keyword does not: ``invalidates`` (nw 0.0.92, nw#161)
-    reached a host that has nw without the extra as ``TypeError: unexpected keyword
-    argument``, which names neither the package nor the fix. The check asks the class
-    rather than a version number on purpose: an editable checkout's recorded version
-    goes stale, so a version compare would refuse a working source tree.
-    """
-    missing = sorted(fields.keys() - inspect.signature(op_cls).parameters.keys())
-    if missing:
-        raise ImportError(
-            f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs an nw whose GenreOp has "
-            f"{', '.join(missing)}; the installed nw is older than the floor muvid's "
-            "'mcp' extra declares. Upgrade nw to that floor (update an editable "
-            "checkout, or install muvid's 'mcp' extra)."
-        )
-
-
 # Built BEFORE anything is registered: an nw too old for these ops refuses here
-# (``_require_genre_op_fields``), and must not leave a genre with no operations, or a
+# (``nw.require_fields``), and must not leave a genre with no operations, or a
 # project factory, behind it (muvid#248).
 _ops = [_as_genre_op(spec) for spec in _service.FOOTAGE_OP_SPECS]
 
