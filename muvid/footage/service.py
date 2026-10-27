@@ -1670,6 +1670,23 @@ def scores(
     un-normalised values (``null`` where not measured), so a tooltip can show the real
     number beside its score.
     """
+    manifest, tensor = _current_scores(fp)
+    grid = {
+        "t0": manifest["t0"],
+        "hop_s": manifest["hop_s"],
+        "n": manifest["n"],
+        "song_duration": round(manifest["n"] * manifest["hop_s"], 3),
+    }
+    applied = _applied_weights(preset, weights)
+    if not clip_id:
+        return _scores_summary(fp, tensor, manifest, grid, max_points, applied)
+    return _clip_scores(
+        fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
+    )
+
+
+def _current_scores(fp):
+    """``(manifest, tensor)`` of the CURRENT scores, or a refusal naming the next step."""
     from muvid.footage.scoring.grid import load_manifest, load_tensor
 
     manifest = load_manifest(fp.root)
@@ -1683,12 +1700,11 @@ def scores(
     tensor = load_tensor(fp.root)
     if tensor is None:
         raise FootageError("scores are present but unreadable — re-run score_footage")
-    grid = {
-        "t0": manifest["t0"],
-        "hop_s": manifest["hop_s"],
-        "n": manifest["n"],
-        "song_duration": round(manifest["n"] * manifest["hop_s"], 3),
-    }
+    return manifest, tensor
+
+
+def _applied_weights(preset: str, weights: Optional[dict]) -> dict:
+    """The weights a composite is computed under: a ``preset`` and/or explicit ones."""
     from muvid.footage.select_score import resolve_config
 
     try:
@@ -1702,11 +1718,106 @@ def scores(
             raise ValueError("weights must be finite numbers")
     except (TypeError, ValueError) as e:
         raise FootageError(f"bad weights/preset: {e}") from e
-    if not clip_id:
-        return _scores_summary(fp, tensor, manifest, grid, max_points, applied)
-    return _clip_scores(
-        fp, tensor, manifest, grid, clip_id, metrics, max_points, applied, raw
-    )
+    return applied
+
+
+#: The most spans one ``score_candidates`` call may ask about — the edit's own bound.
+MAX_CANDIDATES = 500
+
+
+def score_candidates(
+    fp,
+    *,
+    candidates: list[dict],
+    weights: Optional[dict[str, float]] = None,
+    preset: str = "",
+) -> dict:
+    """How well each candidate stretch of a video scores — to choose between takes.
+
+    ``candidates`` are ``{clip_id, song_start, song_end}`` spans on the song timeline
+    (seconds), up to :data:`MAX_CANDIDATES`. Each answer repeats its own span (match by
+    span, never by position) with ``composite`` — the mean of the weighted blend the
+    ``weighted`` strategy ranks by, over the frames where a weighted metric was
+    measured, ``null`` when none was — ``measured`` (the fraction of the span's frames
+    that were), and ``metrics``, each metric's mean normalised score over its measured
+    frames (``null`` where it was never measured). Nothing measured is not a low score.
+
+    ``weights`` / ``preset`` as for ``scores``; the reply's ``weights`` says which
+    applied. Needs current scores (``score`` first). A span off the song, or a video the
+    scores do not hold, is refused.
+    """
+    import numpy as np
+
+    from muvid.footage.select_score import composite_lane
+
+    if not isinstance(candidates, list) or not candidates:
+        raise FootageError("candidates must be a non-empty list of spans")
+    if len(candidates) > MAX_CANDIDATES:
+        raise FootageError(
+            f"at most {MAX_CANDIDATES} candidates per call, got {len(candidates)}"
+        )
+    _manifest, tensor = _current_scores(fp)
+    applied = _applied_weights(preset, weights)
+    song_end = tensor.t0 + tensor.n * tensor.hop_s
+    lanes: dict[str, "np.ndarray"] = {}
+    out = []
+    for i, c in enumerate(candidates):
+        cid, start, end = _candidate(c, i, song_end=song_end)
+        if cid not in tensor.clip_ids:
+            raise FootageError(
+                f"candidate {i}: the scores hold no video {cid!r} "
+                f"(they hold {tensor.clip_ids})"
+            )
+        # the grid frames whose instant falls in [song_start, song_end) — at least one,
+        # so a span shorter than a hop still reads the frame it sits on
+        first = math.ceil((start - tensor.t0) / tensor.hop_s - 1e-9)
+        lo = min(tensor.n - 1, max(0, first))
+        hi = min(
+            tensor.n, max(lo + 1, math.ceil((end - tensor.t0) / tensor.hop_s - 1e-9))
+        )
+        if cid not in lanes:
+            lanes[cid] = composite_lane(tensor, applied, cid)
+        lane = lanes[cid][lo:hi]
+        ci = tensor.clip_index(cid)
+        S, M = tensor.S[ci, lo:hi], tensor.M[ci, lo:hi]
+        measured = ~np.isnan(lane)
+        out.append(
+            {
+                "clip_id": cid,
+                "song_start": start,
+                "song_end": end,
+                "composite": round(float(lane[measured].mean()), 4)
+                if measured.any()
+                else None,
+                "measured": round(float(measured.mean()), 4),
+                "metrics": {
+                    m: (
+                        round(float(S[M[:, mi], mi].mean()), 4)
+                        if M[:, mi].any()
+                        else None
+                    )
+                    for mi, m in enumerate(tensor.metrics)
+                },
+            }
+        )
+    return {"candidates": out, "weights": applied}
+
+
+def _candidate(c, i: int, *, song_end: float) -> "tuple[str, float, float]":
+    """``(clip_id, song_start, song_end)`` of candidate ``i``, checked, or a refusal."""
+    if not isinstance(c, dict):
+        raise FootageError(f"candidate {i} must be {{clip_id, song_start, song_end}}")
+    cid = c.get("clip_id")
+    if not isinstance(cid, str) or not cid:
+        raise FootageError(f"candidate {i} needs a clip_id")
+    start = _finite(c.get("song_start"), f"candidate {i} song_start")
+    end = _finite(c.get("song_end"), f"candidate {i} song_end")
+    if not 0.0 <= start < end <= song_end + _SONG_END_SLACK_S:
+        raise FootageError(
+            f"candidate {i} must satisfy 0 <= song_start < song_end <= the song's "
+            f"{song_end:g} s, got [{start:g}, {end:g}]"
+        )
+    return cid, start, end
 
 
 def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
@@ -4240,6 +4351,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         host_params=("should_cancel",),
     ),
     OpSpec("scores", "Show how each video scores over the song", "read"),
+    OpSpec("score_candidates", "Compare how stretches of the videos score", "read"),
     OpSpec("strategies", "List the ways to cut", "read"),
     OpSpec("propose_edit", "Cut it for me", "write"),
     OpSpec("save_edit", "Save a cut list as a new edit", "write"),
