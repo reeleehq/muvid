@@ -140,13 +140,18 @@ def test_a_fragment_that_is_not_one_linear_chain_is_refused(look, match):
         validate_edl([_entry(look=look)], [_A], 4.0)
 
 
-def test_an_escaped_bracket_inside_a_path_is_allowed():
-    # `looks.escape_filter_value` escapes `[` with one backslash, so refusing a
-    # BARE bracket must not refuse a legitimately escaped one — otherwise the
-    # flagship effect (a LUT whose file path contains a bracket) is unusable.
+def test_an_escaped_bracket_inside_a_path_is_lexically_closed():
+    # `looks.escape_filter_value` escapes `[` with one backslash, so the LEXICAL rule
+    # refusing a bare bracket must not refuse an escaped one. Asked of the lexer
+    # rather than of the whole gate since muvid#244: a lut3d path must now name a
+    # cube in muvid's LUT folder, written without escapes (tests/test_look_lut.py),
+    # so the gate refuses this fragment for its file, not its bracket.
+    from muvid.footage.edl import _LOOK_FORBIDDEN, _first_unescaped
+
     look = r"lut3d=file=/luts/a\[b\].cube"
-    [e] = validate_edl([_entry(look=look)], [_A], 4.0)
-    assert e.look == look
+    assert _first_unescaped(look, _LOOK_FORBIDDEN) is None
+    with pytest.raises(ValueError, match="without escapes"):
+        validate_edl([_entry(look=look)], [_A], 4.0)
 
 
 def test_the_escape_rule_agrees_with_the_escaper_that_produces_it():

@@ -104,7 +104,7 @@ from muvid.footage.colour import (
     read_source_colour,
     tonemap_chain,
 )
-from muvid.footage.edl import TRANSITION_SPLIT, AssemblyCut
+from muvid.footage.edl import TRANSITION_SPLIT, AssemblyCut, look_may_resize
 
 #: Default output frame rate for the assembled video.
 DEFAULT_FPS = 30
@@ -439,8 +439,12 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale [, tonemap], pad, setsar, fps, tpad [, look], setparams
-    [, tail]``
+    ``[retime,] [crop,] scale [, tonemap], pad, setsar, fps, tpad [, look [, conform]],
+    setparams [, tail]``
+
+    ``conform`` (:func:`_canvas_conform`) follows a look that can change the frame size
+    (:func:`~muvid.footage.edl.look_may_resize`), so every part reaches the encoder and
+    the stream-copy concat at the canvas size (muvid#244).
 
     ``retime`` is a cut's speed (``setpts=(PTS-STARTPTS)/rate``) and it comes BEFORE
     ``fps``, so ``fps`` picks frames on the retimed clock. (Measured on ffmpeg 9.0: the
@@ -514,8 +518,26 @@ def _part_filter(
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},"
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
+        f"{',' + _canvas_conform(w, h) if cut.look and look_may_resize(cut.look) else ''}"
         f",{DELIVERY_TAG}"
         f"{tail}"
+    )
+
+
+def _canvas_conform(w: int, h: int) -> str:
+    """Fit a look's output back onto the ``w`` x ``h`` canvas, letterboxed (muvid#244).
+
+    A look may end at another size — on purpose (``stylize(fill, target=...)``,
+    ``zoompan``'s hd720 default) or not (an expression ``crop``). Nothing scaled after
+    the look, so the ENCODER got that frame: ``scale=7680:4320`` alone encoded 8K at
+    2.9 GB peak (347 MB conformed; the look's own links cost 186 MB). And the parts are
+    joined by stream copy, which needs every part at the canvas size anyway. On a frame
+    already at canvas size ``scale`` and ``pad`` pass it through, so a look that returns
+    to the canvas renders byte for byte as before (``tests/test_look_conform.py``).
+    """
+    return (
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1"
     )
 
 
