@@ -4878,8 +4878,15 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
     OpSpec("beat_grid", "Find the beat", "read"),
-    OpSpec("set_beat_grid", "Set the beat by hand", "write", invalidates=BEAT_GRID_READS),
-    OpSpec("clear_beat_grid", "Forget the beat I set", "destroy", invalidates=BEAT_GRID_READS),
+    OpSpec(
+        "set_beat_grid", "Set the beat by hand", "write", invalidates=BEAT_GRID_READS
+    ),
+    OpSpec(
+        "clear_beat_grid",
+        "Forget the beat I set",
+        "destroy",
+        invalidates=BEAT_GRID_READS,
+    ),
     OpSpec("peaks", "Show the song's waveform", "read"),
     OpSpec("beat_signals", "Show where the beat is in the song or a video", "read"),
     OpSpec("filmstrips", "Show the videos' filmstrips", "read"),
