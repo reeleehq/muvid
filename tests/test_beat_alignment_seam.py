@@ -1,28 +1,42 @@
-"""The motion-to-beat formulas as pure functions (muvid#238): a caller with its own motion
-signal (pose landmarks) gets the numbers the ``motion_beat_bas`` / ``motion_onset_xcorr``
-tracks are built from, without a decoded clip or a song grid."""
+"""The Beat Alignment Score as a pure function (muvid#238): a caller with its own motion
+signal (pose landmarks) gets the number the ``motion_beat_bas`` track is built from,
+without a decoded clip or a song grid — and the track is bit-identical to before."""
 
 from __future__ import annotations
 
+import json
 import math
 import subprocess
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 
-from muvid.footage.scoring.motionbeat import (
-    BAS_SIGMA_S,
-    beat_alignment_score,
-    onset_lag,
-)
+from muvid.footage.scoring.motionbeat import BAS_SIGMA_S, beat_alignment_score
+
+_GOLDEN = Path(__file__).parent / "data" / "motion_beat_bas_golden.json"
 
 
-def test_bas_is_one_on_the_beat_and_falls_off_as_a_gaussian():
-    beats = [0.5, 1.0, 1.5, 2.0]
-    assert beat_alignment_score(beats, beats) == pytest.approx(1.0)
-    late = beat_alignment_score([b + BAS_SIGMA_S for b in beats], beats)
-    assert late == pytest.approx(math.exp(-0.5))
+def _by_hand(sources, targets, sigma):
+    """The AIST++ formula written out, independent of the code under test."""
+    return sum(
+        math.exp(-0.5 * (min(abs(s - t) for t in targets) / sigma) ** 2) for s in sources
+    ) / len(sources)
+
+
+def test_bas_is_the_aist_formula():
+    events, beats = [0.5, 1.03, 1.62, 2.4], [0.5, 1.0, 1.5, 2.0, 2.5]
+    assert beat_alignment_score(events, beats) == pytest.approx(
+        _by_hand(events, beats, BAS_SIGMA_S)
+    )
+    assert beat_alignment_score(events, beats, direction="music_to_motion") == pytest.approx(
+        _by_hand(beats, events, BAS_SIGMA_S)
+    )
+    assert beat_alignment_score(events, beats, sigma_s=0.3) == pytest.approx(
+        _by_hand(events, beats, 0.3)
+    )
+    assert beat_alignment_score([2.4], [2.5]) == pytest.approx(_by_hand([2.4], [2.5], BAS_SIGMA_S))
 
 
 def test_the_two_directions_differ_where_papers_differ():
@@ -34,46 +48,38 @@ def test_the_two_directions_differ_where_papers_differ():
     assert beat_alignment_score(events, beats, direction="music_to_motion") == pytest.approx(1.0)
 
 
-def test_no_evidence_is_nan_not_zero_and_a_bad_direction_is_refused():
+def test_no_evidence_is_nan_and_bad_input_is_refused():
     assert math.isnan(beat_alignment_score([], [1.0]))
     assert math.isnan(beat_alignment_score([1.0], []))
     with pytest.raises(ValueError, match="direction"):
         beat_alignment_score([1.0], [1.0], direction="both")
+    with pytest.raises(ValueError, match="sigma_s"):
+        beat_alignment_score([1.0], [1.0], sigma_s=0.0)
+    with pytest.raises(ValueError, match="finite"):
+        beat_alignment_score([1.0, float("nan")], [1.0])
 
 
-@pytest.mark.parametrize("lag", [0.24, -0.16, 0.0])  # whole samples: no interpolation blur
-def test_onset_lag_recovers_a_known_lag_and_its_sign(lag):
-    hop = 0.02
-    t = np.arange(0.0, 12.0, hop)
-    rng = np.random.default_rng(1)
-    onsets = (rng.random(t.size) > 0.9).astype(float)
-    got = onset_lag(t + lag, onsets, onsets, hop)  # the same moves, `lag` s later
-    assert got.lag_s == pytest.approx(lag, abs=hop)
-    assert got.r == pytest.approx(1.0, abs=0.05)
-
-
-def test_onset_lag_needs_enough_samples():
-    assert onset_lag([0.0, 0.1], [1.0, 2.0], np.ones(100), 0.05) is None
-    assert onset_lag(np.arange(0, 2, 0.1), np.ones(20), [1.0], 0.05) is None
-
-
-def test_the_track_is_built_from_the_same_formula():
-    """``motion_beat_bas`` holds, over each beat's interval, that beat's music_to_motion
-    score against the motion peaks."""
+def test_the_track_is_bit_identical_to_before():
+    """Score tensors are keyed on INPUTS, so a changed number would be served as current:
+    the golden is ``_bas_track`` recorded on main before the refactor."""
     from muvid.footage.scoring import motionbeat as M
 
-    hop, n, t0 = 0.05, 80, 0.0
-    motion = np.zeros(n)
-    motion[[20, 41]] = 1.0  # peaks at 1.0 s and 2.05 s
-    mmask = np.ones(n, bool)
-    vals, mask = M._bas_track(motion, mmask, np.array([1.0, 2.0]), t0, hop, n, (0.0, 4.0))
-    peaks = M._motion_peaks(motion, mmask, t0, hop)
-    for beat, k in ((1.0, 20), (2.0, 40)):
-        want = beat_alignment_score(peaks, [beat], direction="music_to_motion")
-        assert vals[k] == pytest.approx(want, rel=1e-6)
+    for case in json.loads(_GOLDEN.read_text()):
+        vals, mask = M._bas_track(
+            np.asarray(case["motion"]),
+            np.asarray(case["mmask"]),
+            np.asarray(case["beats"]),
+            case["t0"],
+            case["hop"],
+            case["n"],
+            tuple(case["cover"]),
+        )
+        want = np.asarray([np.nan if v is None else v for v in case["vals"]], dtype=np.float32)
+        assert np.array_equal(vals, want, equal_nan=True)
+        assert mask.tolist() == case["mask"]
 
 
-def test_importing_the_formulas_pulls_no_decoder():
+def test_importing_the_formula_pulls_no_decoder():
     code = (
         "import sys, muvid.footage.scoring.motionbeat; "
         "print([m for m in ('cv2', 'mediapipe', 'muvid.footage.scoring.frames') "
