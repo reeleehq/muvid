@@ -34,20 +34,22 @@ can be edited by other tools.
 
 | [`AlignerName`](#muvid.align.AlignerName)              | Built-in aligner names.                                                                                                                                                                                                    |
 |---------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`MAX_SUNG_WORDS_PER_S`](#muvid.align.MAX_SUNG_WORDS_PER_S)     | The fastest a lyric is sung, in words a second — the bound that tells a late match from a right one without ground truth (muvid#101).                                                                                      |
 | [`WHISPERX_LITE_MODEL_SIZE`](#muvid.align.WHISPERX_LITE_MODEL_SIZE) | `tiny` is fast but, on sung/repetitive audio, produces a transcript so garbled that the greedy matcher walks past whole minutes before finding a plausible match (muvid#101: measured 53 s late on a repeated-word lyric). |
 
 ### Functions
 
-| [`align_lyrics`](#muvid.align.align_lyrics)(lyrics, transcript, \*[, ...])        | Align a `LyricsDoc` to a transcript.                       |
-|-----------------------------------------------------------------------------------------------------|------------------------------------------------------------|
-| [`align_scribe_greedy`](#muvid.align.align_scribe_greedy)(lyrics, transcript, \*[, ...]) | Greedy token-match against a word-timestamped transcript.  |
-| [`align_stars`](#muvid.align.align_stars)(lyrics, transcript, \*[, duration_s])  | Singing-specific alignment (STARS / similar).              |
-| [`align_user_provided`](#muvid.align.align_user_provided)(lyrics, transcript, \*[, ...]) | Use line-level timings the caller has already determined.  |
-| [`align_whisperx_lite`](#muvid.align.align_whisperx_lite)(lyrics, transcript, \*[, ...]) | Local-only aligner that re-uses `faster-whisper` (no API). |
-| `aligner_info`(name)                                                                                |                                                            |
-| [`list_aligners`](#muvid.align.list_aligners)()                                    | Return all registered aligner names, sorted.               |
-| [`register_aligner`](#muvid.align.register_aligner)(name, fn, \*, description[, ...]) | Register an aligner under `name`.                          |
-| [`write_alignment_store`](#muvid.align.write_alignment_store)(alignment, \*, path[, ...])  | Write alignment to a `lacing.SqliteStore` file (.annot).   |
+| [`align_lyrics`](#muvid.align.align_lyrics)(lyrics, transcript, \*[, ...])        | Align a `LyricsDoc` to a transcript.                                                                                                                                                                                                              |
+|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`align_scribe_greedy`](#muvid.align.align_scribe_greedy)(lyrics, transcript, \*[, ...]) | Greedy token-match against a word-timestamped transcript.                                                                                                                                                                                         |
+| [`align_stars`](#muvid.align.align_stars)(lyrics, transcript, \*[, duration_s])  | Singing-specific alignment (STARS / similar).                                                                                                                                                                                                     |
+| [`align_user_provided`](#muvid.align.align_user_provided)(lyrics, transcript, \*[, ...]) | Use line-level timings the caller has already determined.                                                                                                                                                                                         |
+| [`align_whisperx_lite`](#muvid.align.align_whisperx_lite)(lyrics, transcript, \*[, ...]) | Local-only aligner that re-uses `faster-whisper` (no API).                                                                                                                                                                                        |
+| `aligner_info`(name)                                                                                |                                                                                                                                                                                                                                                   |
+| [`drop_infeasible_matches`](#muvid.align.drop_infeasible_matches)(words_by_line, \*, ...)    | The matched words the song has time for: a word at `t` whose `words_after` lyric words cannot be sung in `duration_s - t` at `max_words_per_s` is dropped (muvid#101) — the lyric left cannot fit, so the match is wrong, however good the token. |
+| [`list_aligners`](#muvid.align.list_aligners)()                                    | Return all registered aligner names, sorted.                                                                                                                                                                                                      |
+| [`register_aligner`](#muvid.align.register_aligner)(name, fn, \*, description[, ...]) | Register an aligner under `name`.                                                                                                                                                                                                                 |
+| [`write_alignment_store`](#muvid.align.write_alignment_store)(alignment, \*, path[, ...])  | Write alignment to a `lacing.SqliteStore` file (.annot).                                                                                                                                                                                          |
 
 ### Classes
 
@@ -83,6 +85,17 @@ Lines that fall (at least partially) inside `[start_s, end_s]`.
 ### *class* muvid.align.LineAlignment(, line_index, section_label, text, start_s, end_s, word_alignments)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+### muvid.align.MAX_SUNG_WORDS_PER_S *= 8.0*
+
+The fastest a lyric is sung, in words a second — the bound that tells a late match
+from a right one without ground truth (muvid#101). A matched word at `t` that
+leaves more lyric after it than the rest of the song could hold at this rate is
+refused: the lyric left CANNOT be sung in the time left, so the match is wrong,
+however good the token. On the issue’s song (212 tokens, 77.7 s) the first line
+matched at 60.26 s would leave 208 words for 17.4 s, 12 a second. Eight is above
+the fastest rap verses (about 6.5 words a second); for a faster lyric, pass
+`max_words_per_s=None` or set the env var.
 
 ### *class* muvid.align.SectionAlignment(, label, title, start_s, end_s, lines)
 
@@ -123,13 +136,18 @@ Align a `LyricsDoc` to a transcript.
 * **Returns:**
   [`AlignmentResult`](#muvid.align.AlignmentResult).
 
-### muvid.align.align_scribe_greedy(lyrics, transcript, , duration_s=0.0, lookahead=6)
+### muvid.align.align_scribe_greedy(lyrics, transcript, , duration_s=0.0, lookahead=6, max_words_per_s=8.0)
 
 Greedy token-match against a word-timestamped transcript.
 
 Cheap, network-only (assumes the transcript came from Scribe or
 similar). Tolerates 1-character mishears between sung and written
-text. `duration_s` is used only when extrapolating end times.
+text. `duration_s` is used when extrapolating end times and, when known,
+to refuse the matches the song has no time for ([`drop_infeasible_matches()`](#muvid.align.drop_infeasible_matches),
+`max_words_per_s=None` turns it off) — AFTER the walk, which it leaves
+untouched (muvid#101). A refused word’s line, if it is left with none, is
+interpolated and reads as not measured; consecutive such lines share the span
+between their neighbours’ anchors.
 
 * **Return type:**
   [`AlignmentResult`](#muvid.align.AlignmentResult)
@@ -161,7 +179,7 @@ falls back to the manual anchors already on `lyrics` (the
 * **Return type:**
   [`AlignmentResult`](#muvid.align.AlignmentResult)
 
-### muvid.align.align_whisperx_lite(lyrics, transcript, , duration_s=0.0, audio_path=None, model_size='small', lookahead=6)
+### muvid.align.align_whisperx_lite(lyrics, transcript, , duration_s=0.0, audio_path=None, model_size='small', lookahead=6, max_words_per_s=8.0)
 
 Local-only aligner that re-uses `faster-whisper` (no API).
 
@@ -179,6 +197,33 @@ faster-whisper’s own `"tiny"` default — see muvid#101.
 
 * **Return type:**
   [`AlignmentResult`](#muvid.align.AlignmentResult)
+
+### muvid.align.drop_infeasible_matches(words_by_line, , words_after, duration_s, max_words_per_s)
+
+The matched words the song has time for: a word at `t` whose
+`words_after` lyric words cannot be sung in `duration_s - t` at
+`max_words_per_s` is dropped (muvid#101) — the lyric left cannot fit, so the
+match is wrong, however good the token.
+
+A pass over an aligner’s FINISHED matches, not a step of its walk: refusing
+inside the walk left the cursor behind, so the next token re-matched an early
+word that belonged to another, and the first match it let through was by
+construction the least plausible one (the #101 review: 31 wrong measured words
+instead of 14). Here a match is only ever removed, never moved. Assumes the
+lyric is what the audio contains: an excerpt loses its anchors near the end,
+which then read as not measured.
+
+```pycon
+>>> def at(t):
+...     return {0: [WordAlignment(line_index=0, token_index=0, text="la",
+...                               start_s=t, end_s=t + 0.1)]}
+>>> kw = dict(words_after={(0, 0): 40}, duration_s=10.0, max_words_per_s=8.0)
+>>> len(drop_infeasible_matches(at(1.0), **kw)), len(drop_infeasible_matches(at(6.0), **kw))
+(1, 0)
+```
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WordAlignment`](#muvid.align.WordAlignment)]]
 
 ### muvid.align.list_aligners()
 

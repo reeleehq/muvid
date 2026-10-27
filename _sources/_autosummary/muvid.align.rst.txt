@@ -9,6 +9,7 @@ muvid.align
    .. autosummary::
    
       AlignerName
+      MAX_SUNG_WORDS_PER_S
       WHISPERX_LITE_MODEL_SIZE
    
    .. rubric:: Functions
@@ -21,6 +22,7 @@ muvid.align
       align_user_provided
       align_whisperx_lite
       aligner_info
+      drop_infeasible_matches
       list_aligners
       register_aligner
       write_alignment_store
