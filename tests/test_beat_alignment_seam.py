@@ -57,6 +57,8 @@ def test_no_evidence_is_nan_and_bad_input_is_refused():
         beat_alignment_score([1.0], [1.0], sigma_s=0.0)
     with pytest.raises(ValueError, match="finite"):
         beat_alignment_score([1.0, float("nan")], [1.0])
+    with pytest.raises(ValueError, match="1-D"):
+        beat_alignment_score([1.0], 2.0)
 
 
 def test_the_track_is_bit_identical_to_before():

@@ -73,6 +73,8 @@ def beat_alignment_score(
         raise ValueError(f"sigma_s must be positive, got {sigma_s}")
     events = np.asarray(event_times, dtype=float)
     beats = np.asarray(beat_times, dtype=float)
+    if events.ndim != 1 or beats.ndim != 1:
+        raise ValueError("event_times and beat_times must be 1-D sequences of seconds")
     if not (np.isfinite(events).all() and np.isfinite(beats).all()):
         raise ValueError("event_times and beat_times must be finite")
     if events.size == 0 or beats.size == 0:
