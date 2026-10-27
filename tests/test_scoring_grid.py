@@ -367,8 +367,9 @@ def test_a_malformed_input_record_is_refused_before_anything_is_written(tmp_path
 
     _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
     before = load_tensor(tmp_path).raw.copy()
-    with pytest.raises(ValueError, match="input metrics"):
-        _saved_manifest(tmp_path, input_metrics={"beats": "b"})
+    for bad in ("b", None, [1]):
+        with pytest.raises(ValueError, match="input metrics"):
+            _saved_manifest(tmp_path, input_metrics={"beats": bad})
     with pytest.raises(ValueError, match="input fingerprints"):
         _saved_manifest(tmp_path, input_fingerprints={"beats": None})
     assert np.array_equal(load_tensor(tmp_path).raw, before)

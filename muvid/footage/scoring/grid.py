@@ -496,7 +496,11 @@ def _check_input_record(input_fingerprints, input_metrics) -> None:
                 f"input fingerprints map names to strings: {name!r}: {fp!r}"
             )
     for name, ms in input_metrics.items():
-        if not isinstance(name, str) or isinstance(ms, str):
+        if (
+            not isinstance(name, str)
+            or not isinstance(ms, (list, tuple))
+            or not all(isinstance(m, str) for m in ms)
+        ):
             raise ValueError(
                 f"input metrics map names to metric lists: {name!r}: {ms!r}"
             )
