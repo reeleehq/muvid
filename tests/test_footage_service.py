@@ -1485,53 +1485,84 @@ def test_the_video_refusal_names_the_limit_and_how_many_are_held(fp, tmp_path, m
 # -- the host's one status door (muvid#232) -------------------------------------------
 
 
-def test_genre_status_summarises_a_music_video_without_paths(tmp_path, monkeypatch):
-    """muvid#232: reelee's ``project_status`` asks ``nw.genre_status_of(project)``,
-    which refuses a dict naming the project root, a non-JSON one or one over 8 KiB."""
+def _hosted_music_video(tmp_path, monkeypatch):
     import muvid
     import muvid.footage.service as S
 
     muvid.create_project_at(tmp_path, "mv")
     project = muvid.Project(tmp_path / "mv")
-    before = sorted(p.name for p in project.root.iterdir())
-    empty = nw.genre_status_of(project)
-    assert empty["genre"] == "music_video" and empty["has_song"] is False
-    assert empty["next_step"]["op"] == "set_song"
-    assert sorted(p.name for p in project.root.iterdir()) == before  # read-only
-
     monkeypatch.setattr(S, "_probe_duration", lambda p: 30.0)
     # placeholder bytes: no cover frame or filmstrip to cut from them (ffmpeg-free)
     monkeypatch.setattr(S, "_ensure_cover", lambda fp: None)
     monkeypatch.setattr(S, "_prepare_filmstrip", lambda fp, cid: None)
-    service.set_song(
-        project.footage, path=str(_bytes_file(tmp_path / "s.wav", b"RIFF"))
-    )
-    for cid in ("A", "B"):
+    return project
+
+
+def test_genre_status_summarises_a_music_video_without_paths(tmp_path, monkeypatch):
+    """muvid#232: reelee's ``project_status`` asks ``nw.genre_status_of(project)``,
+    which refuses a dict naming the project root, a non-JSON one or one over 8 KiB.
+    Counted from cheap reads; every number pinned against a project that has some."""
+    from muvid.footage.edl import FootageAlignment
+
+    project = _hosted_music_video(tmp_path, monkeypatch)
+    empty = nw.genre_status_of(project)
+    assert empty["has_song"] is False and empty["next_step"]["op"] == "set_song"
+
+    fp = project.footage
+    service.set_song(fp, path=str(_bytes_file(tmp_path / "s.wav", b"RIFF")))
+    for cid in ("A", "B", "C"):
         clip = _bytes_file(tmp_path / f"{cid}.mp4", cid.encode())
-        service.add_clip(project.footage, path=str(clip), clip_id=cid, duration_s=20.0)
-    service.set_offset(project.footage, clip_id="A", offset_s=0.0)
+        service.add_clip(fp, path=str(clip), clip_id=cid, duration_s=20.0)
+    service.set_has_song(fp, clip_id="C", has_song="yes")
+    fp.save_alignments(
+        [
+            FootageAlignment("A", 0.0, 0.9, 20.0, (0.0, 20.0)),  # placed
+            FootageAlignment("B", 0.0, 0.05, 20.0, (0.0, 20.0), reliable=False),
+            FootageAlignment("C", 0.0, 0.05, 20.0, (0.0, 20.0), reliable=False),
+        ]
+    )
+    service.save_edit(fp, edl=[{"song_start": 0.0, "song_end": 20.0, "clip_id": "A"}])
+    (fp.renders_dir / "r1").mkdir(parents=True)
+    (fp.renders_dir / "r1" / "meta.json").write_text("{}")
+    (fp.renders_dir / "failed").mkdir()  # no meta.json: a failed render, not counted
     out = nw.genre_status_of(project)
     assert out is not None  # passed nw's checks: JSON, small, no project path
-    assert {
-        k: out[k] for k in ("has_song", "videos", "photos", "placed", "renders")
-    } == {
+    assert {k: v for k, v in out.items() if k != "next_step"} == {
         "has_song": True,
-        "videos": 2,
+        "song_duration_s": 30.0,
+        "videos": 3,
         "photos": 0,
         "placed": 1,
-        "renders": 0,
+        # B is cut to the music (fine); C has the song and could not be placed
+        "unplaced_synced": 1,
+        "edits": 1,
+        "renders": 1,
     }
-    assert out["unreliable"] == 0 and out["song_duration_s"] == 30.0
+    assert out["next_step"]["op"] == "set_offset"  # the same step `status` names
+    assert out["next_step"] == service.status(fp)["next_step"]
     assert len(json.dumps(out)) < 1024
 
 
+def test_genre_status_reads_and_never_writes(tmp_path, monkeypatch):
+    """A polled endpoint: no render metadata rewritten, no file probed."""
+    import muvid.footage.service as S
+
+    project = _hosted_music_video(tmp_path, monkeypatch)
+    fp = project.footage
+    service.set_song(fp, path=str(_bytes_file(tmp_path / "s.wav", b"RIFF")))
+    (fp.renders_dir / "r1").mkdir(parents=True)
+    meta = fp.renders_dir / "r1" / "meta.json"
+    meta.write_text('{"render_id": "r1"}')
+    monkeypatch.setattr(S, "_probe_duration", lambda p: pytest.fail("probed"))
+    before = {p: p.stat().st_mtime_ns for p in project.root.rglob("*")}
+    nw.genre_status_of(project)
+    assert {p: p.stat().st_mtime_ns for p in project.root.rglob("*")} == before
 def test_genre_status_summarises_a_lyric_video(tmp_path):
     import muvid
 
     muvid.create_project_at(tmp_path, "lv", genre="lyric-video")
     project = muvid.Project(tmp_path / "lv")
     assert nw.genre_status_of(project) == {
-        "genre": "lyric-video",
         "has_song": False,
         "sources": {},
         "renders": 0,
@@ -1540,5 +1571,6 @@ def test_genre_status_summarises_a_lyric_video(tmp_path):
         _bytes_file(tmp_path / "words.md", b"la la"), role="lyrics"
     )
     project.lyric.add_source(_bytes_file(tmp_path / "poem.txt", b"la"), role="poem")
+    project.lyric.set_song(_bytes_file(tmp_path / "song.wav", b"RIFF"))
     out = nw.genre_status_of(project)
-    assert out["sources"] == {"lyrics": 1, "poem": 1}
+    assert out["sources"] == {"lyrics": 1, "poem": 1} and out["has_song"] is True

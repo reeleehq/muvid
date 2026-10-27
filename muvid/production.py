@@ -110,7 +110,9 @@ class Project(nw.Project):
         of no muvid production genre.
         """
         if self.genre == "music_video":
-            return _footage_status_summary(self.footage)
+            from muvid.footage.service import status_summary
+
+            return status_summary(self.footage)
         if self.genre == "lyric-video":
             return _lyric_status_summary(self.lyric)
         return None
@@ -327,27 +329,6 @@ class LyricVideoProduction:
         return row
 
 
-def _footage_status_summary(fp: MusicVideoFootageProject) -> dict:
-    """``genre_status`` for a music video: :func:`muvid.footage.service.status`,
-    counted rather than listed."""
-    from muvid.footage.service import STILL_KIND, status
-
-    s = status(fp)
-    stills = sum(1 for c in s["clips"] if c.get("kind") == STILL_KIND)
-    return {
-        "genre": "music_video",
-        "has_song": s["has_song"],
-        "song_duration_s": s["song_duration"],
-        "videos": len(s["clips"]) - stills,
-        "photos": stills,
-        "placed": len(s["aligned"]),
-        "unreliable": sum(1 for a in s["alignments"] if not a.get("reliable", True)),
-        "edits": len(s["edits"]),
-        "renders": len(s["renders"]),
-        "next_step": s["next_step"],
-    }
-
-
 def _lyric_status_summary(production: "LyricVideoProduction") -> dict:
     """``genre_status`` for a lyric video: what it holds, counted."""
     m = production.manifest()
@@ -356,7 +337,6 @@ def _lyric_status_summary(production: "LyricVideoProduction") -> dict:
         role = source.get("role", "other")
         roles[role] = roles.get(role, 0) + 1
     return {
-        "genre": "lyric-video",
         "has_song": bool(m.get("song")),
         "sources": roles,
         "renders": len(m.get("renders", [])),
