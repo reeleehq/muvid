@@ -18,18 +18,20 @@ substrate under [`muvid.visualize.canvas`](muvid.visualize.canvas.html.md#module
 |---------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`DEFAULT_LOUDNESS_I`](#muvid.visualize.ffmpeg.DEFAULT_LOUDNESS_I)       | Loudness targets, in the units EBU R128 / ffmpeg `loudnorm` uses.                                                                                                    |
 | [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT)        | little-endian 32-bit float, which is exactly `numpy.float32`'s memory layout, so an analysis pass can read the bytes straight into an array with no conversion step. |
+| [`PCM_STREAM_CHUNK_S`](#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S)       | Seconds of raw PCM each chunk of [`stream_pcm()`](#muvid.visualize.ffmpeg.stream_pcm) holds.                                                                |
 
 ### Functions
 
-| [`decode_pcm`](#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels])   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.    |
-|---------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| [`has_filter`](#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                   |
-| [`measure_loudness`](#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                         |
-| [`media_duration`](#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                |
-| [`probe`](#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                      |
-| [`require_ffmpeg`](#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH. |
-| [`require_filter`](#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                          |
-| [`run_ffmpeg`](#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])                | Run `ffmpeg` with `args`, raising a readable error on failure.                                                 |
+| [`decode_pcm`](#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels])   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.                                                                                                                                                                                |
+|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`has_filter`](#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
+| [`measure_loudness`](#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
+| [`media_duration`](#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
+| [`probe`](#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
+| [`require_ffmpeg`](#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
+| [`require_filter`](#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
+| [`run_ffmpeg`](#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])                | Run `ffmpeg` with `args`, raising a readable error on failure.                                                                                                                                                                                                                             |
+| [`stream_pcm`](#muvid.visualize.ffmpeg.stream_pcm)(audio, \*, sample_rate, channels)     | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at a time — [`decode_pcm()`](#muvid.visualize.ffmpeg.decode_pcm)'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219). |
 
 ### Classes
 
@@ -87,6 +89,10 @@ bytes straight into an array with no conversion step.
 
 * **Type:**
   Sample format the raw-PCM decode emits
+
+### muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S *= 10.0*
+
+Seconds of raw PCM each chunk of [`stream_pcm()`](#muvid.visualize.ffmpeg.stream_pcm) holds.
 
 ### muvid.visualize.ffmpeg.decode_pcm(audio, , sample_rate, channels=1)
 
@@ -189,3 +195,18 @@ Run `ffmpeg` with `args`, raising a readable error on failure.
   [**FfmpegError**](#muvid.visualize.ffmpeg.FfmpegError) – ffmpeg exited non-zero; the message carries the tail of
       stderr and the full command, which is what you actually need to
       debug a filtergraph.
+
+### muvid.visualize.ffmpeg.stream_pcm(audio, , sample_rate, channels, chunk_s=10.0)
+
+Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at
+a time — [`decode_pcm()`](#muvid.visualize.ffmpeg.decode_pcm)’s streaming twin, for a pass that must not hold a whole
+track (a loudness meter, muvid#219).
+
+Bounded by `$MUVID_FFMPEG_TIMEOUT_S` like every other decode (`_run_bounded()`):
+the whole decode, not each read — a watchdog kills ffmpeg when it runs out, and the
+generator raises [`FfmpegError`](#muvid.visualize.ffmpeg.FfmpegError). A failed decode raises too, with ffmpeg’s
+message; unlike [`decode_pcm()`](#muvid.visualize.ffmpeg.decode_pcm) there is no “no effect” to fall back on. Closing
+the generator early stops ffmpeg.
+
+* **Return type:**
+  [`Iterator`](https://docs.python.org/3/library/typing.html#typing.Iterator)[[`bytes`](https://docs.python.org/3/builtins/stdtypes.html#bytes)]

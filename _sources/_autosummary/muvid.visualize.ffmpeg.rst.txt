@@ -11,6 +11,7 @@ muvid.visualize.ffmpeg
       FFMPEG_TIMEOUT_ENV_VAR
       DEFAULT_LOUDNESS_I
       PCM_SAMPLE_FORMAT
+      PCM_STREAM_CHUNK_S
    
    .. rubric:: Functions
 
@@ -24,6 +25,7 @@ muvid.visualize.ffmpeg
       require_ffmpeg
       require_filter
       run_ffmpeg
+      stream_pcm
    
    .. rubric:: Classes
 

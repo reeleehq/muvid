@@ -143,7 +143,7 @@ Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 
 An operation refused — the message says why and what to do next.
 
-### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict(), mcp=True)
+### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict(), mcp=True, invalidates=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -164,6 +164,11 @@ server-side `path` and original `filename`. Never in a client’s schema.
 
 * **Type:**
   Parameters only the HOST supplies (`nw.GenreOp.host_params`)
+
+#### invalidates *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]]* *= None*
+
+The read ops whose answer this op can make stale (`nw.GenreOp.invalidates`,
+reelee#750), so a client refreshes only those after it. `None`: not said.
 
 #### limits *: [Mapping](https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [int](https://docs.python.org/3/builtins/functions.html#int)]*
 

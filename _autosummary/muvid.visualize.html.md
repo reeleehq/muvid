@@ -702,7 +702,7 @@ file fits `max_bytes` (YouTube’s hard limit).
 * **Returns:**
   Path to the rendered JPEG.
 
-### muvid.visualize.verify_video(video, , audio=None, thumbnail=None, loudness=None, check_loudness=False, duration_tolerance=0.5, expected_canvas=None, expected_duration=None)
+### muvid.visualize.verify_video(video, \*, audio=None, thumbnail=None, loudness=None, check_loudness=False, duration_tolerance=0.5, expected_canvas=None, expected_duration=None, loudness_meter=<function measure_integrated_lufs>)
 
 Check `video` against YouTube’s expectations; return one result per check.
 
@@ -722,6 +722,8 @@ Check `video` against YouTube’s expectations; return one result per check.
   * **expected_duration** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The length the render was ASKED for, when that is not
     the whole of `audio` — a trimmed edit renders only part of the song.
     Arms the duration check on its own, and wins over `audio`’s length.
+  * **loudness_meter** ([`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)], [`float`](https://docs.python.org/3/builtins/functions.html#float)]) – How `check_loudness` measures: `media -> LUFS`. Default
+    `measure_integrated_lufs()`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Check`](muvid.visualize.verify.html.md#muvid.visualize.verify.Check)]
 * **Returns:**

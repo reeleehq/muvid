@@ -10,12 +10,15 @@ muvid.visualize.verify
    
       DURATION_TOLERANCE
       LOUDNESS_TOLERANCE
+      METER_SAMPLE_RATE
+      LoudnessMeter
    
    .. rubric:: Functions
 
    .. autosummary::
    
       failures
+      measure_integrated_lufs
       report
       verify_video
    

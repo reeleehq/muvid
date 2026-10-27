@@ -1,4 +1,4 @@
-> built 2026-10-27 12:33 UTC from effb72e (main) · muvid 0.0.126. Details: build_info.json
+> built 2026-10-27 14:14 UTC from b93e76b (main) · muvid 0.0.127. Details: build_info.json
 
 # index.html.md
 
@@ -8028,7 +8028,7 @@ Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueEr
 
 An operation refused — the message says why and what to do next.
 
-### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict(), mcp=True)
+### *class* muvid.footage.service.OpSpec(name, title, effect, runs='now', hide=(), host_params=(), max_upload_bytes=None, limits=dict(), mcp=True, invalidates=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -8049,6 +8049,11 @@ server-side `path` and original `filename`. Never in a client’s schema.
 
 * **Type:**
   Parameters only the HOST supplies (`nw.GenreOp.host_params`)
+
+#### invalidates *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]]* *= None*
+
+The read ops whose answer this op can make stale (`nw.GenreOp.invalidates`,
+reelee#750), so a client refreshes only those after it. `None`: not said.
 
 #### limits *: [Mapping](https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [int](https://docs.python.org/3/builtins/functions.html#int)]*
 
@@ -17192,18 +17197,20 @@ substrate under [`muvid.visualize.canvas`](_autosummary/muvid.visualize.canvas.h
 |---------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`DEFAULT_LOUDNESS_I`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.DEFAULT_LOUDNESS_I)       | Loudness targets, in the units EBU R128 / ffmpeg `loudnorm` uses.                                                                                                    |
 | [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT)        | little-endian 32-bit float, which is exactly `numpy.float32`'s memory layout, so an analysis pass can read the bytes straight into an array with no conversion step. |
+| [`PCM_STREAM_CHUNK_S`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S)       | Seconds of raw PCM each chunk of [`stream_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm) holds.                                                                |
 
 ### Functions
 
-| [`decode_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels])   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.    |
-|---------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
-| [`has_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                   |
-| [`measure_loudness`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                         |
-| [`media_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                |
-| [`probe`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                      |
-| [`require_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH. |
-| [`require_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                          |
-| [`run_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])                | Run `ffmpeg` with `args`, raising a readable error on failure.                                                 |
+| [`decode_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels])   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.                                                                                                                                                                                |
+|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`has_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
+| [`measure_loudness`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
+| [`media_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
+| [`probe`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
+| [`require_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
+| [`require_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
+| [`run_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])                | Run `ffmpeg` with `args`, raising a readable error on failure.                                                                                                                                                                                                                             |
+| [`stream_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm)(audio, \*, sample_rate, channels)     | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at a time — [`decode_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219). |
 
 ### Classes
 
@@ -17261,6 +17268,10 @@ bytes straight into an array with no conversion step.
 
 * **Type:**
   Sample format the raw-PCM decode emits
+
+### muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S *= 10.0*
+
+Seconds of raw PCM each chunk of [`stream_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm) holds.
 
 ### muvid.visualize.ffmpeg.decode_pcm(audio, , sample_rate, channels=1)
 
@@ -17363,6 +17374,21 @@ Run `ffmpeg` with `args`, raising a readable error on failure.
   [**FfmpegError**](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) – ffmpeg exited non-zero; the message carries the tail of
       stderr and the full command, which is what you actually need to
       debug a filtergraph.
+
+### muvid.visualize.ffmpeg.stream_pcm(audio, , sample_rate, channels, chunk_s=10.0)
+
+Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at
+a time — [`decode_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)’s streaming twin, for a pass that must not hold a whole
+track (a loudness meter, muvid#219).
+
+Bounded by `$MUVID_FFMPEG_TIMEOUT_S` like every other decode (`_run_bounded()`):
+the whole decode, not each read — a watchdog kills ffmpeg when it runs out, and the
+generator raises [`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError). A failed decode raises too, with ffmpeg’s
+message; unlike [`decode_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm) there is no “no effect” to fall back on. Closing
+the generator early stops ffmpeg.
+
+* **Return type:**
+  [`Iterator`](https://docs.python.org/3/library/typing.html#typing.Iterator)[[`bytes`](https://docs.python.org/3/builtins/stdtypes.html#bytes)]
 
 
 # _autosummary/muvid.visualize.html.md
@@ -18071,7 +18097,7 @@ file fits `max_bytes` (YouTube’s hard limit).
 * **Returns:**
   Path to the rendered JPEG.
 
-### muvid.visualize.verify_video(video, , audio=None, thumbnail=None, loudness=None, check_loudness=False, duration_tolerance=0.5, expected_canvas=None, expected_duration=None)
+### muvid.visualize.verify_video(video, \*, audio=None, thumbnail=None, loudness=None, check_loudness=False, duration_tolerance=0.5, expected_canvas=None, expected_duration=None, loudness_meter=<function measure_integrated_lufs>)
 
 Check `video` against YouTube’s expectations; return one result per check.
 
@@ -18091,6 +18117,8 @@ Check `video` against YouTube’s expectations; return one result per check.
   * **expected_duration** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The length the render was ASKED for, when that is not
     the whole of `audio` — a trimmed edit renders only part of the song.
     Arms the duration check on its own, and wins over `audio`’s length.
+  * **loudness_meter** ([`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)], [`float`](https://docs.python.org/3/builtins/functions.html#float)]) – How `check_loudness` measures: `media -> LUFS`. Default
+    `measure_integrated_lufs()`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Check`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.Check)]
 * **Returns:**
@@ -18300,14 +18328,17 @@ skill carries the half that needs judgement.
 
 ### Module Attributes
 
-| [`DURATION_TOLERANCE`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.DURATION_TOLERANCE)   | How far the video may run past (or short of) the audio, in seconds.   |
-|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
-| [`LOUDNESS_TOLERANCE`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.LOUDNESS_TOLERANCE)   | How far the integrated loudness may sit from the target, in LU.       |
+| [`DURATION_TOLERANCE`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.DURATION_TOLERANCE)   | How far the video may run past (or short of) the audio, in seconds.           |
+|-----------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| [`LOUDNESS_TOLERANCE`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.LOUDNESS_TOLERANCE)   | How far the integrated loudness may sit from the target, in LU.               |
+| [`METER_SAMPLE_RATE`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.METER_SAMPLE_RATE)    | The rate and channel count the meter decodes at when the stream does not say. |
+| [`LoudnessMeter`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.LoudnessMeter)        | `media -> integrated LUFS` (muvid#219).                                       |
 
 ### Functions
 
 | [`failures`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.failures)(checks)                                 | Just the checks that failed.                                               |
 |---------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| [`measure_integrated_lufs`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.measure_integrated_lufs)(media)                   | The BS.1770-4 integrated loudness of `media`'s audio, in LUFS (muvid#219). |
 | [`report`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.report)(checks)                                   | Render `checks` as an aligned, readable block.                             |
 | [`verify_video`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.verify_video)(video, \*[, audio, thumbnail, ...]) | Check `video` against YouTube's expectations; return one result per check. |
 
@@ -18332,12 +18363,43 @@ video is cut on a GOP boundary, so an exact match is not achievable.
 How far the integrated loudness may sit from the target, in LU. Encoding to
 AAC moves it slightly, so demanding an exact hit would fail every time.
 
+### muvid.visualize.verify.LoudnessMeter
+
+`media -> integrated LUFS` (muvid#219).
+
+* **Type:**
+  A loudness meter
+
+alias of `Callable`[[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)], [`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
+### muvid.visualize.verify.METER_SAMPLE_RATE *= 48000*
+
+The rate and channel count the meter decodes at when the stream does not say.
+
 ### muvid.visualize.verify.failures(checks)
 
 Just the checks that failed.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Check`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.Check)]
+
+### muvid.visualize.verify.measure_integrated_lufs(media)
+
+The BS.1770-4 integrated loudness of `media`’s audio, in LUFS (muvid#219).
+
+Decoded by muvid ([`stream_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm): the ffmpeg muvid
+renders with, bounded by `$MUVID_FFMPEG_TIMEOUT_S`, a failure an
+[`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError)) at the stream’s own rate and channel
+count, and metered as it streams by `mixing.loudness.stream_loudness`, so memory
+stays bounded whatever the length where the samples held whole cost 577 MB for five
+minutes. Within about 0.05 LU of ffmpeg’s `loudnorm` analysis at 44.1/48 kHz
+(0.15-0.35 LU at 8-22 kHz; 5.1 reads about 0.5 LU low — no surround weights — and
+muvid renders stereo), in a fraction of its time. Normalising still uses two-pass
+`loudnorm` ([`muvid.visualize.ffmpeg.measure_loudness()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.measure_loudness)). No fallback: a
+failure here is a traceback, not a quietly different meter.
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 ### muvid.visualize.verify.report(checks)
 
@@ -18346,7 +18408,7 @@ Render `checks` as an aligned, readable block.
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
-### muvid.visualize.verify.verify_video(video, , audio=None, thumbnail=None, loudness=None, check_loudness=False, duration_tolerance=0.5, expected_canvas=None, expected_duration=None)
+### muvid.visualize.verify.verify_video(video, \*, audio=None, thumbnail=None, loudness=None, check_loudness=False, duration_tolerance=0.5, expected_canvas=None, expected_duration=None, loudness_meter=<function measure_integrated_lufs>)
 
 Check `video` against YouTube’s expectations; return one result per check.
 
@@ -18366,6 +18428,8 @@ Check `video` against YouTube’s expectations; return one result per check.
   * **expected_duration** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The length the render was ASKED for, when that is not
     the whole of `audio` — a trimmed edit renders only part of the song.
     Arms the duration check on its own, and wins over `audio`’s length.
+  * **loudness_meter** ([`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)], [`float`](https://docs.python.org/3/builtins/functions.html#float)]) – How `check_loudness` measures: `media -> LUFS`. Default
+    [`measure_integrated_lufs()`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.measure_integrated_lufs).
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`Check`](_autosummary/muvid.visualize.verify.html.md#muvid.visualize.verify.Check)]
 * **Returns:**
@@ -18974,18 +19038,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 12:33 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/effb72e07b6ff1e69f41cb2ae79b465caca68cd7"><code>effb72e</code></a> on branch <code>main</code>, for **muvid 0.0.126** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 14:14 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/b93e76bdcc809df19a79a84fdfd5581902165a2f"><code>b93e76b</code></a> on branch <code>main</code>, for **muvid 0.0.127** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.127) is ahead of the latest release on PyPI (0.0.126): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/effb72e07b6ff1e69f41cb2ae79b465caca68cd7"><code>effb72e07b6ff1e69f41cb2ae79b465caca68cd7</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/b93e76bdcc809df19a79a84fdfd5581902165a2f"><code>b93e76bdcc809df19a79a84fdfd5581902165a2f</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.126</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.127</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18994,9 +19060,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40498376035">40498376035</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40517852053">40517852053</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>994599c9971d109157ad3bc151ea5ece5bfe7156</code> (in the history of the built commit) |
+| Event commit | <code>a59cae9ec66539c667483f0500afa824c7be3281</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19021,13 +19087,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.126/">0.0.126</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.126/">0.0.126</a>, older than the documented version (0.0.127).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout effb72e07b6ff1e69f41cb2ae79b465caca68cd7
+git checkout b93e76bdcc809df19a79a84fdfd5581902165a2f
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

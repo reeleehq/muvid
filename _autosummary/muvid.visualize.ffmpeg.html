@@ -161,6 +161,9 @@ substrate under <a class="reference internal" href="muvid.visualize.canvas.html#
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT" title="muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PCM_SAMPLE_FORMAT</span></code></a></p></td>
 <td><p>little-endian 32-bit float, which is exactly <code class="docutils literal notranslate"><span class="pre">numpy.float32</span></code>'s memory layout, so an analysis pass can read the bytes straight into an array with no conversion step.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S" title="muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PCM_STREAM_CHUNK_S</span></code></a></p></td>
+<td><p>Seconds of raw PCM each chunk of <a class="reference internal" href="#muvid.visualize.ffmpeg.stream_pcm" title="muvid.visualize.ffmpeg.stream_pcm"><code class="xref py py-func docutils literal notranslate"><span class="pre">stream_pcm()</span></code></a> holds.</p></td>
+</tr>
 </tbody>
 </table>
 <p class="rubric">Functions</p>
@@ -189,6 +192,9 @@ substrate under <a class="reference internal" href="muvid.visualize.canvas.html#
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.run_ffmpeg" title="muvid.visualize.ffmpeg.run_ffmpeg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_ffmpeg</span></code></a>(args, *[, overwrite])</p></td>
 <td><p>Run <code class="docutils literal notranslate"><span class="pre">ffmpeg</span></code> with <code class="docutils literal notranslate"><span class="pre">args</span></code>, raising a readable error on failure.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.stream_pcm" title="muvid.visualize.ffmpeg.stream_pcm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stream_pcm</span></code></a>(audio, *, sample_rate, channels)</p></td>
+<td><p>Decode <code class="docutils literal notranslate"><span class="pre">audio</span></code> to raw <a class="reference internal" href="#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT" title="muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT"><code class="xref py py-data docutils literal notranslate"><span class="pre">PCM_SAMPLE_FORMAT</span></code></a> samples, yielded <code class="docutils literal notranslate"><span class="pre">chunk_s</span></code> at a time — <a class="reference internal" href="#muvid.visualize.ffmpeg.decode_pcm" title="muvid.visualize.ffmpeg.decode_pcm"><code class="xref py py-func docutils literal notranslate"><span class="pre">decode_pcm()</span></code></a>'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219).</p></td>
 </tr>
 </tbody>
 </table>
@@ -263,6 +269,11 @@ bytes straight into an array with no conversion step.</p>
 <dd class="field-odd"><p>Sample format the raw-PCM decode emits</p>
 </dd>
 </dl>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S">
+<span class="sig-prename descclassname"><span class="pre">muvid.visualize.ffmpeg.</span></span><span class="sig-name descname"><span class="pre">PCM_STREAM_CHUNK_S</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10.0</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S'">¶</a></dt>
+<dd><p>Seconds of raw PCM each chunk of <a class="reference internal" href="#muvid.visualize.ffmpeg.stream_pcm" title="muvid.visualize.ffmpeg.stream_pcm"><code class="xref py py-func docutils literal notranslate"><span class="pre">stream_pcm()</span></code></a> holds.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.visualize.ffmpeg.decode_pcm">
@@ -403,6 +414,23 @@ specific filter has to be there.</p>
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.visualize.ffmpeg.stream_pcm">
+<span class="sig-prename descclassname"><span class="pre">muvid.visualize.ffmpeg.</span></span><span class="sig-name descname"><span class="pre">stream_pcm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">audio</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_rate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channels</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunk_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/visualize/ffmpeg.html#stream_pcm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.visualize.ffmpeg.stream_pcm" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.visualize.ffmpeg.stream_pcm'">¶</a></dt>
+<dd><p>Decode <code class="docutils literal notranslate"><span class="pre">audio</span></code> to raw <a class="reference internal" href="#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT" title="muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT"><code class="xref py py-data docutils literal notranslate"><span class="pre">PCM_SAMPLE_FORMAT</span></code></a> samples, yielded <code class="docutils literal notranslate"><span class="pre">chunk_s</span></code> at
+a time — <a class="reference internal" href="#muvid.visualize.ffmpeg.decode_pcm" title="muvid.visualize.ffmpeg.decode_pcm"><code class="xref py py-func docutils literal notranslate"><span class="pre">decode_pcm()</span></code></a>’s streaming twin, for a pass that must not hold a whole
+track (a loudness meter, muvid#219).</p>
+<p>Bounded by <code class="docutils literal notranslate"><span class="pre">$MUVID_FFMPEG_TIMEOUT_S</span></code> like every other decode (<code class="xref py py-func docutils literal notranslate"><span class="pre">_run_bounded()</span></code>):
+the whole decode, not each read — a watchdog kills ffmpeg when it runs out, and the
+generator raises <a class="reference internal" href="#muvid.visualize.ffmpeg.FfmpegError" title="muvid.visualize.ffmpeg.FfmpegError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FfmpegError</span></code></a>. A failed decode raises too, with ffmpeg’s
+message; unlike <a class="reference internal" href="#muvid.visualize.ffmpeg.decode_pcm" title="muvid.visualize.ffmpeg.decode_pcm"><code class="xref py py-func docutils literal notranslate"><span class="pre">decode_pcm()</span></code></a> there is no “no effect” to fall back on. Closing
+the generator early stops ffmpeg.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Iterator" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Iterator</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#bytes" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bytes</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
@@ -415,6 +443,7 @@ specific filter has to be there.</p>
 </ul>
 </li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT'" class="reference internal" href="#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT"><code class="docutils literal notranslate"><span class="pre">PCM_SAMPLE_FORMAT</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S'" class="reference internal" href="#muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S"><code class="docutils literal notranslate"><span class="pre">PCM_STREAM_CHUNK_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.decode_pcm'" class="reference internal" href="#muvid.visualize.ffmpeg.decode_pcm"><code class="docutils literal notranslate"><span class="pre">decode_pcm()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.has_filter'" class="reference internal" href="#muvid.visualize.ffmpeg.has_filter"><code class="docutils literal notranslate"><span class="pre">has_filter()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.measure_loudness'" class="reference internal" href="#muvid.visualize.ffmpeg.measure_loudness"><code class="docutils literal notranslate"><span class="pre">measure_loudness()</span></code></a></li>
@@ -423,6 +452,7 @@ specific filter has to be there.</p>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.require_ffmpeg'" class="reference internal" href="#muvid.visualize.ffmpeg.require_ffmpeg"><code class="docutils literal notranslate"><span class="pre">require_ffmpeg()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.require_filter'" class="reference internal" href="#muvid.visualize.ffmpeg.require_filter"><code class="docutils literal notranslate"><span class="pre">require_filter()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.run_ffmpeg'" class="reference internal" href="#muvid.visualize.ffmpeg.run_ffmpeg"><code class="docutils literal notranslate"><span class="pre">run_ffmpeg()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.stream_pcm'" class="reference internal" href="#muvid.visualize.ffmpeg.stream_pcm"><code class="docutils literal notranslate"><span class="pre">stream_pcm()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -436,7 +466,7 @@ specific filter has to be there.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=06430935"></script>
+<script src="../_static/documentation_options.js?v=a23b8d2c"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
