@@ -134,7 +134,10 @@ mcp = [
     # not the base dependencies (muvid#248): a keyword is not an import, so
     # `genre_music_video` checks GenreOp's fields and names this extra.
     # 0.0.104: `nw.require_fields` (nw#164), the check `genre_music_video` runs (muvid#265).
-    "nw>=0.0.104",
+    # 0.0.108: verifying-trace readers ignore unknown fields (nw#180/#184). A host reading
+    # with nw 0.0.107 or older DROPS a trace a newer nw wrote (its `excluded_paths`) and
+    # reads the child stale, which can re-render — spend — when nothing changed (muvid#266).
+    "nw>=0.0.108",
 ]
 # The footage SCORING layer's TORCH-FREE core tier (thorwhalen/muvid#13): quality gates +
 # motion-to-beat + the Viterbi selector + editor score-tracks. This is what the prod
