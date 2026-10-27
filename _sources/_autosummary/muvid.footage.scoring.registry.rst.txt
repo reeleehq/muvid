@@ -9,13 +9,16 @@ muvid.footage.scoring.registry
    .. autosummary::
    
       CORE_TIER
+      VOCAL_STEM
    
    .. rubric:: Functions
 
    .. autosummary::
    
+      artifact
       default_metrics
       metrics_of_tier
+      register_artifact
       register_scorer
       scorers
       unregister_scorer
@@ -24,7 +27,9 @@ muvid.footage.scoring.registry
 
    .. autosummary::
    
+      Artifact
       ClipContext
+      Grid
       MasterBeats
       Scorer
    

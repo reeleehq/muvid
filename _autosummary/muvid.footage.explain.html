@@ -204,7 +204,8 @@ them (<code class="docutils literal notranslate"><span class="pre">service.expla
 id to <code class="docutils literal notranslate"><span class="pre">{name,</span> <span class="pre">kind</span> <span class="pre">('video'|'still'),</span> <span class="pre">role}</span></code>; <code class="docutils literal notranslate"><span class="pre">alignments</span></code> the clip
 placements (for synced cuts); <code class="docutils literal notranslate"><span class="pre">envelope_of(clip_id)</span></code> a video’s picture signal
 (<a class="reference internal" href="muvid.footage.music_cut.html#muvid.footage.music_cut.Envelope" title="muvid.footage.music_cut.Envelope"><code class="xref py py-class docutils literal notranslate"><span class="pre">muvid.footage.music_cut.Envelope</span></code></a>) or <code class="docutils literal notranslate"><span class="pre">None</span></code>; <code class="docutils literal notranslate"><span class="pre">selection</span></code> how the
-edit was made (<code class="docutils literal notranslate"><span class="pre">pace</span></code>, <code class="docutils literal notranslate"><span class="pre">style</span></code>, <code class="docutils literal notranslate"><span class="pre">strategy</span></code>). <code class="docutils literal notranslate"><span class="pre">window</span></code> (song seconds)
+edit was made (<code class="docutils literal notranslate"><span class="pre">pace</span></code>, <code class="docutils literal notranslate"><span class="pre">style</span></code>, <code class="docutils literal notranslate"><span class="pre">strategy</span></code>, and <code class="docutils literal notranslate"><span class="pre">fallback</span></code> / <code class="docutils literal notranslate"><span class="pre">cause</span></code> when
+the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy fell back). <code class="docutils literal notranslate"><span class="pre">window</span></code> (song seconds)
 keeps only the cuts that overlap it; the summary is of the whole edit — or of
 <code class="docutils literal notranslate"><span class="pre">scope</span></code>, the part of the song a trimmed edit covers (its <code class="docutils literal notranslate"><span class="pre">span</span></code>), so the
 black outside it is not counted as shots.</p>
@@ -234,7 +235,7 @@ black outside it is not counted as shots.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=83be8e66"></script>
+<script src="../_static/documentation_options.js?v=27c60a7f"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -1,4 +1,4 @@
-> built 2026-10-27 04:37 UTC from 92ec079 (main) · muvid 0.0.108. Details: build_info.json
+> built 2026-10-27 04:46 UTC from d4a75a4 (main) · muvid 0.0.109. Details: build_info.json
 
 # index.html.md
 
@@ -4530,7 +4530,8 @@ The post-mortem of an edit: `{summary, times, cuts: [...]}`.
 id to `{name, kind ('video'|'still'), role}`; `alignments` the clip
 placements (for synced cuts); `envelope_of(clip_id)` a video’s picture signal
 ([`muvid.footage.music_cut.Envelope`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.Envelope)) or `None`; `selection` how the
-edit was made (`pace`, `style`, `strategy`). `window` (song seconds)
+edit was made (`pace`, `style`, `strategy`, and `fallback` / `cause` when
+the `weighted` strategy fell back). `window` (song seconds)
 keeps only the cuts that overlap it; the summary is of the whole edit — or of
 `scope`, the part of the song a trimmed edit covers (its `span`), so the
 black outside it is not counted as shots.
@@ -6875,7 +6876,17 @@ A scorer is handed a [`ClipContext`](_autosummary/muvid.footage.scoring.registry
 - `gated` — whether the optional hard quality gate is ANDed into its masks;
 - `tier` — `"core"` (the commercial-clean default) or `"lipsync"` (the opt-in,
   off-prod tier of the licence boundary in the repo guide). A new scorer is `"core"`
-  only if every dependency it brings is MIT/BSD/Apache/ISC.
+  only if every dependency it brings is MIT/BSD/Apache/ISC;
+- `available` — `() -> (ok, reason)`, enforced by the orchestrator: an unavailable
+  scorer is skipped with its reason recorded (refused, if its metric was asked for);
+- `needs` — the shared master artifacts it reads ([`register_artifact()`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact); the
+  lip-sync tier’s vocal stem is one), each built once per run and only when a running
+  scorer needs it (muvid#184). The orchestrator names no artifact itself.
+
+The [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext) it is handed is primitives (muvid#184): the clip’s placement,
+the [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats), the [`Grid`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Grid) and its declared artifacts — never the
+project and never a sibling package’s record — plus `frames`, the one rich object,
+documented as unstable.
 
 **Absent is not zero.** A scorer that could not measure a frame returns the frame
 masked (`NaN` raw, `False` mask), never `0.0`: the composite renormalises over
@@ -6889,39 +6900,70 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Module Attributes
 
-| [`CORE_TIER`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.CORE_TIER)   | The tiers.   |
-|--------------------------------------------------------------|--------------|
+| [`CORE_TIER`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.CORE_TIER)   | The tiers.                                                           |
+|--------------------------------------------------------------|----------------------------------------------------------------------|
+| [`VOCAL_STEM`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.VOCAL_STEM)  | The master vocal stem (Demucs), the lip-sync tier's shared artifact. |
 
 ### Functions
 
-| [`default_metrics`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])   | The metric axis order: every registered scorer's metrics, in registration order.   |
-|-------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| [`metrics_of_tier`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.metrics_of_tier)(tier)                    | Every metric a tier's scorers produce.                                             |
-| [`register_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])   | Add `scorer`.                                                                      |
-| [`scorers`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])           | Registered scorers in registration order; the opt-in tier only when asked.         |
-| [`unregister_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.unregister_scorer)(name)                  | Remove a scorer (tests, plugin teardown).                                          |
+| [`artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.            |
+|---------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| [`default_metrics`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order. |
+| [`metrics_of_tier`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                           |
+| [`register_artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.          |
+| [`register_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                    |
+| [`scorers`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.       |
+| [`unregister_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                        |
 
 ### Classes
 
-| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, alignment, ...)      | What a scorer is handed for ONE clip.                                           |
-|--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)(beat_times, downbeat_times, ...)    | The master beat grid a scoring run measures on, and the name of it (muvid#187). |
-| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...]) | One row of the registry.                                                        |
+| [`Artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Artifact)(name, build, stage)                     | A shared master artifact — computed ONCE per run on the song, never per clip — that a scorer can declare in `needs`.                                                                            |
+|---------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`ClipContext`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.ClipContext)(clip_id, path, offset_s, ...[, ...]) | What a scorer is handed for ONE clip: paths and primitives, never the project and never a sibling package's record (muvid#184), so a plugin's contract is these fields and nothing behind them. |
+| [`Grid`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Grid)(t0, hop_s, n)                               | The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.                                                                                                                  |
+| [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)(beat_times, downbeat_times, ...)     | The master beat grid a scoring run measures on, and the name of it (muvid#187).                                                                                                                 |
+| [`Scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer)(name, metrics, run[, needs_frames, ...])  | One row of the registry.                                                                                                                                                                        |
+
+### *class* muvid.footage.scoring.registry.Artifact(name, build, stage)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A shared master artifact — computed ONCE per run on the song, never per clip —
+that a scorer can declare in `needs`. `build(song_path, scores_dir)` makes it;
+`stage` is its progress label.
 
 ### muvid.footage.scoring.registry.CORE_TIER *= 'core'*
 
 The tiers. `core` runs by default; `lipsync` only when the opt-in is enabled.
 
-### *class* muvid.footage.scoring.registry.ClipContext(clip_id, path, alignment, frames, beat, vocal_stem, grid)
+### *class* muvid.footage.scoring.registry.ClipContext(clip_id, path, offset_s, duration_s, coverage, frames, beat, grid, artifacts=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
-What a scorer is handed for ONE clip. Paths and primitives, never the project.
+What a scorer is handed for ONE clip: paths and primitives, never the project
+and never a sibling package’s record (muvid#184), so a plugin’s contract is these
+fields and nothing behind them.
 
-`frames` is the shared decode pass (`None` when no selected scorer declares
-`needs_frames`); `beat` is the master beat grid; `vocal_stem` the master vocal
-stem path (`None` unless the lip-sync tier is running); `grid` is
-`{"t0", "hop_s", "n"}`.
+`offset_s` / `duration_s` / `coverage` place the clip on the song (seconds;
+`coverage` is the song span it covers); `beat` is the master beat grid
+([`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats), primitives); `grid` the song-time [`Grid`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Grid);
+`artifacts` the shared master artifacts the scorer declared in `needs`
+([`register_artifact()`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)), by name. `frames` is the one rich object — the shared
+decode pass, `None` unless a selected scorer declares `needs_frames` — and it is
+documented as unstable: a plugin reading it accepts that its shape may change.
+
+### *class* muvid.footage.scoring.registry.Grid(t0, hop_s, n)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.
+
+#### as_kwargs()
+
+`{"t0", "hop_s", "n"}`, the keyword arguments the extractors take.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
 ### *class* muvid.footage.scoring.registry.MasterBeats(beat_times, downbeat_times, tempo_bpm, onset_env, onset_hop_s, fingerprint='')
 
@@ -6942,7 +6984,7 @@ From the estimator’s `mixing.audio.BeatGrid`.
 * **Return type:**
   [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)
 
-### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None)
+### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -6950,8 +6992,25 @@ One row of the registry. `run(ctx) -> tracks` is the whole behaviour.
 
 #### available *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[Callable](https://docs.python.org/3/library/typing.html#typing.Callable)[[], [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[bool](https://docs.python.org/3/builtins/functions.html#bool), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]]]* *= None*
 
-`() -> (ok, reason)`; `None` means always available. Surfaced by
-`list_available_extractors` — a missing dependency is a recorded reason, not a crash.
+`() -> (ok, reason)`; `None` means always available. ENFORCED by the
+orchestrator: an unavailable scorer does not run and its reason is recorded in the
+run’s `skipped_scorers` (a missing dependency is a recorded reason, not a crash).
+
+#### needs *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]* *= ()*
+
+the shared master artifacts it reads ([`register_artifact()`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)), by name. Each is
+built once per run, and only when a running scorer needs it.
+
+### muvid.footage.scoring.registry.VOCAL_STEM *= 'vocal_stem'*
+
+The master vocal stem (Demucs), the lip-sync tier’s shared artifact.
+
+### muvid.footage.scoring.registry.artifact(name)
+
+The registered artifact `name`; `KeyError` names the registered ones.
+
+* **Return type:**
+  [`Artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Artifact)
 
 ### muvid.footage.scoring.registry.default_metrics(, include_lipsync=False)
 
@@ -6966,6 +7025,13 @@ Every metric a tier’s scorers produce.
 
 * **Return type:**
   [`set`](https://docs.python.org/3/builtins/stdtypes.html#set)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.scoring.registry.register_artifact(artifact, , replace=False)
+
+Add a shared master artifact; a taken name is refused unless `replace`.
+
+* **Return type:**
+  [`Artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Artifact)
 
 ### muvid.footage.scoring.registry.register_scorer(scorer, , replace=False)
 
@@ -7081,12 +7147,13 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](_auto
 
 ### Functions
 
-| [`resolve_config`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                         |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| [`run_weighted`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                 |
-| [`selection_margin`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                               |
-| [`selection_notice`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                           |
-| [`weighted_selection`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP). |
+| [`composite_lane`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.composite_lane)(tensor, weights, clip_id)          | One clip's weighted composite, frame by frame on the song grid — what the `weighted` strategy ranks it by — with `NaN` where no weighted metric was measured (muvid#184).   |
+|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`resolve_config`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                                                       |
+| [`run_weighted`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                                               |
+| [`selection_margin`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                                                             |
+| [`selection_notice`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                                                         |
+| [`weighted_selection`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP).                               |
 
 ### Classes
 
@@ -7171,6 +7238,21 @@ second of overrun (in the same “reward-seconds” units as `lambda_switch`), r
 being forbidden. So a lone/best clip rolls past `l_max_s` when the only alternative is
 materially worse (no forced cutaway to bad footage), yet comparable clips still cut around
 `l_max_s` for variety. Segments are always different-clip (each = one shot).
+
+### muvid.footage.select_score.composite_lane(tensor, weights, clip_id)
+
+One clip’s weighted composite, frame by frame on the song grid — what the
+`weighted` strategy ranks it by — with `NaN` where no weighted metric was
+measured (muvid#184).
+
+It is the composite BEFORE the unvouched-clip demotion the DP adds on top
+([`UNVOUCHED_REWARD_PENALTY`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)). The DP itself reads 0 at an unmeasured frame (a
+cumulative sum cannot hold a NaN); a reader that drew that 0 as a real low score
+would be the muvid#19 defect one layer up, hence the NaN. All-NaN when the clip is
+not in the tensor or no metric carries weight.
+
+* **Return type:**
+  `ndarray`
 
 ### muvid.footage.select_score.resolve_config(, preset=None, weights=None, config=None)
 
@@ -7294,6 +7376,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`filmstrip`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.filmstrip)(fp, \*, clip_id)                       | One video's filmstrip (the same record `filmstrips` gives per clip, with its `clip_id` and `fps`).                                                                                                                                                                      |
 | [`score`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score)(fp, \*[, hop_s, metrics, should_cancel])   | Look at the footage: score every placed video, on the song's own timeline — picture quality and how its movement sits on the beat — and save the curves.                                                                                                                |
 | [`scores`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, ...])          | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
+| [`score_candidates`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score_candidates)(fp, \*, candidates[, ...])      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                            |
 | [`strategies`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment).                                                                                                                      |
 | [`propose_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                               |
 | [`save_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
@@ -7974,6 +8057,27 @@ Slow (it decodes every clip), so hosts run it in the background. Needs a song an
 alignment. Every core metric is computed; weighting happens later, when cutting, so
 re-weighting never re-scores. The lip-sync tier is off unless the operator enabled
 it. Returns what was scored and what was skipped (and why).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.service.score_candidates(fp, , candidates, weights=None, preset='')
+
+How well each candidate stretch of a video scores — to choose between takes.
+
+`candidates` are `{clip_id, song_start, song_end}` spans on the song timeline
+(seconds), up to as many as an edit may have cuts. Each answer repeats its own span
+(match by span, never by position) with `composite` — the mean of the weighted
+blend of the scores over the frames where a weighted metric was measured, `null`
+when none was — `measured` (the fraction of the span’s frames that were), and
+`metrics`, each metric’s mean normalised score over its measured frames (`null`
+where it was never measured). Nothing measured is not a low score, so read
+`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
+counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+
+`weights` / `preset` as for `scores`; the reply’s `weights` says which
+applied. Needs current scores (`score` first). A span off the song, or a video the
+scores do not hold, is refused.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -12412,6 +12516,7 @@ alignment, exactly as `set_song` does.
 | [`footage_renders`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_renders)(project_id)                        | The finished videos, newest first: each one's `render_id`, speakable `ref`, the `edit_id` it was made from, its `label`, canvas, `ok`, the number of `warnings`, and `artifact_id` to play it by when the project is hosted.                                            |
 | [`footage_replace_edit`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_replace_edit)(project_id, \*, edit_id, edl) | Replace a saved edit's whole cut list — the power tool for rewriting an edit at once.                                                                                                                                                                                   |
 | [`footage_save_edit`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_save_edit)(project_id, \*, edl[, ...])      | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
+| [`footage_score_candidates`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_score_candidates)(project_id, \*, ...)      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                            |
 | [`footage_set_beat_grid`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_set_beat_grid)(project_id, \*[, ...])       | Tell it where the beats are, when the automatic estimate is wrong for this song.                                                                                                                                                                                        |
 | [`footage_set_cut`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_set_cut)(project_id, \*, edit_id, index)    | Change one cut of a saved edit (`index` is its position in `footage_get_edit`'s edl).                                                                                                                                                                                   |
 | [`footage_set_has_song`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_set_has_song)(project_id, \*, clip_id, ...) | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                    |
@@ -12915,6 +13020,27 @@ cut to it; default the whole song. Returns the saved edit.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.mcp.footage_tools.footage_score_candidates(project_id, , candidates, weights=None, preset='')
+
+How well each candidate stretch of a video scores — to choose between takes.
+
+`candidates` are `{clip_id, song_start, song_end}` spans on the song timeline
+(seconds), up to as many as an edit may have cuts. Each answer repeats its own span
+(match by span, never by position) with `composite` — the mean of the weighted
+blend of the scores over the frames where a weighted metric was measured, `null`
+when none was — `measured` (the fraction of the span’s frames that were), and
+`metrics`, each metric’s mean normalised score over its measured frames (`null`
+where it was never measured). Nothing measured is not a low score, so read
+`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
+counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+
+`weights` / `preset` as for `footage_scores`; the reply’s `weights` says which
+applied. Needs current scores (`score_footage` first). A span off the song, or a video the
+scores do not hold, is refused.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.mcp.footage_tools.footage_set_beat_grid(project_id, , tempo_bpm=None, first_beat_s=None, beats=None, beats_per_bar=4, first_bar_beat=0)
 
 Tell it where the beats are, when the automatic estimate is wrong for this song.
@@ -13192,15 +13318,15 @@ an unpriced call must force approval (muvid#47).
 | [`VisualizerWorkspace`](_autosummary/muvid.mcp.html.md#muvid.mcp.VisualizerWorkspace)(email, root)   | A single caller's private visualizer area, addressed by `email`.   |
 |-------------------------------------------------------------------------------------|--------------------------------------------------------------------|
 
-### muvid.mcp.FREE_TOOLS *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
+### muvid.mcp.FREE_TOOLS *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
 
 Alias — muvid has no costed tools.
 
-### muvid.mcp.TOOL_NAMES *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'propose_lyric_treatments_ai', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
+### muvid.mcp.TOOL_NAMES *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'propose_lyric_treatments_ai', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
 
 All tools this package exposes (all free). Bare names; a host may prefix them.
 
-### muvid.mcp.TOOL_REFS *= {'add_footage': 'muvid.mcp.footage_tools:add_footage', 'add_footage_folder': 'muvid.mcp.footage_tools:add_footage_folder', 'align_footage': 'muvid.mcp.footage_tools:align_footage', 'analyze_song_lyrics': 'muvid.mcp.lyricvid_tools:analyze_song_lyrics', 'assemble_music_video': 'muvid.mcp.footage_tools:assemble_music_video', 'beat_grid': 'muvid.mcp.footage_tools:beat_grid', 'footage_beat_signals': 'muvid.mcp.footage_tools:footage_beat_signals', 'footage_clear_beat_grid': 'muvid.mcp.footage_tools:footage_clear_beat_grid', 'footage_clear_offset': 'muvid.mcp.footage_tools:footage_clear_offset', 'footage_delete_edit': 'muvid.mcp.footage_tools:footage_delete_edit', 'footage_editor_document': 'muvid.mcp.footage_tools:footage_editor_document', 'footage_edits': 'muvid.mcp.footage_tools:footage_edits', 'footage_edl_from_annotations': 'muvid.mcp.footage_tools:footage_edl_from_annotations', 'footage_explain_edit': 'muvid.mcp.footage_tools:footage_explain_edit', 'footage_filmstrip': 'muvid.mcp.footage_tools:footage_filmstrip', 'footage_filmstrips': 'muvid.mcp.footage_tools:footage_filmstrips', 'footage_fit_to_beat': 'muvid.mcp.footage_tools:footage_fit_to_beat', 'footage_get_edit': 'muvid.mcp.footage_tools:footage_get_edit', 'footage_looks': 'muvid.mcp.footage_tools:footage_looks', 'footage_merge_cut': 'muvid.mcp.footage_tools:footage_merge_cut', 'footage_peaks': 'muvid.mcp.footage_tools:footage_peaks', 'footage_redo_edit': 'muvid.mcp.footage_tools:footage_redo_edit', 'footage_rename_edit': 'muvid.mcp.footage_tools:footage_rename_edit', 'footage_render': 'muvid.mcp.footage_tools:footage_render', 'footage_renders': 'muvid.mcp.footage_tools:footage_renders', 'footage_replace_edit': 'muvid.mcp.footage_tools:footage_replace_edit', 'footage_save_edit': 'muvid.mcp.footage_tools:footage_save_edit', 'footage_score_status': 'muvid.mcp.scoring_tools:footage_score_status', 'footage_scores': 'muvid.mcp.scoring_tools:footage_scores', 'footage_set_beat_grid': 'muvid.mcp.footage_tools:footage_set_beat_grid', 'footage_set_cut': 'muvid.mcp.footage_tools:footage_set_cut', 'footage_set_has_song': 'muvid.mcp.footage_tools:footage_set_has_song', 'footage_set_offset': 'muvid.mcp.footage_tools:footage_set_offset', 'footage_set_span': 'muvid.mcp.footage_tools:footage_set_span', 'footage_split_cut': 'muvid.mcp.footage_tools:footage_split_cut', 'footage_status': 'muvid.mcp.footage_tools:footage_status', 'footage_timeline': 'muvid.mcp.footage_tools:footage_timeline', 'footage_undo_edit': 'muvid.mcp.footage_tools:footage_undo_edit', 'list_archetypes': 'muvid.mcp.lyricvid_tools:list_archetypes', 'list_music_video_projects': 'muvid.mcp.footage_tools:list_music_video_projects', 'list_projects': 'muvid.mcp.tools:list_projects', 'list_strategies': 'muvid.mcp.footage_tools:list_strategies', 'list_subgenres': 'muvid.mcp.subgenre_tools:list_subgenres', 'list_visuals': 'muvid.mcp.tools:list_visuals', 'project_status': 'muvid.mcp.tools:project_status', 'propose_edit': 'muvid.mcp.footage_tools:propose_edit', 'propose_lyric_treatments': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments', 'propose_lyric_treatments_ai': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments_ai', 'remove_footage': 'muvid.mcp.footage_tools:remove_footage', 'render_lyric_video': 'muvid.mcp.lyricvid_tools:render_lyric_video', 'render_subgenre': 'muvid.mcp.subgenre_tools:render_subgenre', 'render_visualizer': 'muvid.mcp.tools:render_visualizer', 'score_footage': 'muvid.mcp.scoring_tools:score_footage', 'set_song': 'muvid.mcp.footage_tools:set_song', 'validate_lyric_treatment': 'muvid.mcp.lyricvid_tools:validate_lyric_treatment'}*
+### muvid.mcp.TOOL_REFS *= {'add_footage': 'muvid.mcp.footage_tools:add_footage', 'add_footage_folder': 'muvid.mcp.footage_tools:add_footage_folder', 'align_footage': 'muvid.mcp.footage_tools:align_footage', 'analyze_song_lyrics': 'muvid.mcp.lyricvid_tools:analyze_song_lyrics', 'assemble_music_video': 'muvid.mcp.footage_tools:assemble_music_video', 'beat_grid': 'muvid.mcp.footage_tools:beat_grid', 'footage_beat_signals': 'muvid.mcp.footage_tools:footage_beat_signals', 'footage_clear_beat_grid': 'muvid.mcp.footage_tools:footage_clear_beat_grid', 'footage_clear_offset': 'muvid.mcp.footage_tools:footage_clear_offset', 'footage_delete_edit': 'muvid.mcp.footage_tools:footage_delete_edit', 'footage_editor_document': 'muvid.mcp.footage_tools:footage_editor_document', 'footage_edits': 'muvid.mcp.footage_tools:footage_edits', 'footage_edl_from_annotations': 'muvid.mcp.footage_tools:footage_edl_from_annotations', 'footage_explain_edit': 'muvid.mcp.footage_tools:footage_explain_edit', 'footage_filmstrip': 'muvid.mcp.footage_tools:footage_filmstrip', 'footage_filmstrips': 'muvid.mcp.footage_tools:footage_filmstrips', 'footage_fit_to_beat': 'muvid.mcp.footage_tools:footage_fit_to_beat', 'footage_get_edit': 'muvid.mcp.footage_tools:footage_get_edit', 'footage_looks': 'muvid.mcp.footage_tools:footage_looks', 'footage_merge_cut': 'muvid.mcp.footage_tools:footage_merge_cut', 'footage_peaks': 'muvid.mcp.footage_tools:footage_peaks', 'footage_redo_edit': 'muvid.mcp.footage_tools:footage_redo_edit', 'footage_rename_edit': 'muvid.mcp.footage_tools:footage_rename_edit', 'footage_render': 'muvid.mcp.footage_tools:footage_render', 'footage_renders': 'muvid.mcp.footage_tools:footage_renders', 'footage_replace_edit': 'muvid.mcp.footage_tools:footage_replace_edit', 'footage_save_edit': 'muvid.mcp.footage_tools:footage_save_edit', 'footage_score_candidates': 'muvid.mcp.footage_tools:footage_score_candidates', 'footage_score_status': 'muvid.mcp.scoring_tools:footage_score_status', 'footage_scores': 'muvid.mcp.scoring_tools:footage_scores', 'footage_set_beat_grid': 'muvid.mcp.footage_tools:footage_set_beat_grid', 'footage_set_cut': 'muvid.mcp.footage_tools:footage_set_cut', 'footage_set_has_song': 'muvid.mcp.footage_tools:footage_set_has_song', 'footage_set_offset': 'muvid.mcp.footage_tools:footage_set_offset', 'footage_set_span': 'muvid.mcp.footage_tools:footage_set_span', 'footage_split_cut': 'muvid.mcp.footage_tools:footage_split_cut', 'footage_status': 'muvid.mcp.footage_tools:footage_status', 'footage_timeline': 'muvid.mcp.footage_tools:footage_timeline', 'footage_undo_edit': 'muvid.mcp.footage_tools:footage_undo_edit', 'list_archetypes': 'muvid.mcp.lyricvid_tools:list_archetypes', 'list_music_video_projects': 'muvid.mcp.footage_tools:list_music_video_projects', 'list_projects': 'muvid.mcp.tools:list_projects', 'list_strategies': 'muvid.mcp.footage_tools:list_strategies', 'list_subgenres': 'muvid.mcp.subgenre_tools:list_subgenres', 'list_visuals': 'muvid.mcp.tools:list_visuals', 'project_status': 'muvid.mcp.tools:project_status', 'propose_edit': 'muvid.mcp.footage_tools:propose_edit', 'propose_lyric_treatments': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments', 'propose_lyric_treatments_ai': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments_ai', 'remove_footage': 'muvid.mcp.footage_tools:remove_footage', 'render_lyric_video': 'muvid.mcp.lyricvid_tools:render_lyric_video', 'render_subgenre': 'muvid.mcp.subgenre_tools:render_subgenre', 'render_visualizer': 'muvid.mcp.tools:render_visualizer', 'score_footage': 'muvid.mcp.scoring_tools:score_footage', 'set_song': 'muvid.mcp.footage_tools:set_song', 'validate_lyric_treatment': 'muvid.mcp.lyricvid_tools:validate_lyric_treatment'}*
 
 Bare tool name → its `module:function` reference (tools live in three modules).
 
@@ -18112,7 +18238,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 04:37 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/92ec07915f8f94508c3f9a0cfdce98bcc9d52059"><code>92ec079</code></a> on branch <code>main</code>, for **muvid 0.0.108** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 04:46 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d4a75a494ba972f9aff847fbe6729a0d3c66de1b"><code>d4a75a4</code></a> on branch <code>main</code>, for **muvid 0.0.109** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -18121,9 +18247,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/92ec07915f8f94508c3f9a0cfdce98bcc9d52059"><code>92ec07915f8f94508c3f9a0cfdce98bcc9d52059</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d4a75a494ba972f9aff847fbe6729a0d3c66de1b"><code>d4a75a494ba972f9aff847fbe6729a0d3c66de1b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.108</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.109</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18132,9 +18258,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40449917635">40449917635</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40450796475">40450796475</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>b5680050404ef2baf4ed71b9bbf2ca29b4bdd9ea</code> (in the history of the built commit) |
+| Event commit | <code>0447476d1fdac4c1f1185519f0863e99e76b470e</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18159,13 +18285,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.108/">0.0.108</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.109/">0.0.109</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 92ec07915f8f94508c3f9a0cfdce98bcc9d52059
+git checkout d4a75a494ba972f9aff847fbe6729a0d3c66de1b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

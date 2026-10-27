@@ -190,19 +190,22 @@ constant, which says what it does and does not buy.</p></li>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.resolve_config" title="muvid.footage.select_score.resolve_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_config</span></code></a>(*[, preset, weights, config])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.composite_lane" title="muvid.footage.select_score.composite_lane"><code class="xref py py-obj docutils literal notranslate"><span class="pre">composite_lane</span></code></a>(tensor, weights, clip_id)</p></td>
+<td><p>One clip's weighted composite, frame by frame on the song grid — what the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy ranks it by — with <code class="docutils literal notranslate"><span class="pre">NaN</span></code> where no weighted metric was measured (muvid#184).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.resolve_config" title="muvid.footage.select_score.resolve_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">resolve_config</span></code></a>(*[, preset, weights, config])</p></td>
 <td><p>Build a <a class="reference internal" href="#muvid.footage.select_score.WeightedSelectionConfig" title="muvid.footage.select_score.WeightedSelectionConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">WeightedSelectionConfig</span></code></a> from an optional preset + overrides.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.run_weighted" title="muvid.footage.select_score.run_weighted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_weighted</span></code></a>(alignments, song_duration, context)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.run_weighted" title="muvid.footage.select_score.run_weighted"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_weighted</span></code></a>(alignments, song_duration, context)</p></td>
 <td><p>Run the DP and return <code class="docutils literal notranslate"><span class="pre">(edl,</span> <span class="pre">meta)</span></code>; <code class="docutils literal notranslate"><span class="pre">meta</span></code> carries any fallback + its cause.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.selection_margin" title="muvid.footage.select_score.selection_margin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">selection_margin</span></code></a>(alignments, tensor, *[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.selection_margin" title="muvid.footage.select_score.selection_margin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">selection_margin</span></code></a>(alignments, tensor, *[, ...])</p></td>
 <td><p>Per-frame <code class="docutils literal notranslate"><span class="pre">best_composite</span> <span class="pre">−</span> <span class="pre">2nd_best_composite</span></code> over clips COVERING that frame.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.selection_notice" title="muvid.footage.select_score.selection_notice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">selection_notice</span></code></a>(context)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.selection_notice" title="muvid.footage.select_score.selection_notice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">selection_notice</span></code></a>(context)</p></td>
 <td><p>What the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> DP did that the caller must be told, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.select_score.weighted_selection" title="muvid.footage.select_score.weighted_selection"><code class="xref py py-obj docutils literal notranslate"><span class="pre">weighted_selection</span></code></a>(alignments, song_duration, *)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.select_score.weighted_selection" title="muvid.footage.select_score.weighted_selection"><code class="xref py py-obj docutils literal notranslate"><span class="pre">weighted_selection</span></code></a>(alignments, song_duration, *)</p></td>
 <td><p>The <code class="docutils literal notranslate"><span class="pre">weighted</span></code> <a class="reference internal" href="muvid.footage.strategy.html#muvid.footage.strategy.SelectionStrategy" title="muvid.footage.strategy.SelectionStrategy"><code class="xref py py-data docutils literal notranslate"><span class="pre">SelectionStrategy</span></code></a> (score-driven DP).</p></td>
 </tr>
 </tbody>
@@ -300,6 +303,23 @@ materially worse (no forced cutaway to bad footage), yet comparable clips still 
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.select_score.composite_lane">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.select_score.</span></span><span class="sig-name descname"><span class="pre">composite_lane</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_id</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/select_score.html#composite_lane"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.select_score.composite_lane" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.select_score.composite_lane'">¶</a></dt>
+<dd><p>One clip’s weighted composite, frame by frame on the song grid — what the
+<code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy ranks it by — with <code class="docutils literal notranslate"><span class="pre">NaN</span></code> where no weighted metric was
+measured (muvid#184).</p>
+<p>It is the composite BEFORE the unvouched-clip demotion the DP adds on top
+(<a class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY" title="muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="xref py py-data docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a>). The DP itself reads 0 at an unmeasured frame (a
+cumulative sum cannot hold a NaN); a reader that drew that 0 as a real low score
+would be the muvid#19 defect one layer up, hence the NaN. All-NaN when the clip is
+not in the tensor or no metric carries weight.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.select_score.resolve_config">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.select_score.</span></span><span class="sig-name descname"><span class="pre">resolve_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">preset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/select_score.html#resolve_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.select_score.resolve_config" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.select_score.resolve_config'">¶</a></dt>
 <dd><p>Build a <a class="reference internal" href="#muvid.footage.select_score.WeightedSelectionConfig" title="muvid.footage.select_score.WeightedSelectionConfig"><code class="xref py py-class docutils literal notranslate"><span class="pre">WeightedSelectionConfig</span></code></a> from an optional preset + overrides.</p>
@@ -372,6 +392,7 @@ scores are absent so the MCP layer can say “run muvid_score_footage first”.<
 </li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY'" class="reference internal" href="#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY"><code class="docutils literal notranslate"><span class="pre">UNVOUCHED_REWARD_PENALTY</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.WeightedSelectionConfig'" class="reference internal" href="#muvid.footage.select_score.WeightedSelectionConfig"><code class="docutils literal notranslate"><span class="pre">WeightedSelectionConfig</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.select_score.composite_lane'" class="reference internal" href="#muvid.footage.select_score.composite_lane"><code class="docutils literal notranslate"><span class="pre">composite_lane()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.resolve_config'" class="reference internal" href="#muvid.footage.select_score.resolve_config"><code class="docutils literal notranslate"><span class="pre">resolve_config()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.run_weighted'" class="reference internal" href="#muvid.footage.select_score.run_weighted"><code class="docutils literal notranslate"><span class="pre">run_weighted()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.select_score.selection_margin'" class="reference internal" href="#muvid.footage.select_score.selection_margin"><code class="docutils literal notranslate"><span class="pre">selection_margin()</span></code></a></li>
@@ -390,7 +411,7 @@ scores are absent so the MCP layer can say “run muvid_score_footage first”.<
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=83be8e66"></script>
+<script src="../_static/documentation_options.js?v=27c60a7f"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -2,7 +2,7 @@
 
 # About this build
 
-This documentation was built on **2026-10-27 04:37 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/92ec07915f8f94508c3f9a0cfdce98bcc9d52059"><code>92ec079</code></a> on branch <code>main</code>, for **muvid 0.0.108** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 04:46 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d4a75a494ba972f9aff847fbe6729a0d3c66de1b"><code>d4a75a4</code></a> on branch <code>main</code>, for **muvid 0.0.109** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -11,9 +11,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/92ec07915f8f94508c3f9a0cfdce98bcc9d52059"><code>92ec07915f8f94508c3f9a0cfdce98bcc9d52059</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d4a75a494ba972f9aff847fbe6729a0d3c66de1b"><code>d4a75a494ba972f9aff847fbe6729a0d3c66de1b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.108</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.109</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -22,9 +22,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40449917635">40449917635</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40450796475">40450796475</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>b5680050404ef2baf4ed71b9bbf2ca29b4bdd9ea</code> (in the history of the built commit) |
+| Event commit | <code>0447476d1fdac4c1f1185519f0863e99e76b470e</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -49,13 +49,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.108/">0.0.108</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.109/">0.0.109</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 92ec07915f8f94508c3f9a0cfdce98bcc9d52059
+git checkout d4a75a494ba972f9aff847fbe6729a0d3c66de1b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

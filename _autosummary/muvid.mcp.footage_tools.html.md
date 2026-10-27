@@ -55,6 +55,7 @@ alignment, exactly as `set_song` does.
 | [`footage_renders`](#muvid.mcp.footage_tools.footage_renders)(project_id)                        | The finished videos, newest first: each one's `render_id`, speakable `ref`, the `edit_id` it was made from, its `label`, canvas, `ok`, the number of `warnings`, and `artifact_id` to play it by when the project is hosted.                                            |
 | [`footage_replace_edit`](#muvid.mcp.footage_tools.footage_replace_edit)(project_id, \*, edit_id, edl) | Replace a saved edit's whole cut list — the power tool for rewriting an edit at once.                                                                                                                                                                                   |
 | [`footage_save_edit`](#muvid.mcp.footage_tools.footage_save_edit)(project_id, \*, edl[, ...])      | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
+| [`footage_score_candidates`](#muvid.mcp.footage_tools.footage_score_candidates)(project_id, \*, ...)      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                            |
 | [`footage_set_beat_grid`](#muvid.mcp.footage_tools.footage_set_beat_grid)(project_id, \*[, ...])       | Tell it where the beats are, when the automatic estimate is wrong for this song.                                                                                                                                                                                        |
 | [`footage_set_cut`](#muvid.mcp.footage_tools.footage_set_cut)(project_id, \*, edit_id, index)    | Change one cut of a saved edit (`index` is its position in `footage_get_edit`'s edl).                                                                                                                                                                                   |
 | [`footage_set_has_song`](#muvid.mcp.footage_tools.footage_set_has_song)(project_id, \*, clip_id, ...) | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                    |
@@ -554,6 +555,27 @@ and refused with the reason if it does not hold. `edit_id` fixes the id (an
 existing one is refused — use `footage_replace_edit`). `span` (`[start_s, end_s]`)
 makes the edit cover only that part of the song — its render is that long, the song
 cut to it; default the whole song. Returns the saved edit.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.mcp.footage_tools.footage_score_candidates(project_id, , candidates, weights=None, preset='')
+
+How well each candidate stretch of a video scores — to choose between takes.
+
+`candidates` are `{clip_id, song_start, song_end}` spans on the song timeline
+(seconds), up to as many as an edit may have cuts. Each answer repeats its own span
+(match by span, never by position) with `composite` — the mean of the weighted
+blend of the scores over the frames where a weighted metric was measured, `null`
+when none was — `measured` (the fraction of the span’s frames that were), and
+`metrics`, each metric’s mean normalised score over its measured frames (`null`
+where it was never measured). Nothing measured is not a low score, so read
+`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
+counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+
+`weights` / `preset` as for `footage_scores`; the reply’s `weights` says which
+applied. Needs current scores (`score_footage` first). A span off the song, or a video the
+scores do not hold, is refused.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

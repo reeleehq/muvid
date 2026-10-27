@@ -32,6 +32,7 @@ muvid.footage.service
       filmstrip
       score
       scores
+      score_candidates
       strategies
       propose_edit
       save_edit

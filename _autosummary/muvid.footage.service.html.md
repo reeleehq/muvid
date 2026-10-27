@@ -67,6 +67,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`filmstrip`](#muvid.footage.service.filmstrip)(fp, \*, clip_id)                       | One video's filmstrip (the same record `filmstrips` gives per clip, with its `clip_id` and `fps`).                                                                                                                                                                      |
 | [`score`](#muvid.footage.service.score)(fp, \*[, hop_s, metrics, should_cancel])   | Look at the footage: score every placed video, on the song's own timeline — picture quality and how its movement sits on the beat — and save the curves.                                                                                                                |
 | [`scores`](#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, ...])          | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
+| [`score_candidates`](#muvid.footage.service.score_candidates)(fp, \*, candidates[, ...])      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                            |
 | [`strategies`](#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment).                                                                                                                      |
 | [`propose_edit`](#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                               |
 | [`save_edit`](#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
@@ -747,6 +748,27 @@ Slow (it decodes every clip), so hosts run it in the background. Needs a song an
 alignment. Every core metric is computed; weighting happens later, when cutting, so
 re-weighting never re-scores. The lip-sync tier is off unless the operator enabled
 it. Returns what was scored and what was skipped (and why).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.service.score_candidates(fp, , candidates, weights=None, preset='')
+
+How well each candidate stretch of a video scores — to choose between takes.
+
+`candidates` are `{clip_id, song_start, song_end}` spans on the song timeline
+(seconds), up to as many as an edit may have cuts. Each answer repeats its own span
+(match by span, never by position) with `composite` — the mean of the weighted
+blend of the scores over the frames where a weighted metric was measured, `null`
+when none was — `measured` (the fraction of the span’s frames that were), and
+`metrics`, each metric’s mean normalised score over its measured frames (`null`
+where it was never measured). Nothing measured is not a low score, so read
+`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
+counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+
+`weights` / `preset` as for `scores`; the reply’s `weights` says which
+applied. Needs current scores (`score` first). A span off the song, or a video the
+scores do not hold, is refused.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

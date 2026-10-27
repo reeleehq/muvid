@@ -34,6 +34,7 @@ muvid.mcp.footage\_tools
       footage_renders
       footage_replace_edit
       footage_save_edit
+      footage_score_candidates
       footage_set_beat_grid
       footage_set_cut
       footage_set_has_song

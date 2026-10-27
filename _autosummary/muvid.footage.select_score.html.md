@@ -45,12 +45,13 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](muvid
 
 ### Functions
 
-| [`resolve_config`](#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                         |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
-| [`run_weighted`](#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                 |
-| [`selection_margin`](#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                               |
-| [`selection_notice`](#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                           |
-| [`weighted_selection`](#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP). |
+| [`composite_lane`](#muvid.footage.select_score.composite_lane)(tensor, weights, clip_id)          | One clip's weighted composite, frame by frame on the song grid — what the `weighted` strategy ranks it by — with `NaN` where no weighted metric was measured (muvid#184).   |
+|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`resolve_config`](#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                                                       |
+| [`run_weighted`](#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                                               |
+| [`selection_margin`](#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                                                             |
+| [`selection_notice`](#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                                                         |
+| [`weighted_selection`](#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP).                               |
 
 ### Classes
 
@@ -135,6 +136,21 @@ second of overrun (in the same “reward-seconds” units as `lambda_switch`), r
 being forbidden. So a lone/best clip rolls past `l_max_s` when the only alternative is
 materially worse (no forced cutaway to bad footage), yet comparable clips still cut around
 `l_max_s` for variety. Segments are always different-clip (each = one shot).
+
+### muvid.footage.select_score.composite_lane(tensor, weights, clip_id)
+
+One clip’s weighted composite, frame by frame on the song grid — what the
+`weighted` strategy ranks it by — with `NaN` where no weighted metric was
+measured (muvid#184).
+
+It is the composite BEFORE the unvouched-clip demotion the DP adds on top
+([`UNVOUCHED_REWARD_PENALTY`](#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)). The DP itself reads 0 at an unmeasured frame (a
+cumulative sum cannot hold a NaN); a reader that drew that 0 as a real low score
+would be the muvid#19 defect one layer up, hence the NaN. All-NaN when the clip is
+not in the tensor or no metric carries weight.
+
+* **Return type:**
+  `ndarray`
 
 ### muvid.footage.select_score.resolve_config(, preset=None, weights=None, config=None)
 

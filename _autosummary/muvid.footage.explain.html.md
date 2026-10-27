@@ -58,7 +58,8 @@ The post-mortem of an edit: `{summary, times, cuts: [...]}`.
 id to `{name, kind ('video'|'still'), role}`; `alignments` the clip
 placements (for synced cuts); `envelope_of(clip_id)` a video’s picture signal
 ([`muvid.footage.music_cut.Envelope`](muvid.footage.music_cut.html.md#muvid.footage.music_cut.Envelope)) or `None`; `selection` how the
-edit was made (`pace`, `style`, `strategy`). `window` (song seconds)
+edit was made (`pace`, `style`, `strategy`, and `fallback` / `cause` when
+the `weighted` strategy fell back). `window` (song seconds)
 keeps only the cuts that overlap it; the summary is of the whole edit — or of
 `scope`, the part of the song a trimmed edit covers (its `span`), so the
 black outside it is not counted as shots.

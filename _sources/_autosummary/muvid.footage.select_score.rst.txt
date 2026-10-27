@@ -16,6 +16,7 @@ muvid.footage.select\_score
 
    .. autosummary::
    
+      composite_lane
       resolve_config
       run_weighted
       selection_margin
