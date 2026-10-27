@@ -42,6 +42,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 #: Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.
 _EPS = 1e-3
+#: The same, for a planner that must agree with the gate on which two moments are one:
+#: a planner comparing at a finer tolerance can emit a span the gate calls zero
+#: (muvid#210: a beat 60 us before a piece's end left a 60 us take-over).
+COINCIDENT_S = _EPS
 #: Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-``edl`` paths. The
 #: assembler runs one bounded ffmpeg per PART (memory O(1) in cut count), so this caps
 #: total WORK — N encoder invocations on a shared box — not a single command's inputs.

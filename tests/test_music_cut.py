@@ -167,8 +167,12 @@ def test_fill_spans_covers_the_song_with_free_cuts_inside_each_video():
         if not src.is_still:
             assert e.source_in + (e.song_end - e.song_start) <= src.duration_s + 1e-6
         else:
-            assert e.look and e.look_spec["name"] in music_cut.STILL_MOVES + ("punch_in",)
-    placements = [unplaced(s.clip_id, s.duration_s or STILL_DURATION_S) for s in _sources()]
+            assert e.look and e.look_spec["name"] in music_cut.STILL_MOVES + (
+                "punch_in",
+            )
+    placements = [
+        unplaced(s.clip_id, s.duration_s or STILL_DURATION_S) for s in _sources()
+    ]
     validate_edl(entries, placements, 40.0, canvas=(1080, 1920))  # the gate agrees
     assert cut.report["style"] == "beat_cut"  # 120 bpm
 
@@ -177,7 +181,9 @@ def test_fill_spans_fills_only_the_spans_it_is_given():
     entries = _fill(spans=[(4.0, 12.0), (20.0, 26.0)]).entries
     covered = sum(e.song_end - e.song_start for e in entries)
     assert covered == pytest.approx(14.0)
-    assert all(4.0 - 1e-6 <= e.song_start and e.song_end <= 26.0 + 1e-6 for e in entries)
+    assert all(
+        4.0 - 1e-6 <= e.song_start and e.song_end <= 26.0 + 1e-6 for e in entries
+    )
     assert not any(12.0 < e.song_start < 20.0 for e in entries)
 
 
@@ -206,7 +212,9 @@ def bath(tmp_path, monkeypatch):
         clip.write_bytes(cid.encode())
         service.add_clip(proj, path=str(clip), clip_id=cid, duration_s=dur)
     # what listening found on the real shoot: no song in either (support 0.03-0.33)
-    proj.save_alignments([_heard(cid, dur, support=0.2) for cid, dur in (("abbey", 12.0), ("dog", 6.0))])
+    proj.save_alignments(
+        [_heard(cid, dur, support=0.2) for cid, dur in (("abbey", 12.0), ("dog", 6.0))]
+    )
     return proj
 
 
@@ -214,22 +222,36 @@ def _heard(cid, dur, *, support, reliable=False, offset=3.0, margin=None):
     from muvid.footage.edl import FootageAlignment
 
     return FootageAlignment(
-        clip_id=cid, offset_s=offset, confidence=0.1, duration_s=dur,
-        coverage=(offset, offset + dur), overlaps=True, support=support,
-        reliable=reliable, window_s=3.0, hop_s=1.5,
+        clip_id=cid,
+        offset_s=offset,
+        confidence=0.1,
+        duration_s=dur,
+        coverage=(offset, offset + dur),
+        overlaps=True,
+        support=support,
+        reliable=reliable,
+        window_s=3.0,
+        hop_s=1.5,
         margin=margin if margin is not None else (-0.2 if not reliable else 0.3),
     )
 
 
 def test_a_project_nothing_could_be_synced_in_is_cut_to_the_music(bath):
-    assert service.footage_roles(bath) == {"abbey": "to_the_music", "dog": "to_the_music"}
+    assert service.footage_roles(bath) == {
+        "abbey": "to_the_music",
+        "dog": "to_the_music",
+    }
     out = service.propose_edit(bath)
     edl = out["edl"]
-    assert all(e["clip_id"] for e in edl), "no black: the whole song is cut to the music"
+    assert all(e["clip_id"] for e in edl), (
+        "no black: the whole song is cut to the music"
+    )
     assert all("source_in" in e for e in edl)
     assert out["music"]["n_cuts"] == len(edl)
     assert out["assemble_refusal"] is None
-    assert "cut to the music" in service.get_edit(bath, edit_id=out["edit_id"])["how_made"]
+    assert (
+        "cut to the music" in service.get_edit(bath, edit_id=out["edit_id"])["how_made"]
+    )
 
 
 def test_a_synced_clip_keeps_its_place_and_the_rest_is_cut_to_the_music(bath):
@@ -251,7 +273,9 @@ def test_set_has_song_overrides_the_listening(bath):
         e["clip_id"] == "abbey" and "source_in" not in e
         for e in service.propose_edit(bath, save=False)["edl"]
     )
-    assert service.set_has_song(bath, clip_id="abbey", has_song="auto")["role"] == "synced"
+    assert (
+        service.set_has_song(bath, clip_id="abbey", has_song="auto")["role"] == "synced"
+    )
     with pytest.raises(service.FootageError):
         service.set_has_song(bath, clip_id="abbey", has_song="maybe")
 
@@ -281,15 +305,38 @@ def test_photos_and_unsynced_videos_render_over_the_song(tmp_path, monkeypatch):
     proj = FootageWorkspace.for_email("u@x.com").create_project("e2e")
     song = tmp_path / "song.wav"
     # a click track at 120 bpm, so there is a beat to cut on
-    _ffmpeg("-f", "lavfi", "-i",
-            "aevalsrc='0.8*sin(2*PI*880*t)*lt(mod(t,0.5),0.03)':s=22050:d=8", str(song))
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "aevalsrc='0.8*sin(2*PI*880*t)*lt(mod(t,0.5),0.03)':s=22050:d=8",
+        str(song),
+    )
     clip = tmp_path / "walk.mp4"
-    _ffmpeg("-f", "lavfi", "-i", "testsrc=size=320x240:rate=25:duration=6",
-            "-f", "lavfi", "-i", "anoisesrc=d=6:a=0.3:seed=2", "-shortest", "-pix_fmt",
-            "yuv420p", str(clip))
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=320x240:rate=25:duration=6",
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=d=6:a=0.3:seed=2",
+        "-shortest",
+        "-pix_fmt",
+        "yuv420p",
+        str(clip),
+    )
     photo = tmp_path / "abbey.png"
-    _ffmpeg("-f", "lavfi", "-i", "testsrc=size=400x300:duration=1", "-frames:v", "1",
-            str(photo))
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=400x300:duration=1",
+        "-frames:v",
+        "1",
+        str(photo),
+    )
     service.set_song(proj, path=str(song))
     service.add_clip(proj, path=str(clip), filename="walk.mp4")
     added = service.add_clip(proj, path=str(photo), filename="abbey.png")
@@ -303,9 +350,23 @@ def test_photos_and_unsynced_videos_render_over_the_song(tmp_path, monkeypatch):
     meta = service.render(proj, edit_id=out["edit_id"])
     video = proj.root / "renders" / meta["render_id"] / "final.mp4"
     assert video.is_file()
-    probe = json.loads(subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json",
-         str(video)], capture_output=True, check=True, text=True).stdout)
+    probe = json.loads(
+        subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "json",
+                str(video),
+            ],
+            capture_output=True,
+            check=True,
+            text=True,
+        ).stdout
+    )
     assert float(probe["format"]["duration"]) == pytest.approx(8.0, abs=0.3)
 
 
@@ -324,7 +385,10 @@ def test_a_song_heard_but_not_placed_stays_synced_and_is_set_aside(bath):
     span is set aside (and filled from the footage that IS cut to the music). A short
     clip's vote (dog: 6 s, three windows) is too coarse to count as heard."""
     bath.save_alignments(
-        [_heard("abbey", 12.0, support=0.45, margin=0.1), _heard("dog", 6.0, support=0.5, margin=0.2)]
+        [
+            _heard("abbey", 12.0, support=0.45, margin=0.1),
+            _heard("dog", 6.0, support=0.5, margin=0.2),
+        ]
     )
     assert service.footage_roles(bath) == {"abbey": "synced", "dog": "to_the_music"}
     out = service.propose_edit(bath, save=False)
@@ -336,7 +400,11 @@ def test_a_song_heard_but_not_placed_stays_synced_and_is_set_aside(bath):
 def test_swapping_a_cut_onto_a_clip_cut_to_the_music_starts_it_at_its_start(bath):
     out = service.propose_edit(bath)
     edl = service.get_edit(bath, edit_id=out["edit_id"])["edl"]
-    i, e = next((i, e) for i, e in enumerate(edl) if e["clip_id"] == "abbey" and not e.get("transition"))
+    i, e = next(
+        (i, e)
+        for i, e in enumerate(edl)
+        if e["clip_id"] == "abbey" and not e.get("transition")
+    )
     reply = service.set_cut(bath, edit_id=out["edit_id"], index=i, clip_id="dog")
     swapped = reply["edl"][i]
     assert swapped["clip_id"] == "dog" and 0.0 <= swapped["source_in"] <= 1.0
@@ -353,11 +421,18 @@ def test_planned_cuts_always_pass_the_edit_gate(seed):
     r = random.Random(seed)
     d, bpm = r.uniform(2, 120), r.uniform(55, 150)
     srcs = [
-        FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=r.choice([r.uniform(0.6, 4), r.uniform(3, 40)]))
+        FreeSource(
+            f"v{i}",
+            f"/x/v{i}.mp4",
+            duration_s=r.choice([r.uniform(0.6, 4), r.uniform(3, 40)]),
+        )
         for i in range(r.randint(1, 6))
     ]
     if r.random() < 0.4:
-        srcs += [FreeSource(f"p{i}", f"/x/p{i}.jpg", kind="still") for i in range(r.randint(1, 3))]
+        srcs += [
+            FreeSource(f"p{i}", f"/x/p{i}.jpg", kind="still")
+            for i in range(r.randint(1, 3))
+        ]
     spans = [(0, d * 0.3), (d * 0.5, d * 0.8)] if r.random() < 0.3 else None
     an = _analysis(d, bpm)
     if r.random() < 0.5:  # the beat tracker went silent before the end (a quiet outro)
@@ -367,10 +442,15 @@ def test_planned_cuts_always_pass_the_edit_gate(seed):
         if len(keep) >= 4:
             an = replace(an, beats=keep, downbeats=keep[::4])
     cut = fill_spans(
-        "/x/s.wav", srcs, spans=spans, analysis=an,
+        "/x/s.wav",
+        srcs,
+        spans=spans,
+        analysis=an,
         archetype=r.choice(["auto", "beat_cut", "ballad_dissolve"]),
-        envelope_of=lambda s: None, anchor_of=lambda s: (0.5, 0.5),
-        size_of=lambda p: (1080, 1920), canvas=(1080, 1920),
+        envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1080, 1920),
+        canvas=(1080, 1920),
     )
     if not cut.entries:  # only a sub-second video: nothing can be shown, and it says so
         assert all((s.duration_s or 99) < 1.0 for s in srcs)
@@ -382,7 +462,9 @@ def test_planned_cuts_always_pass_the_edit_gate(seed):
     from muvid.footage.music_cut import extend_grid
 
     # (or a section boundary — the fixture's sections change at half the song)
-    beats = np.asarray(list(extend_grid(an, d)[0].beats) + [x.start for x in an.sections])
+    beats = np.asarray(
+        list(extend_grid(an, d)[0].beats) + [x.start for x in an.sections]
+    )
     for e in cut.entries:
         if e.transition is not None:
             start = e.song_start - e.transition.duration_s * TRANSITION_SPLIT
@@ -390,10 +472,18 @@ def test_planned_cuts_always_pass_the_edit_gate(seed):
 
 
 def test_a_dissolve_into_a_photo_passes_the_gate():
-    srcs = [FreeSource("p1", "/x/p1.jpg", kind="still"), FreeSource("p2", "/x/p2.jpg", kind="still")]
+    srcs = [
+        FreeSource("p1", "/x/p1.jpg", kind="still"),
+        FreeSource("p2", "/x/p2.jpg", kind="still"),
+    ]
     cut = fill_spans(
-        "/x/s.wav", srcs, analysis=_analysis(30.0, 70.0), envelope_of=lambda s: None,
-        anchor_of=lambda s: (0.5, 0.5), size_of=lambda p: (1080, 1920), canvas=(1080, 1920),
+        "/x/s.wav",
+        srcs,
+        analysis=_analysis(30.0, 70.0),
+        envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1080, 1920),
+        canvas=(1080, 1920),
     )
     assert cut.report["style"] == "ballad_dissolve"
     assert any(e.transition for e in cut.entries), "the slow song keeps its dissolves"
@@ -401,7 +491,9 @@ def test_a_dissolve_into_a_photo_passes_the_gate():
     validate_edl(cut.entries, places, 30.0, canvas=(1080, 1920))
 
 
-def test_a_heic_photo_is_refused_plainly_without_its_decoder(bath, tmp_path, monkeypatch):
+def test_a_heic_photo_is_refused_plainly_without_its_decoder(
+    bath, tmp_path, monkeypatch
+):
     import builtins
 
     real_import = builtins.__import__
@@ -560,7 +652,11 @@ def test_one_unreadable_clip_does_not_cost_the_others_their_lanes(bath_with_phot
     broken = _add_unreadable_clip(bath)
     doc = service.editor_document(bath)
     assert {t["name"] for t in doc["tiers"]} == {
-        "DECISION", "clip:abbey", "clip:dog", f"clip:{photo}", f"clip:{broken}",
+        "DECISION",
+        "clip:abbey",
+        "clip:dog",
+        f"clip:{photo}",
+        f"clip:{broken}",
     }
     assert repr(broken) in doc["decision_error"]
     # a hosted reply names files, never the server's paths
@@ -613,7 +709,9 @@ def test_no_video_cut_gives_up_its_edge_margin_to_a_blend_that_did_not_fit():
     from muvid.footage.edl import EDGE_S
 
     durs = [1.312, 2.968, 35.715, 3.529, 7.089]
-    srcs = [FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=d) for i, d in enumerate(durs)]
+    srcs = [
+        FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=d) for i, d in enumerate(durs)
+    ]
     entries = fill_spans(
         "/x/s.wav",
         srcs,
@@ -638,17 +736,25 @@ def test_no_video_cut_gives_up_its_edge_margin_to_a_blend_that_did_not_fit():
     "song_s,bpm,durs",
     [
         # a sliver after the re-cap (48 ms, 67 ms) and a jump cut onto the same in-point
-        (70.55114488643417, 62.89840597153406, [6.9315942320841195, 1.3870359966812091, 1.6578400311845474]),
+        (
+            70.55114488643417,
+            62.89840597153406,
+            [6.9315942320841195, 1.3870359966812091, 1.6578400311845474],
+        ),
         # coverage lost: the re-capped room is under a piece, and nothing can take over
         (19.953261375508443, 71.53734647717391, [1.2422092751826308]),
     ],
 )
-def test_the_re_cap_trades_a_blend_never_coverage_and_makes_no_sliver(song_s, bpm, durs):
+def test_the_re_cap_trades_a_blend_never_coverage_and_makes_no_sliver(
+    song_s, bpm, durs
+):
     """The #203 re-review's two plans: re-capping the end at `holds` must leave a real
     piece after it (>= MIN_PIECE_S) or keep the whole piece and drop the next blend."""
     from muvid.footage.music_cut import MIN_PIECE_S
 
-    srcs = [FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=d) for i, d in enumerate(durs)]
+    srcs = [
+        FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=d) for i, d in enumerate(durs)
+    ]
     kw = dict(
         analysis=_analysis(song_s, bpm),
         envelope_of=lambda s: None,
@@ -662,3 +768,63 @@ def test_the_re_cap_trades_a_blend_never_coverage_and_makes_no_sliver(song_s, bp
     assert min(lengths) >= MIN_PIECE_S - 1e-6, sorted(lengths)[:3]
     if len(durs) == 1:  # main covered all but 9.56 s of this song
         assert cut.report["uncovered_s"] <= 9.56 + 1e-6
+
+
+def test_a_beat_a_hair_before_the_piece_end_leaves_no_sliver_muvid_210():
+    """muvid#210 item 4: the cutter compared moments at 1 us while the gate calls
+    anything under ``COINCIDENT_S`` (1 ms) zero, so a beat 60 us before a piece's end
+    left a 60 us take-over — "EDL entry 15 has a non-positive span". The plan is the
+    census's (ballad_dissolve, 70.745 s at 106.014 bpm, four short videos)."""
+    from muvid.footage.edl import COINCIDENT_S, fill_gaps, unplaced, validate_edl
+
+    d, bpm = 70.74533549887813, 106.01423596998906
+    durs = [
+        3.356456034271889,
+        0.7314478274870594,
+        3.5525565513677266,
+        3.780584871995159,
+    ]
+    srcs = [
+        FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=x) for i, x in enumerate(durs)
+    ]
+    cut = fill_spans(
+        "/x/s.wav",
+        srcs,
+        analysis=_analysis(d, bpm),
+        envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1080, 1920),
+        canvas=(1080, 1920),
+        archetype="ballad_dissolve",
+    )
+    assert all(e.song_end - e.song_start > COINCIDENT_S for e in cut.entries)
+    places = [unplaced(s.clip_id, s.duration_s) for s in srcs]
+    validate_edl(fill_gaps(cut.entries, d), places, d, canvas=(1080, 1920))
+
+
+def test_take_over_counts_the_blends_the_piece_carries_muvid_210():
+    """muvid#210 item 3: a clip that holds the rest of a piece only WITHOUT its blends
+    is not picked, to be found short and replaced on the next pass."""
+    from muvid.footage.edl import Transition, longest_span
+
+    fade = Transition(duration_s=1.0, curve="fade")
+    need = 2.0
+    edge = music_cut.EDGE_S
+    # `bare` holds `need` with no blend and not with the next one; `roomy` holds both
+    bare_s = need + 2 * edge + 0.1
+    assert longest_span(bare_s, edge_s=edge) >= need
+    assert longest_span(bare_s, next_transition=fade, edge_s=edge) < need
+    cur = FreeSource("cur", "/x/cur.mp4", duration_s=1.0)
+    bare = FreeSource("bare", "/x/bare.mp4", duration_s=bare_s)
+    roomy = FreeSource("roomy", "/x/roomy.mp4", duration_s=need + 2 * edge + 2.0)
+    uses = {"roomy": 5}  # least-used order alone would pick `bare`
+    picked = music_cut._take_over(
+        [cur, bare, roomy], cur, need=need, avoid=set(), uses=uses, next_transition=fade
+    )
+    assert picked.clip_id == "roomy"
+    assert (
+        music_cut._take_over(
+            [cur, bare, roomy], cur, need=need, avoid=set(), uses=uses
+        ).clip_id
+        == "bare"
+    )

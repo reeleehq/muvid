@@ -871,7 +871,7 @@ def _cuts_for_piece(
 ) -> list:
     """One planned piece -> one or more free cuts (more when its video is shorter than
     the piece: the rest goes to the longest other source)."""
-    from muvid.footage.edl import EdlEntry, Transition, longest_span
+    from muvid.footage.edl import COINCIDENT_S, EdlEntry, Transition, longest_span
 
     def fade_of(seconds):
         return Transition(duration_s=seconds, curve="fade") if seconds > 0 else None
@@ -883,7 +883,7 @@ def _cuts_for_piece(
     avoid = {sources[q["media"]].clip_id for q in (p.get("prev"), p.get("next")) if q}
     fade = p["fade"] if not p["first_in_span"] else 0.0
     steps, max_steps = 0, int((end - start) / MIN_PIECE_S) + 4
-    while end - start > 1e-6 and steps < max_steps:
+    while end - start > COINCIDENT_S and steps < max_steps:
         steps += 1
         no_trail = False
         length = end - start
@@ -906,7 +906,7 @@ def _cuts_for_piece(
             # coverage is never what is traded (the #203 review).
             cap = longest_span(src.duration_s or 0.0, transition=own, edge_s=EDGE_S)
             cut_at = _last_beat_before(beats, start + cap, after=start + MIN_PIECE_S)
-            if cut_at is not None and cut_at >= end - 1e-6:
+            if cut_at is not None and cut_at >= end - COINCIDENT_S:
                 cut_at = _last_beat_before(
                     beats,
                     min(start + holds, end - MIN_PIECE_S),
@@ -915,7 +915,15 @@ def _cuts_for_piece(
                 if cut_at is None:
                     cut_at, no_trail = end, True
             if cut_at is None or cap < MIN_PIECE_S:
-                nxt = _take_over(sources, src, need=length, avoid=avoid, uses=uses)
+                nxt = _take_over(
+                    sources,
+                    src,
+                    need=length,
+                    avoid=avoid,
+                    uses=uses,
+                    transition=own,
+                    next_transition=fade_of(p.get("next_fade", 0.0)),
+                )
                 if nxt.clip_id == src.clip_id:
                     break  # nothing else to show: the rest stays uncovered (reported)
                 avoid.add(src.clip_id)
@@ -924,9 +932,11 @@ def _cuts_for_piece(
             piece_end = min(cut_at, end)
         else:
             piece_end = end
-        trail = (
-            p.get("next_fade", 0.0) if piece_end >= end - 1e-6 and not no_trail else 0.0
-        )
+        if end - piece_end <= COINCIDENT_S:
+            piece_end = (
+                end  # one moment to the gate: no take-over of a span it calls zero
+            )
+        trail = p.get("next_fade", 0.0) if piece_end == end and not no_trail else 0.0
         entry = _one_cut(
             src,
             start,
@@ -955,9 +965,17 @@ def _cuts_for_piece(
             entry = _replace(entry, crop=crop)
         out.append(entry)
         start, fade = piece_end, 0.0
-        if end - start > 1e-6:
+        if end - start > COINCIDENT_S:
             avoid.add(src.clip_id)
-            src = _take_over(sources, src, need=end - start, avoid=avoid, uses=uses)
+            # the take-over starts on a hard cut and may end carrying the next blend
+            src = _take_over(
+                sources,
+                src,
+                need=end - start,
+                avoid=avoid,
+                uses=uses,
+                next_transition=fade_of(p.get("next_fade", 0.0)),
+            )
     return out
 
 
@@ -968,11 +986,25 @@ def _last_beat_before(beats, t: float, *, after: float) -> Optional[float]:
     return t if t >= after else None
 
 
-def _take_over(sources, current, *, need: float, avoid: set, uses: Mapping[str, int]):
+def _take_over(
+    sources,
+    current,
+    *,
+    need: float,
+    avoid: set,
+    uses: Mapping[str, int],
+    transition=None,
+    next_transition=None,
+):
     """A source to take over the rest of a piece: one that can hold ``need`` seconds (a
     still always can) — preferably not a picture either side, the least used first —
     and only when nothing can hold it, the longest of the rest. ``current`` back means
-    there is nothing else at all."""
+    there is nothing else at all.
+
+    "Hold" counts the blends the piece carries — ``transition`` in, ``next_transition``
+    out — by the same rule :func:`_cuts_for_piece` then applies (``longest_span``), so a
+    clip that holds ``need`` only without its blends is not picked just to be found
+    short and replaced on the next pass (muvid#210)."""
     others = [s for s in sources if s.clip_id != current.clip_id]
     if not others:
         return current
@@ -980,7 +1012,16 @@ def _take_over(sources, current, *, need: float, avoid: set, uses: Mapping[str, 
     from muvid.footage.edl import longest_span
 
     def holds(s):
-        return s.is_still or longest_span(s.duration_s or 0.0, edge_s=EDGE_S) >= need
+        return (
+            s.is_still
+            or longest_span(
+                s.duration_s or 0.0,
+                transition=transition,
+                next_transition=next_transition,
+                edge_s=EDGE_S,
+            )
+            >= need
+        )
 
     able = [s for s in others if holds(s)]
     pool = [s for s in able if s.clip_id not in avoid] or able
