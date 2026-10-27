@@ -313,14 +313,17 @@ def _timing_overrides_arg(value: str) -> dict:
     """``--timing-overrides``: a JSON file or inline JSON. Empty means none.
 
     The JSON is either a song spec, whose ``timing_overrides`` key holds the
-    mapping (absent or null: none recorded), or the mapping itself — read as
-    one as soon as any key looks like a line index or any value is an
-    override, or when EVERY entry is a string value under a key containing a
-    digit (a typo such as ``{"x1": "fien"}``), so a typo in it is refused by
-    the check rather than read as "a spec with none" and dropped with the
-    valid entries beside it. A spec with any other field (``title``...) stays
-    a spec, whatever digits its other keys hold. Not detectable, so still read
-    as a spec: a typo with no digit in its key and no valid value.
+    mapping (null: none recorded), or the mapping itself — read as one as soon as
+    any key looks like a line index or any value is an override, or when EVERY
+    entry is a string value under a key containing a digit (a typo such as
+    ``{"x1": "fien"}``), so a typo in it is refused by the check rather than
+    dropped with the valid entries beside it. ``{}`` is an empty mapping.
+
+    Anything else is REFUSED (muvid#162): with no song-spec schema to check field
+    names against, a JSON without the key cannot be told from a misspelt one —
+    ``{"title": "x", "timing_override": {...}}``, or ``{"x": "fien"}`` — and reading
+    either as "none recorded" applied nothing in silence. The flag is opt-in, so a
+    spec that records none says so with ``"timing_overrides": null``.
     """
     from pathlib import Path
 
@@ -355,7 +358,14 @@ def _timing_overrides_arg(value: str) -> dict:
             )
         )
     )
-    return obj if looks_like_overrides else {}  # a song spec with none recorded
+    if looks_like_overrides or not obj:
+        return obj
+    raise SystemExit(
+        "--timing-overrides: this JSON is neither a timing-overrides mapping "
+        '({"<line index>": "fine"}) nor a song spec with a "timing_overrides" key '
+        f"(its keys: {', '.join(map(str, obj))}) — check that key's spelling, or, "
+        'to record none, give the spec "timing_overrides": null'
+    )
 
 
 _FUNCS = [
