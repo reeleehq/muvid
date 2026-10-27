@@ -20,11 +20,13 @@ source is read here first (:func:`read_source_colour`):
   (:func:`is_hd`) is therefore converted FROM BT.709; an SD one keeps swscale's
   BT.601, which is the SD convention.
 - **An HDR source** (HLG or PQ transfer — iPhone footage records HLG by default).
-  Only the YCbCr matrix and range are converted; BT.2020 primaries and an HDR
-  transfer are not, so the delivered SDR picture looks washed out. Before muvid#195
-  the part kept its HDR tags, which an HDR-aware player honoured; now it is tagged
-  BT.709. That is not fixed here (tone mapping, muvid#201), so it is REPORTED: the
-  assembler sends a finding naming each HDR clip.
+  Converting only the YCbCr matrix and range leaves BT.2020 primaries and an HDR
+  transfer behind, so the delivered SDR picture is washed out (measured: 10.0 dB
+  against the SDR original). So it is TONE MAPPED (muvid#201, :func:`tonemap_chain`):
+  to linear light with :data:`HDR_REFERENCE_WHITE_NITS` as SDR white, to BT.709
+  primaries, :data:`TONEMAP` with :data:`TONEMAP_PARAM`, then BT.709 limited — 24.7 dB
+  on the same clip. A build without ``zscale`` / ``tonemap`` cannot, and the assembler
+  then reports each HDR clip it delivers washed out.
 
 Import-light (stdlib only at module top): the look compiler imports the constants.
 """
@@ -59,6 +61,42 @@ SD_MAX_HEIGHT = 576
 
 #: ffprobe's names for the transfers that make a source HDR (HLG, PQ).
 HDR_TRANSFERS = frozenset({"arib-std-b67", "smpte2084"})
+
+#: The HDR luminance (nits) that becomes SDR white: BT.2408's reference white, where an
+#: HLG camera puts diffuse white.
+HDR_REFERENCE_WHITE_NITS = 203
+#: The ``tonemap`` curve for the highlights above SDR white. ``mobius`` is the identity
+#: up to :data:`TONEMAP_PARAM` and rolls off smoothly above it; measured on an HLG clip
+#: of an SDR original, decoded as BT.709: ``clip`` 25.2 dB, ``mobius`` 0.85 24.7,
+#: ``mobius`` 0.7 23.1, ``reinhard`` 15.8, ``hable`` 11.3 — ``clip`` scores best only
+#: because that clip has no highlight above white to blow out.
+TONEMAP = "mobius"
+TONEMAP_PARAM = 0.85
+#: The filters :func:`tonemap_chain` needs (``zscale`` is libzimg, WTFPL).
+TONEMAP_FILTERS = ("zscale", "tonemap")
+
+
+def tonemap_chain() -> str:
+    """HDR -> the SDR delivery colour, for a frame already at the canvas size (float
+    frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0.
+
+    >>> tonemap_chain().split(",")[0]
+    'zscale=t=linear:npl=203'
+    """
+    d = DELIVERY_COLOR_SPACE
+    return (
+        f"zscale=t=linear:npl={HDR_REFERENCE_WHITE_NITS},format=gbrpf32le,"
+        f"zscale=p={d},tonemap={TONEMAP}:param={TONEMAP_PARAM}:desat=0,"
+        f"zscale=t={d}:m={d}:r={DELIVERY_COLOR_RANGE},format=yuv420p"
+    )
+
+
+def can_tonemap() -> bool:
+    """Whether this ffmpeg has the filters :func:`tonemap_chain` needs."""
+    from muvid.visualize.ffmpeg import has_filter
+
+    return all(has_filter(f) for f in TONEMAP_FILTERS)
+
 
 _UNTAGGED = frozenset({"", "unknown", "unspecified"})
 
@@ -145,6 +183,11 @@ __all__ = [
     "SD_MAX_HEIGHT",
     "HDR_TRANSFERS",
     "SourceColour",
+    "TONEMAP",
+    "TONEMAP_PARAM",
+    "HDR_REFERENCE_WHITE_NITS",
+    "can_tonemap",
+    "tonemap_chain",
     "read_source_colour",
     "is_hd",
     "source_colour",

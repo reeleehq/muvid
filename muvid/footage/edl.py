@@ -897,6 +897,9 @@ class AssemblyCut:
     #: cannot be trusted (an untagged HD clip — :mod:`muvid.footage.colour`).
     #: ``None`` lets ``scale`` read the frame's tag.
     source_matrix: "str | None" = None
+    #: NOT from the EDL: whether the assembler tone-maps this cut's source (an HDR one,
+    #: on a build that can — :func:`muvid.footage.colour.tonemap_chain`, muvid#201).
+    source_tonemap: bool = False
 
     @property
     def duration(self) -> float:
