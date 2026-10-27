@@ -26,9 +26,9 @@ for an ``available`` genre (a wiring bug — see thorwhalen/muvid#3 review).
 
 from __future__ import annotations
 
-# `register_genre_project_factory` (nw >= 0.0.15) doubles as the nw version guard: on a
-# too-old nw this import fails loudly rather than at first create. muvid pins the floor
-# in its [mcp] extra; muvid CORE never imports this module, so muvid stays nw-free.
+# A too-old nw fails loudly at import rather than at first create: a missing name here,
+# a missing keyword in `genre_music_video` (through `nw.require_fields`). muvid pins the
+# floor in its [mcp] extra; muvid CORE never imports this module, so muvid stays nw-free.
 from nw import Genre, Template, register_genre, register_genre_project_factory
 
 # Registering the footage-aligned `music_video` genre too, so a host's single

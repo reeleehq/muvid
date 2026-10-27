@@ -142,3 +142,30 @@ except Exception:
     ).stdout
     assert "refused:" in out and "invalidates" in out and "'mcp' extra" in out, out
     assert out.strip().endswith("absent"), out
+
+
+def test_an_nw_without_require_fields_is_refused_with_the_remedy():
+    """muvid#265: ``nw.require_fields`` (nw#164) is newer than some nw a host carries, so
+    its absence refuses naming muvid's extra rather than as a bare ``cannot import
+    name`` — and before anything is registered."""
+    import subprocess
+    import sys
+
+    code = """
+import nw
+del nw.require_fields
+try:
+    import muvid.genre_music_video
+except ImportError as exc:
+    print("refused:", exc)
+try:
+    nw.get_genre("music_video")
+    print("registered")
+except Exception:
+    print("absent")
+"""
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    ).stdout
+    assert "refused:" in out and "'mcp' extra" in out, out
+    assert out.strip().endswith("absent"), out
