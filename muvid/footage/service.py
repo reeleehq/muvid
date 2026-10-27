@@ -2729,7 +2729,7 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     rather than by the gate on the next save (muvid#181). The bounds are
     :func:`muvid.footage.edl.in_point_bounds`', the same ones the music cutter picks
     within (muvid#192)."""
-    from muvid.footage.edl import EDGE_S, blend_reads, in_point_bounds
+    from muvid.footage.edl import EDGE_S, blend_reads, in_point_bounds, still_in_point
 
     if not clip_id:
         return None
@@ -2741,9 +2741,11 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     aligns = {a.clip_id: a for a in fp.load_alignments()}
     if _role_of(row, aligns.get(clip_id)) == SYNCED:
         return None
-    lead = e.transition.duration_s if e.transition is not None else 0.0
     if row.get("kind") == STILL_KIND:
-        return round(lead, 4)
+        try:
+            return round(still_in_point(e), 4)
+        except ValueError as exc:
+            raise FootageError(str(exc)) from exc
     following_t = following.transition if following is not None else None
     duration = _clip_duration(fp, clip_id)
     span = e.song_end - e.song_start

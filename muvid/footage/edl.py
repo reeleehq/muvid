@@ -2903,6 +2903,49 @@ def in_point_bounds(
     return lo + edge, max(lo + edge, hi - edge)
 
 
+def still_in_point(cut: "EdlEntry") -> float:
+    """Where a free cut on a STILL starts: the lowest ``source_in`` the gate accepts —
+    the blend's lead — the same rule as a video's in-point minus the edge margin a still
+    does not need (it has no thumb on the button). muvid#203.
+
+    >>> still_in_point(EdlEntry(0.0, 2.0, "p", transition=Transition(1.0, "fade")))
+    0.5
+    """
+    bounds = in_point_bounds(cut, clip_duration_s=STILL_DURATION_S)
+    if bounds is None:
+        raise ValueError(
+            f"a cut on a still may last at most {STILL_DURATION_S:g} s of picture, "
+            f"got {(cut.song_end - cut.song_start) * getattr(cut, 'rate', 1.0):g} s"
+        )
+    return bounds[0]
+
+
+def longest_span(
+    clip_duration_s: float,
+    *,
+    rate: float = 1.0,
+    transition: "Transition | None" = None,
+    next_transition: "Transition | None" = None,
+    edge_s: float = 0.0,
+) -> float:
+    """The longest span (song seconds) a free cut can take from a clip of
+    ``clip_duration_s`` seconds with these blends and ``edge_s`` kept at BOTH ends — the
+    question "can this clip hold this piece" asked in :func:`in_point_bounds`' own terms
+    (muvid#203), so a planner deciding to split a piece and the in-point it then picks
+    cannot disagree. ``0.0`` when nothing fits. Slip is left out: it moves where a cut
+    reads, not how much it can read, and no planner sets it.
+
+    >>> t = Transition(duration_s=1.0, curve="fade")
+    >>> longest_span(10.0, transition=t, next_transition=t, edge_s=0.25)
+    8.5
+    >>> cut = EdlEntry(0.0, 8.5, "c", transition=t)
+    >>> in_point_bounds(cut, clip_duration_s=10.0, next_transition=t, edge_s=0.25)
+    (0.75, 0.75)
+    """
+    lead, trail = blend_reads(transition, next_transition, rate=rate)
+    return max(0.0, (clip_duration_s - lead - trail - 2 * edge_s) / rate)
+
+
 def _validate_transition(i, e, prev, by_id) -> None:
     """The four things a transition has to satisfy. Raises ``ValueError``.
 

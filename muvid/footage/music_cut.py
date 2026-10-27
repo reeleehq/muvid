@@ -804,13 +804,13 @@ def _fades_start_on_the_beat(pieces: list[dict]) -> None:
     62 cuts were fades centred on their beat, so the picture began changing a third
     of a second early — heard as "slightly off the beat"). In place; a piece the move
     would leave shorter than :data:`MIN_PIECE_S` keeps a hard cut instead."""
-    from muvid.footage.edl import TRANSITION_SPLIT
+    from muvid.footage.edl import Transition, blend_lead
 
     for prev, p in zip(pieces, pieces[1:]):
         fade = p.get("fade") or 0.0
         if fade <= 0 or p["first_in_span"] or abs(prev["end"] - p["start"]) > 1e-6:
             continue
-        lead = fade * TRANSITION_SPLIT
+        lead = blend_lead(Transition(duration_s=fade, curve="fade"))
         if p["end"] - (p["start"] + lead) < MIN_PIECE_S:
             p["fade"] = 0.0
             continue
@@ -871,7 +871,10 @@ def _cuts_for_piece(
 ) -> list:
     """One planned piece -> one or more free cuts (more when its video is shorter than
     the piece: the rest goes to the longest other source)."""
-    from muvid.footage.edl import EdlEntry, Transition
+    from muvid.footage.edl import EdlEntry, Transition, longest_span
+
+    def fade_of(seconds):
+        return Transition(duration_s=seconds, curve="fade") if seconds > 0 else None
 
     out = []
     start, end = p["start"], p["end"]
@@ -882,12 +885,35 @@ def _cuts_for_piece(
     steps, max_steps = 0, int((end - start) / MIN_PIECE_S) + 4
     while end - start > 1e-6 and steps < max_steps:
         steps += 1
+        no_trail = False
         length = end - start
-        need = length + 2 * EDGE_S + fade + p.get("next_fade", 0.0)
-        if not src.is_still and (src.duration_s or 0.0) < need:
-            # The video cannot hold the whole piece: show what it has, ending on a beat.
-            cap = max(0.0, (src.duration_s or 0.0) - 2 * EDGE_S - fade)
+        own = fade_of(fade)
+        holds = longest_span(
+            src.duration_s or 0.0,
+            transition=own,
+            next_transition=fade_of(p.get("next_fade", 0.0)),
+            edge_s=EDGE_S,
+        )
+        if not src.is_still and holds < length - 1e-6:
+            # The video cannot hold the whole piece: show what it has, ending on a beat
+            # before the piece's end, so a take-over continues it with a hard cut and
+            # this cut carries no next blend. Ending ON the piece's end would carry it
+            # — which `holds` just said does not fit — so that end is capped by `holds`,
+            # and no earlier than leaves a real piece after it. Where no such cut point
+            # exists the whole piece stays, without reserving the next blend's trail:
+            # `_feasible_blends` then turns that blend into a hard cut if the gate
+            # refuses it, and where it still fits the edge margin gives way instead —
+            # coverage is never what is traded (the #203 review).
+            cap = longest_span(src.duration_s or 0.0, transition=own, edge_s=EDGE_S)
             cut_at = _last_beat_before(beats, start + cap, after=start + MIN_PIECE_S)
+            if cut_at is not None and cut_at >= end - 1e-6:
+                cut_at = _last_beat_before(
+                    beats,
+                    min(start + holds, end - MIN_PIECE_S),
+                    after=start + MIN_PIECE_S,
+                )
+                if cut_at is None:
+                    cut_at, no_trail = end, True
             if cut_at is None or cap < MIN_PIECE_S:
                 nxt = _take_over(sources, src, need=length, avoid=avoid, uses=uses)
                 if nxt.clip_id == src.clip_id:
@@ -898,7 +924,9 @@ def _cuts_for_piece(
             piece_end = min(cut_at, end)
         else:
             piece_end = end
-        trail = p.get("next_fade", 0.0) if piece_end >= end - 1e-6 else 0.0
+        trail = (
+            p.get("next_fade", 0.0) if piece_end >= end - 1e-6 and not no_trail else 0.0
+        )
         entry = _one_cut(
             src,
             start,
@@ -949,8 +977,10 @@ def _take_over(sources, current, *, need: float, avoid: set, uses: Mapping[str, 
     if not others:
         return current
 
+    from muvid.footage.edl import longest_span
+
     def holds(s):
-        return s.is_still or (s.duration_s or 0.0) >= need + 2 * EDGE_S
+        return s.is_still or longest_span(s.duration_s or 0.0, edge_s=EDGE_S) >= need
 
     able = [s for s in others if holds(s)]
     pool = [s for s in able if s.clip_id not in avoid] or able
@@ -987,6 +1017,7 @@ def _one_cut(
 ):
     from dataclasses import replace
 
+    from muvid.footage.edl import still_in_point
     from muvid.footage.named_looks import compile_named_look, resolve_named_look
 
     length = end - start
@@ -1015,9 +1046,9 @@ def _one_cut(
             look=look,
             look_time_varying=bool(getattr(look, "time_varying", True)),
             look_spec=resolved,
-            # a blend reads its lead BEFORE the cut's in-point; a still has all the
-            # time it wants, so it starts that far in
-            source_in=round(fade, 4),
+            # a blend reads its lead BEFORE the cut's in-point: the gate's own lower
+            # bound (a still has no thumb on the button, so no edge)
+            source_in=round(still_in_point(draft), 4),
         )
     inner = [float(b - start) for b in beats if start < b < end]
     clip_duration = float(src.duration_s or length)
