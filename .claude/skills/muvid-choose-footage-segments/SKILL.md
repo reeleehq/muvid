@@ -331,4 +331,6 @@ What to know (the list is unnumbered on purpose — the count was already wrong)
   recorded `source: "declared"`, returned by `beat_grid` and used by the `weighted` snap, the
   cut-to-the-music planner, `explain_edit` and `fit_to_beat`, never overwritten by an estimate (`clear_beat_grid`
   forgets it; a song change makes it not apply). The importer takes a manifest `beat_grid`.
-  Footage scores always keep the ESTIMATOR's beat features (muvid#123).
+  Footage scores are measured on the declared grid too (muvid#187): declaring or clearing
+  one makes earlier scores stale (`scores_stale: true`) until `score` runs again;
+  `motion_onset_xcorr` keeps the estimator's onset envelope, which a grid does not change.

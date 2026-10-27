@@ -1301,9 +1301,9 @@ def set_beat_grid(
 
     It is recorded as ``source: "declared"`` and returned by ``beat_grid`` from then on;
     re-estimating never replaces it (``clear_beat_grid`` forgets it). The cut-to-the-music
-    planner, ``explain_edit``, ``fit_to_beat`` and the ``weighted`` strategy's beat snap use
-    it. **Footage scores keep the estimate:** their beat features (``motion_beat_*``) are
-    measured on the estimator's grid, also in a run made after this. A grid belongs to the
+    planner, ``explain_edit``, ``fit_to_beat``, the ``weighted`` strategy's beat snap and
+    footage scoring use it: scores made before it are stale until ``score`` runs again (and
+    current again if the grid is cleared) — ``scores_stale: true`` says so. A grid belongs to the
     song it was set for: with another song set it does not apply (and comes back if that
     song is set again). Returns the grid like ``beat_grid`` does, plus ``changed``.
     """
@@ -1332,7 +1332,7 @@ def set_beat_grid(
     changed = before is None or any(before.get(k) != v for k, v in record.items())
     if changed:
         _write_declared(fp, {**record, "declared_at": time.time()})
-    return {**beat_grid(fp), "changed": changed}
+    return {**beat_grid(fp), "changed": changed, **_stale_flag(fp)}
 
 
 def _write_declared(fp, record: dict) -> None:
@@ -1361,7 +1361,7 @@ def clear_beat_grid(fp) -> dict:
     if not path.exists():
         raise FootageError("no beat grid was set by hand — nothing to forget")
     path.unlink(missing_ok=True)
-    return {"cleared": True}
+    return {"cleared": True, **_stale_flag(fp)}
 
 
 def _bars(beats: list, record: dict) -> dict:
@@ -1427,6 +1427,10 @@ def _beat_grid_from_scores(fp, song_hash: str) -> Optional[dict]:
 
     manifest = load_manifest(fp.root)
     if not manifest or manifest.get("song_hash") != song_hash:
+        return None
+    if manifest.get("beat_fingerprint"):
+        # measured on a DECLARED grid (muvid#187): served as the estimate, it would bring
+        # a forgotten declaration back under another name
         return None
     beats = manifest.get("beats")
     if not isinstance(beats, dict) or not isinstance(beats.get("beat_times"), list):
@@ -1538,7 +1542,85 @@ def run_scoring(
         enable_lipsync=enable_lipsync,
         progress_cb=progress_cb,
         should_cancel=should_cancel,
+        beat_source=_master_beats,
     )
+
+
+def _master_beats(fp):
+    """THE beat grid scoring measures on (muvid#187), read once with its name: the
+    estimator's analysis of the song, with a declared grid's beats, downbeats and tempo
+    in place of the estimated ones.
+
+    The onset envelope stays the estimator's, deliberately: it is a measurement of where
+    the song has onsets, which a person declaring where the BEATS are does not correct. So
+    ``motion_beat_bas`` (picture changes on the beats) follows the declared grid, and
+    ``motion_onset_xcorr`` (picture energy against onset energy) does not depend on it."""
+    from mixing.audio import beat_grid as estimate
+
+    from muvid.footage.beats import fitted_tempo
+    from muvid.footage.scoring.registry import MasterBeats
+
+    bg = estimate(str(fp.song_path()))
+    declared = declared_beat_grid(fp)
+    if declared is None:
+        return MasterBeats.estimated(bg)
+    beats = declared["beat_times"]
+    return MasterBeats(
+        beat_times=beats,
+        downbeat_times=declared["downbeat_times"],
+        tempo_bpm=float(
+            declared.get("tempo_bpm") or fitted_tempo(beats) or bg.tempo_bpm
+        ),
+        onset_env=bg.onset_env,
+        onset_hop_s=bg.onset_hop_s,
+        fingerprint=_beat_fingerprint(declared),
+    )
+
+
+def _beat_fingerprint(declared: Optional[dict]) -> str:
+    """Names a declared grid's BEATS — the only part the beat metrics read, so renumbering
+    the bars (``beats_per_bar``, ``first_bar_beat``) does not make scores stale; ``""``
+    for none (the estimator's grid, which ``song_hash`` already keys)."""
+    if declared is None:
+        return ""
+    import hashlib
+
+    blob = json.dumps(declared["beat_times"]).encode()
+    return hashlib.sha256(blob).hexdigest()[:16]
+
+
+def _scores_current(fp, manifest: Optional[dict]) -> bool:
+    """THE staleness question every reader of the score tensor asks: the song, the
+    alignments and the beat grid it was measured on are the current ones."""
+    from muvid.footage.scoring.grid import align_fingerprint, manifest_is_current
+
+    return manifest_is_current(
+        manifest,
+        song_hash=fp.song_hash() if fp.has_song() else "",
+        align_fingerprint=align_fingerprint(fp.load_alignments()),
+        beat_fingerprint=_beat_fingerprint(declared_beat_grid(fp)),
+    )
+
+
+def _current_tensor(fp):
+    """The score tensor if it is current, else ``None`` (stale scores are never served)."""
+    from muvid.footage.scoring.grid import load_manifest, load_tensor
+
+    return load_tensor(fp.root) if _scores_current(fp, load_manifest(fp.root)) else None
+
+
+def _stale_flag(fp) -> dict:
+    """``{"scores_stale": True}`` when the change just made left the scores stale, else
+    ``{}`` (omit-when-absent: a reply with no scores to speak of is unchanged)."""
+    return {"scores_stale": True} if _scores_stale(fp) else {}
+
+
+def _scores_stale(fp) -> bool:
+    """Scores exist and no longer match the project — ``score`` must run again."""
+    from muvid.footage.scoring.grid import load_manifest
+
+    manifest = load_manifest(fp.root)
+    return manifest is not None and not _scores_current(fp, manifest)
 
 
 def score(
@@ -1588,23 +1670,15 @@ def scores(
     un-normalised values (``null`` where not measured), so a tooltip can show the real
     number beside its score.
     """
-    from muvid.footage.scoring.grid import (
-        align_fingerprint,
-        load_manifest,
-        load_tensor,
-        manifest_is_current,
-    )
+    from muvid.footage.scoring.grid import load_manifest, load_tensor
 
     manifest = load_manifest(fp.root)
     if manifest is None:
         raise FootageError("no scores yet — call score_footage first")
-    if not manifest_is_current(
-        manifest,
-        song_hash=fp.song_hash(),
-        align_fingerprint=align_fingerprint(fp.load_alignments()),
-    ):
+    if not _scores_current(fp, manifest):
         raise FootageError(
-            "scores are stale (song or alignment changed) — re-run score_footage"
+            "scores are stale (the song, an alignment or the beat grid changed) — "
+            "re-run score_footage"
         )
     tensor = load_tensor(fp.root)
     if tensor is None:
@@ -1653,7 +1727,12 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
             for cid in tensor.clip_ids
         ],
         "metric_coverage": manifest.get("coverage", {}),
-        "beats": {"count": len(beats), "times": _decimate_list(beats, max_points)},
+        "beats": {
+            "count": len(beats),
+            "times": _decimate_list(beats, max_points),
+            # the grid the beat metrics were measured on (muvid#187)
+            "source": DECLARED if manifest.get("beat_fingerprint") else "estimated",
+        },
         "tempo_bpm": manifest.get("tempo_bpm"),
         "selection_margin": _decimate_values(margin, max_points, pool="min"),
         "weights": weights,
@@ -2050,21 +2129,12 @@ def _selection_context(fp, strat, preset, weights, config):
     """
     if strat != "weighted":
         return None
-    from muvid.footage.scoring.grid import (
-        align_fingerprint,
-        load_manifest,
-        load_tensor,
-        manifest_is_current,
-    )
+    from muvid.footage.scoring.grid import load_manifest, load_tensor
     from muvid.footage.select_score import SelectionContext, resolve_config
 
     manifest = load_manifest(fp.root) or {}
     beats = manifest.get("beats", {})
-    fresh = manifest_is_current(
-        manifest,
-        song_hash=fp.song_hash() if fp.has_song() else "",
-        align_fingerprint=align_fingerprint(fp.load_alignments()),
-    )
+    fresh = _scores_current(fp, manifest)
     beat_times, downbeat_times = (
         beats.get("beat_times", []),
         beats.get("downbeat_times", []),
@@ -3805,7 +3875,6 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
     except ImportError as e:
         raise FootageError(_EDITOR_EXTRA_HINT) from e
     from muvid.footage.edl import fill_gaps, validate_edl
-    from muvid.footage.scoring.grid import load_tensor
     from muvid.footage.strategy import DEFAULT_STRATEGY
     from muvid.visualize.ffmpeg import FfmpegError
 
@@ -3867,13 +3936,20 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
         # an FfmpegError is a RuntimeError, not a ValueError). An editor can still open
         # it and place its own DECISION entries.
         decision_error, entries = _project_relative(fp, str(e)), []
+    if _scores_stale(fp):
+        warnings.append(
+            "score lanes left out: the scores are stale (the song, an alignment or the "
+            "beat grid changed) — re-run score_footage"
+        )
     doc = build_document(
         project_id=fp.project_id,
         song_asset_id=fp.song_hash(),
         song_duration=song_dur,
         placements=placements,
         entries=entries,
-        tensor=load_tensor(fp.root),
+        # never a stale tensor: a beat grid change deletes nothing (muvid#187), so the
+        # read path is the only thing standing between old lanes and the editor
+        tensor=_current_tensor(fp),
         decision_error=decision_error,
         attributed_to=attributed_to or f"user:{fp.email}",
         stills={

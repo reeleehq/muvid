@@ -44,6 +44,36 @@ TIERS = (CORE_TIER, LIPSYNC_TIER)
 
 
 @dataclass(frozen=True)
+class MasterBeats:
+    """The master beat grid a scoring run measures on, and the name of it (muvid#187).
+
+    One record, read once: ``fingerprint`` names THESE beats (``""`` for the estimator's,
+    which ``song_hash`` already keys; else the declared grid's), so the manifest can never
+    record one grid's key beside another grid's beats. The fields are primitives, the
+    shape muvid#184 wants ``ClipContext`` to hand plugins; ``onset_env`` is the
+    estimator's measurement of the song's onsets, which a declared grid does not change.
+    """
+
+    beat_times: Sequence[float]
+    downbeat_times: Sequence[float]
+    tempo_bpm: float
+    onset_env: Any  # numpy array, one value per ``onset_hop_s``
+    onset_hop_s: float
+    fingerprint: str = ""
+
+    @classmethod
+    def estimated(cls, bg) -> "MasterBeats":
+        """From the estimator's ``mixing.audio.BeatGrid``."""
+        return cls(
+            beat_times=bg.beat_times,
+            downbeat_times=bg.downbeat_times,
+            tempo_bpm=float(bg.tempo_bpm),
+            onset_env=bg.onset_env,
+            onset_hop_s=bg.onset_hop_s,
+        )
+
+
+@dataclass(frozen=True)
 class ClipContext:
     """What a scorer is handed for ONE clip. Paths and primitives, never the project.
 
@@ -57,7 +87,7 @@ class ClipContext:
     path: str
     alignment: Any  # FootageAlignment — offset_s, duration_s, coverage …
     frames: Any  # FramePass | None
-    beat: Any  # mixing BeatGrid
+    beat: Any  # MasterBeats (beat_times, onset_env, onset_hop_s, …)
     vocal_stem: str | None
     grid: Mapping[str, Any]
 

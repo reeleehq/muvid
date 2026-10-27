@@ -3,8 +3,9 @@
 Owns the shared, compute-once artifacts and the single decode pass per clip (the design
 review's fix for the double-decode / camera-motion-sharing problem):
 
-1. **Master beat grid** (``mixing.audio.beat_grid``) — computed ONCE; every clip maps to it
-   via its offset.
+1. **Master beat grid** (``mixing.audio.beat_grid``, or the ``beat_grid`` a caller injects —
+   the footage service's prefers a grid a person declared, muvid#187) — computed ONCE; every
+   clip maps to it via its offset.
 2. (opt-in) **Master vocal stem** (Demucs) — ONCE, for the lip-sync tier.
 3. **Per clip: ONE decode pass** (:func:`~muvid.footage.scoring.frames.sample_clip_frames`)
    feeds BOTH quality and motion-beat (sharpness/exposure/face + the camera-compensated motion
@@ -25,7 +26,7 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
 from muvid.footage.scoring import registry
 from muvid.footage.scoring.grid import DEFAULT_HOP_S, grid_len, save_scores
@@ -89,6 +90,7 @@ def score_project(
     enable_lipsync: bool | None = None,
     progress_cb: Callable[[dict], None] | None = None,
     should_cancel: Callable[[], bool] | None = None,
+    beat_source: "Callable[[Any], registry.MasterBeats] | None" = None,
 ) -> dict:
     """Score every aligned clip of ``project`` → persist the tensor; return a summary dict.
 
@@ -101,6 +103,12 @@ def score_project(
         enable_lipsync: force the opt-in tier on/off (default: the env flag).
         progress_cb: sink for ``{'kind':'progress', ...}`` dict events (nw.jobs mirror shape).
         should_cancel: polled between clips/stages; a True short-circuits to a clean cancel.
+        beat_source: ``project -> MasterBeats``, the master beat grid and its name,
+            read together (default: the estimator, ``mixing.audio.beat_grid`` on the
+            song). The footage service passes one that prefers a declared grid
+            (muvid#187). Its ``fingerprint`` goes into the manifest, so
+            :func:`~muvid.footage.scoring.grid.manifest_is_current` can tell scores
+            measured on one grid from another.
     """
     with _SCORING_SEMAPHORE:
         return _score(
@@ -111,7 +119,15 @@ def score_project(
             enable_lipsync=enable_lipsync,
             progress_cb=progress_cb,
             should_cancel=should_cancel,
+            beat_source=beat_source,
         )
+
+
+def _estimated_beats(project) -> registry.MasterBeats:
+    """The estimator's beat grid of the song — the default master grid."""
+    from mixing.audio import beat_grid
+
+    return registry.MasterBeats.estimated(beat_grid(str(project.song_path())))
 
 
 def _emit(progress_cb, idx, total, name):
@@ -131,7 +147,15 @@ def _cancelled(should_cancel):
 
 
 def _score(
-    project, *, metrics, hop_s, sample_fps, enable_lipsync, progress_cb, should_cancel
+    project,
+    *,
+    metrics,
+    hop_s,
+    sample_fps,
+    enable_lipsync,
+    progress_cb,
+    should_cancel,
+    beat_source=None,
 ):
     from muvid.footage.scoring import frames as F
     from muvid.footage.scoring.quality import quality_gate_mask
@@ -193,9 +217,9 @@ def _score(
 
     # 1. Master beat grid (once).
     _emit(progress_cb, stage, total_stages, "beat_grid")
-    from mixing.audio import beat_grid
-
-    bg = beat_grid(str(project.song_path()))
+    # Read ONCE, with its name: a grid declared or cleared while this job waited for the
+    # semaphore cannot put one grid's key beside another grid's beats.
+    bg = (beat_source or _estimated_beats)(project)
     stage += 1
     if _cancelled(should_cancel):
         return {"status": "cancelled", "stage": "beat_grid"}
@@ -298,6 +322,7 @@ def _score(
         align_fingerprint=align_fingerprint(aligns),
         beat_times=bg.beat_times,
         downbeat_times=bg.downbeat_times,
+        beat_fingerprint=bg.fingerprint,
         extra={
             "shot_boundaries": shots_by_clip,
             "tempo_bpm": round(tempo, 3) if math.isfinite(tempo) else None,
