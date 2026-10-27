@@ -29,7 +29,11 @@ import importlib
 import inspect
 from typing import Callable, Sequence
 
-from muvid.footage.edl import EdlEntry, FootageAlignment, unverified_song_stretches
+from muvid.footage.edl import (
+    EdlEntry,
+    FootageAlignment,
+    selection_unverified_stretches,
+)
 
 #: A strategy: alignments + song duration → an EDL (built-ins ignore song_duration but it
 #: is passed so a strategy MAY reason about the full timeline).
@@ -183,7 +187,7 @@ def _breakpoints(alignments: Sequence[FootageAlignment]) -> list[float]:
     for a in alignments:
         bs.add(round(a.coverage[0], 6))
         bs.add(round(a.coverage[1], 6))
-        for start, end in unverified_song_stretches(a):
+        for start, end in selection_unverified_stretches(a):
             bs.add(round(start, 6))
             bs.add(round(end, 6))
     return sorted(bs)
@@ -230,7 +234,9 @@ def _prefer_confirmed(
     as confirmed (no measurement is not evidence against it)."""
 
     def unverified(a: FootageAlignment) -> bool:
-        return any(s - 1e-6 <= mid < e + 1e-6 for s, e in unverified_song_stretches(a))
+        return any(
+            s - 1e-6 <= mid < e + 1e-6 for s, e in selection_unverified_stretches(a)
+        )
 
     confirmed = [a for a in covering if not unverified(a)]
     return confirmed or covering

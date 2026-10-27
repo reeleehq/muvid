@@ -494,11 +494,19 @@ def composite_lane(tensor, weights: Mapping[str, float], clip_id: str) -> np.nda
 #: dull vouched one, which is exactly the trade muvid#88 says must not be available —
 #: and a config field would let the preference be tuned away silently by a caller
 #: passing ``config=`` to the MCP tool.
-UNVOUCHED_REWARD_PENALTY = 2.0
-#: The same charge, per second of a clip's UNVERIFIED stretch — footage its measured
-#: spans say does not match the song there (muvid#16 slice 2); for the same reason it
-#: exceeds the composite's whole range and is not a config field.
-UNVERIFIED_REWARD_PENALTY = UNVOUCHED_REWARD_PENALTY
+#:
+#: **The trust tiers are ORDERED, and the penalties must keep them so** (muvid#16):
+#: unvouched > unverified + the composite's range, so the DP never takes an unvouched
+#: clip over a vouched one on the strength of the vouched one's unverified stretch —
+#: :func:`~muvid.footage.edl.exclude_unvouched` would then black that span out (the
+#: #16 slice-2 review measured exactly that with equal penalties). Raised from 2.0 to
+#: make room for the tier below it; a test pins the ordering.
+UNVOUCHED_REWARD_PENALTY = 3.0
+#: The charge per second of a clip's UNVERIFIED stretch — footage its measured spans say
+#: does not match the song there (muvid#16 slice 2): above the composite's whole range,
+#: so a confirmed clip always outranks it on any metric, and below the unvouched charge
+#: by more than that range (see above). Not a config field, for the same reason.
+UNVERIFIED_REWARD_PENALTY = 1.5
 
 
 def _demote_unvouched(composite: np.ndarray, aligns) -> np.ndarray:
@@ -526,10 +534,10 @@ def _demote_unverified(composite: np.ndarray, aligns, tensor) -> np.ndarray:
     unverified stretches (muvid#16 slice 2) — :func:`_demote_unvouched` at the
     granularity of a stretch, the ``weighted`` form of
     :func:`muvid.footage.strategy._prefer_confirmed`. Demotes, never prunes."""
-    from muvid.footage.edl import unverified_song_stretches
+    from muvid.footage.edl import selection_unverified_stretches
 
     for ai, a in enumerate(aligns):
-        for start, end in unverified_song_stretches(a):
+        for start, end in selection_unverified_stretches(a):
             ki = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
             kj = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
             composite[ai, ki:kj] -= UNVERIFIED_REWARD_PENALTY

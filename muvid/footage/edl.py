@@ -542,7 +542,8 @@ class MeasuredSpan:
     the song (``song = clip + offset_s``). A clip whose parts sit at different offsets
     (a take stopped and restarted) has several; material the song does not contain has
     none. Edges are accurate to about the analysis window, which is enough to tell two
-    takes apart and NOT enough to cut on — nothing cuts on them yet.
+    takes apart and NOT enough to cut on: selection only PREFERS away from a long
+    unverified stretch (:func:`selection_unverified_stretches`), never cuts at an edge.
     """
 
     clip_start_s: float
@@ -801,6 +802,26 @@ def unverified_song_stretches(
     """
     stretches = unverified_stretches(a, tolerance_s=tolerance_s) or []
     return [(s + a.offset_s, e + a.offset_s) for s, e in stretches]
+
+
+#: How accurate a measured span's edges are, in seconds — ``mixing``'s span window
+#: (``SPAN_WINDOW_S``), restated so this module stays import-light (a test pins it).
+SPAN_EDGE_ACCURACY_S = 20.0
+
+
+def selection_unverified_stretches(a: FootageAlignment) -> "list[tuple[float, float]]":
+    """The unverified stretches SELECTION acts on (muvid#16 slice 2): those at least
+    :data:`SPAN_EDGE_ACCURACY_S` long — a shorter one is below what the measurement
+    resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and
+    none on a DECLARED offset, which a person vouched for, usually because the windows
+    land on an alias there (muvid#59). The report (``measure_spans``) still lists them."""
+    if a.source == DECLARED:
+        return []
+    return [
+        (start, end)
+        for start, end in unverified_song_stretches(a)
+        if end - start >= SPAN_EDGE_ACCURACY_S
+    ]
 
 
 @dataclass(frozen=True)
