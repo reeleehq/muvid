@@ -862,6 +862,11 @@ class AssemblyCut:
     #: Carried through from the EDL entry: the assembler reads ``duration * rate``
     #: seconds of source and retimes it (``setpts``, before ``fps``) onto the span.
     rate: float = 1.0
+    #: NOT from the EDL: the matrix the assembler's ``scale`` converts this cut's
+    #: source FROM, set by the assembler once per render when the source's own tag
+    #: cannot be trusted (an untagged HD clip — :mod:`muvid.footage.colour`).
+    #: ``None`` lets ``scale`` read the frame's tag.
+    source_matrix: "str | None" = None
 
     @property
     def duration(self) -> float:

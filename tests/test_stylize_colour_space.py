@@ -9,6 +9,7 @@ the RGB original, decoded the way a player reads a BT.709-tagged file.
 """
 
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -190,7 +191,7 @@ def test_an_untagged_hd_clip_is_read_as_bt709_the_way_players_read_it(tmp_path):
     assert matrices == {str(clip): "bt709"}
     part = tmp_path / "part.mp4"
     _render_part(
-        cut,
+        replace(cut, source_matrix=matrices[str(clip)]),
         part,
         w=1280,
         h=720,
@@ -198,7 +199,6 @@ def test_an_untagged_hd_clip_is_read_as_bt709_the_way_players_read_it(tmp_path):
         n_frames=int(0.4 * _FPS),
         crf=1,
         preset="veryfast",
-        matrices=matrices,
     )
     seen = _as_a_player_reads_it(part, tmp_path / "seen.png")
     assert _psnr(seen, ref) >= _MIN_PSNR_DB

@@ -92,7 +92,7 @@ import tempfile
 import warnings
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Sequence
 
 from muvid.footage.colour import (
     DELIVERY_COLOR_RANGE,
@@ -421,7 +421,6 @@ def _part_filter(
     h: int,
     fps: int,
     tail: str = "",
-    in_matrix: "str | None" = None,
 ) -> str:
     """THE per-cut filter chain. ONE implementation, used by BOTH render sites.
 
@@ -465,7 +464,8 @@ def _part_filter(
     rather than a second string.
 
     ``scale`` also converts to the delivery colour (:mod:`muvid.footage.colour`,
-    muvid#195) — from ``in_matrix`` when the source's own tag cannot be trusted —
+    muvid#195) — from ``cut.source_matrix`` when the source's own tag cannot be
+    trusted —
     and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
     frame, so the look sees a frame whose colour is known as well as its size.
 
@@ -481,6 +481,7 @@ def _part_filter(
     """
     crop = _crop_filter(cut)
     rate = getattr(cut, "rate", 1.0)
+    in_matrix = getattr(cut, "source_matrix", None)
     retime = f"setpts=(PTS-STARTPTS)/{rate:.6f}," if rate != 1.0 else ""
     return (
         f"{retime}"
@@ -583,12 +584,8 @@ def _render_part(
     n_frames: int,
     crf: int,
     preset: str,
-    matrices: "Mapping[str, str] | None" = None,
 ) -> None:
-    """Render ONE cut (footage or gap) to an intermediate — the single-decoder stage.
-
-    ``matrices`` maps a source path to the matrix its ``scale`` must convert FROM,
-    for a source whose own tag cannot be trusted (:func:`_source_matrices`)."""
+    """Render ONE cut (footage or gap) to an intermediate — the single-decoder stage."""
     from muvid.visualize.ffmpeg import run_ffmpeg
 
     # tpad at the tail: -frames:v alone is a CAP, not a guarantee — a clip whose audio
@@ -596,9 +593,7 @@ def _render_part(
     # validates a span past the last video frame, and without tpad that part comes up
     # short, silently desyncing every later cut. Cloning the last frame makes the frame
     # count exact whenever the source yields at least one frame.
-    vf = _part_filter(
-        cut, w=w, h=h, fps=fps, in_matrix=(matrices or {}).get(cut.clip_path)
-    )
+    vf = _part_filter(cut, w=w, h=h, fps=fps)
     if cut.clip_path:
         # Input-side seek: lands on the keyframe before clip_in and decodes forward to
         # it, so a cut 3 minutes into a clip does not decode 3 minutes of video. One
@@ -653,9 +648,7 @@ def _xfade_input(cut: AssemblyCut, clip_in: float, n_frames: int, *, w, h, fps):
     ]
 
 
-def _render_transition(
-    part, out: Path, *, w, h, fps, crf: int, preset: str, matrices=None
-) -> None:
+def _render_transition(part, out: Path, *, w, h, fps, crf: int, preset: str) -> None:
     """Render one blended boundary — the only two-decoder stage.
 
     Both inputs are already seeked to the window's first frame, so ``offset=0`` is
@@ -678,14 +671,7 @@ def _render_transition(
     # A-side framing to the B-side — the blend would still render, at the wrong
     # framing, which is exactly the kind of failure nothing downstream can see.
     def _norm(cut) -> str:
-        return _part_filter(
-            cut,
-            w=w,
-            h=h,
-            fps=fps,
-            tail=",format=yuv420p",
-            in_matrix=(matrices or {}).get(cut.clip_path),
-        )
+        return _part_filter(cut, w=w, h=h, fps=fps, tail=",format=yuv420p")
 
     n = part.n_frames
     run_ffmpeg(
@@ -873,8 +859,9 @@ def assemble_music_video(
     try:
         # Planned in full BEFORE any encoding, so a transition that does not fit at
         # this fps fails on cut 0 rather than after forty parts are on disk.
-        plan = _part_plan(cuts, fps, on_note)
         matrices = _source_matrices(cuts, on_note)
+        cuts = [replace(c, source_matrix=matrices.get(c.clip_path)) for c in cuts]
+        plan = _part_plan(cuts, fps, on_note)
         if any(p.kind == "xfade" for p in plan):
             require_filter("xfade", needed_for="EDL transitions")
 
@@ -898,19 +885,9 @@ def assemble_music_video(
                 n_frames=p.n_frames,
                 crf=crf,
                 preset=preset,
-                matrices=matrices,
             )
             if p.kind == "xfade":
-                _render_transition(
-                    p,
-                    part,
-                    w=w,
-                    h=h,
-                    fps=fps,
-                    crf=crf,
-                    preset=preset,
-                    matrices=matrices,
-                )
+                _render_transition(p, part, w=w, h=h, fps=fps, crf=crf, preset=preset)
                 if part.exists() and not _has_video_frames(part):
                     # One side yielded nothing, so the blend is not renderable. The
                     # window still exists in song time — fill it from a side that CAN
