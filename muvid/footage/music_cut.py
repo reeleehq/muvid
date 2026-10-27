@@ -885,6 +885,7 @@ def _cuts_for_piece(
     steps, max_steps = 0, int((end - start) / MIN_PIECE_S) + 4
     while end - start > 1e-6 and steps < max_steps:
         steps += 1
+        no_trail = False
         length = end - start
         own = fade_of(fade)
         holds = longest_span(
@@ -897,13 +898,20 @@ def _cuts_for_piece(
             # The video cannot hold the whole piece: show what it has, ending on a beat
             # before the piece's end, so a take-over continues it with a hard cut and
             # this cut carries no next blend. Ending ON the piece's end would carry it
-            # — which `holds` just said does not fit — so that end is capped by `holds`.
+            # — which `holds` just said does not fit — so that end is capped by `holds`,
+            # and no earlier than leaves a real piece after it. Where no such cut point
+            # exists the whole piece stays, and the NEXT blend gives way to a hard cut:
+            # a blend is traded, never coverage (the #203 review).
             cap = longest_span(src.duration_s or 0.0, transition=own, edge_s=EDGE_S)
             cut_at = _last_beat_before(beats, start + cap, after=start + MIN_PIECE_S)
             if cut_at is not None and cut_at >= end - 1e-6:
                 cut_at = _last_beat_before(
-                    beats, start + holds, after=start + MIN_PIECE_S
+                    beats,
+                    min(start + holds, end - MIN_PIECE_S),
+                    after=start + MIN_PIECE_S,
                 )
+                if cut_at is None:
+                    cut_at, no_trail = end, True
             if cut_at is None or cap < MIN_PIECE_S:
                 nxt = _take_over(sources, src, need=length, avoid=avoid, uses=uses)
                 if nxt.clip_id == src.clip_id:
@@ -914,7 +922,9 @@ def _cuts_for_piece(
             piece_end = min(cut_at, end)
         else:
             piece_end = end
-        trail = p.get("next_fade", 0.0) if piece_end >= end - 1e-6 else 0.0
+        trail = (
+            p.get("next_fade", 0.0) if piece_end >= end - 1e-6 and not no_trail else 0.0
+        )
         entry = _one_cut(
             src,
             start,

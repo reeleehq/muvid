@@ -632,3 +632,33 @@ def test_no_video_cut_gives_up_its_edge_margin_to_a_blend_that_did_not_fit():
         head = e.source_in - lead
         tail = duration[e.clip_id] - e.source_in - (e.song_end - e.song_start) - trail
         assert min(head, tail) >= EDGE_S - 1e-3, (i, e)
+
+
+@pytest.mark.parametrize(
+    "song_s,bpm,durs",
+    [
+        # a sliver after the re-cap (48 ms, 67 ms) and a jump cut onto the same in-point
+        (70.55114488643417, 62.89840597153406, [6.9315942320841195, 1.3870359966812091, 1.6578400311845474]),
+        # coverage lost: the re-capped room is under a piece, and nothing can take over
+        (19.953261375508443, 71.53734647717391, [1.2422092751826308]),
+    ],
+)
+def test_the_re_cap_trades_a_blend_never_coverage_and_makes_no_sliver(song_s, bpm, durs):
+    """The #203 re-review's two plans: re-capping the end at `holds` must leave a real
+    piece after it (>= MIN_PIECE_S) or keep the whole piece and drop the next blend."""
+    from muvid.footage.music_cut import MIN_PIECE_S
+
+    srcs = [FreeSource(f"v{i}", f"/x/v{i}.mp4", duration_s=d) for i, d in enumerate(durs)]
+    kw = dict(
+        analysis=_analysis(song_s, bpm),
+        envelope_of=lambda s: None,
+        anchor_of=lambda s: (0.5, 0.5),
+        size_of=lambda p: (1080, 1920),
+        canvas=(1080, 1920),
+        archetype="ballad_dissolve",
+    )
+    cut = fill_spans("/x/s.wav", srcs, **kw)
+    lengths = [e.song_end - e.song_start for e in cut.entries]
+    assert min(lengths) >= MIN_PIECE_S - 1e-6, sorted(lengths)[:3]
+    if len(durs) == 1:  # main covered all but 9.56 s of this song
+        assert cut.report["uncovered_s"] <= 9.56 + 1e-6
