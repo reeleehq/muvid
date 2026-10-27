@@ -13,26 +13,89 @@ per-clip beat/onset recomputation — everything maps to song time via the clip'
   refines per-clip capture latency). Content-agnostic (covers no-person clips). Held over the
   clip's coverage.
 
+The BAS formula is also a PURE function over event and beat times (muvid#238),
+:func:`beat_alignment_score`, so a caller with its own motion signal (pose landmarks, say)
+gets the number the ``motion_beat_bas`` track is built from; the track calls the same core.
+(The onset lag is NOT exposed: the track's search shifts circularly over its window, which
+is harmless for the ``|r|`` it keeps and wrong for a lag a caller would read — a correct
+public one belongs beside mixing's overlap-normalised cross-correlation.)
+
 Commercial-clean (librosa beats via ``mixing[beats]``, numpy motion). See the design §3b.
 """
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from muvid.footage.scoring.frames import FramePass
 from muvid.footage.scoring.grid import ScoreTrack, resample_to_grid
 
+if TYPE_CHECKING:
+    from muvid.footage.scoring.frames import FramePass
+
 #: Gaussian width (s) for beat↔motion-peak proximity in the BAS.
-_BAS_SIGMA_S = 0.12
+BAS_SIGMA_S = 0.12
+#: The two directions papers measure the BAS in: AIST++'s (each MOTION beat scored by its
+#: nearest music beat) and Bailando's (each MUSIC beat scored by its nearest motion beat).
+BAS_DIRECTIONS = ("motion_to_music", "music_to_motion")
 #: Bounded lag search for the onset xcorr (±s) — also the plausible A/V capture-latency range.
 _XCORR_MAX_LAG_S = 1.0
 
 MOTIONBEAT_METRICS = ("motion_beat_bas", "motion_onset_xcorr")
 
 
+def beat_alignment_score(
+    event_times,
+    beat_times,
+    *,
+    sigma_s: float = BAS_SIGMA_S,
+    direction: str = "motion_to_music",
+) -> float:
+    """The Beat Alignment Score of motion ``event_times`` (kinematic beats, seconds)
+    against music ``beat_times``: the mean of ``exp(-(d/σ)²/2)``, ``d`` the distance to
+    the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).
+
+    ``direction`` is :data:`BAS_DIRECTIONS`: ``motion_to_music`` (AIST++) averages over
+    the motion events, ``music_to_motion`` (Bailando) over the music beats — the per-beat
+    form the ``motion_beat_bas`` track holds over each beat's interval. ``nan`` when
+    either list is empty: no evidence is not a score of 0. A non-finite time or a
+    ``sigma_s`` that is not positive is refused rather than read as ``nan``.
+
+    >>> round(beat_alignment_score([0.5, 1.0, 1.62], [0.5, 1.0, 1.5]), 3)  # one 0.12 s late
+    0.869
+    >>> round(beat_alignment_score([0.5], [0.5, 1.0], direction="music_to_motion"), 3)
+    0.5
+    """
+    if direction not in BAS_DIRECTIONS:
+        raise ValueError(f"direction must be one of {BAS_DIRECTIONS}, got {direction!r}")
+    if not sigma_s > 0:
+        raise ValueError(f"sigma_s must be positive, got {sigma_s}")
+    events = np.asarray(event_times, dtype=float)
+    beats = np.asarray(beat_times, dtype=float)
+    if events.ndim != 1 or beats.ndim != 1:
+        raise ValueError("event_times and beat_times must be 1-D sequences of seconds")
+    if not (np.isfinite(events).all() and np.isfinite(beats).all()):
+        raise ValueError("event_times and beat_times must be finite")
+    if events.size == 0 or beats.size == 0:
+        return float("nan")
+    sources, targets = (events, beats) if direction == "motion_to_music" else (beats, events)
+    return float(np.mean(_proximity(sources, targets, sigma_s)))
+
+
+def _proximity(sources: np.ndarray, targets: np.ndarray, sigma_s: float) -> np.ndarray:
+    """``exp(-(d/σ)²/2)`` per source, ``d`` its distance to the nearest target — found
+    by bisection on the sorted targets (memory O(n), not sources x targets)."""
+    ts = np.sort(targets)
+    i = np.clip(np.searchsorted(ts, sources), 1, ts.size - 1) if ts.size > 1 else 0
+    d = np.abs(sources - ts[i]) if ts.size == 1 else np.minimum(
+        np.abs(sources - ts[i - 1]), np.abs(sources - ts[i])
+    )
+    return np.exp(-0.5 * (d / sigma_s) ** 2)
+
+
 def motionbeat_tracks(
-    frame_pass: FramePass,
+    frame_pass: "FramePass",
     *,
     clip_id: str,
     offset_s: float,
@@ -112,10 +175,9 @@ def _bas_track(motion, mmask, beat_times, t0, hop_s, n, cover):
     if peaks.size == 0 or beats.size == 0:
         return vals, mask  # no motion peaks / no beats in coverage → NA (never 0)
     beats_sorted = np.sort(beats)
-    for bi, b in enumerate(beats_sorted):
-        # proximity of the nearest motion peak to this beat
-        dt = np.min(np.abs(peaks - b))
-        score = float(np.exp(-0.5 * (dt / _BAS_SIGMA_S) ** 2))
+    # each beat scored by its nearest motion peak: the music_to_motion BAS, per beat
+    scores = _proximity(beats_sorted, peaks, BAS_SIGMA_S)
+    for bi, (b, score) in enumerate(zip(beats_sorted, scores)):
         end = beats_sorted[bi + 1] if bi + 1 < len(beats_sorted) else hi
         k0 = max(0, int(np.floor((b - t0) / hop_s)))
         k1 = min(n, int(np.ceil((end - t0) / hop_s)))
