@@ -632,7 +632,9 @@ def footage_status(project_id: str) -> dict:
     """Your project's song, clips, alignment summary, and renders. Free.
 
     Also: each clip's offset and whether it was measured or declared (``alignments``),
-    the saved ``edits``, and ``next_step`` — the operation that moves the project on.
+    the saved ``edits``, the ``song_candidates`` (songs it could be cut to instead,
+    added and chosen in the studio), and ``next_step`` — the operation that moves the
+    project on.
     """
     out = _call(project_id, service.status)
     step = out.get("next_step")

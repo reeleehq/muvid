@@ -923,6 +923,11 @@ def _unknown_clip_message(clip_id: str, known: list[dict]) -> str:
 # =============================================================================
 
 
+#: What ``status`` says of a song candidate: never its file or its content hash
+#: (a cache key), as ``song_info`` says neither of the song.
+_CANDIDATE_FIELDS = ("candidate_id", "name", "duration_s", "artifact_id")
+
+
 def status(fp) -> dict:
     """Where the music video stands: the song, the videos and where each sits on the
     song, the saved edits, the finished videos, and the next useful step.
@@ -948,7 +953,9 @@ def status(fp) -> dict:
         "aligned": [a.clip_id for a in aligns],
         "renders": render_rows,
         "song": fp.song_info(),
-        "song_candidates": fp.song_candidates(),
+        "song_candidates": [
+            {k: c[k] for k in _CANDIDATE_FIELDS if k in c} for c in fp.song_candidates()
+        ],
         "alignments": [_alignment_row(a) for a in aligns],
         # how "Cut it for me" will use each clip: synced, or cut to the music
         "roles": footage_roles(fp),

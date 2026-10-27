@@ -161,7 +161,11 @@ def test_status_lists_the_candidates_without_paths(fp, tmp_path):
     _candidate(fp, tmp_path, "Other Song.mp3", b"ID3-other")
     (row,) = service.status(fp)["song_candidates"]
     assert row["candidate_id"] == "Other_Song" and row["name"] == "Other Song.mp3"
-    assert "file" not in row
+    # Exactly these: no file, no content hash (a cache key), nothing added unseen.
+    assert set(row) <= {"candidate_id", "name", "duration_s", "artifact_id"}
+    assert {"candidate_id", "name"} <= set(row)
+    service.remove_song_candidate(fp, candidate_id="Other_Song")
+    assert service.status(fp)["song_candidates"] == []
 
 
 def test_a_default_id_is_made_unique_and_an_explicit_duplicate_refused(fp, tmp_path):
