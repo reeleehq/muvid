@@ -491,6 +491,42 @@ class UnreliableAlignmentError(ValueError):
 MEASURED = "measured"
 DECLARED = "declared"
 
+ALIGNMENT_SOURCES = (MEASURED, DECLARED)
+#: Two more ``source`` values, for records that are NEVER persisted. ``UNPLACED`` stands
+#: for a clip (or a still) nobody has placed on the song — :func:`unplaced` — so that a
+#: free cut (:attr:`EdlEntry.source_in`) can still find its clip's duration through the
+#: same table every other cut uses. ``FREE`` is what :func:`placed_as` derives for one
+#: free cut: the placement the cut itself implies.
+UNPLACED = "unplaced"
+FREE = "free"
+
+#: How long a still image "lasts" as a source: it can be held for any span of song, so
+#: its duration is a bound rather than a measurement — longer than any song muvid takes.
+STILL_DURATION_S = 3600.0
+
+
+def unplaced(clip_id: str, duration_s: float) -> "FootageAlignment":
+    """The record of a clip with no place on the song: usable by free cuts only.
+
+    Not vouched (an anchored cut to it is refused exactly like a cut to a clip the
+    aligner could not place), never overlapping, never persisted.
+
+    >>> a = unplaced('c1', 12.0)
+    >>> a.reliable, a.overlaps, a.source
+    (False, False, 'unplaced')
+    """
+    return FootageAlignment(
+        clip_id=clip_id,
+        offset_s=0.0,
+        confidence=0.0,
+        duration_s=float(duration_s),
+        coverage=(0.0, 0.0),
+        overlaps=False,
+        reliable=False,
+        source=UNPLACED,
+    )
+
+
 #: How far a measured span's offset may sit from its clip's offset and still be read
 #: as THAT placement (seconds) — ``mixing``'s own span tolerance
 #: (``SPAN_OFFSET_TOLERANCE_S``), restated so this module stays import-light.
@@ -540,42 +576,6 @@ class MeasuredSpan:
             support=opt("support"),
             margin=opt("margin"),
         )
-
-
-ALIGNMENT_SOURCES = (MEASURED, DECLARED)
-#: Two more ``source`` values, for records that are NEVER persisted. ``UNPLACED`` stands
-#: for a clip (or a still) nobody has placed on the song — :func:`unplaced` — so that a
-#: free cut (:attr:`EdlEntry.source_in`) can still find its clip's duration through the
-#: same table every other cut uses. ``FREE`` is what :func:`placed_as` derives for one
-#: free cut: the placement the cut itself implies.
-UNPLACED = "unplaced"
-FREE = "free"
-
-#: How long a still image "lasts" as a source: it can be held for any span of song, so
-#: its duration is a bound rather than a measurement — longer than any song muvid takes.
-STILL_DURATION_S = 3600.0
-
-
-def unplaced(clip_id: str, duration_s: float) -> "FootageAlignment":
-    """The record of a clip with no place on the song: usable by free cuts only.
-
-    Not vouched (an anchored cut to it is refused exactly like a cut to a clip the
-    aligner could not place), never overlapping, never persisted.
-
-    >>> a = unplaced('c1', 12.0)
-    >>> a.reliable, a.overlaps, a.source
-    (False, False, 'unplaced')
-    """
-    return FootageAlignment(
-        clip_id=clip_id,
-        offset_s=0.0,
-        confidence=0.0,
-        duration_s=float(duration_s),
-        coverage=(0.0, 0.0),
-        overlaps=False,
-        reliable=False,
-        source=UNPLACED,
-    )
 
 
 @dataclass(frozen=True)
@@ -657,17 +657,7 @@ class FootageAlignment:
     spans: "tuple[MeasuredSpan, ...] | None" = None
 
     def to_dict(self) -> dict:
-        return {
-            **self._record(),
-            **(
-                {"spans": [s.to_dict() for s in self.spans]}
-                if self.spans is not None
-                else {}
-            ),
-        }
-
-    def _record(self) -> dict:
-        return {
+        out = {
             "clip_id": self.clip_id,
             "offset_s": self.offset_s,
             "confidence": self.confidence,
@@ -681,6 +671,9 @@ class FootageAlignment:
             "margin": self.margin,
             "source": self.source,
         }
+        if self.spans is not None:
+            out["spans"] = [s.to_dict() for s in self.spans]
+        return out
 
     @classmethod
     def from_dict(cls, d: dict) -> "FootageAlignment":
@@ -701,11 +694,9 @@ class FootageAlignment:
         margin = None if margin is None else float(margin)
         spans = d.get("spans")
         return cls(
-            spans=(
-                tuple(MeasuredSpan.from_dict(s) for s in spans)
-                if isinstance(spans, list)
-                else None
-            ),
+            # a malformed span is skipped, never the record: a placement is not
+            # removed by a measurement that went wrong on disk
+            spans=(_read_spans(spans) if isinstance(spans, list) else None),
             clip_id=d["clip_id"],
             offset_s=float(d["offset_s"]),
             confidence=confidence,
@@ -745,6 +736,17 @@ class FootageAlignment:
         )
 
 
+def _read_spans(rows: list) -> "tuple[MeasuredSpan, ...]":
+    """The well-formed spans among ``rows`` (a malformed one is skipped)."""
+    out = []
+    for row in rows:
+        try:
+            out.append(MeasuredSpan.from_dict(row))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return tuple(out)
+
+
 def unverified_stretches(
     a: FootageAlignment, *, tolerance_s: float = SPAN_OFFSET_TOLERANCE_S
 ) -> "list[tuple[float, float]] | None":
@@ -766,9 +768,13 @@ def unverified_stretches(
     lo = max(0.0, a.coverage[0] - a.offset_s)
     hi = min(a.duration_s, a.coverage[1] - a.offset_s)
     confirmed = sorted(
-        (max(lo, s.clip_start_s), min(hi, s.clip_end_s))
-        for s in a.spans
-        if abs(s.offset_s - a.offset_s) <= tolerance_s
+        (start, end)
+        for start, end in (
+            (max(lo, s.clip_start_s), min(hi, s.clip_end_s))
+            for s in a.spans
+            if abs(s.offset_s - a.offset_s) <= tolerance_s
+        )
+        if start < end  # a span outside the placement confirms none of it
     )
     out, at = [], lo
     for start, end in confirmed:

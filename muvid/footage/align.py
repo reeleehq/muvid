@@ -148,7 +148,7 @@ def measure_spans(
     failure is a traceback, never a quietly empty measurement.
     """
     from mixing.audio import aligned_spans  # lazy: heavy
-    from mixing.audio.audio_ops import SPAN_WINDOW_S
+    from mixing.audio.audio_ops import SPAN_WINDOW_S  # not re-exported by mixing.audio
 
     out = {}
     for clip_id, path in clips:
@@ -166,6 +166,7 @@ def measure_spans(
                 str(path),
                 reference_duration=song_duration,
                 sample_rate=sample_rate,
+                window_s=SPAN_WINDOW_S,  # named, so the reported accuracy is the one used
             )
         )
     return out, float(SPAN_WINDOW_S)

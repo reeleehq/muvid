@@ -961,15 +961,40 @@ def measure_spans(fp) -> dict:
 
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
-    aligns = fp.load_alignments()
-    if not aligns:
-        raise FootageError("no video is placed yet — call align (or set_offset) first")
+    song_hash = fp.song_hash()
+    stills = {c["clip_id"] for c in fp.list_clips() if c.get("kind") == STILL_KIND}
     paths = fp.clip_paths()
-    placed = [(a.clip_id, paths[a.clip_id]) for a in aligns if a.clip_id in paths]
+    # photos have no sound to listen to (as in `align`), and a record whose file is
+    # gone is kept as it is
+    placed = {
+        a.clip_id: a
+        for a in fp.load_alignments()
+        if a.clip_id in paths and a.clip_id not in stills
+    }
+    if not placed:
+        raise FootageError("no video is placed yet — call align (or set_offset) first")
     spans, window_s = _measure(
-        str(fp.song_path()), placed, song_duration=fp.song_duration()
+        str(fp.song_path()),
+        [(cid, paths[cid]) for cid in placed],
+        song_duration=fp.song_duration(),
     )
-    aligns = [replace(a, spans=spans.get(a.clip_id, a.spans)) for a in aligns]
+    # Minutes may have passed: re-read, and attach spans only where the song and the
+    # placement are still the ones measured — never write back a stale copy (an offset
+    # set meanwhile would be reverted, an old song's offsets brought back; muvid#59)
+    if fp.song_hash() != song_hash:
+        raise FootageError(
+            "the song changed while the videos were being checked — run measure_spans again"
+        )
+
+    def same(a, b):
+        return (a.clip_id, a.offset_s, a.source) == (b.clip_id, b.offset_s, b.source)
+
+    aligns = [
+        replace(a, spans=spans[a.clip_id])
+        if a.clip_id in placed and same(a, placed[a.clip_id])
+        else a
+        for a in fp.load_alignments()
+    ]
     fp.save_alignments(aligns)
     rows = []
     for a in aligns:
@@ -4510,6 +4535,9 @@ class OpSpec:
     #: Count ceilings the op enforces (``max_videos``, ``max_photos``), so a client can
     #: show "8 of 12" and refuse the extra files before sending a byte (muvid#170).
     limits: Mapping[str, int] = field(default_factory=dict, hash=False)
+    #: Whether the MCP transport serves it (:mod:`muvid.mcp._footage_ops`). ``False``
+    #: for an op only a host that honours ``runs="job"`` should run.
+    mcp: bool = True
 
 
 #: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.
@@ -4546,6 +4574,10 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "Check which parts of each video match the song",
         "write",
         runs="job",
+        # minutes per project (about align's cost): a host runs it as a job; the MCP
+        # transport would block a request on it, so it waits for a job-backed tool
+        # (muvid#16's latency decision)
+        mcp=False,
     ),
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),

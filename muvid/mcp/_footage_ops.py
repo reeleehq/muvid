@@ -10,7 +10,9 @@ than written a second time:
   ``nw.jobs`` job, ``render`` adds the download claim, and the rest keep the names they
   shipped under — a tool name is a live contract);
 - every other operation gets a GENERATED tool, ``footage_<op>``, built by
-  :mod:`muvid.mcp.footage_tools` from the operation's own signature and docstring.
+  :mod:`muvid.mcp.footage_tools` from the operation's own signature and docstring;
+- an operation whose row says ``mcp=False`` gets none: only a host that runs it as a
+  job serves it (``measure_spans``, muvid#16).
 
 Tools that serve no operation are transport-only and listed in
 :data:`FOOTAGE_TRANSPORT_TOOLS` / :data:`SCORING_TRANSPORT_TOOLS`.
@@ -59,17 +61,18 @@ def op_tool_name(op_name: str) -> str:
     return FOOTAGE_OP_TOOLS.get(op_name, f"footage_{op_name}")
 
 
+#: The catalogue rows the MCP transport serves.
+_SERVED = tuple(s for s in FOOTAGE_OP_SPECS if s.mcp)
+
 #: The operations that get a generated tool.
-GENERATED_OPS = tuple(
-    s.name for s in FOOTAGE_OP_SPECS if s.name not in FOOTAGE_OP_TOOLS
-)
+GENERATED_OPS = tuple(s.name for s in _SERVED if s.name not in FOOTAGE_OP_TOOLS)
 
 #: The footage tool list, in catalogue order then the transport-only tools.
 FOOTAGE_TOOLS = [
-    op_tool_name(s.name) for s in FOOTAGE_OP_SPECS if s.name not in SCORING_OPS
+    op_tool_name(s.name) for s in _SERVED if s.name not in SCORING_OPS
 ] + FOOTAGE_TRANSPORT_TOOLS
 
 #: The scoring tool list.
 SCORING_TOOLS = [
-    op_tool_name(s.name) for s in FOOTAGE_OP_SPECS if s.name in SCORING_OPS
+    op_tool_name(s.name) for s in _SERVED if s.name in SCORING_OPS
 ] + SCORING_TRANSPORT_TOOLS

@@ -42,6 +42,44 @@ def test_unverified_stretches_are_the_placement_no_span_confirms():
     assert unverified_stretches(placed) == []
 
 
+def test_overlapping_spans_and_the_tolerance_edge():
+    overlap = (MeasuredSpan(0.0, 50.0, 0.0, 0.9), MeasuredSpan(10.0, 30.0, 0.0, 0.9))
+    assert unverified_stretches(_a(overlap)) == [(50.0, 78.0)]  # the longer one holds
+    edge = (MeasuredSpan(0.0, 78.0, 0.25, 0.9),)  # exactly at the tolerance: confirms
+    assert unverified_stretches(_a(edge)) == []
+    beyond = (MeasuredSpan(0.0, 78.0, 0.2501, 0.9),)
+    assert unverified_stretches(_a(beyond)) == [(0.0, 78.0)]
+
+
+def test_a_span_outside_the_placement_confirms_none_of_it():
+    """The #16 review: clipped to the placement, a span past it inverted into an
+    interval running beyond the clip."""
+    a = _a((MeasuredSpan(40.0, 50.0, 0.0, 0.9),), duration=30.0, coverage=(0.0, 30.0))
+    assert unverified_stretches(a) == [(0.0, 30.0)]
+
+
+def test_a_malformed_span_on_disk_is_skipped_never_the_record():
+    record = FootageAlignment("c", 1.0, 0.9, 10.0, (1.0, 11.0)).to_dict()
+    record["spans"] = [
+        {"clip_start_s": 0, "clip_end_s": 5, "offset_s": 1, "confidence": "abc"},
+        {"clip_start_s": 0},
+        None,
+        {"clip_start_s": 0, "clip_end_s": 5, "offset_s": 1, "confidence": 0.8},
+    ]
+    a = FootageAlignment.from_dict(record)
+    assert a.offset_s == 1.0 and a.spans == (MeasuredSpan(0.0, 5.0, 1.0, 0.8),)
+
+
+def test_the_span_tolerance_is_mixings():
+    """Restated so edl stays import-light; pinned so the two cannot drift."""
+    pytest.importorskip("mixing.audio")
+    from mixing.audio.audio_ops import SPAN_OFFSET_TOLERANCE_S
+
+    from muvid.footage.edl import SPAN_OFFSET_TOLERANCE_S as ours
+
+    assert ours == SPAN_OFFSET_TOLERANCE_S
+
+
 def test_a_record_without_spans_is_byte_identical_and_with_them_round_trips():
     bare = FootageAlignment("c", 1.0, 0.9, 10.0, (1.0, 11.0))
     assert "spans" not in bare.to_dict()
@@ -113,6 +151,69 @@ def test_measure_spans_needs_a_placed_video(fp):
     service.clear_offset(fp, clip_id="A")
     with pytest.raises(FootageError, match="no video is placed"):
         service.measure_spans(fp)
+
+
+def test_a_hand_placed_photo_is_not_listened_to(fp, tmp_path, monkeypatch):
+    """The #16 review: a photo placed by hand reached the audio aligner and crashed the
+    whole operation; photos have no sound, as in ``align``."""
+    Image = pytest.importorskip("PIL.Image")
+    import muvid.footage.align as A
+
+    asked = []
+
+    def fake(song, clips, *, song_duration):
+        asked.extend(c for c, _ in clips)
+        return {c: () for c, _ in clips}, 20.0
+
+    monkeypatch.setattr(A, "measure_spans", fake)
+    photo = tmp_path / "p.jpg"
+    Image.new("RGB", (8, 8)).save(photo)
+    service.add_clip(fp, path=str(photo), clip_id="P")
+    service.set_offset(fp, clip_id="P", offset_s=5.0)
+    service.measure_spans(fp)
+    assert asked == ["A"]
+
+
+def test_a_placement_changed_while_measuring_is_kept_not_reverted(fp, monkeypatch):
+    """The #16 review: the measurement took minutes and then wrote its old copy of the
+    placements back, reverting an offset set meanwhile."""
+    import muvid.footage.align as A
+
+    def slow_measure(song, clips, *, song_duration):
+        service.set_offset(fp, clip_id="A", offset_s=2.5)  # a person moves it meanwhile
+        return {c: (MeasuredSpan(0.0, 20.0, 0.0, 0.9),) for c, _ in clips}, 20.0
+
+    monkeypatch.setattr(A, "measure_spans", slow_measure)
+    service.measure_spans(fp)
+    (a,) = [x for x in fp.load_alignments() if x.clip_id == "A"]
+    assert (
+        a.offset_s == 2.5 and a.spans is None
+    )  # kept; spans of the OLD placement dropped
+
+
+def test_a_song_changed_while_measuring_refuses(fp, tmp_path, monkeypatch):
+    import muvid.footage.align as A
+    from muvid.footage.errors import FootageError
+
+    def slow_measure(song, clips, *, song_duration):
+        other = tmp_path / "other.wav"
+        other.write_bytes(b"RIFF-other")
+        service.set_song(fp, path=str(other), duration_s=30.0)
+        return {c: () for c, _ in clips}, 20.0
+
+    monkeypatch.setattr(A, "measure_spans", slow_measure)
+    with pytest.raises(FootageError, match="song changed"):
+        service.measure_spans(fp)
+    assert fp.load_alignments() == []  # the new song's state, not the old offsets
+
+
+def test_measure_spans_is_not_an_mcp_tool():
+    """Minutes per project: a host runs it as a job; the MCP transport would block a
+    request on it (muvid#16's latency decision is still open)."""
+    from muvid.mcp._footage_ops import FOOTAGE_TOOLS, GENERATED_OPS
+
+    assert "measure_spans" not in GENERATED_OPS
+    assert "footage_measure_spans" not in FOOTAGE_TOOLS
 
 
 # -- the real measurement ------------------------------------------------------------

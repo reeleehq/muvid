@@ -421,7 +421,8 @@ def test_mcp_footage_tools_are_derived_from_the_catalogue():
         op_tool_name,
     )
 
-    op_names = [s.name for s in service.FOOTAGE_OP_SPECS]
+    # an op whose row says mcp=False is served by a host's job runner only (muvid#16)
+    op_names = [s.name for s in service.FOOTAGE_OP_SPECS if s.mcp]
     expected_footage = [op_tool_name(n) for n in op_names if n not in SCORING_OPS]
     expected_scoring = [op_tool_name(n) for n in op_names if n in SCORING_OPS]
     assert mcp.FOOTAGE_TOOLS == expected_footage + FOOTAGE_TRANSPORT_TOOLS
