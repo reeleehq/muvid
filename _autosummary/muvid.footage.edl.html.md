@@ -93,7 +93,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=False)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -144,10 +144,12 @@ when the source’s tag cannot be trusted, an HDR transfer and its missing tags)
 
 Seconds of the clip this cut consumes — its span at its rate.
 
-#### source_tonemap *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+#### source_tonemap *: [ToneMap](muvid.footage.colour.html.md#muvid.footage.colour.ToneMap) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
-whether the assembler tone-maps this cut’s HDR source — the
-probe says HDR AND this ffmpeg can ([`muvid.footage.colour.can_tonemap()`](muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap)).
+how the assembler tone-maps this cut’s HDR source
+(a [`muvid.footage.colour.ToneMap`](muvid.footage.colour.html.md#muvid.footage.colour.ToneMap), the render’s `tone_map`), set when the
+probe says HDR AND this ffmpeg can ([`muvid.footage.colour.can_tonemap()`](muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap));
+falsy (`None`) when it does not tone-map.
 
 * **Type:**
   NOT from the EDL

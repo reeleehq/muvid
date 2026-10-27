@@ -33,7 +33,7 @@ Modules:
 | [`punch_in`](#muvid.footage.punch_in)(\*, canvas, fps, duration_s[, zoom, ...]) | An in-shot punch-in: hold, then push in, WITHOUT leaving the shot (muvid#66).       |
 | [`punch_in_cuts`](#muvid.footage.punch_in_cuts)(entries, \*, canvas, fps[, ...])     | Put a punch-in on every `every`-th footage entry — muvid#66's other half.           |
 | [`stylize`](#muvid.footage.stylize)(look, \*, canvas, fps[, duration_s, ...])  | A `looks.Look` compiled against the binary muvid will run.                          |
-| [`register_selection_strategy`](#muvid.footage.register_selection_strategy)(slug, fn)              | Register a selection strategy under `slug` (returns it, for inline use).            |
+| [`register_selection_strategy`](#muvid.footage.register_selection_strategy)(slug, fn, \*[, title]) | Register a selection strategy under `slug` (returns it, for inline use).            |
 | [`list_strategies`](#muvid.footage.list_strategies)()                                  | All strategy slugs (eager + lazy), sorted.                                          |
 | [`resolve_strategy`](#muvid.footage.resolve_strategy)(strategy)                         | Resolve a strategy name OR a bare callable to a `SelectionStrategy`.                |
 | [`select_edl`](#muvid.footage.select_edl)(strategy, alignments, ...[, context])   | Run `strategy` (name or callable) to produce an EDL from `alignments`.              |
@@ -666,9 +666,11 @@ seconds-based interval would drift off it.
   assembler cannot warn that a punch bordering a transition restarts its
   ramp (muvid#73).
 
-### muvid.footage.register_selection_strategy(slug, fn)
+### muvid.footage.register_selection_strategy(slug, fn, , title=None)
 
 Register a selection strategy under `slug` (returns it, for inline use).
+
+`title` is its name in words (default: from the slug, see `strategy_title()`).
 
 * **Return type:**
   [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]]

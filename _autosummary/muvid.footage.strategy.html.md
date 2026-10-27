@@ -34,15 +34,16 @@ Register your own with [`register_selection_strategy()`](#muvid.footage.strategy
 
 ### Functions
 
-| [`best_confidence`](#muvid.footage.strategy.best_confidence)(alignments, song_duration)       | For each covered span, show the highest-confidence clip (ties: longest coverage).                                            |
-|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| [`fewest_cuts`](#muvid.footage.strategy.fewest_cuts)(alignments, song_duration)           | Stay on the current clip as long as it covers; only switch when it runs out (then to the clip extending furthest).           |
-| [`list_strategies`](#muvid.footage.strategy.list_strategies)()                                | All strategy slugs (eager + lazy), sorted.                                                                                   |
-| [`longest_take`](#muvid.footage.strategy.longest_take)(alignments, song_duration)          | Prefer the clip that keeps rolling longest — pick the one whose coverage extends furthest forward (ties: higher confidence). |
-| [`register_lazy_strategy`](#muvid.footage.strategy.register_lazy_strategy)(slug, target_ref)         | Register a strategy by a `"module:func"` reference, imported only on first use.                                              |
-| [`register_selection_strategy`](#muvid.footage.strategy.register_selection_strategy)(slug, fn)            | Register a selection strategy under `slug` (returns it, for inline use).                                                     |
-| [`resolve_strategy`](#muvid.footage.strategy.resolve_strategy)(strategy)                       | Resolve a strategy name OR a bare callable to a [`SelectionStrategy`](#muvid.footage.strategy.SelectionStrategy).          |
-| [`select_edl`](#muvid.footage.strategy.select_edl)(strategy, alignments, ...[, context]) | Run `strategy` (name or callable) to produce an EDL from `alignments`.                                                       |
+| [`best_confidence`](#muvid.footage.strategy.best_confidence)(alignments, song_duration)         | For each covered span, show the highest-confidence clip (ties: longest coverage).                                                           |
+|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| [`fewest_cuts`](#muvid.footage.strategy.fewest_cuts)(alignments, song_duration)             | Stay on the current clip as long as it covers; only switch when it runs out (then to the clip extending furthest).                          |
+| [`list_strategies`](#muvid.footage.strategy.list_strategies)()                                  | All strategy slugs (eager + lazy), sorted.                                                                                                  |
+| [`longest_take`](#muvid.footage.strategy.longest_take)(alignments, song_duration)            | Prefer the clip that keeps rolling longest — pick the one whose coverage extends furthest forward (ties: higher confidence).                |
+| [`register_lazy_strategy`](#muvid.footage.strategy.register_lazy_strategy)(slug, target_ref, \*)       | Register a strategy by a `"module:func"` reference, imported only on first use.                                                             |
+| [`register_selection_strategy`](#muvid.footage.strategy.register_selection_strategy)(slug, fn, \*[, title]) | Register a selection strategy under `slug` (returns it, for inline use).                                                                    |
+| [`resolve_strategy`](#muvid.footage.strategy.resolve_strategy)(strategy)                         | Resolve a strategy name OR a bare callable to a [`SelectionStrategy`](#muvid.footage.strategy.SelectionStrategy).                         |
+| [`select_edl`](#muvid.footage.strategy.select_edl)(strategy, alignments, ...[, context])   | Run `strategy` (name or callable) to produce an EDL from `alignments`.                                                                      |
+| [`strategy_title`](#muvid.footage.strategy.strategy_title)(slug)                               | `slug`'s name in words: its registered `title`, else the slug made readable (`"my_rule"` -> `"My rule"`), so every listed strategy has one. |
 
 ### muvid.footage.strategy.DEFAULT_STRATEGY *= 'best_confidence'*
 
@@ -96,7 +97,7 @@ furthest forward (ties: higher confidence). Yields long, continuous takes.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
-### muvid.footage.strategy.register_lazy_strategy(slug, target_ref)
+### muvid.footage.strategy.register_lazy_strategy(slug, target_ref, , title=None)
 
 Register a strategy by a `"module:func"` reference, imported only on first use.
 
@@ -106,9 +107,11 @@ module at registration time — the import happens in [`resolve_strategy()`](#mu
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.strategy.register_selection_strategy(slug, fn)
+### muvid.footage.strategy.register_selection_strategy(slug, fn, , title=None)
 
 Register a selection strategy under `slug` (returns it, for inline use).
+
+`title` is its name in words (default: from the slug, see [`strategy_title()`](#muvid.footage.strategy.strategy_title)).
 
 * **Return type:**
   [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]]
@@ -131,3 +134,11 @@ the alignment-only built-ins ignore it. See [`SelectionStrategy`](#muvid.footage
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
+
+### muvid.footage.strategy.strategy_title(slug)
+
+`slug`’s name in words: its registered `title`, else the slug made readable
+(`"my_rule"` -> `"My rule"`), so every listed strategy has one.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)

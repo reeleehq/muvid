@@ -23,4 +23,5 @@ muvid.footage.strategy
       register_selection_strategy
       resolve_strategy
       select_edl
+      strategy_title
    

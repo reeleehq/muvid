@@ -16,6 +16,9 @@ muvid.footage.colour
       HDR_TRANSFERS
       HDR_REFERENCE_WHITE_NITS
       TONEMAP
+      TONEMAP_CURVES
+      MIN_REFERENCE_WHITE_NITS
+      DEFAULT_TONE_MAP
    
    .. rubric:: Functions
 
@@ -32,4 +35,5 @@ muvid.footage.colour
    .. autosummary::
    
       SourceColour
+      ToneMap
    

@@ -131,7 +131,7 @@ concurrent callers, so one render could swallow or steal another’s warnings.
 
 Default output frame rate for the assembled video.
 
-### muvid.footage.assemble.assemble_music_video(cuts, song_path, out_path, , canvas=(1920, 1080), fps=30, crf=20, preset='veryfast', on_note=None, fade_out_s=0.0, should_cancel=None)
+### muvid.footage.assemble.assemble_music_video(cuts, song_path, out_path, , canvas=(1920, 1080), fps=30, crf=20, preset='veryfast', on_note=None, fade_out_s=0.0, should_cancel=None, tone_map=ToneMap(curve='mobius', param=None, reference_white_nits=203.0))
 
 Render `cuts` (a validated, contiguous, gap-filled EDL) into `out_path`.
 
@@ -160,5 +160,9 @@ Returns `out_path`.
     mux; when it returns True the render stops there (its parts are removed)
     and [`FootageCancelled`](muvid.footage.errors.html.md#muvid.footage.errors.FootageCancelled) is raised — so a
     cancelled render ends within one cut’s encode rather than minutes later.
+  * **tone_map** ([`ToneMap`](muvid.footage.colour.html.md#muvid.footage.colour.ToneMap)) – how an HDR (HLG/PQ) source is brought to the SDR delivery — a
+    [`ToneMap`](muvid.footage.colour.html.md#muvid.footage.colour.ToneMap) (curve, its parameter, the HDR
+    luminance that becomes SDR white). The default is the measured choice of
+    muvid#201; an SDR source never reads it.
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)

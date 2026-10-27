@@ -68,7 +68,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`score`](#muvid.footage.service.score)(fp, \*[, hop_s, metrics, should_cancel])   | Look at the footage: score every placed video, on the song's own timeline — picture quality and how its movement sits on the beat — and save the curves.                                                                                                                |
 | [`scores`](#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, ...])          | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
 | [`score_candidates`](#muvid.footage.service.score_candidates)(fp, \*, candidates[, ...])      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                            |
-| [`strategies`](#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment).                                                                                                                      |
+| [`strategies`](#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment), with `titles`: each one's name in words, for a screen to label it with.                                              |
 | [`propose_edit`](#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                               |
 | [`save_edit`](#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
 | [`edits`](#muvid.footage.service.edits)(fp)                                        | The saved edits, oldest first: each one's `edit_id`, `name`, how it was made, how many cuts it has, and `problem` — why it would not validate against the current alignment (`null` when it does).                                                                      |
@@ -950,7 +950,8 @@ and whether it is trusted for rendering (`reliable`). `renders` is newest first
 ### muvid.footage.service.strategies(fp=None)
 
 The ways to cut on offer — the selection strategies `propose_edit` accepts
-(`weighted` reads the footage scores; the rest use only the alignment).
+(`weighted` reads the footage scores; the rest use only the alignment), with
+`titles`: each one’s name in words, for a screen to label it with.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

@@ -27,8 +27,10 @@ source is read here first ([`read_source_colour()`](#muvid.footage.colour.read_s
   against the SDR original). So it is TONE MAPPED (muvid#201, [`tonemap_chain()`](#muvid.footage.colour.tonemap_chain)):
   to linear light with [`HDR_REFERENCE_WHITE_NITS`](#muvid.footage.colour.HDR_REFERENCE_WHITE_NITS) as SDR white, to BT.709
   primaries, [`TONEMAP`](#muvid.footage.colour.TONEMAP) with `TONEMAP_PARAM`, then BT.709 limited — 24.7 dB
-  on the same clip. A build without `zscale` / `tonemap` cannot, and the assembler
-  then reports each HDR clip it delivers washed out.
+  on the same clip. Those three are the defaults of a [`ToneMap`](#muvid.footage.colour.ToneMap), which a caller
+  can replace (muvid#215: more highlight detail, or a brighter mid-range). A build
+  without `zscale` / `tonemap` cannot, and the assembler then reports each HDR
+  clip it delivers washed out.
 
 Import-light (stdlib only at module top): the look compiler imports the constants.
 
@@ -43,20 +45,28 @@ Import-light (stdlib only at module top): the look compiler imports the constant
 | [`HDR_TRANSFERS`](#muvid.footage.colour.HDR_TRANSFERS)            | ffprobe's names for the transfers that make a source HDR (HLG, PQ).                                                                                                                                     |
 | [`HDR_REFERENCE_WHITE_NITS`](#muvid.footage.colour.HDR_REFERENCE_WHITE_NITS) | BT.2408's reference white, where an HLG camera puts diffuse white.                                                                                                                                      |
 | [`TONEMAP`](#muvid.footage.colour.TONEMAP)                  | The `tonemap` curve for the highlights above SDR white.                                                                                                                                                 |
+| [`TONEMAP_CURVES`](#muvid.footage.colour.TONEMAP_CURVES)           | The curves ffmpeg's `tonemap` filter offers (`ffmpeg -h filter=tonemap`) — a closed vocabulary, because the curve is spliced into a filter string.                                                      |
+| [`MIN_REFERENCE_WHITE_NITS`](#muvid.footage.colour.MIN_REFERENCE_WHITE_NITS) | The range a reference white may take.                                                                                                                                                                   |
+| [`DEFAULT_TONE_MAP`](#muvid.footage.colour.DEFAULT_TONE_MAP)         | Today's tone mapping, the one every render gets unless it asks for another.                                                                                                                             |
 
 ### Functions
 
 | [`can_tonemap`](#muvid.footage.colour.can_tonemap)()                         | Whether this ffmpeg has the filters [`tonemap_chain()`](#muvid.footage.colour.tonemap_chain) needs.                                             |
 |----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`tonemap_chain`](#muvid.footage.colour.tonemap_chain)([fill])                 | HDR -> the SDR delivery colour, for a frame already at the canvas size (float frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. |
+| [`tonemap_chain`](#muvid.footage.colour.tonemap_chain)([fill, tone_map])       | HDR -> the SDR delivery colour, for a frame already at the canvas size (float frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. |
 | [`read_source_colour`](#muvid.footage.colour.read_source_colour)(path, \*[, probe]) | The [`SourceColour`](#muvid.footage.colour.SourceColour) of the first video stream of `path`.                                                  |
 | [`is_hd`](#muvid.footage.colour.is_hd)(width, height)                  | Whether players read an untagged `width` x `height` source as HD (BT.709).                                                                              |
 | [`source_colour`](#muvid.footage.colour.source_colour)(stream)                 | A probed video stream's [`SourceColour`](#muvid.footage.colour.SourceColour).                                                                  |
 
 ### Classes
 
-| [`SourceColour`](#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer, hdr_fill])   | What the assembler needs to know about one source's colour.   |
-|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
+| [`SourceColour`](#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer, hdr_fill])   | What the assembler needs to know about one source's colour.                                                                                                                                                      |
+|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`ToneMap`](#muvid.footage.colour.ToneMap)([curve, param, reference_white_nits])       | How an HDR source is brought to the SDR delivery (muvid#215): the `tonemap` `curve` and its `param` for the highlights, and the HDR luminance (nits) that becomes SDR white — lower it for a brighter mid-range. |
+
+### muvid.footage.colour.DEFAULT_TONE_MAP *= ToneMap(curve='mobius', param=None, reference_white_nits=203.0)*
+
+Today’s tone mapping, the one every render gets unless it asks for another.
 
 ### muvid.footage.colour.DELIVERY_COLOR_RANGE *= 'tv'*
 
@@ -96,6 +106,12 @@ source: at least this wide, OR taller than [`SD_MAX_HEIGHT`](#muvid.footage.colo
 Width matters for letterboxed HD — an untagged 1280x536 BT.709 clip measured
 26.9 dB under a height-only rule.
 
+### muvid.footage.colour.MIN_REFERENCE_WHITE_NITS *= 50*
+
+The range a reference white may take. Below the floor most of an HDR picture is
+pushed to white (1e-7 nits renders solid white); the ceiling is PQ’s own peak
+(10,000 nits — above it, solid black). 203 (BT.2408) sits well inside.
+
 ### muvid.footage.colour.SD_MAX_HEIGHT *= 576*
 
 The tallest SD frame (PAL, 576 lines).
@@ -132,6 +148,41 @@ eight bands from signal 0.60 to 0.95 (0.75 is reference white), the #201 review:
 `clip` sends 56% of the pixels to Y >= 235 and keeps no detail in the four bands
 above white; `mobius` 0.85 sends 6% there and keeps 6/2/1/0/1 code values in the
 top five; `mobius` 0.5 sends none but costs 8 codes at signal 0.70.
+
+### muvid.footage.colour.TONEMAP_CURVES *= frozenset({'clip', 'gamma', 'hable', 'linear', 'mobius', 'none', 'reinhard'})*
+
+The curves ffmpeg’s `tonemap` filter offers (`ffmpeg -h filter=tonemap`) — a
+closed vocabulary, because the curve is spliced into a filter string.
+
+### *class* muvid.footage.colour.ToneMap(curve='mobius', param=None, reference_white_nits=203)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+How an HDR source is brought to the SDR delivery (muvid#215): the `tonemap`
+`curve` and its `param` for the highlights, and the HDR luminance (nits) that
+becomes SDR white — lower it for a brighter mid-range. The defaults are the
+measured choice above; `ToneMap(param=0.5)` keeps every highlight below white at
+the cost of some mid-tone codes. `param=None` means the curve’s default: muvid’s
+measured one for `mobius`, ffmpeg’s for the rest.
+
+Checked on construction, because every field lands in a filter string:
+
+```pycon
+>>> ToneMap(curve="gamma").effective_param is None, ToneMap().effective_param
+(True, 0.85)
+>>> ToneMap(curve="mobius:desat=9")
+Traceback (most recent call last):
+...
+ValueError: unknown tone curve 'mobius:desat=9'; one of ['clip', 'gamma', 'hable', 'linear', 'mobius', 'none', 'reinhard']
+```
+
+#### *property* effective_param *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[float](https://docs.python.org/3/builtins/functions.html#float)]*
+
+the given one, else the curve’s default
+(muvid’s measured one, or `None` for ffmpeg’s own).
+
+* **Type:**
+  The `param` the filter gets
 
 ### muvid.footage.colour.can_tonemap()
 
@@ -190,17 +241,20 @@ SourceColour(in_matrix=None, hdr_transfer='arib-std-b67', hdr_fill=(('color_prim
 * **Return type:**
   [`SourceColour`](#muvid.footage.colour.SourceColour)
 
-### muvid.footage.colour.tonemap_chain(fill=())
+### muvid.footage.colour.tonemap_chain(fill=(), , tone_map=ToneMap(curve='mobius', param=None, reference_white_nits=203.0))
 
 HDR -> the SDR delivery colour, for a frame already at the canvas size (float
 frames at the source’s 4K would cost 100 MB each), ending in 8-bit 4:2:0. `fill`
-names the colour tags the source left out ([`SourceColour.hdr_fill`](#muvid.footage.colour.SourceColour.hdr_fill)).
+names the colour tags the source left out ([`SourceColour.hdr_fill`](#muvid.footage.colour.SourceColour.hdr_fill));
+`tone_map` is how the highlights are brought down ([`ToneMap`](#muvid.footage.colour.ToneMap)).
 
 ```pycon
 >>> tonemap_chain().split(",")[0]
 'zscale=t=linear:npl=203'
 >>> tonemap_chain((("color_primaries", "bt2020"),)).split(",")[0]
 'setparams=color_primaries=bt2020'
+>>> tonemap_chain(tone_map=ToneMap(param=0.5)).split(",")[3]
+'tonemap=mobius:param=0.5:desat=0'
 ```
 
 * **Return type:**

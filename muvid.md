@@ -1,4 +1,4 @@
-> built 2026-10-27 06:04 UTC from 9f34eb6 (main) · muvid 0.0.114. Details: build_info.json
+> built 2026-10-27 08:17 UTC from 4705bc3 (main) · muvid 0.0.115. Details: build_info.json
 
 # index.html.md
 
@@ -2571,7 +2571,7 @@ concurrent callers, so one render could swallow or steal another’s warnings.
 
 Default output frame rate for the assembled video.
 
-### muvid.footage.assemble.assemble_music_video(cuts, song_path, out_path, , canvas=(1920, 1080), fps=30, crf=20, preset='veryfast', on_note=None, fade_out_s=0.0, should_cancel=None)
+### muvid.footage.assemble.assemble_music_video(cuts, song_path, out_path, , canvas=(1920, 1080), fps=30, crf=20, preset='veryfast', on_note=None, fade_out_s=0.0, should_cancel=None, tone_map=ToneMap(curve='mobius', param=None, reference_white_nits=203.0))
 
 Render `cuts` (a validated, contiguous, gap-filled EDL) into `out_path`.
 
@@ -2600,6 +2600,10 @@ Returns `out_path`.
     mux; when it returns True the render stops there (its parts are removed)
     and [`FootageCancelled`](_autosummary/muvid.footage.errors.html.md#muvid.footage.errors.FootageCancelled) is raised — so a
     cancelled render ends within one cut’s encode rather than minutes later.
+  * **tone_map** ([`ToneMap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap)) – how an HDR (HLG/PQ) source is brought to the SDR delivery — a
+    [`ToneMap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap) (curve, its parameter, the HDR
+    luminance that becomes SDR white). The default is the measured choice of
+    muvid#201; an SDR source never reads it.
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
@@ -3094,8 +3098,10 @@ source is read here first ([`read_source_colour()`](_autosummary/muvid.footage.c
   against the SDR original). So it is TONE MAPPED (muvid#201, [`tonemap_chain()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain)):
   to linear light with [`HDR_REFERENCE_WHITE_NITS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_REFERENCE_WHITE_NITS) as SDR white, to BT.709
   primaries, [`TONEMAP`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.TONEMAP) with `TONEMAP_PARAM`, then BT.709 limited — 24.7 dB
-  on the same clip. A build without `zscale` / `tonemap` cannot, and the assembler
-  then reports each HDR clip it delivers washed out.
+  on the same clip. Those three are the defaults of a [`ToneMap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap), which a caller
+  can replace (muvid#215: more highlight detail, or a brighter mid-range). A build
+  without `zscale` / `tonemap` cannot, and the assembler then reports each HDR
+  clip it delivers washed out.
 
 Import-light (stdlib only at module top): the look compiler imports the constants.
 
@@ -3110,20 +3116,28 @@ Import-light (stdlib only at module top): the look compiler imports the constant
 | [`HDR_TRANSFERS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_TRANSFERS)            | ffprobe's names for the transfers that make a source HDR (HLG, PQ).                                                                                                                                     |
 | [`HDR_REFERENCE_WHITE_NITS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_REFERENCE_WHITE_NITS) | BT.2408's reference white, where an HLG camera puts diffuse white.                                                                                                                                      |
 | [`TONEMAP`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.TONEMAP)                  | The `tonemap` curve for the highlights above SDR white.                                                                                                                                                 |
+| [`TONEMAP_CURVES`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.TONEMAP_CURVES)           | The curves ffmpeg's `tonemap` filter offers (`ffmpeg -h filter=tonemap`) — a closed vocabulary, because the curve is spliced into a filter string.                                                      |
+| [`MIN_REFERENCE_WHITE_NITS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.MIN_REFERENCE_WHITE_NITS) | The range a reference white may take.                                                                                                                                                                   |
+| [`DEFAULT_TONE_MAP`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DEFAULT_TONE_MAP)         | Today's tone mapping, the one every render gets unless it asks for another.                                                                                                                             |
 
 ### Functions
 
 | [`can_tonemap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap)()                         | Whether this ffmpeg has the filters [`tonemap_chain()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain) needs.                                             |
 |----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`tonemap_chain`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain)([fill])                 | HDR -> the SDR delivery colour, for a frame already at the canvas size (float frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. |
+| [`tonemap_chain`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain)([fill, tone_map])       | HDR -> the SDR delivery colour, for a frame already at the canvas size (float frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. |
 | [`read_source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.read_source_colour)(path, \*[, probe]) | The [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) of the first video stream of `path`.                                                  |
 | [`is_hd`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.is_hd)(width, height)                  | Whether players read an untagged `width` x `height` source as HD (BT.709).                                                                              |
 | [`source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.source_colour)(stream)                 | A probed video stream's [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour).                                                                  |
 
 ### Classes
 
-| [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer, hdr_fill])   | What the assembler needs to know about one source's colour.   |
-|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
+| [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer, hdr_fill])   | What the assembler needs to know about one source's colour.                                                                                                                                                      |
+|------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`ToneMap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap)([curve, param, reference_white_nits])       | How an HDR source is brought to the SDR delivery (muvid#215): the `tonemap` `curve` and its `param` for the highlights, and the HDR luminance (nits) that becomes SDR white — lower it for a brighter mid-range. |
+
+### muvid.footage.colour.DEFAULT_TONE_MAP *= ToneMap(curve='mobius', param=None, reference_white_nits=203.0)*
+
+Today’s tone mapping, the one every render gets unless it asks for another.
 
 ### muvid.footage.colour.DELIVERY_COLOR_RANGE *= 'tv'*
 
@@ -3163,6 +3177,12 @@ source: at least this wide, OR taller than [`SD_MAX_HEIGHT`](_autosummary/muvid.
 Width matters for letterboxed HD — an untagged 1280x536 BT.709 clip measured
 26.9 dB under a height-only rule.
 
+### muvid.footage.colour.MIN_REFERENCE_WHITE_NITS *= 50*
+
+The range a reference white may take. Below the floor most of an HDR picture is
+pushed to white (1e-7 nits renders solid white); the ceiling is PQ’s own peak
+(10,000 nits — above it, solid black). 203 (BT.2408) sits well inside.
+
 ### muvid.footage.colour.SD_MAX_HEIGHT *= 576*
 
 The tallest SD frame (PAL, 576 lines).
@@ -3199,6 +3219,41 @@ eight bands from signal 0.60 to 0.95 (0.75 is reference white), the #201 review:
 `clip` sends 56% of the pixels to Y >= 235 and keeps no detail in the four bands
 above white; `mobius` 0.85 sends 6% there and keeps 6/2/1/0/1 code values in the
 top five; `mobius` 0.5 sends none but costs 8 codes at signal 0.70.
+
+### muvid.footage.colour.TONEMAP_CURVES *= frozenset({'clip', 'gamma', 'hable', 'linear', 'mobius', 'none', 'reinhard'})*
+
+The curves ffmpeg’s `tonemap` filter offers (`ffmpeg -h filter=tonemap`) — a
+closed vocabulary, because the curve is spliced into a filter string.
+
+### *class* muvid.footage.colour.ToneMap(curve='mobius', param=None, reference_white_nits=203)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+How an HDR source is brought to the SDR delivery (muvid#215): the `tonemap`
+`curve` and its `param` for the highlights, and the HDR luminance (nits) that
+becomes SDR white — lower it for a brighter mid-range. The defaults are the
+measured choice above; `ToneMap(param=0.5)` keeps every highlight below white at
+the cost of some mid-tone codes. `param=None` means the curve’s default: muvid’s
+measured one for `mobius`, ffmpeg’s for the rest.
+
+Checked on construction, because every field lands in a filter string:
+
+```pycon
+>>> ToneMap(curve="gamma").effective_param is None, ToneMap().effective_param
+(True, 0.85)
+>>> ToneMap(curve="mobius:desat=9")
+Traceback (most recent call last):
+...
+ValueError: unknown tone curve 'mobius:desat=9'; one of ['clip', 'gamma', 'hable', 'linear', 'mobius', 'none', 'reinhard']
+```
+
+#### *property* effective_param *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[float](https://docs.python.org/3/builtins/functions.html#float)]*
+
+the given one, else the curve’s default
+(muvid’s measured one, or `None` for ffmpeg’s own).
+
+* **Type:**
+  The `param` the filter gets
 
 ### muvid.footage.colour.can_tonemap()
 
@@ -3257,17 +3312,20 @@ SourceColour(in_matrix=None, hdr_transfer='arib-std-b67', hdr_fill=(('color_prim
 * **Return type:**
   [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)
 
-### muvid.footage.colour.tonemap_chain(fill=())
+### muvid.footage.colour.tonemap_chain(fill=(), , tone_map=ToneMap(curve='mobius', param=None, reference_white_nits=203.0))
 
 HDR -> the SDR delivery colour, for a frame already at the canvas size (float
 frames at the source’s 4K would cost 100 MB each), ending in 8-bit 4:2:0. `fill`
-names the colour tags the source left out ([`SourceColour.hdr_fill`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour.hdr_fill)).
+names the colour tags the source left out ([`SourceColour.hdr_fill`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour.hdr_fill));
+`tone_map` is how the highlights are brought down ([`ToneMap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap)).
 
 ```pycon
 >>> tonemap_chain().split(",")[0]
 'zscale=t=linear:npl=203'
 >>> tonemap_chain((("color_primaries", "bt2020"),)).split(",")[0]
 'setparams=color_primaries=bt2020'
+>>> tonemap_chain(tone_map=ToneMap(param=0.5)).split(",")[3]
+'tonemap=mobius:param=0.5:desat=0'
 ```
 
 * **Return type:**
@@ -3371,7 +3429,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=False)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3422,10 +3480,12 @@ when the source’s tag cannot be trusted, an HDR transfer and its missing tags)
 
 Seconds of the clip this cut consumes — its span at its rate.
 
-#### source_tonemap *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+#### source_tonemap *: [ToneMap](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
-whether the assembler tone-maps this cut’s HDR source — the
-probe says HDR AND this ffmpeg can ([`muvid.footage.colour.can_tonemap()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap)).
+how the assembler tone-maps this cut’s HDR source
+(a [`muvid.footage.colour.ToneMap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.ToneMap), the render’s `tone_map`), set when the
+probe says HDR AND this ffmpeg can ([`muvid.footage.colour.can_tonemap()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap));
+falsy (`None`) when it does not tone-map.
 
 * **Type:**
   NOT from the EDL
@@ -4700,7 +4760,7 @@ Modules:
 | [`punch_in`](_autosummary/muvid.footage.html.md#muvid.footage.punch_in)(\*, canvas, fps, duration_s[, zoom, ...]) | An in-shot punch-in: hold, then push in, WITHOUT leaving the shot (muvid#66).       |
 | [`punch_in_cuts`](_autosummary/muvid.footage.html.md#muvid.footage.punch_in_cuts)(entries, \*, canvas, fps[, ...])     | Put a punch-in on every `every`-th footage entry — muvid#66's other half.           |
 | [`stylize`](_autosummary/muvid.footage.html.md#muvid.footage.stylize)(look, \*, canvas, fps[, duration_s, ...])  | A `looks.Look` compiled against the binary muvid will run.                          |
-| [`register_selection_strategy`](_autosummary/muvid.footage.html.md#muvid.footage.register_selection_strategy)(slug, fn)              | Register a selection strategy under `slug` (returns it, for inline use).            |
+| [`register_selection_strategy`](_autosummary/muvid.footage.html.md#muvid.footage.register_selection_strategy)(slug, fn, \*[, title]) | Register a selection strategy under `slug` (returns it, for inline use).            |
 | [`list_strategies`](_autosummary/muvid.footage.html.md#muvid.footage.list_strategies)()                                  | All strategy slugs (eager + lazy), sorted.                                          |
 | [`resolve_strategy`](_autosummary/muvid.footage.html.md#muvid.footage.resolve_strategy)(strategy)                         | Resolve a strategy name OR a bare callable to a `SelectionStrategy`.                |
 | [`select_edl`](_autosummary/muvid.footage.html.md#muvid.footage.select_edl)(strategy, alignments, ...[, context])   | Run `strategy` (name or callable) to produce an EDL from `alignments`.              |
@@ -5333,9 +5393,11 @@ seconds-based interval would drift off it.
   assembler cannot warn that a punch bordering a transition restarts its
   ramp (muvid#73).
 
-### muvid.footage.register_selection_strategy(slug, fn)
+### muvid.footage.register_selection_strategy(slug, fn, , title=None)
 
 Register a selection strategy under `slug` (returns it, for inline use).
+
+`title` is its name in words (default: from the slug, see `strategy_title()`).
 
 * **Return type:**
   [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]]
@@ -7341,10 +7403,12 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](_auto
 
 ### Module Attributes
 
-| [`DEFAULT_WEIGHTS`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.DEFAULT_WEIGHTS)          | Default per-metric weights.                                                 |
-|---------------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| [`PRESETS`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.PRESETS)                  | Named presets — a filled-in config.                                         |
-| [`UNVOUCHED_REWARD_PENALTY`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY) | Reward-seconds per second charged to a clip the aligner will not vouch for. |
+| [`DEFAULT_WEIGHTS`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.DEFAULT_WEIGHTS)          | Default per-metric weights.                                                                                                                                                                                                                    |
+|---------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`PRESETS`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.PRESETS)                  | Named presets — a filled-in config.                                                                                                                                                                                                            |
+| [`UNVOUCHED_REWARD_PENALTY`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY) | Reward-seconds per second charged to a clip the aligner will not vouch for.                                                                                                                                                                    |
+| [`FALLBACK_CAUSES`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.FALLBACK_CAUSES)          | Why the `weighted` DP handed the edit to `best_confidence`, in words a person reads (`explain` says them) — every `cause` a fallback can carry, kept beside the code that emits them so a new cause is worded where it is written (muvid#217). |
+| [`RUN_CAUSES`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.RUN_CAUSES)               | The causes a run that did NOT fall back carries, in words; `optimal` needs none.                                                                                                                                                               |
 
 ### Functions
 
@@ -7370,10 +7434,22 @@ Default per-metric weights. A metric absent from the tensor collapses to weight 
 (its column simply doesn’t exist), so a project scored without the lip-sync tier still
 selects cleanly on the metrics it has.
 
+### muvid.footage.select_score.FALLBACK_CAUSES *= {'coverage_gap': 'the videos leave part of the song uncovered', 'dwell_infeasible': 'a video would have had to hold longer than the longest shot allowed', 'empty_span': 'there was no song to cut', 'infeasible': 'no cut fitted the shot-length limits', 'no_alignments': 'there was no placed video to choose from', 'no_weighted_metrics': 'no score it was asked to weigh was measured', 'reconstruct_failed': 'the cut could not be assembled'}*
+
+Why the `weighted` DP handed the edit to `best_confidence`, in words a person
+reads (`explain` says them) — every `cause` a fallback can carry, kept beside the
+code that emits them so a new cause is worded where it is written (muvid#217).
+`tests/test_scoring_select.py` reads this module’s source for every cause literal
+it emits and fails on one that is in neither this table nor [`RUN_CAUSES`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.RUN_CAUSES).
+
 ### muvid.footage.select_score.PRESETS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [WeightedSelectionConfig](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.WeightedSelectionConfig)]* *= {'contemplative': WeightedSelectionConfig(weights={'lip_sync_lse_c': 1.0, 'motion_beat_bas': 0.8, 'motion_onset_xcorr': 0.5, 'sharpness': 0.6, 'exposure': 0.3, 'face_framing': 0.6, 'stability_shake': 0.3}, lambda_switch=0.6, l_min_s=3.0, l_max_s=12.0, l_max_overrun_penalty=0.05, boundary_mode='beats', beat_unit='beat'), 'energetic': WeightedSelectionConfig(weights={'lip_sync_lse_c': 1.0, 'motion_beat_bas': 1.0, 'motion_onset_xcorr': 0.8, 'sharpness': 0.4, 'exposure': 0.3, 'face_framing': 0.4, 'stability_shake': 0.3}, lambda_switch=0.2, l_min_s=0.8, l_max_s=4.0, l_max_overrun_penalty=0.25, boundary_mode='beats', beat_unit='beat')}*
 
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
+
+### muvid.footage.select_score.RUN_CAUSES *= {'dwell_relaxed': 'no cut could keep every shot at least the minimum length, so that minimum was dropped to find one', 'optimal': ''}*
+
+The causes a run that did NOT fall back carries, in words; `optimal` needs none.
 
 ### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict(), stale_metrics=())
 
@@ -7612,7 +7688,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`score`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score)(fp, \*[, hop_s, metrics, should_cancel])   | Look at the footage: score every placed video, on the song's own timeline — picture quality and how its movement sits on the beat — and save the curves.                                                                                                                |
 | [`scores`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.scores)(fp, \*[, clip_id, metrics, ...])          | The saved footage curves — for the lanes under each video, and for inspection.                                                                                                                                                                                          |
 | [`score_candidates`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score_candidates)(fp, \*, candidates[, ...])      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                            |
-| [`strategies`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment).                                                                                                                      |
+| [`strategies`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment), with `titles`: each one's name in words, for a screen to label it with.                                              |
 | [`propose_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                               |
 | [`save_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                    |
 | [`edits`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.edits)(fp)                                        | The saved edits, oldest first: each one's `edit_id`, `name`, how it was made, how many cuts it has, and `problem` — why it would not validate against the current alignment (`null` when it does).                                                                      |
@@ -8494,7 +8570,8 @@ and whether it is trusted for rendering (`reliable`). `renders` is newest first
 ### muvid.footage.service.strategies(fp=None)
 
 The ways to cut on offer — the selection strategies `propose_edit` accepts
-(`weighted` reads the footage scores; the rest use only the alignment).
+(`weighted` reads the footage scores; the rest use only the alignment), with
+`titles`: each one’s name in words, for a screen to label it with.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -8555,15 +8632,16 @@ Register your own with [`register_selection_strategy()`](_autosummary/muvid.foot
 
 ### Functions
 
-| [`best_confidence`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.best_confidence)(alignments, song_duration)       | For each covered span, show the highest-confidence clip (ties: longest coverage).                                            |
-|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| [`fewest_cuts`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.fewest_cuts)(alignments, song_duration)           | Stay on the current clip as long as it covers; only switch when it runs out (then to the clip extending furthest).           |
-| [`list_strategies`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.list_strategies)()                                | All strategy slugs (eager + lazy), sorted.                                                                                   |
-| [`longest_take`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.longest_take)(alignments, song_duration)          | Prefer the clip that keeps rolling longest — pick the one whose coverage extends furthest forward (ties: higher confidence). |
-| [`register_lazy_strategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.register_lazy_strategy)(slug, target_ref)         | Register a strategy by a `"module:func"` reference, imported only on first use.                                              |
-| [`register_selection_strategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.register_selection_strategy)(slug, fn)            | Register a selection strategy under `slug` (returns it, for inline use).                                                     |
-| [`resolve_strategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.resolve_strategy)(strategy)                       | Resolve a strategy name OR a bare callable to a [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy).          |
-| [`select_edl`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.select_edl)(strategy, alignments, ...[, context]) | Run `strategy` (name or callable) to produce an EDL from `alignments`.                                                       |
+| [`best_confidence`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.best_confidence)(alignments, song_duration)         | For each covered span, show the highest-confidence clip (ties: longest coverage).                                                           |
+|-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| [`fewest_cuts`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.fewest_cuts)(alignments, song_duration)             | Stay on the current clip as long as it covers; only switch when it runs out (then to the clip extending furthest).                          |
+| [`list_strategies`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.list_strategies)()                                  | All strategy slugs (eager + lazy), sorted.                                                                                                  |
+| [`longest_take`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.longest_take)(alignments, song_duration)            | Prefer the clip that keeps rolling longest — pick the one whose coverage extends furthest forward (ties: higher confidence).                |
+| [`register_lazy_strategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.register_lazy_strategy)(slug, target_ref, \*)       | Register a strategy by a `"module:func"` reference, imported only on first use.                                                             |
+| [`register_selection_strategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.register_selection_strategy)(slug, fn, \*[, title]) | Register a selection strategy under `slug` (returns it, for inline use).                                                                    |
+| [`resolve_strategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.resolve_strategy)(strategy)                         | Resolve a strategy name OR a bare callable to a [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy).                         |
+| [`select_edl`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.select_edl)(strategy, alignments, ...[, context])   | Run `strategy` (name or callable) to produce an EDL from `alignments`.                                                                      |
+| [`strategy_title`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.strategy_title)(slug)                               | `slug`'s name in words: its registered `title`, else the slug made readable (`"my_rule"` -> `"My rule"`), so every listed strategy has one. |
 
 ### muvid.footage.strategy.DEFAULT_STRATEGY *= 'best_confidence'*
 
@@ -8617,7 +8695,7 @@ furthest forward (ties: higher confidence). Yields long, continuous takes.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
-### muvid.footage.strategy.register_lazy_strategy(slug, target_ref)
+### muvid.footage.strategy.register_lazy_strategy(slug, target_ref, , title=None)
 
 Register a strategy by a `"module:func"` reference, imported only on first use.
 
@@ -8627,9 +8705,11 @@ module at registration time — the import happens in [`resolve_strategy()`](_au
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.strategy.register_selection_strategy(slug, fn)
+### muvid.footage.strategy.register_selection_strategy(slug, fn, , title=None)
 
 Register a selection strategy under `slug` (returns it, for inline use).
+
+`title` is its name in words (default: from the slug, see [`strategy_title()`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.strategy_title)).
 
 * **Return type:**
   [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]]
@@ -8652,6 +8732,14 @@ the alignment-only built-ins ignore it. See [`SelectionStrategy`](_autosummary/m
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
+
+### muvid.footage.strategy.strategy_title(slug)
+
+`slug`’s name in words: its registered `title`, else the slug made readable
+(`"my_rule"` -> `"My rule"`), so every listed strategy has one.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 
 # _autosummary/muvid.footage.workspace.html.md
@@ -18497,20 +18585,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 06:04 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/9f34eb6859f701575ca8e8b4c85f935964501f99"><code>9f34eb6</code></a> on branch <code>main</code>, for **muvid 0.0.114** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 08:17 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/4705bc307eb810f4733d98e9caa09093dd2d3540"><code>4705bc3</code></a> on branch <code>main</code>, for **muvid 0.0.115** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.114) is ahead of the latest release on PyPI (0.0.112): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/9f34eb6859f701575ca8e8b4c85f935964501f99"><code>9f34eb6859f701575ca8e8b4c85f935964501f99</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/4705bc307eb810f4733d98e9caa09093dd2d3540"><code>4705bc307eb810f4733d98e9caa09093dd2d3540</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.114</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.115</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18519,9 +18605,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40456844906">40456844906</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40471454476">40471454476</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>5633471d538b15b0be7700eea8d25507bb97f536</code> (in the history of the built commit) |
+| Event commit | <code>99a5510ebb8025231d53c0d13b96de9da0e6e02b</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18546,13 +18632,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.112/">0.0.112</a>, older than the documented version (0.0.114).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.115/">0.0.115</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 9f34eb6859f701575ca8e8b4c85f935964501f99
+git checkout 4705bc307eb810f4733d98e9caa09093dd2d3540
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

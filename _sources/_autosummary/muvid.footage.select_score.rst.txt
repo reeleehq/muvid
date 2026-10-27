@@ -11,6 +11,8 @@ muvid.footage.select\_score
       DEFAULT_WEIGHTS
       PRESETS
       UNVOUCHED_REWARD_PENALTY
+      FALLBACK_CAUSES
+      RUN_CAUSES
    
    .. rubric:: Functions
 

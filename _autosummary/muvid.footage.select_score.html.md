@@ -38,10 +38,12 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](muvid
 
 ### Module Attributes
 
-| [`DEFAULT_WEIGHTS`](#muvid.footage.select_score.DEFAULT_WEIGHTS)          | Default per-metric weights.                                                 |
-|---------------------------------------------------------------------------|-----------------------------------------------------------------------------|
-| [`PRESETS`](#muvid.footage.select_score.PRESETS)                  | Named presets — a filled-in config.                                         |
-| [`UNVOUCHED_REWARD_PENALTY`](#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY) | Reward-seconds per second charged to a clip the aligner will not vouch for. |
+| [`DEFAULT_WEIGHTS`](#muvid.footage.select_score.DEFAULT_WEIGHTS)          | Default per-metric weights.                                                                                                                                                                                                                    |
+|---------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`PRESETS`](#muvid.footage.select_score.PRESETS)                  | Named presets — a filled-in config.                                                                                                                                                                                                            |
+| [`UNVOUCHED_REWARD_PENALTY`](#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY) | Reward-seconds per second charged to a clip the aligner will not vouch for.                                                                                                                                                                    |
+| [`FALLBACK_CAUSES`](#muvid.footage.select_score.FALLBACK_CAUSES)          | Why the `weighted` DP handed the edit to `best_confidence`, in words a person reads (`explain` says them) — every `cause` a fallback can carry, kept beside the code that emits them so a new cause is worded where it is written (muvid#217). |
+| [`RUN_CAUSES`](#muvid.footage.select_score.RUN_CAUSES)               | The causes a run that did NOT fall back carries, in words; `optimal` needs none.                                                                                                                                                               |
 
 ### Functions
 
@@ -67,10 +69,22 @@ Default per-metric weights. A metric absent from the tensor collapses to weight 
 (its column simply doesn’t exist), so a project scored without the lip-sync tier still
 selects cleanly on the metrics it has.
 
+### muvid.footage.select_score.FALLBACK_CAUSES *= {'coverage_gap': 'the videos leave part of the song uncovered', 'dwell_infeasible': 'a video would have had to hold longer than the longest shot allowed', 'empty_span': 'there was no song to cut', 'infeasible': 'no cut fitted the shot-length limits', 'no_alignments': 'there was no placed video to choose from', 'no_weighted_metrics': 'no score it was asked to weigh was measured', 'reconstruct_failed': 'the cut could not be assembled'}*
+
+Why the `weighted` DP handed the edit to `best_confidence`, in words a person
+reads (`explain` says them) — every `cause` a fallback can carry, kept beside the
+code that emits them so a new cause is worded where it is written (muvid#217).
+`tests/test_scoring_select.py` reads this module’s source for every cause literal
+it emits and fails on one that is in neither this table nor [`RUN_CAUSES`](#muvid.footage.select_score.RUN_CAUSES).
+
 ### muvid.footage.select_score.PRESETS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [WeightedSelectionConfig](#muvid.footage.select_score.WeightedSelectionConfig)]* *= {'contemplative': WeightedSelectionConfig(weights={'lip_sync_lse_c': 1.0, 'motion_beat_bas': 0.8, 'motion_onset_xcorr': 0.5, 'sharpness': 0.6, 'exposure': 0.3, 'face_framing': 0.6, 'stability_shake': 0.3}, lambda_switch=0.6, l_min_s=3.0, l_max_s=12.0, l_max_overrun_penalty=0.05, boundary_mode='beats', beat_unit='beat'), 'energetic': WeightedSelectionConfig(weights={'lip_sync_lse_c': 1.0, 'motion_beat_bas': 1.0, 'motion_onset_xcorr': 0.8, 'sharpness': 0.4, 'exposure': 0.3, 'face_framing': 0.4, 'stability_shake': 0.3}, lambda_switch=0.2, l_min_s=0.8, l_max_s=4.0, l_max_overrun_penalty=0.25, boundary_mode='beats', beat_unit='beat')}*
 
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
+
+### muvid.footage.select_score.RUN_CAUSES *= {'dwell_relaxed': 'no cut could keep every shot at least the minimum length, so that minimum was dropped to find one', 'optimal': ''}*
+
+The causes a run that did NOT fall back carries, in words; `optimal` needs none.
 
 ### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict(), stale_metrics=())
 
