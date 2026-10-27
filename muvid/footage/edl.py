@@ -35,7 +35,10 @@ import math
 import os
 import re
 from dataclasses import dataclass, field, replace
-from typing import Any, NamedTuple, Sequence
+from typing import TYPE_CHECKING, Any, NamedTuple, Sequence
+
+if TYPE_CHECKING:  # pragma: no cover
+    from muvid.footage.colour import ToneMap
 
 #: Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.
 _EPS = 1e-3
@@ -901,7 +904,7 @@ class AssemblyCut:
     #: (a :class:`muvid.footage.colour.ToneMap`, the render's ``tone_map``), set when the
     #: probe says HDR AND this ffmpeg can (:func:`muvid.footage.colour.can_tonemap`);
     #: falsy (``None``) when it does not tone-map.
-    source_tonemap: Any = None
+    source_tonemap: "ToneMap | None" = None
 
     @property
     def duration(self) -> float:

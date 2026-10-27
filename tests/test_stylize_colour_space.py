@@ -279,7 +279,7 @@ def test_an_hdr_clip_is_reported_when_this_ffmpeg_cannot_tone_map_it(
     assert len(notes) == 1 and "'cam'" in notes[0] and "arib-std-b67" in notes[0]
 
 
-def _flat_hlg(tmp_path, colour: str, *, untag: str = "") -> Path:
+def _flat_hlg(tmp_path, colour: str, *, untag: str = "", duration: float = 0.4) -> Path:
     """A flat HLG BT.2020 frame of the SDR ``colour``; ``untag`` names a tag to leave out
     (``color_primaries`` or ``colorspace``), as some cameras and phones do."""
     tags = {
@@ -292,7 +292,8 @@ def _flat_hlg(tmp_path, colour: str, *, untag: str = "") -> Path:
     setp = ":".join(f"{k}={v}" for k, v in tags.items())
     out = tmp_path / f"flat_{colour}_{untag or 'all'}.mkv"
     _run(
-        ["-f", "lavfi", "-i", f"color=c={colour}:size=320x240:duration=0.4:rate={_FPS}"]
+        ["-f", "lavfi", "-i"]
+        + [f"color=c={colour}:size=320x240:duration={duration}:rate={_FPS}"]
         + ["-vf"]
         + [
             "format=rgb24,zscale=tin=bt709:t=arib-std-b67:pin=bt709:p=bt2020:min=bt709"
@@ -304,9 +305,10 @@ def _flat_hlg(tmp_path, colour: str, *, untag: str = "") -> Path:
     return out
 
 
-def _mean_y(video: Path) -> float:
+def _mean_y(video: Path, *, at_s: float = 0.0) -> float:
     raw = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(video), "-frames:v", "1", "-f", "rawvideo"]
+        ["ffmpeg", "-v", "error", "-ss", f"{at_s:.3f}", "-i", str(video)]
+        + ["-frames:v", "1", "-f", "rawvideo"]
         + ["-pix_fmt", "yuv420p", "-"],
         capture_output=True,
         check=True,
@@ -371,53 +373,96 @@ def test_an_hdr_clip_missing_a_colour_tag_still_renders(tmp_path, untag):
         {"param": float("inf")},
         {"param": True},
         {"param": "0.5"},
+        {"param": 1.5},  # mobius above 1 renders like the default: a no-op
+        {"curve": "hable", "param": 0.5},  # hable ignores param
+        {"curve": "none", "param": 1.0},
         {"reference_white_nits": 0},
+        {"reference_white_nits": 10},
+        {"reference_white_nits": 1e20},
         {"reference_white_nits": float("inf")},
     ],
 )
 def test_a_tone_map_that_would_not_be_a_valid_filter_is_refused(kw):
-    """muvid#215: every field of a ToneMap lands in a filter string."""
+    """muvid#215: every field of a ToneMap lands in a filter string, and a value that
+    renders solid white or black, or does nothing, is a refusal rather than a picture."""
     with pytest.raises(ValueError):
         ToneMap(**kw)
 
 
+def test_a_tone_curve_takes_its_own_default_param_and_numbers_become_floats():
+    """The #215 review: an inherited mobius 0.85 made gamma and reinhard render wrong."""
+    import numpy as np
+
+    from muvid.footage.colour import tonemap_chain
+
+    assert ToneMap().param == 0.85 and ToneMap(curve="mobius").param == 0.85
+    assert ToneMap(curve="gamma").param is None
+    assert "tonemap=gamma:desat=0" in tonemap_chain(tone_map=ToneMap(curve="gamma"))
+    assert type(ToneMap(param=np.float32(0.5)).param) is float
+    assert (
+        type(ToneMap(reference_white_nits=np.int64(100)).reference_white_nits) is float
+    )
+
+
 @needs_ffmpeg_filter("zscale", "tonemap")
 def test_the_tone_map_is_a_seam_that_reaches_the_render(tmp_path):
-    """muvid#215: a caller's tone map is the one rendered. A lower reference white
-    brightens the mid-range — measured in the #201 review: 18% grey at Y 151 with a
-    100-nit white against 117 at the default 203."""
+    """muvid#215: a caller's tone map is the one rendered — its reference white and its
+    curve. Measured on 18% grey: a 100-nit white brightens it to Y 151 against 117 at
+    the default 203 (the #201 review); ``reinhard`` at its own default puts it at 114,
+    and at mobius's 0.85 (the bug the #215 review found) at 177."""
     clip = _flat_hlg(tmp_path, "0x767676")
-    default = _mean_y(_tonemapped(tmp_path, clip, "grey_default"))
-    brighter = _mean_y(
-        _tonemapped(
-            tmp_path, clip, "grey_100", tone_map=ToneMap(reference_white_nits=100)
-        )
-    )
-    assert brighter > default + 20, (default, brighter)
+
+    def grey(name, tone_map=DEFAULT_TONE_MAP):
+        return _mean_y(_tonemapped(tmp_path, clip, name, tone_map=tone_map))
+
+    default = grey("default")
+    assert grey("white100", ToneMap(reference_white_nits=100)) > default + 20
+    assert abs(grey("reinhard", ToneMap(curve="reinhard")) - default) < 20
+    assert grey("reinhard085", ToneMap(curve="reinhard", param=0.85)) > default + 40
 
 
-@needs_ffmpeg_filter("zscale", "tonemap")
-def test_assemble_music_video_carries_its_tone_map_to_every_hdr_part(tmp_path):
-    """The kwarg, not just the helper: ``assemble_music_video(tone_map=)`` renders by it."""
-    clip = _flat_hlg(tmp_path, "0x767676")
+@needs_ffmpeg_filter("zscale", "tonemap", "xfade")
+def test_assemble_music_video_carries_its_tone_map_through_a_blended_boundary(tmp_path):
+    """The kwarg, not just the helper: ``assemble_music_video(tone_map=)`` renders every
+    HDR part by it — the hard-cut part and both sides of a blend (``_render_part`` and
+    ``_render_transition`` share one filter, so they cannot disagree)."""
+    from muvid.footage.edl import Transition
+
+    clip = _flat_hlg(tmp_path, "0x767676", duration=1.4)
     song = tmp_path / "song.m4a"
     _run(
-        ["-f", "lavfi", "-i", "sine=frequency=220:duration=0.4", "-c:a", "aac"]
+        ["-f", "lavfi", "-i", "sine=frequency=220:duration=1.2", "-c:a", "aac"]
         + [str(song)]
     )
+    cuts = [
+        AssemblyCut(0.0, 0.6, "cam", 0.0, str(clip)),
+        AssemblyCut(0.6, 1.2, "cam", 0.6, str(clip), transition=Transition(0.4)),
+    ]
 
-    def grey(name, **kw):
+    def greys(name, **kw):
         out = assemble_music_video(
-            [AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))],
+            cuts,
             str(song),
             str(tmp_path / f"{name}.mp4"),
             canvas=(320, 240),
             fps=_FPS,
             **kw,
         )
-        return _mean_y(out)
+        return _mean_y(out, at_s=0.1), _mean_y(out, at_s=0.6)  # a cut, mid-blend
 
-    assert (
-        grey("bright", tone_map=ToneMap(reference_white_nits=100))
-        > grey("default") + 20
-    )
+    bright = greys("bright", tone_map=ToneMap(reference_white_nits=100))
+    default = greys("default")
+    assert all(b > d + 20 for b, d in zip(bright, default)), (bright, default)
+
+
+@pytest.mark.parametrize("bad", [None, {"curve": "hable"}, "mobius"])
+def test_a_tone_map_that_is_not_a_tone_map_is_refused_before_any_work(tmp_path, bad):
+    """The #215 review: ``None`` silently turned tone mapping off (washed out, no note),
+    and a dict failed only at the first HDR cut, after earlier parts were encoded."""
+    with pytest.raises(TypeError, match="ToneMap"):
+        assemble_music_video(
+            [AssemblyCut(0.0, 0.4, "cam", 0.0, "/nonexistent.mp4")],
+            "/nonexistent.m4a",
+            str(tmp_path / "out.mp4"),
+            tone_map=bad,
+        )

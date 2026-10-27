@@ -888,6 +888,8 @@ def assemble_music_video(
 
     if not cuts:
         raise ValueError("no cuts to assemble")
+    if not isinstance(tone_map, ToneMap):  # before any probe or encode (#215 review)
+        raise TypeError(f"tone_map must be a ToneMap, got {tone_map!r}")
     require_ffmpeg("ffmpeg")
     require_ffmpeg("ffprobe")
     w, h = _even(canvas[0]), _even(canvas[1])

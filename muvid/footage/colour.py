@@ -36,6 +36,7 @@ Import-light (stdlib only at module top): the look compiler imports the constant
 from __future__ import annotations
 
 import math
+import numbers
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -83,6 +84,21 @@ TONEMAP_PARAM = 0.85
 TONEMAP_CURVES = frozenset(
     {"none", "linear", "gamma", "clip", "reinhard", "hable", "mobius"}
 )
+#: The curves that ignore ``param`` (ffmpeg's ``tonemap`` docs): one given for them
+#: would be a direction that does nothing, so it is refused.
+_CURVES_WITHOUT_PARAM = frozenset({"none", "hable"})
+#: muvid's measured ``param`` per curve, where it has one; every other curve gets
+#: ffmpeg's own default for that curve (the #215 review: an inherited mobius 0.85 made
+#: ``gamma`` render 18% grey at Y 44 and ``reinhard`` at 177, against 117).
+_MEASURED_PARAMS = {TONEMAP: TONEMAP_PARAM}
+#: ``mobius``'s param is the point below which the map is 1:1, a fraction of white;
+#: above 1 it renders exactly like the default (measured), so it is refused.
+_PARAM_MAX = {"mobius": 1.0}
+#: The range a reference white may take. Below the floor most of an HDR picture is
+#: pushed to white (1e-7 nits renders solid white); the ceiling is PQ's own peak
+#: (10,000 nits — above it, solid black). 203 (BT.2408) sits well inside.
+MIN_REFERENCE_WHITE_NITS = 50
+MAX_REFERENCE_WHITE_NITS = 10_000
 #: The filters :func:`tonemap_chain` needs (``zscale`` is libzimg, WTFPL).
 TONEMAP_FILTERS = ("zscale", "tonemap")
 
@@ -93,12 +109,13 @@ class ToneMap:
     ``curve`` and its ``param`` for the highlights, and the HDR luminance (nits) that
     becomes SDR white — lower it for a brighter mid-range. The defaults are the
     measured choice above; ``ToneMap(param=0.5)`` keeps every highlight below white at
-    the cost of some mid-tone codes.
+    the cost of some mid-tone codes. ``param=None`` means the curve's default: muvid's
+    measured one for ``mobius``, ffmpeg's for the rest.
 
     Checked on construction, because every field lands in a filter string:
 
-    >>> ToneMap(curve="hable").curve
-    'hable'
+    >>> ToneMap(curve="gamma").param is None, ToneMap().param
+    (True, 0.85)
     >>> ToneMap(curve="mobius:desat=9")
     Traceback (most recent call last):
     ...
@@ -106,7 +123,7 @@ class ToneMap:
     """
 
     curve: str = TONEMAP
-    param: float = TONEMAP_PARAM
+    param: Optional[float] = None
     reference_white_nits: float = HDR_REFERENCE_WHITE_NITS
 
     def __post_init__(self):
@@ -114,13 +131,36 @@ class ToneMap:
             raise ValueError(
                 f"unknown tone curve {self.curve!r}; one of {sorted(TONEMAP_CURVES)}"
             )
-        for name in ("param", "reference_white_nits"):
-            v = getattr(self, name)
-            # bool is an int; a positive finite real is what ffmpeg accepts for both
-            if isinstance(v, bool) or not isinstance(v, (int, float)):
-                raise ValueError(f"tone map {name} must be a number, got {v!r}")
-            if not (math.isfinite(v) and v > 0):
-                raise ValueError(f"tone map {name} must be positive and finite: {v!r}")
+        param = self.param
+        if param is None:
+            param = _MEASURED_PARAMS.get(self.curve)
+        elif self.curve in _CURVES_WITHOUT_PARAM:
+            raise ValueError(f"the {self.curve!r} tone curve takes no param")
+        else:
+            param = _real("param", param, low=0.0, high=_PARAM_MAX.get(self.curve))
+        nits = _real(
+            "reference_white_nits",
+            self.reference_white_nits,
+            low=MIN_REFERENCE_WHITE_NITS,
+            high=MAX_REFERENCE_WHITE_NITS,
+            low_inclusive=True,
+        )
+        # stored as plain floats: what lands in the filter is float formatting, never
+        # a caller type's own `__format__`
+        object.__setattr__(self, "param", param)
+        object.__setattr__(self, "reference_white_nits", nits)
+
+
+def _real(name, v, *, low, high=None, low_inclusive=False) -> float:
+    """``v`` as a finite float in ``(low, high]`` (``[low, high]`` if ``low_inclusive``)."""
+    if isinstance(v, bool) or not isinstance(v, numbers.Real):
+        raise ValueError(f"tone map {name} must be a number, got {v!r}")
+    v = float(v)
+    above = v >= low if low_inclusive else v > low
+    if not (math.isfinite(v) and above and (high is None or v <= high)):
+        span = f"{'[' if low_inclusive else '('}{low:g}, {'inf)' if high is None else f'{high:g}]'}"
+        raise ValueError(f"tone map {name} must be in {span}: {v!r}")
+    return v
 
 
 #: Today's tone mapping, the one every render gets unless it asks for another.
@@ -148,7 +188,9 @@ def tonemap_chain(
     return (
         (f"setparams={tags}," if tags else "")
         + f"zscale=t=linear:npl={t.reference_white_nits:g},format=gbrpf32le,"
-        f"zscale=p={d},tonemap={t.curve}:param={t.param:g}:desat=0,"
+        f"zscale=p={d},tonemap={t.curve}"
+        + (f":param={t.param:g}" if t.param is not None else "")
+        + ":desat=0,"
         f"zscale=t={d}:m={d}:r={DELIVERY_COLOR_RANGE},format=yuv420p"
     )
 
@@ -270,6 +312,8 @@ __all__ = [
     "TONEMAP",
     "TONEMAP_CURVES",
     "TONEMAP_PARAM",
+    "MIN_REFERENCE_WHITE_NITS",
+    "MAX_REFERENCE_WHITE_NITS",
     "HDR_REFERENCE_WHITE_NITS",
     "can_tonemap",
     "tonemap_chain",
