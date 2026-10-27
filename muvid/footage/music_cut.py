@@ -172,7 +172,8 @@ def _room(cut, *, clip_duration: float, next_transition=None) -> tuple[float, fl
     A clip too short for the span AND both blends still gets a room — the in-point
     that keeps the SPAN inside the clip (the gate's containment rule) — and
     :func:`_feasible_blends` then drops whichever blend no longer fits. The old rule
-    returned the full lead here, which could run the span off the clip's end.
+    returned the full lead here, which could run the span off the clip's end. That
+    fallback ignores ``slip_s``, which the planner never sets.
 
     >>> from muvid.footage.edl import EdlEntry, Transition
     >>> fade = Transition(duration_s=1.0, curve="fade")
