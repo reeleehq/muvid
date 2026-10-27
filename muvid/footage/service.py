@@ -1721,10 +1721,6 @@ def _applied_weights(preset: str, weights: Optional[dict]) -> dict:
     return applied
 
 
-#: The most spans one ``score_candidates`` call may ask about — the edit's own bound.
-MAX_CANDIDATES = 500
-
-
 def score_candidates(
     fp,
     *,
@@ -1735,12 +1731,14 @@ def score_candidates(
     """How well each candidate stretch of a video scores — to choose between takes.
 
     ``candidates`` are ``{clip_id, song_start, song_end}`` spans on the song timeline
-    (seconds), up to :data:`MAX_CANDIDATES`. Each answer repeats its own span (match by
-    span, never by position) with ``composite`` — the mean of the weighted blend the
-    ``weighted`` strategy ranks by, over the frames where a weighted metric was
-    measured, ``null`` when none was — ``measured`` (the fraction of the span's frames
-    that were), and ``metrics``, each metric's mean normalised score over its measured
-    frames (``null`` where it was never measured). Nothing measured is not a low score.
+    (seconds), up to as many as an edit may have cuts. Each answer repeats its own span
+    (match by span, never by position) with ``composite`` — the mean of the weighted
+    blend of the scores over the frames where a weighted metric was measured, ``null``
+    when none was — ``measured`` (the fraction of the span's frames that were), and
+    ``metrics``, each metric's mean normalised score over its measured frames (``null``
+    where it was never measured). Nothing measured is not a low score, so read
+    ``composite`` with ``measured``: it is NOT the ``weighted`` strategy's reward, which
+    counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
 
     ``weights`` / ``preset`` as for ``scores``; the reply's ``weights`` says which
     applied. Needs current scores (``score`` first). A span off the song, or a video the
@@ -1748,13 +1746,14 @@ def score_candidates(
     """
     import numpy as np
 
+    from muvid.footage.edl import MAX_EDL_ENTRIES
     from muvid.footage.select_score import composite_lane
 
     if not isinstance(candidates, list) or not candidates:
         raise FootageError("candidates must be a non-empty list of spans")
-    if len(candidates) > MAX_CANDIDATES:
+    if len(candidates) > MAX_EDL_ENTRIES:
         raise FootageError(
-            f"at most {MAX_CANDIDATES} candidates per call, got {len(candidates)}"
+            f"at most {MAX_EDL_ENTRIES} candidates per call, got {len(candidates)}"
         )
     _manifest, tensor = _current_scores(fp)
     applied = _applied_weights(preset, weights)
@@ -1765,16 +1764,10 @@ def score_candidates(
         cid, start, end = _candidate(c, i, song_end=song_end)
         if cid not in tensor.clip_ids:
             raise FootageError(
-                f"candidate {i}: the scores hold no video {cid!r} "
-                f"(they hold {tensor.clip_ids})"
+                f"candidate {i}: the scores hold no video {cid!r} — "
+                "scores lists the ones they hold"
             )
-        # the grid frames whose instant falls in [song_start, song_end) — at least one,
-        # so a span shorter than a hop still reads the frame it sits on
-        first = math.ceil((start - tensor.t0) / tensor.hop_s - 1e-9)
-        lo = min(tensor.n - 1, max(0, first))
-        hi = min(
-            tensor.n, max(lo + 1, math.ceil((end - tensor.t0) / tensor.hop_s - 1e-9))
-        )
+        lo, hi = _span_frames(tensor, start, end)
         if cid not in lanes:
             lanes[cid] = composite_lane(tensor, applied, cid)
         lane = lanes[cid][lo:hi]
@@ -1803,13 +1796,43 @@ def score_candidates(
     return {"candidates": out, "weights": applied}
 
 
+def _span_frames(tensor, start: float, end: float) -> "tuple[int, int]":
+    """``[lo, hi)``: the grid frames whose instant falls in ``[start, end)`` (the
+    selector's own ``_kappa``), or — for a span shorter than a hop that holds no frame
+    instant — the one frame it sits on.
+
+    >>> from types import SimpleNamespace
+    >>> grid = SimpleNamespace(t0=0.0, hop_s=0.1, n=300)
+    >>> _span_frames(grid, 20.0, 25.0), _span_frames(grid, 20.01, 20.06)
+    ((200, 250), (200, 201))
+    """
+    from muvid.footage.select_score import _kappa
+
+    lo = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
+    hi = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
+    if hi > lo:
+        return lo, hi
+    at = min(
+        tensor.n - 1, max(0, math.floor((start - tensor.t0) / tensor.hop_s + 1e-9))
+    )
+    return at, at + 1
+
+
 def _candidate(c, i: int, *, song_end: float) -> "tuple[str, float, float]":
     """``(clip_id, song_start, song_end)`` of candidate ``i``, checked, or a refusal."""
     if not isinstance(c, dict):
         raise FootageError(f"candidate {i} must be {{clip_id, song_start, song_end}}")
+    from muvid.footage.workspace import ID_PATTERN
+
     cid = c.get("clip_id")
-    if not isinstance(cid, str) or not cid:
-        raise FootageError(f"candidate {i} needs a clip_id")
+    if not isinstance(cid, str) or not ID_PATTERN.fullmatch(cid):
+        shown = repr(cid)[
+            :66
+        ]  # an id is a name of at most 64 characters: never echo more
+        raise FootageError(
+            f"candidate {i} needs a clip_id of 1-64 letters, digits, '_' or '-', "
+            f"got {shown}"
+        )
     start = _finite(c.get("song_start"), f"candidate {i} song_start")
     end = _finite(c.get("song_end"), f"candidate {i} song_end")
     if not 0.0 <= start < end <= song_end + _SONG_END_SLACK_S:

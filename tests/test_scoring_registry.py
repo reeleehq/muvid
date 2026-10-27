@@ -258,3 +258,100 @@ def test_a_shared_artifact_is_built_once_and_only_when_a_running_scorer_needs_it
     service.run_scoring(proj, progress_cb=events.append)
     assert len(built) == 1 and seen == ["/stems/drums.wav"]
     assert "drums" in [e.get("current_transform") for e in events]
+
+
+def test_a_scorer_sees_only_the_artifacts_it_declared(
+    scored_proj, clean_registry, monkeypatch
+):
+    """The #184 review: one shared ``artifacts`` map let a scorer come to rely on
+    another's ``needs``."""
+    from muvid.footage import service
+
+    proj, _seen, _ = scored_proj
+    monkeypatch.setitem(
+        R._ARTIFACTS,
+        "drum_stem",
+        R.Artifact("drum_stem", lambda s, d: "/d.wav", "drums"),
+    )
+    seen = {}
+
+    def run(name):
+        def _run(ctx):
+            seen[name] = dict(ctx.artifacts)
+            return [_track(ctx)(f"{name}_m")]
+
+        return _run
+
+    _only(
+        R.Scorer(
+            "a",
+            ("a_m",),
+            run("a"),
+            needs_frames=False,
+            gated=False,
+            needs=("drum_stem",),
+        ),
+        R.Scorer("b", ("b_m",), run("b"), needs_frames=False, gated=False),
+    )
+    out = service.run_scoring(proj)
+    assert seen == {"a": {"drum_stem": "/d.wav"}, "b": {}}
+    assert "skipped_scorers" not in out  # omit-when-absent: nothing was skipped
+
+
+def test_an_unregistered_need_is_refused_before_any_work(
+    scored_proj, clean_registry, monkeypatch
+):
+    from muvid.footage import service
+
+    proj, _seen, _ = scored_proj
+    estimated = []
+    monkeypatch.setattr(
+        "muvid.footage.service._master_beats", lambda fp: estimated.append(1)
+    )
+    _only(
+        R.Scorer(
+            "t",
+            ("t_m",),
+            lambda c: [],
+            needs_frames=False,
+            gated=False,
+            needs=("typo_stem",),
+        )
+    )
+    with pytest.raises(ValueError, match="no artifact 'typo_stem'"):
+        service.run_scoring(proj)
+    assert estimated == []  # the beat grid was never computed
+
+
+def test_a_plugin_whose_check_cannot_import_is_a_recorded_reason(
+    scored_proj, clean_registry
+):
+    from muvid.footage import service
+    from muvid.footage.scoring.orchestrator import list_available_extractors
+
+    proj, _seen, _ = scored_proj
+
+    def broken():
+        raise ImportError("No module named 'fancylib'")
+
+    _only(
+        R.Scorer(
+            "ok",
+            ("ok_m",),
+            lambda c: [_track(c)("ok_m")],
+            needs_frames=False,
+            gated=False,
+        ),
+        R.Scorer(
+            "fancy",
+            ("f_m",),
+            lambda c: [],
+            needs_frames=False,
+            gated=False,
+            available=broken,
+        ),
+    )
+    assert "fancylib" in service.run_scoring(proj)["skipped_scorers"]["fancy"]
+    info = list_available_extractors()["scorers"]
+    assert info["ok"]["available"] is True and "reason" not in info["ok"]
+    assert info["fancy"]["available"] is False and "fancylib" in info["fancy"]["reason"]

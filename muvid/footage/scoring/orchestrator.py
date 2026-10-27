@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import os
 import threading
+from dataclasses import replace
 from typing import Any, Callable, Sequence
 
 from muvid.footage.scoring import registry
@@ -82,10 +83,20 @@ def list_available_extractors() -> dict:
     }
 
 
-def _availability(scorer) -> dict:
+def _probe(scorer) -> "tuple[bool, str]":
+    """``scorer.available()``, with a plugin whose own check cannot even import its
+    dependency recorded as unavailable — one broken plugin is a recorded reason, never a
+    dead catalogue (``ImportError`` only: any other exception is a bug to surface)."""
     if scorer.available is None:
-        return {"available": True}
-    ok, reason = scorer.available()
+        return True, ""
+    try:
+        return scorer.available()
+    except ImportError as e:
+        return False, f"its availability check could not import: {e}"
+
+
+def _availability(scorer) -> dict:
+    ok, reason = _probe(scorer)
     return {"available": ok, **({"reason": reason} if not ok else {})}
 
 
@@ -139,7 +150,7 @@ def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
     is refused instead — asking for it and getting nothing would be a silent empty."""
     ok, skipped = [], {}
     for sc in scorers:
-        able, reason = sc.available() if sc.available is not None else (True, "")
+        able, reason = _probe(sc)
         if able:
             ok.append(sc)
             continue
@@ -240,6 +251,11 @@ def _score(
     # (else the same metric would differ by what else was requested)
     needs_frames = any(sc.needs_frames or sc.gated for sc in active)
     needed = list(dict.fromkeys(name for sc in active for name in sc.needs))
+    for name in needed:  # a typo in `needs` fails here, before any work, not mid-job
+        try:
+            registry.artifact(name)
+        except KeyError as e:
+            raise ValueError(e.args[0]) from None
 
     total_stages = 1 + len(needed) + len(aligns)
     stage = 0
@@ -303,7 +319,6 @@ def _score(
             frames=fp,
             beat=bg,
             grid=grid,
-            artifacts={k: v for k, v in artifacts.items() if v is not None},
         )
         # Optional hard quality gate → AND into the mask of every GATED scorer's tracks.
         gate = None
@@ -312,9 +327,16 @@ def _score(
             gate = None if g.all() else g
         clip_tracks = []
         for sc in active:
+            # each scorer sees only the artifacts it declared, so none comes to rely
+            # on another's `needs`
+            own = {n: artifacts[n] for n in sc.needs if artifacts.get(n) is not None}
             # only what the scorer DECLARED: a track under another scorer's metric
             # name would overwrite it in the tensor
-            produced_tracks = [tr for tr in sc.run(ctx) if tr.metric in sc.metrics]
+            produced_tracks = [
+                tr
+                for tr in sc.run(replace(ctx, artifacts=own))
+                if tr.metric in sc.metrics
+            ]
             if gate is not None and sc.gated:
                 produced_tracks = [_and_mask(tr, gate) for tr in produced_tracks]
             clip_tracks.extend(produced_tracks)

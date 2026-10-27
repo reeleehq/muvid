@@ -96,3 +96,25 @@ def test_it_needs_current_scores(ramp_scores):
             ramp_scores,
             candidates=[{"clip_id": "A", "song_start": 0.0, "song_end": 1.0}],
         )
+
+
+def test_a_span_shorter_than_a_hop_reads_the_frame_it_sits_on(ramp_scores):
+    """The #184 review: ``[20.01, 20.06)`` holds no frame instant at hop 0.1; it must read
+    the frame at 20.0, not 20.1 — and ``measured`` is never NaN (invalid JSON)."""
+    tiny = {"clip_id": "A", "song_start": 20.01, "song_end": 20.06}
+    exact = {"clip_id": "A", "song_start": 20.0, "song_end": 20.05}
+    out = service.score_candidates(
+        ramp_scores, candidates=[tiny, exact], weights={"ramp": 1.0}
+    )
+    a, b = out["candidates"]
+    assert a["measured"] == 1.0 and a["composite"] == b["composite"]
+
+
+def test_an_odd_clip_id_is_refused_without_echoing_it_whole(ramp_scores):
+    huge = "x" * 1_000_000
+    with pytest.raises(FootageError) as e:
+        service.score_candidates(
+            ramp_scores,
+            candidates=[{"clip_id": huge, "song_start": 0.0, "song_end": 1.0}],
+        )
+    assert len(str(e.value)) < 300

@@ -45,8 +45,17 @@ master**; map to each clip via its known offset.
   returns `ScoreTrack`s, masked (never `0.0`) where it could not measure. No orchestrator or
   selector edit; the metric weighs 0 in `weighted` until a caller passes `weights=`. Core-tier
   scorers must be MIT/BSD/Apache/ISC; anything else is `tier="lipsync"`-style opt-in.
+  `ClipContext` is primitives (`offset_s`, `duration_s`, `coverage`, `beat` — a
+  `MasterBeats` — and a frozen `Grid`), plus `frames` (rich, unstable) and the `artifacts`
+  the scorer declared in `needs=` (`register_artifact`: built once per run, only when needed).
+  `available=` is enforced: an unavailable scorer is skipped with its reason in the run's
+  `skipped_scorers` (muvid#184).
 - `footage_scores` takes `weights`/`preset` (the weighting its composite lane and
   `selection_margin` use; the reply says which applied) and `raw=true` for un-normalised values.
+- `footage_score_candidates` compares STRETCHES: `candidates=[{clip_id, song_start,
+  song_end}]` → per span (matched by span, never position) the composite mean over measured
+  frames, the `measured` fraction and each metric's mean; `null` where nothing was measured.
+  It is not the DP's reward (which counts unmeasured frames as 0) — read it with `measured`.
   A `weighted` edit that fell back to `best_confidence` says so under `selection_report`
   (propose/assemble) and in `warnings`.
 
