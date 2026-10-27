@@ -2563,12 +2563,7 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
     duration = _clip_duration(fp, clip_id)
     span = e.song_end - e.song_start
     bounds = in_point_bounds(
-        span_s=span,
-        clip_duration_s=duration,
-        rate=e.rate,
-        transition=e.transition,
-        next_transition=following_t,
-        edge_s=EDGE_S,
+        e, clip_duration_s=duration, next_transition=following_t, edge_s=EDGE_S
     )
     if bounds is None:
         before, after = blend_reads(e.transition, following_t, rate=e.rate)

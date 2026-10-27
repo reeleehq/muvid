@@ -130,3 +130,26 @@ def test_set_cut_swap_chooses_the_in_point_after_the_rest_of_the_change(bath):
     edit_id = _edit(bath, last_in=4.0)  # room for the next cut to start earlier
     out = service.set_cut(bath, edit_id=edit_id, index=1, clip_id="dog", song_end=5.0)
     assert out["edl"][1]["clip_id"] == "dog" and out["edl"][1]["song_end"] == 5.0
+
+
+@pytest.mark.parametrize("slip", [-0.5, -0.3, 0.3])
+def test_a_swap_with_a_slip_still_passes_the_gate(monkeypatch, slip):
+    """The #192 review's regression: the gate checks ``source_in + slip_s``, so an
+    in-point picked without the slip ran the blend's lead off the clip's start."""
+    from dataclasses import replace
+
+    from muvid.footage.edl import EdlEntry, unplaced, validate_edl
+
+    fp, e, nxt, _ = _swap_fixture(None, dur=30.0)
+    monkeypatch.setattr(service, "_clip_duration", lambda f, c: 30.0)
+    monkeypatch.setattr(service, "_role_of", lambda row, a: service.FREE_ROLE)
+    slipped = replace(e, slip_s=slip)
+    s_in = service._swap_in_point(fp, "dog", slipped, nxt)
+    entries = [
+        EdlEntry(0.0, 10.0, "p", source_in=1.0),
+        replace(slipped, clip_id="dog", source_in=s_in),
+        replace(nxt, source_in=1.0),
+        EdlEntry(20.0, 30.0, "p", source_in=12.0),
+    ]
+    places = [unplaced("p", 60.0), unplaced("dog", 30.0), unplaced("b", 60.0)]
+    validate_edl(entries, places, 30.0)  # must not raise

@@ -164,6 +164,37 @@ class MusicCut:
 # -----------------------------------------------------------------------------
 
 
+def _room(cut, *, clip_duration: float, next_transition=None) -> tuple[float, float]:
+    """The in-points a free ``cut`` may take in a clip of ``clip_duration`` seconds:
+    :func:`muvid.footage.edl.in_point_bounds`, keeping :data:`EDGE_S` from each end
+    where it fits (muvid#192).
+
+    A clip too short for the span AND both blends still gets a room — the in-point
+    that keeps the SPAN inside the clip (the gate's containment rule) — and
+    :func:`_feasible_blends` then drops whichever blend no longer fits. The old rule
+    returned the full lead here, which could run the span off the clip's end.
+
+    >>> from muvid.footage.edl import EdlEntry, Transition
+    >>> fade = Transition(duration_s=1.0, curve="fade")
+    >>> _room(EdlEntry(0.0, 2.0, "c", transition=fade), clip_duration=2.25)
+    (0.25, 0.25)
+    """
+    from muvid.footage.edl import blend_lead, in_point_bounds
+
+    room = in_point_bounds(
+        cut,
+        clip_duration_s=clip_duration,
+        next_transition=next_transition,
+        edge_s=EDGE_S,
+    )
+    if room is not None:
+        return room
+    lead = blend_lead(cut.transition) if cut.transition is not None else 0.0
+    length = cut.song_end - cut.song_start
+    at = min(lead, max(0.0, clip_duration - length))
+    return at, at
+
+
 def choose_source_in(
     env: "Optional[Envelope]",
     *,
@@ -172,16 +203,13 @@ def choose_source_in(
     beat_offsets: Sequence[float] = (),
     used: Sequence[tuple[float, float]] = (),
     energy: float = 0.0,
-    transition=None,
-    next_transition=None,
+    room: "Optional[tuple[float, float]]" = None,
     ordinal: int = 0,
 ) -> tuple[float, float]:
     """Where in a video a cut of ``length`` seconds should start: ``(source_in, fit)``.
 
-    Scores every in-point on the envelope's grid within the legal room —
-    :func:`muvid.footage.edl.in_point_bounds` for the cut's own ``transition`` and the
-    FOLLOWING cut's ``next_transition``, keeping :data:`EDGE_S` from each end where it
-    fits (muvid#192) — by three terms:
+    Scores every in-point on the envelope's grid within ``room`` — the legal in-points,
+    :func:`_room` (a blend-less cut's when omitted) — by three terms:
 
     * **hits on the beat** — the mean picture-change hit at each ``beat_offsets`` (beats
       inside the cut, in seconds from its start), relative to the video's own mean hit:
@@ -200,21 +228,10 @@ def choose_source_in(
     >>> round(s, 2), fit > 1
     (1.5, True)
     """
-    from muvid.footage.edl import blend_reads, in_point_bounds
-
-    room = in_point_bounds(
-        span_s=length,
-        clip_duration_s=clip_duration,
-        transition=transition,
-        next_transition=next_transition,
-        edge_s=EDGE_S,
-    )
     if room is None:
-        # Too short for the span and both blends: keep the SPAN inside the clip (the
-        # gate's own containment rule) and let `_feasible_blends` drop whichever
-        # blend no longer fits, rather than an in-point that runs off the clip.
-        lead, _trail = blend_reads(transition, None)
-        room = (min(lead, max(0.0, clip_duration - length)),) * 2
+        from muvid.footage.edl import EdlEntry
+
+        room = _room(EdlEntry(0.0, length, ""), clip_duration=clip_duration)
     room_lo, room_hi = room
     if env is None or env.hits.size < 2:
         span = max(0.0, room_hi - room_lo)
@@ -967,6 +984,8 @@ def _one_cut(
     transition_cls,
     entry_cls,
 ):
+    from dataclasses import replace
+
     from muvid.footage.named_looks import compile_named_look, resolve_named_look
 
     length = end - start
@@ -974,6 +993,9 @@ def _one_cut(
     # the FOLLOWING cut's blend, which reads `trail` past this cut's end
     next_transition = (
         transition_cls(duration_s=trail, curve="fade") if trail > 0 else None
+    )
+    draft = entry_cls(
+        song_start=start, song_end=end, clip_id=src.clip_id, transition=transition
     )
     use = uses.get(src.clip_id, 0)
     uses[src.clip_id] = use + 1
@@ -987,11 +1009,8 @@ def _one_cut(
             spec |= {"anchor_x": round(ax, 3), "anchor_y": round(ay, 3)}
         resolved = resolve_named_look(spec)
         look = compile_named_look(resolved, canvas=canvas, fps=fps, duration_s=length)
-        return entry_cls(
-            song_start=start,
-            song_end=end,
-            clip_id=src.clip_id,
-            transition=transition,
+        return replace(
+            draft,
             look=look,
             look_time_varying=bool(getattr(look, "time_varying", True)),
             look_spec=resolved,
@@ -1000,27 +1019,21 @@ def _one_cut(
             source_in=round(fade, 4),
         )
     inner = [float(b - start) for b in beats if start < b < end]
+    clip_duration = float(src.duration_s or length)
     s_in, fit = choose_source_in(
         envelope(src),
-        clip_duration=float(src.duration_s or length),
+        clip_duration=clip_duration,
         length=length,
         beat_offsets=inner,
         used=used.get(src.clip_id, ()),
         energy=energy_at((start + end) / 2.0),
-        transition=transition,
-        next_transition=next_transition,
+        room=_room(draft, clip_duration=clip_duration, next_transition=next_transition),
         ordinal=k,
     )
     used.setdefault(src.clip_id, []).append((s_in, s_in + length))
     if inner:
         fits.setdefault(src.clip_id, []).append(fit)
-    return entry_cls(
-        song_start=start,
-        song_end=end,
-        clip_id=src.clip_id,
-        transition=transition,
-        source_in=round(s_in, 4),
-    )
+    return replace(draft, source_in=round(s_in, 4))
 
 
 def _back_on_the_beat(entries: list, shifted: Mapping[float, float], by_id) -> list:
