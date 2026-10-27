@@ -871,8 +871,12 @@ the reply says `scores_stale: true`, and a default `score` recomputes only the s
 keyed input — a vocal-stem model, a declared section map — is a name in
 `scoring.registry.INPUTS`, a `Scorer.inputs` declaration, an entry in
 `service._input_fingerprints` and one in the orchestrator's `input_fingerprints`; it
-needs **no new manifest key**. An input the manifest does not list stales every metric
-when it moves (an unknown is not "none of them"). The legacy `beat_fingerprint` /
+needs **no new manifest key** (four edits are still four; one registry for them is
+https://github.com/reeleehq/muvid/issues/224). `grid` stores and compares input names and knows none but the legacy beat grid,
+so an input the manifest does not list — one it predates, or a misspelling — reads as
+changed and stales every metric (an unknown is not "none of them"). The record is built
+from every REGISTERED scorer's declarations over the metric axis, not from the scorers
+that ran: a partial re-score must keep a kept metric's inputs. The legacy `beat_fingerprint` /
 `beat_metrics` keys are still **written** as a mirror of the beat entry, because a
 build before #213 reads only those and, without them, would serve metrics measured on
 a declared grid as current once the grid is cleared; readers go through

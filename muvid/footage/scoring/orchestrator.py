@@ -393,10 +393,13 @@ def _score(
         for m in registry.default_metrics(include_lipsync=True)
         if m in produced and (m in wanted or m in kept_metrics)
     ]
-    # the metrics measured on each keyed input, by what each running scorer declared;
-    # a kept metric is current, so it was not (muvid#206, #213)
+    # the metrics on the axis measured on each keyed input, by what their scorers
+    # declare — every registered one, so a metric KEPT by a partial re-score keeps
+    # its inputs too (the #213 review: built from the running scorers only, a kept
+    # metric lost them and was served as current after its input changed)
     input_metrics = {
-        name: [m for sc in active for m in sc.reads(name)] for name in registry.INPUTS
+        name: [m for m in metric_axis if m in registry.metrics_reading(name)]
+        for name in registry.INPUTS
     }
 
     import math

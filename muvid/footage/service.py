@@ -1429,9 +1429,7 @@ def _read_beat_grid_cache(path: Path, song_hash: str) -> Optional[dict]:
 
 def _beat_grid_from_scores(fp, song_hash: str) -> Optional[dict]:
     """Lift the grid out of a scoring run's manifest when one exists for THIS song."""
-    from muvid.footage.scoring.grid import load_manifest
-
-    from muvid.footage.scoring.grid import recorded_fingerprint
+    from muvid.footage.scoring.grid import load_manifest, recorded_fingerprint
     from muvid.footage.scoring.registry import BEATS
 
     manifest = load_manifest(fp.root)

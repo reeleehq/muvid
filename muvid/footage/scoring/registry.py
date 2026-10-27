@@ -217,6 +217,11 @@ class Scorer:
 _SCORERS: dict[str, Scorer] = {}
 
 
+def metrics_reading(input_name: str) -> "set[str]":
+    """Every registered metric measured on ``input_name`` (:attr:`Scorer.inputs`)."""
+    return {m for sc in _SCORERS.values() for m in sc.reads(input_name)}
+
+
 def register_scorer(scorer: Scorer, *, replace: bool = False) -> Scorer:
     """Add ``scorer``. A name or a metric already taken is refused unless ``replace``.
 

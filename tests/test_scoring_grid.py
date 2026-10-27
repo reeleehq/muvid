@@ -360,6 +360,38 @@ def test_a_legacy_manifest_reads_as_before(tmp_path):
     assert stale_metrics(legacy, input_fingerprints={"beats": ""}, **kw) == ["b"]
 
 
-def test_an_unknown_keyed_input_is_refused_on_save(tmp_path):
-    with pytest.raises(ValueError, match="unknown keyed input"):
-        _saved_manifest(tmp_path, input_metrics={"vocal_stem": ["q"]})
+def test_a_malformed_input_record_is_refused_before_anything_is_written(tmp_path):
+    """The #213 review: a refusal after the clips' arrays were replaced left new data
+    under the old manifest's key."""
+    from muvid.footage.scoring.grid import load_manifest, load_tensor
+
+    _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
+    before = load_tensor(tmp_path).raw.copy()
+    with pytest.raises(ValueError, match="input metrics"):
+        _saved_manifest(tmp_path, input_metrics={"beats": "b"})
+    with pytest.raises(ValueError, match="input fingerprints"):
+        _saved_manifest(tmp_path, input_fingerprints={"beats": None})
+    assert np.array_equal(load_tensor(tmp_path).raw, before)
+    assert load_manifest(tmp_path)["input_metrics"] == {"beats": ["b"]}
+
+
+def test_a_name_only_the_caller_knows_reads_as_changed_never_as_current(tmp_path):
+    """A misspelled input, or one the manifest predates, stales every metric: the
+    persistence layer stores names, it does not know them (the #213 review)."""
+    from muvid.footage.scoring.grid import stale_metrics
+
+    m = _saved_manifest(tmp_path, input_metrics={"beats": ["b"]})
+    kw = dict(song_hash="h", align_fingerprint="")
+    assert stale_metrics(m, input_fingerprints={"beat": "g1"}, **kw) == ["q", "b", "s"]
+    corrupt = {**m, "input_metrics": {"beats": [1]}}
+    assert stale_metrics(corrupt, input_fingerprints={"beats": "g1"}, **kw) == [
+        "q",
+        "b",
+        "s",
+    ]
+
+
+def test_the_legacy_input_name_is_the_registry_beat_input():
+    from muvid.footage.scoring import grid, registry
+
+    assert grid._LEGACY_INPUT == registry.BEATS
