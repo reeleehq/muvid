@@ -50,14 +50,15 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Functions
 
-| [`artifact`](#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.            |
-|---------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| [`default_metrics`](#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order. |
-| [`metrics_of_tier`](#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                           |
-| [`register_artifact`](#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.          |
-| [`register_scorer`](#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                    |
-| [`scorers`](#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.       |
-| [`unregister_scorer`](#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                        |
+| [`artifact`](#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.                                              |
+|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| [`default_metrics`](#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order.                                   |
+| [`metrics_of_tier`](#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                                                             |
+| [`metrics_reading`](#muvid.footage.scoring.registry.metrics_reading)(input_name)                | Every registered metric measured on `input_name` ([`Scorer.inputs`](#muvid.footage.scoring.registry.Scorer.inputs)). |
+| [`register_artifact`](#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.                                            |
+| [`register_scorer`](#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                                                      |
+| [`scorers`](#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.                                         |
+| [`unregister_scorer`](#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                                                          |
 
 ### Classes
 
@@ -192,6 +193,13 @@ The metric axis order: every registered scorer’s metrics, in registration orde
 ### muvid.footage.scoring.registry.metrics_of_tier(tier)
 
 Every metric a tier’s scorers produce.
+
+* **Return type:**
+  [`set`](https://docs.python.org/3/builtins/stdtypes.html#set)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.scoring.registry.metrics_reading(input_name)
+
+Every registered metric measured on `input_name` ([`Scorer.inputs`](#muvid.footage.scoring.registry.Scorer.inputs)).
 
 * **Return type:**
   [`set`](https://docs.python.org/3/builtins/stdtypes.html#set)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]

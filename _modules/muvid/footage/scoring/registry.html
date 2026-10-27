@@ -434,161 +434,169 @@
 </span><span id="line-217"><span class="n">_SCORERS</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Scorer</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
 </span><span id="line-218">
 </span><span id="line-219">
+<div class="viewcode-block" id="metrics_reading">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.metrics_reading">[docs]</a>
+</span><span id="line-220"><span class="k">def</span><span class="w"> </span><span class="nf">metrics_reading</span><span class="p">(</span><span class="n">input_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"set[str]"</span><span class="p">:</span>
+</span><span id="line-221"><span class="w">    </span><span class="sd">"""Every registered metric measured on ``input_name`` (:attr:`Scorer.inputs`)."""</span>
+</span><span id="line-222">    <span class="k">return</span> <span class="p">{</span><span class="n">m</span> <span class="k">for</span> <span class="n">sc</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">sc</span><span class="o">.</span><span class="n">reads</span><span class="p">(</span><span class="n">input_name</span><span class="p">)}</span></div>
+
+</span><span id="line-223">
+</span><span id="line-224">
 <div class="viewcode-block" id="register_scorer">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.register_scorer">[docs]</a>
-</span><span id="line-220"><span class="k">def</span><span class="w"> </span><span class="nf">register_scorer</span><span class="p">(</span><span class="n">scorer</span><span class="p">:</span> <span class="n">Scorer</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">replace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Scorer</span><span class="p">:</span>
-</span><span id="line-221"><span class="w">    </span><span class="sd">"""Add ``scorer``. A name or a metric already taken is refused unless ``replace``.</span>
-</span><span id="line-222">
-</span><span id="line-223"><span class="sd">    Two scorers producing one metric would silently overwrite each other's track in</span>
-</span><span id="line-224"><span class="sd">    the tensor, so the metric names are unique across the registry, not just the scorer</span>
-</span><span id="line-225"><span class="sd">    names.</span>
-</span><span id="line-226"><span class="sd">    """</span>
-</span><span id="line-227">    <span class="k">if</span> <span class="n">scorer</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">_SCORERS</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">replace</span><span class="p">:</span>
-</span><span id="line-228">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-229">            <span class="sa">f</span><span class="s2">"scorer </span><span class="si">{</span><span class="n">scorer</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is already registered (replace=True?)"</span>
-</span><span id="line-230">        <span class="p">)</span>
-</span><span id="line-231">    <span class="n">taken</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-232">        <span class="n">m</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">scorer</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metrics</span>
-</span><span id="line-233">    <span class="p">}</span>
-</span><span id="line-234">    <span class="n">clash</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">scorer</span><span class="o">.</span><span class="n">metrics</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">taken</span><span class="p">)</span>
-</span><span id="line-235">    <span class="k">if</span> <span class="n">clash</span><span class="p">:</span>
-</span><span id="line-236">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-237">            <span class="sa">f</span><span class="s2">"metric(s) </span><span class="si">{</span><span class="n">clash</span><span class="si">}</span><span class="s2"> already produced by "</span>
-</span><span id="line-238">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">({</span><span class="n">taken</span><span class="p">[</span><span class="n">m</span><span class="p">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">clash</span><span class="p">})</span><span class="si">}</span><span class="s2">; metric names are unique"</span>
-</span><span id="line-239">        <span class="p">)</span>
-</span><span id="line-240">    <span class="n">_SCORERS</span><span class="p">[</span><span class="n">scorer</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">scorer</span>
-</span><span id="line-241">    <span class="k">return</span> <span class="n">scorer</span></div>
-
-</span><span id="line-242">
-</span><span id="line-243">
-<div class="viewcode-block" id="unregister_scorer">
-<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.unregister_scorer">[docs]</a>
-</span><span id="line-244"><span class="k">def</span><span class="w"> </span><span class="nf">unregister_scorer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-245"><span class="w">    </span><span class="sd">"""Remove a scorer (tests, plugin teardown). Unknown names raise ``KeyError``."""</span>
-</span><span id="line-246">    <span class="k">del</span> <span class="n">_SCORERS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+</span><span id="line-225"><span class="k">def</span><span class="w"> </span><span class="nf">register_scorer</span><span class="p">(</span><span class="n">scorer</span><span class="p">:</span> <span class="n">Scorer</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">replace</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Scorer</span><span class="p">:</span>
+</span><span id="line-226"><span class="w">    </span><span class="sd">"""Add ``scorer``. A name or a metric already taken is refused unless ``replace``.</span>
+</span><span id="line-227">
+</span><span id="line-228"><span class="sd">    Two scorers producing one metric would silently overwrite each other's track in</span>
+</span><span id="line-229"><span class="sd">    the tensor, so the metric names are unique across the registry, not just the scorer</span>
+</span><span id="line-230"><span class="sd">    names.</span>
+</span><span id="line-231"><span class="sd">    """</span>
+</span><span id="line-232">    <span class="k">if</span> <span class="n">scorer</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">_SCORERS</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">replace</span><span class="p">:</span>
+</span><span id="line-233">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-234">            <span class="sa">f</span><span class="s2">"scorer </span><span class="si">{</span><span class="n">scorer</span><span class="o">.</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> is already registered (replace=True?)"</span>
+</span><span id="line-235">        <span class="p">)</span>
+</span><span id="line-236">    <span class="n">taken</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-237">        <span class="n">m</span><span class="p">:</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="o">!=</span> <span class="n">scorer</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metrics</span>
+</span><span id="line-238">    <span class="p">}</span>
+</span><span id="line-239">    <span class="n">clash</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">scorer</span><span class="o">.</span><span class="n">metrics</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">taken</span><span class="p">)</span>
+</span><span id="line-240">    <span class="k">if</span> <span class="n">clash</span><span class="p">:</span>
+</span><span id="line-241">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-242">            <span class="sa">f</span><span class="s2">"metric(s) </span><span class="si">{</span><span class="n">clash</span><span class="si">}</span><span class="s2"> already produced by "</span>
+</span><span id="line-243">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">({</span><span class="n">taken</span><span class="p">[</span><span class="n">m</span><span class="p">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">m</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">clash</span><span class="p">})</span><span class="si">}</span><span class="s2">; metric names are unique"</span>
+</span><span id="line-244">        <span class="p">)</span>
+</span><span id="line-245">    <span class="n">_SCORERS</span><span class="p">[</span><span class="n">scorer</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">scorer</span>
+</span><span id="line-246">    <span class="k">return</span> <span class="n">scorer</span></div>
 
 </span><span id="line-247">
 </span><span id="line-248">
-<div class="viewcode-block" id="scorers">
-<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.scorers">[docs]</a>
-</span><span id="line-249"><span class="k">def</span><span class="w"> </span><span class="nf">scorers</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">include_lipsync</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Scorer</span><span class="p">]:</span>
-</span><span id="line-250"><span class="w">    </span><span class="sd">"""Registered scorers in registration order; the opt-in tier only when asked."""</span>
-</span><span id="line-251">    <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">include_lipsync</span> <span class="ow">or</span> <span class="n">s</span><span class="o">.</span><span class="n">tier</span> <span class="o">==</span> <span class="n">CORE_TIER</span><span class="p">]</span></div>
+<div class="viewcode-block" id="unregister_scorer">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.unregister_scorer">[docs]</a>
+</span><span id="line-249"><span class="k">def</span><span class="w"> </span><span class="nf">unregister_scorer</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-250"><span class="w">    </span><span class="sd">"""Remove a scorer (tests, plugin teardown). Unknown names raise ``KeyError``."""</span>
+</span><span id="line-251">    <span class="k">del</span> <span class="n">_SCORERS</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
 
 </span><span id="line-252">
 </span><span id="line-253">
-<div class="viewcode-block" id="default_metrics">
-<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.default_metrics">[docs]</a>
-</span><span id="line-254"><span class="k">def</span><span class="w"> </span><span class="nf">default_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">include_lipsync</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-255"><span class="w">    </span><span class="sd">"""The metric axis order: every registered scorer's metrics, in registration order."""</span>
-</span><span id="line-256">    <span class="k">return</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scorers</span><span class="p">(</span><span class="n">include_lipsync</span><span class="o">=</span><span class="n">include_lipsync</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metrics</span><span class="p">]</span></div>
+<div class="viewcode-block" id="scorers">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.scorers">[docs]</a>
+</span><span id="line-254"><span class="k">def</span><span class="w"> </span><span class="nf">scorers</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">include_lipsync</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Scorer</span><span class="p">]:</span>
+</span><span id="line-255"><span class="w">    </span><span class="sd">"""Registered scorers in registration order; the opt-in tier only when asked."""</span>
+</span><span id="line-256">    <span class="k">return</span> <span class="p">[</span><span class="n">s</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">include_lipsync</span> <span class="ow">or</span> <span class="n">s</span><span class="o">.</span><span class="n">tier</span> <span class="o">==</span> <span class="n">CORE_TIER</span><span class="p">]</span></div>
 
 </span><span id="line-257">
 </span><span id="line-258">
-<div class="viewcode-block" id="metrics_of_tier">
-<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.metrics_of_tier">[docs]</a>
-</span><span id="line-259"><span class="k">def</span><span class="w"> </span><span class="nf">metrics_of_tier</span><span class="p">(</span><span class="n">tier</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-260"><span class="w">    </span><span class="sd">"""Every metric a tier's scorers produce."""</span>
-</span><span id="line-261">    <span class="k">return</span> <span class="p">{</span><span class="n">m</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">tier</span> <span class="o">==</span> <span class="n">tier</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metrics</span><span class="p">}</span></div>
+<div class="viewcode-block" id="default_metrics">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.default_metrics">[docs]</a>
+</span><span id="line-259"><span class="k">def</span><span class="w"> </span><span class="nf">default_metrics</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">include_lipsync</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-260"><span class="w">    </span><span class="sd">"""The metric axis order: every registered scorer's metrics, in registration order."""</span>
+</span><span id="line-261">    <span class="k">return</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scorers</span><span class="p">(</span><span class="n">include_lipsync</span><span class="o">=</span><span class="n">include_lipsync</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metrics</span><span class="p">]</span></div>
 
 </span><span id="line-262">
 </span><span id="line-263">
-</span><span id="line-264"><span class="c1"># --------------------------------------------------------------------------</span>
-</span><span id="line-265"><span class="c1"># The built-ins. Each ``run`` lazy-imports its extractor (cv2 / librosa / torch).</span>
-</span><span id="line-266"><span class="c1"># --------------------------------------------------------------------------</span>
+<div class="viewcode-block" id="metrics_of_tier">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.registry.html#muvid.footage.scoring.registry.metrics_of_tier">[docs]</a>
+</span><span id="line-264"><span class="k">def</span><span class="w"> </span><span class="nf">metrics_of_tier</span><span class="p">(</span><span class="n">tier</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-265"><span class="w">    </span><span class="sd">"""Every metric a tier's scorers produce."""</span>
+</span><span id="line-266">    <span class="k">return</span> <span class="p">{</span><span class="n">m</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">_SCORERS</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">tier</span> <span class="o">==</span> <span class="n">tier</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">s</span><span class="o">.</span><span class="n">metrics</span><span class="p">}</span></div>
+
 </span><span id="line-267">
 </span><span id="line-268">
-</span><span id="line-269"><span class="k">def</span><span class="w"> </span><span class="nf">_run_quality</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">ClipContext</span><span class="p">):</span>
-</span><span id="line-270">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.quality</span><span class="w"> </span><span class="kn">import</span> <span class="n">quality_tracks</span>
-</span><span id="line-271">
-</span><span id="line-272">    <span class="k">return</span> <span class="n">quality_tracks</span><span class="p">(</span>
-</span><span id="line-273">        <span class="n">ctx</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span>
-</span><span id="line-274">        <span class="n">clip_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
-</span><span id="line-275">        <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
-</span><span id="line-276">        <span class="o">**</span><span class="n">ctx</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">as_kwargs</span><span class="p">(),</span>
-</span><span id="line-277">    <span class="p">)</span>
-</span><span id="line-278">
-</span><span id="line-279">
-</span><span id="line-280"><span class="k">def</span><span class="w"> </span><span class="nf">_run_motion_beat</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">ClipContext</span><span class="p">):</span>
-</span><span id="line-281">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.motionbeat</span><span class="w"> </span><span class="kn">import</span> <span class="n">motionbeat_tracks</span>
-</span><span id="line-282">
-</span><span id="line-283">    <span class="k">return</span> <span class="n">motionbeat_tracks</span><span class="p">(</span>
-</span><span id="line-284">        <span class="n">ctx</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span>
-</span><span id="line-285">        <span class="n">clip_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
-</span><span id="line-286">        <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
-</span><span id="line-287">        <span class="n">beat_times</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">beat</span><span class="o">.</span><span class="n">beat_times</span><span class="p">,</span>
-</span><span id="line-288">        <span class="n">onset_env</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">beat</span><span class="o">.</span><span class="n">onset_env</span><span class="p">,</span>
-</span><span id="line-289">        <span class="n">onset_hop_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">beat</span><span class="o">.</span><span class="n">onset_hop_s</span><span class="p">,</span>
-</span><span id="line-290">        <span class="o">**</span><span class="n">ctx</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">as_kwargs</span><span class="p">(),</span>
-</span><span id="line-291">    <span class="p">)</span>
-</span><span id="line-292">
-</span><span id="line-293">
-</span><span id="line-294"><span class="k">def</span><span class="w"> </span><span class="nf">_run_lipsync</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">ClipContext</span><span class="p">):</span>
-</span><span id="line-295">    <span class="n">stem</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">artifacts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">VOCAL_STEM</span><span class="p">)</span>
-</span><span id="line-296">    <span class="k">if</span> <span class="n">stem</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># the stem could not be made: skip, never a silent 0</span>
-</span><span id="line-297">        <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-298">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="n">lipsync_tracks</span>
-</span><span id="line-299">
-</span><span id="line-300">    <span class="k">return</span> <span class="n">lipsync_tracks</span><span class="p">(</span>
-</span><span id="line-301">        <span class="n">ctx</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
-</span><span id="line-302">        <span class="n">clip_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
-</span><span id="line-303">        <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
-</span><span id="line-304">        <span class="n">duration_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">duration_s</span><span class="p">,</span>
-</span><span id="line-305">        <span class="n">coverage</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">coverage</span><span class="p">,</span>
-</span><span id="line-306">        <span class="n">vocal_stem_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">stem</span><span class="p">),</span>
-</span><span id="line-307">        <span class="o">**</span><span class="n">ctx</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">as_kwargs</span><span class="p">(),</span>
-</span><span id="line-308">    <span class="p">)</span>
-</span><span id="line-309">
-</span><span id="line-310">
-</span><span id="line-311"><span class="k">def</span><span class="w"> </span><span class="nf">_lipsync_available</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-312">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="n">lipsync_available</span>
-</span><span id="line-313">
-</span><span id="line-314">    <span class="k">return</span> <span class="n">lipsync_available</span><span class="p">()</span>
+</span><span id="line-269"><span class="c1"># --------------------------------------------------------------------------</span>
+</span><span id="line-270"><span class="c1"># The built-ins. Each ``run`` lazy-imports its extractor (cv2 / librosa / torch).</span>
+</span><span id="line-271"><span class="c1"># --------------------------------------------------------------------------</span>
+</span><span id="line-272">
+</span><span id="line-273">
+</span><span id="line-274"><span class="k">def</span><span class="w"> </span><span class="nf">_run_quality</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">ClipContext</span><span class="p">):</span>
+</span><span id="line-275">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.quality</span><span class="w"> </span><span class="kn">import</span> <span class="n">quality_tracks</span>
+</span><span id="line-276">
+</span><span id="line-277">    <span class="k">return</span> <span class="n">quality_tracks</span><span class="p">(</span>
+</span><span id="line-278">        <span class="n">ctx</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span>
+</span><span id="line-279">        <span class="n">clip_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
+</span><span id="line-280">        <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
+</span><span id="line-281">        <span class="o">**</span><span class="n">ctx</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">as_kwargs</span><span class="p">(),</span>
+</span><span id="line-282">    <span class="p">)</span>
+</span><span id="line-283">
+</span><span id="line-284">
+</span><span id="line-285"><span class="k">def</span><span class="w"> </span><span class="nf">_run_motion_beat</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">ClipContext</span><span class="p">):</span>
+</span><span id="line-286">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.motionbeat</span><span class="w"> </span><span class="kn">import</span> <span class="n">motionbeat_tracks</span>
+</span><span id="line-287">
+</span><span id="line-288">    <span class="k">return</span> <span class="n">motionbeat_tracks</span><span class="p">(</span>
+</span><span id="line-289">        <span class="n">ctx</span><span class="o">.</span><span class="n">frames</span><span class="p">,</span>
+</span><span id="line-290">        <span class="n">clip_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
+</span><span id="line-291">        <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
+</span><span id="line-292">        <span class="n">beat_times</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">beat</span><span class="o">.</span><span class="n">beat_times</span><span class="p">,</span>
+</span><span id="line-293">        <span class="n">onset_env</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">beat</span><span class="o">.</span><span class="n">onset_env</span><span class="p">,</span>
+</span><span id="line-294">        <span class="n">onset_hop_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">beat</span><span class="o">.</span><span class="n">onset_hop_s</span><span class="p">,</span>
+</span><span id="line-295">        <span class="o">**</span><span class="n">ctx</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">as_kwargs</span><span class="p">(),</span>
+</span><span id="line-296">    <span class="p">)</span>
+</span><span id="line-297">
+</span><span id="line-298">
+</span><span id="line-299"><span class="k">def</span><span class="w"> </span><span class="nf">_run_lipsync</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">ClipContext</span><span class="p">):</span>
+</span><span id="line-300">    <span class="n">stem</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">artifacts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">VOCAL_STEM</span><span class="p">)</span>
+</span><span id="line-301">    <span class="k">if</span> <span class="n">stem</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># the stem could not be made: skip, never a silent 0</span>
+</span><span id="line-302">        <span class="k">return</span> <span class="p">[]</span>
+</span><span id="line-303">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="n">lipsync_tracks</span>
+</span><span id="line-304">
+</span><span id="line-305">    <span class="k">return</span> <span class="n">lipsync_tracks</span><span class="p">(</span>
+</span><span id="line-306">        <span class="n">ctx</span><span class="o">.</span><span class="n">path</span><span class="p">,</span>
+</span><span id="line-307">        <span class="n">clip_id</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
+</span><span id="line-308">        <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">offset_s</span><span class="p">,</span>
+</span><span id="line-309">        <span class="n">duration_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">duration_s</span><span class="p">,</span>
+</span><span id="line-310">        <span class="n">coverage</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">coverage</span><span class="p">,</span>
+</span><span id="line-311">        <span class="n">vocal_stem_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">stem</span><span class="p">),</span>
+</span><span id="line-312">        <span class="o">**</span><span class="n">ctx</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">as_kwargs</span><span class="p">(),</span>
+</span><span id="line-313">    <span class="p">)</span>
+</span><span id="line-314">
 </span><span id="line-315">
-</span><span id="line-316">
-</span><span id="line-317"><span class="c1">#: The master vocal stem (Demucs), the lip-sync tier's shared artifact.</span>
-</span><span id="line-318"><span class="n">VOCAL_STEM</span> <span class="o">=</span> <span class="s2">"vocal_stem"</span>
-</span><span id="line-319">
+</span><span id="line-316"><span class="k">def</span><span class="w"> </span><span class="nf">_lipsync_available</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">bool</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-317">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="n">lipsync_available</span>
+</span><span id="line-318">
+</span><span id="line-319">    <span class="k">return</span> <span class="n">lipsync_available</span><span class="p">()</span>
 </span><span id="line-320">
-</span><span id="line-321"><span class="k">def</span><span class="w"> </span><span class="nf">_build_vocal_stem</span><span class="p">(</span><span class="n">song_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">scores_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="line-322">    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-</span><span id="line-323">
-</span><span id="line-324">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="n">separate_master_vocals</span>
+</span><span id="line-321">
+</span><span id="line-322"><span class="c1">#: The master vocal stem (Demucs), the lip-sync tier's shared artifact.</span>
+</span><span id="line-323"><span class="n">VOCAL_STEM</span> <span class="o">=</span> <span class="s2">"vocal_stem"</span>
+</span><span id="line-324">
 </span><span id="line-325">
-</span><span id="line-326">    <span class="k">return</span> <span class="n">separate_master_vocals</span><span class="p">(</span><span class="n">song_path</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">scores_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"_stems"</span><span class="p">))</span>
-</span><span id="line-327">
+</span><span id="line-326"><span class="k">def</span><span class="w"> </span><span class="nf">_build_vocal_stem</span><span class="p">(</span><span class="n">song_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">scores_dir</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="line-327">    <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 </span><span id="line-328">
-</span><span id="line-329"><span class="n">register_artifact</span><span class="p">(</span><span class="n">Artifact</span><span class="p">(</span><span class="n">VOCAL_STEM</span><span class="p">,</span> <span class="n">_build_vocal_stem</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"separate_vocals"</span><span class="p">))</span>
+</span><span id="line-329">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.scoring.lipsync</span><span class="w"> </span><span class="kn">import</span> <span class="n">separate_master_vocals</span>
 </span><span id="line-330">
-</span><span id="line-331">
-</span><span id="line-332"><span class="n">register_scorer</span><span class="p">(</span>
-</span><span id="line-333">    <span class="n">Scorer</span><span class="p">(</span>
-</span><span id="line-334">        <span class="s2">"quality"</span><span class="p">,</span>
-</span><span id="line-335">        <span class="p">(</span><span class="s2">"sharpness"</span><span class="p">,</span> <span class="s2">"exposure"</span><span class="p">,</span> <span class="s2">"stability_shake"</span><span class="p">,</span> <span class="s2">"face_framing"</span><span class="p">),</span>
-</span><span id="line-336">        <span class="n">_run_quality</span><span class="p">,</span>
-</span><span id="line-337">    <span class="p">)</span>
-</span><span id="line-338"><span class="p">)</span>
-</span><span id="line-339"><span class="n">register_scorer</span><span class="p">(</span>
-</span><span id="line-340">    <span class="n">Scorer</span><span class="p">(</span>
-</span><span id="line-341">        <span class="s2">"motion_beat"</span><span class="p">,</span>
-</span><span id="line-342">        <span class="p">(</span><span class="s2">"motion_beat_bas"</span><span class="p">,</span> <span class="s2">"motion_onset_xcorr"</span><span class="p">),</span>
-</span><span id="line-343">        <span class="n">_run_motion_beat</span><span class="p">,</span>
-</span><span id="line-344">        <span class="c1"># the onset envelope is the song's measurement, not the grid's</span>
-</span><span id="line-345">        <span class="n">inputs</span><span class="o">=</span><span class="p">{</span><span class="s2">"motion_beat_bas"</span><span class="p">:</span> <span class="p">(</span><span class="n">BEATS</span><span class="p">,)},</span>
-</span><span id="line-346">    <span class="p">)</span>
-</span><span id="line-347"><span class="p">)</span>
-</span><span id="line-348"><span class="n">register_scorer</span><span class="p">(</span>
-</span><span id="line-349">    <span class="n">Scorer</span><span class="p">(</span>
-</span><span id="line-350">        <span class="s2">"lipsync"</span><span class="p">,</span>
-</span><span id="line-351">        <span class="p">(</span><span class="s2">"lip_sync_lse_c"</span><span class="p">,</span> <span class="s2">"lse_d_offset"</span><span class="p">),</span>
-</span><span id="line-352">        <span class="n">_run_lipsync</span><span class="p">,</span>
-</span><span id="line-353">        <span class="n">needs_frames</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-354">        <span class="n">gated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-355">        <span class="n">tier</span><span class="o">=</span><span class="n">LIPSYNC_TIER</span><span class="p">,</span>
-</span><span id="line-356">        <span class="n">available</span><span class="o">=</span><span class="n">_lipsync_available</span><span class="p">,</span>
-</span><span id="line-357">        <span class="n">needs</span><span class="o">=</span><span class="p">(</span><span class="n">VOCAL_STEM</span><span class="p">,),</span>
-</span><span id="line-358">    <span class="p">)</span>
-</span><span id="line-359"><span class="p">)</span>
+</span><span id="line-331">    <span class="k">return</span> <span class="n">separate_master_vocals</span><span class="p">(</span><span class="n">song_path</span><span class="p">,</span> <span class="n">out_dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">scores_dir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"_stems"</span><span class="p">))</span>
+</span><span id="line-332">
+</span><span id="line-333">
+</span><span id="line-334"><span class="n">register_artifact</span><span class="p">(</span><span class="n">Artifact</span><span class="p">(</span><span class="n">VOCAL_STEM</span><span class="p">,</span> <span class="n">_build_vocal_stem</span><span class="p">,</span> <span class="n">stage</span><span class="o">=</span><span class="s2">"separate_vocals"</span><span class="p">))</span>
+</span><span id="line-335">
+</span><span id="line-336">
+</span><span id="line-337"><span class="n">register_scorer</span><span class="p">(</span>
+</span><span id="line-338">    <span class="n">Scorer</span><span class="p">(</span>
+</span><span id="line-339">        <span class="s2">"quality"</span><span class="p">,</span>
+</span><span id="line-340">        <span class="p">(</span><span class="s2">"sharpness"</span><span class="p">,</span> <span class="s2">"exposure"</span><span class="p">,</span> <span class="s2">"stability_shake"</span><span class="p">,</span> <span class="s2">"face_framing"</span><span class="p">),</span>
+</span><span id="line-341">        <span class="n">_run_quality</span><span class="p">,</span>
+</span><span id="line-342">    <span class="p">)</span>
+</span><span id="line-343"><span class="p">)</span>
+</span><span id="line-344"><span class="n">register_scorer</span><span class="p">(</span>
+</span><span id="line-345">    <span class="n">Scorer</span><span class="p">(</span>
+</span><span id="line-346">        <span class="s2">"motion_beat"</span><span class="p">,</span>
+</span><span id="line-347">        <span class="p">(</span><span class="s2">"motion_beat_bas"</span><span class="p">,</span> <span class="s2">"motion_onset_xcorr"</span><span class="p">),</span>
+</span><span id="line-348">        <span class="n">_run_motion_beat</span><span class="p">,</span>
+</span><span id="line-349">        <span class="c1"># the onset envelope is the song's measurement, not the grid's</span>
+</span><span id="line-350">        <span class="n">inputs</span><span class="o">=</span><span class="p">{</span><span class="s2">"motion_beat_bas"</span><span class="p">:</span> <span class="p">(</span><span class="n">BEATS</span><span class="p">,)},</span>
+</span><span id="line-351">    <span class="p">)</span>
+</span><span id="line-352"><span class="p">)</span>
+</span><span id="line-353"><span class="n">register_scorer</span><span class="p">(</span>
+</span><span id="line-354">    <span class="n">Scorer</span><span class="p">(</span>
+</span><span id="line-355">        <span class="s2">"lipsync"</span><span class="p">,</span>
+</span><span id="line-356">        <span class="p">(</span><span class="s2">"lip_sync_lse_c"</span><span class="p">,</span> <span class="s2">"lse_d_offset"</span><span class="p">),</span>
+</span><span id="line-357">        <span class="n">_run_lipsync</span><span class="p">,</span>
+</span><span id="line-358">        <span class="n">needs_frames</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-359">        <span class="n">gated</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-360">        <span class="n">tier</span><span class="o">=</span><span class="n">LIPSYNC_TIER</span><span class="p">,</span>
+</span><span id="line-361">        <span class="n">available</span><span class="o">=</span><span class="n">_lipsync_available</span><span class="p">,</span>
+</span><span id="line-362">        <span class="n">needs</span><span class="o">=</span><span class="p">(</span><span class="n">VOCAL_STEM</span><span class="p">,),</span>
+</span><span id="line-363">    <span class="p">)</span>
+</span><span id="line-364"><span class="p">)</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -602,7 +610,7 @@
 </footer>
     </div>
     
-    <script src="../../../../_static/documentation_options.js?v=e7715e22"></script>
+    <script src="../../../../_static/documentation_options.js?v=4309da3b"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>

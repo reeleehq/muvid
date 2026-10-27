@@ -32,8 +32,9 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 
 ### Module Attributes
 
-| [`MAX_EDL_ENTRIES`](#muvid.footage.edl.MAX_EDL_ENTRIES)           | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
+| [`COINCIDENT_S`](#muvid.footage.edl.COINCIDENT_S)              | Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.                                                                                                                                                                        |
 |----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`MAX_EDL_ENTRIES`](#muvid.footage.edl.MAX_EDL_ENTRIES)           | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
 | [`MAX_LOOK_SCALE`](#muvid.footage.edl.MAX_LOOK_SCALE)            | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
 | [`MAX_LOOK_LINKS`](#muvid.footage.edl.MAX_LOOK_LINKS)            | How many filter links one look may carry, and how many of those may set a size.                                                                                                                                                                                 |
 | [`MAX_LOOK_LARGE_LINKS`](#muvid.footage.edl.MAX_LOOK_LARGE_LINKS)      | How many links of a look may hold a frame LARGER than the canvas (by area) — the bound on what actually costs memory (muvid#199).                                                                                                                               |
@@ -159,6 +160,13 @@ falsy (`None`) when it does not tone-map.
 Carried through from the EDL entry, unchanged. `derive_cuts` gains no
 transition arithmetic: the extra source material a blend needs is measured
 in FRAMES at the render fps, which only the assembler knows.
+
+### muvid.footage.edl.COINCIDENT_S *= 0.001*
+
+Spans shorter than this (seconds) are treated as coincident / zero — guards float
+noise. Public because a planner must agree with the gate on which two moments are
+one: comparing at a finer tolerance, it can emit a span the gate calls zero
+(muvid#210: a beat 60 us before a piece’s end left a 60 us take-over).
 
 ### *class* muvid.footage.edl.CropWindow(x, y, w, h)
 

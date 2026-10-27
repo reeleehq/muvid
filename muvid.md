@@ -1,4 +1,4 @@
-> built 2026-10-27 09:03 UTC from 561a179 (main) · muvid 0.0.118. Details: build_info.json
+> built 2026-10-27 09:14 UTC from 46222df (main) · muvid 0.0.119. Details: build_info.json
 
 # index.html.md
 
@@ -3413,8 +3413,9 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 
 ### Module Attributes
 
-| [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES)           | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
+| [`COINCIDENT_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.COINCIDENT_S)              | Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.                                                                                                                                                                        |
 |----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES)           | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
 | [`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE)            | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
 | [`MAX_LOOK_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LINKS)            | How many filter links one look may carry, and how many of those may set a size.                                                                                                                                                                                 |
 | [`MAX_LOOK_LARGE_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LARGE_LINKS)      | How many links of a look may hold a frame LARGER than the canvas (by area) — the bound on what actually costs memory (muvid#199).                                                                                                                               |
@@ -3540,6 +3541,13 @@ falsy (`None`) when it does not tone-map.
 Carried through from the EDL entry, unchanged. `derive_cuts` gains no
 transition arithmetic: the extra source material a blend needs is measured
 in FRAMES at the render fps, which only the assembler knows.
+
+### muvid.footage.edl.COINCIDENT_S *= 0.001*
+
+Spans shorter than this (seconds) are treated as coincident / zero — guards float
+noise. Public because a planner must agree with the gate on which two moments are
+one: comparing at a finer tolerance, it can emit a span the gate calls zero
+(muvid#210: a beat 60 us before a piece’s end left a 60 us take-over).
 
 ### *class* muvid.footage.edl.CropWindow(x, y, w, h)
 
@@ -6638,27 +6646,29 @@ Pure numpy — no cv2/torch/ffmpeg here. Imported only under the `muvid[scoring]
 
 ### Module Attributes
 
-| [`DEFAULT_HOP_S`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.DEFAULT_HOP_S)   | Default grid step (seconds) → 10 Hz.   |
-|------------------------------------------------------------------|----------------------------------------|
+| [`DEFAULT_HOP_S`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.DEFAULT_HOP_S)      | Default grid step (seconds) → 10 Hz.                                                                                                                                                         |
+|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`INPUT_FINGERPRINTS`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.INPUT_FINGERPRINTS) | `{input: fingerprint}` (`""` entries omitted) and `{input: [metrics that read it]}` (every keyed input the writer knows listed, so an input missing from it means the manifest predates it). |
 
 ### Functions
 
-| [`align_fingerprint`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint)(alignments)                     | A stable, ORDER-INDEPENDENT fingerprint of a set of alignments (offsets + durations).                                                                                                                                                                                                                 |
-|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`apply_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.apply_norm)(raw, norm, \*, direction)              | Map raw values to a robust [0,1] score (higher = better), preserving NaN.                                                                                                                                                                                                                             |
-| [`build_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.build_tensor)(tracks, \*, t0, hop_s, n[, ...])     | Assemble per-clip [`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack) lists into a normalized [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor).                                                                                                                                   |
-| [`compute_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.compute_norm)(raw_tracks, masks, \*, direction)    | Per-metric-GLOBAL robust norm params from every clip's raw track for one metric.                                                                                                                                                                                                                      |
-| [`grid_len`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.grid_len)(song_duration[, hop_s])                  | Number of grid frames spanning `[0, song_duration]` at `hop_s`.                                                                                                                                                                                                                                       |
-| `load_manifest`(project_root)                                                                      |                                                                                                                                                                                                                                                                                                       |
-| [`load_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.load_tensor)(project_root)                         | Reconstruct the [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) from persisted arrays + manifest, or `None`.                                                                                                                                                                             |
-| [`manifest_is_current`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether EVERY persisted metric matches the current song, alignments and beat grid ([`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) says which do not) — the same answer the readers act on: a grid change with no metric measured on the grid leaves the scores current.             |
-| [`mask_metrics`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.mask_metrics)(tensor, metrics)                     | `tensor` with `metrics` read as not measured (masked, `NaN`) — how a stale metric is served beside current ones: absent, never a low score (muvid#206).                                                                                                                                               |
-| [`resample_to_grid`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.resample_to_grid)(sample_times, ...[, max_gap_s])  | Resample irregular `(song_time, value)` samples onto the fixed grid.                                                                                                                                                                                                                                  |
-| [`save_scores`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.save_scores)(project_root, tracks, \*, t0, ...)    | Persist per-clip raw arrays + a manifest, crash-consistently.                                                                                                                                                                                                                                         |
-| `scores_dir`(project_root)                                                                         |                                                                                                                                                                                                                                                                                                       |
-| `scores_present`(project_root)                                                                     |                                                                                                                                                                                                                                                                                                       |
-| [`stale_metrics`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics)(manifest, \*, song_hash, ...)       | Which of the persisted metrics no longer match the CURRENT song, alignments and beat grid: `[]` when all are current, every metric when the song or an alignment changed (every track is placed through them), and only the metrics measured on the beat grid when only the grid changed (muvid#206). |
-| [`tracks_of`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.tracks_of)(tensor, metrics, directions)            | The persisted `metrics` of `tensor` as tracks again, per clip — what a partial re-score keeps beside the metrics it recomputes.                                                                                                                                                                       |
+| [`align_fingerprint`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint)(alignments)                     | A stable, ORDER-INDEPENDENT fingerprint of a set of alignments (offsets + durations).                                                                                                                                                                                                                                                           |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`apply_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.apply_norm)(raw, norm, \*, direction)              | Map raw values to a robust [0,1] score (higher = better), preserving NaN.                                                                                                                                                                                                                                                                       |
+| [`build_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.build_tensor)(tracks, \*, t0, hop_s, n[, ...])     | Assemble per-clip [`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack) lists into a normalized [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor).                                                                                                                                                                             |
+| [`compute_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.compute_norm)(raw_tracks, masks, \*, direction)    | Per-metric-GLOBAL robust norm params from every clip's raw track for one metric.                                                                                                                                                                                                                                                                |
+| [`grid_len`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.grid_len)(song_duration[, hop_s])                  | Number of grid frames spanning `[0, song_duration]` at `hop_s`.                                                                                                                                                                                                                                                                                 |
+| `load_manifest`(project_root)                                                                      |                                                                                                                                                                                                                                                                                                                                                 |
+| [`load_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.load_tensor)(project_root)                         | Reconstruct the [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) from persisted arrays + manifest, or `None`.                                                                                                                                                                                                                       |
+| [`manifest_is_current`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether EVERY persisted metric matches the current song, alignments and keyed inputs ([`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) says which do not) — the same answer the readers act on: an input change no metric read leaves the scores current, and one the manifest does not say which metrics read leaves it stale. |
+| [`mask_metrics`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.mask_metrics)(tensor, metrics)                     | `tensor` with `metrics` read as not measured (masked, `NaN`) — how a stale metric is served beside current ones: absent, never a low score (muvid#206).                                                                                                                                                                                         |
+| [`recorded_fingerprint`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.recorded_fingerprint)(manifest, input_name)        | The fingerprint of `input_name` the manifest's metrics were measured on (`""`: the input's default), read from the record of muvid#213 or, for a manifest written before it, the beat grid's legacy key.                                                                                                                                        |
+| [`resample_to_grid`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.resample_to_grid)(sample_times, ...[, max_gap_s])  | Resample irregular `(song_time, value)` samples onto the fixed grid.                                                                                                                                                                                                                                                                            |
+| [`save_scores`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.save_scores)(project_root, tracks, \*, t0, ...)    | Persist per-clip raw arrays + a manifest, crash-consistently.                                                                                                                                                                                                                                                                                   |
+| `scores_dir`(project_root)                                                                         |                                                                                                                                                                                                                                                                                                                                                 |
+| `scores_present`(project_root)                                                                     |                                                                                                                                                                                                                                                                                                                                                 |
+| [`stale_metrics`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics)(manifest, \*, song_hash, ...)       | Which of the persisted metrics no longer match the CURRENT song, alignments and keyed inputs: `[]` when all are current, every metric when the song or an alignment changed (every track is placed through them), and only the metrics that read a changed input otherwise (muvid#206, #213).                                                   |
+| [`tracks_of`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.tracks_of)(tensor, metrics, directions)            | The persisted `metrics` of `tensor` as tracks again, per clip — what a partial re-score keeps beside the metrics it recomputes.                                                                                                                                                                                                                 |
 
 ### Classes
 
@@ -6669,6 +6679,17 @@ Pure numpy — no cv2/torch/ffmpeg here. Imported only under the `muvid[scoring]
 ### muvid.footage.scoring.grid.DEFAULT_HOP_S *= 0.1*
 
 Default grid step (seconds) → 10 Hz. Ample for a UI and beat-level selection.
+
+### muvid.footage.scoring.grid.INPUT_FINGERPRINTS *= 'input_fingerprints'*
+
+`{input: fingerprint}`
+(`""` entries omitted) and `{input: [metrics that read it]}` (every keyed input
+the writer knows listed, so an input missing from it means the manifest predates it).
+The names are the caller’s: this module stores and compares them and knows none,
+except the legacy beat grid below.
+
+* **Type:**
+  The manifest keys of the per-input record (muvid#213)
 
 ### *class* muvid.footage.scoring.grid.ScoreTensor(clip_ids, metrics, t0, hop_s, n, S, M, raw, norms)
 
@@ -6770,11 +6791,12 @@ A clip/metric absent from a `.npz` is filled as an all-masked column.
 * **Return type:**
   [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint, beat_fingerprint)
+### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint, input_fingerprints)
 
-Whether EVERY persisted metric matches the current song, alignments and beat grid
-([`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) says which do not) — the same answer the readers act on: a
-grid change with no metric measured on the grid leaves the scores current.
+Whether EVERY persisted metric matches the current song, alignments and keyed
+inputs ([`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) says which do not) — the same answer the readers act
+on: an input change no metric read leaves the scores current, and one the manifest
+does not say which metrics read leaves it stale.
 
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
@@ -6786,6 +6808,15 @@ metric is served beside current ones: absent, never a low score (muvid#206).
 
 * **Return type:**
   [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor)
+
+### muvid.footage.scoring.grid.recorded_fingerprint(manifest, input_name)
+
+The fingerprint of `input_name` the manifest’s metrics were measured on
+(`""`: the input’s default), read from the record of muvid#213 or, for a manifest
+written before it, the beat grid’s legacy key.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.scoring.grid.resample_to_grid(sample_times, sample_values, , t0, hop_s, n, max_gap_s=None)
 
@@ -6806,7 +6837,7 @@ Outside `[first_sample, last_sample]` the grid is masked (no extrapolation).
 * **Returns:**
   `(values, mask)` — `values` float32[n] (NaN where masked), `mask` bool[n].
 
-### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), beat_fingerprint='', beat_metrics=(), extra=None)
+### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), input_fingerprints=None, input_metrics=None, extra=None)
 
 Persist per-clip raw arrays + a manifest, crash-consistently.
 
@@ -6816,27 +6847,34 @@ The per-metric global `norm` params + grid geometry + beats + `song_hash` go in
 whole consistent state or the prior one, never a torn mix. NaN never enters the manifest
 (all-masked metric → `null` norm).
 
+`input_fingerprints` names, per keyed master input (`registry.INPUTS`), the
+value the metrics were measured on (`""`: the input’s default, which the song
+already keys); `input_metrics` names the metrics that read each — so a change to
+one input stales only its metrics (muvid#206), for any input (muvid#213).
+
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.scoring.grid.stale_metrics(manifest, , song_hash, align_fingerprint, beat_fingerprint)
+### muvid.footage.scoring.grid.stale_metrics(manifest, , song_hash, align_fingerprint, input_fingerprints)
 
 Which of the persisted metrics no longer match the CURRENT song, alignments and
-beat grid: `[]` when all are current, every metric when the song or an alignment
-changed (every track is placed through them), and only the metrics measured on the
-beat grid when only the grid changed (muvid#206). `None` when there are no scores.
+keyed inputs: `[]` when all are current, every metric when the song or an
+alignment changed (every track is placed through them), and only the metrics that
+read a changed input otherwise (muvid#206, #213). `None` when there are no scores.
 
-`beat_fingerprint` names the beat grid the beat metrics were measured on: `""` for
-the estimator’s (a function of the song, already keyed by `song_hash`), else the
-grid a person declared (muvid#187). A manifest predating the fingerprint was measured
-on the estimate; one predating `beat_metrics` stales every metric on a grid change.
+`input_fingerprints` names each keyed input’s current value (absent or `""`: its
+default, which `song_hash` already keys) — for the beat grid, the grid a person
+declared (muvid#187). A manifest that does not say which metrics read a changed
+input stales every metric.
 
 ```pycon
 >>> m = {"song_hash": "h", "align_fingerprint": "f", "metrics": ["q", "b"],
-...      "beat_metrics": ["b"]}
+...      "input_metrics": {"beats": ["b"]}}
 >>> kw = {"song_hash": "h", "align_fingerprint": "f"}
->>> stale_metrics(m, beat_fingerprint="", **kw), stale_metrics(m, beat_fingerprint="x", **kw)
-([], ['b'])
+>>> stale_metrics(m, input_fingerprints={}, **kw)
+[]
+>>> stale_metrics(m, input_fingerprints={"beats": "x"}, **kw)
+['b']
 ```
 
 * **Return type:**
@@ -7188,14 +7226,15 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Functions
 
-| [`artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.            |
-|---------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| [`default_metrics`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order. |
-| [`metrics_of_tier`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                           |
-| [`register_artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.          |
-| [`register_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                    |
-| [`scorers`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.       |
-| [`unregister_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                        |
+| [`artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.                                              |
+|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| [`default_metrics`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order.                                   |
+| [`metrics_of_tier`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                                                             |
+| [`metrics_reading`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.metrics_reading)(input_name)                | Every registered metric measured on `input_name` ([`Scorer.inputs`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer.inputs)). |
+| [`register_artifact`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.                                            |
+| [`register_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                                                      |
+| [`scorers`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.                                         |
+| [`unregister_scorer`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                                                          |
 
 ### Classes
 
@@ -7330,6 +7369,13 @@ The metric axis order: every registered scorer’s metrics, in registration orde
 ### muvid.footage.scoring.registry.metrics_of_tier(tier)
 
 Every metric a tier’s scorers produce.
+
+* **Return type:**
+  [`set`](https://docs.python.org/3/builtins/stdtypes.html#set)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.scoring.registry.metrics_reading(input_name)
+
+Every registered metric measured on `input_name` ([`Scorer.inputs`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer.inputs)).
 
 * **Return type:**
   [`set`](https://docs.python.org/3/builtins/stdtypes.html#set)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
@@ -18630,20 +18676,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 09:03 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/561a179c684ce884bf5e1a2a8039f3f3a442d536"><code>561a179</code></a> on branch <code>main</code>, for **muvid 0.0.118** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 09:14 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/46222df7f3b98c2dd5ef26b53ec1eb450594ca0d"><code>46222df</code></a> on branch <code>main</code>, for **muvid 0.0.119** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.118) is ahead of the latest release on PyPI (0.0.117): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/561a179c684ce884bf5e1a2a8039f3f3a442d536"><code>561a179c684ce884bf5e1a2a8039f3f3a442d536</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/46222df7f3b98c2dd5ef26b53ec1eb450594ca0d"><code>46222df7f3b98c2dd5ef26b53ec1eb450594ca0d</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.118</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.119</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18652,9 +18696,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40475793859">40475793859</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40478166401">40478166401</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>d7f9f80bc91d34a8139eb9d878b47925ae5a6885</code> (in the history of the built commit) |
+| Event commit | <code>1001ad055fe9d5667c506c1209d0bb51aeee472f</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18679,13 +18723,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.117/">0.0.117</a>, older than the documented version (0.0.118).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.119/">0.0.119</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 561a179c684ce884bf5e1a2a8039f3f3a442d536
+git checkout 46222df7f3b98c2dd5ef26b53ec1eb450594ca0d
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

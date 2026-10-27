@@ -20,6 +20,7 @@ muvid.footage.scoring.registry
       artifact
       default_metrics
       metrics_of_tier
+      metrics_reading
       register_artifact
       register_scorer
       scorers

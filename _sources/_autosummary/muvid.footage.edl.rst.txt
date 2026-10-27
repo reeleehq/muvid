@@ -8,6 +8,7 @@ muvid.footage.edl
 
    .. autosummary::
    
+      COINCIDENT_S
       MAX_EDL_ENTRIES
       MAX_LOOK_SCALE
       MAX_LOOK_LINKS

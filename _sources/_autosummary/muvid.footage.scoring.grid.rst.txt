@@ -9,6 +9,7 @@ muvid.footage.scoring.grid
    .. autosummary::
    
       DEFAULT_HOP_S
+      INPUT_FINGERPRINTS
    
    .. rubric:: Functions
 
@@ -23,6 +24,7 @@ muvid.footage.scoring.grid
       load_tensor
       manifest_is_current
       mask_metrics
+      recorded_fingerprint
       resample_to_grid
       save_scores
       scores_dir

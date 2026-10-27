@@ -205,16 +205,19 @@ caller gives it a weight (<code class="docutils literal notranslate"><span class
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.metrics_of_tier" title="muvid.footage.scoring.registry.metrics_of_tier"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics_of_tier</span></code></a>(tier)</p></td>
 <td><p>Every metric a tier's scorers produce.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.register_artifact" title="muvid.footage.scoring.registry.register_artifact"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_artifact</span></code></a>(artifact, *[, replace])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.metrics_reading" title="muvid.footage.scoring.registry.metrics_reading"><code class="xref py py-obj docutils literal notranslate"><span class="pre">metrics_reading</span></code></a>(input_name)</p></td>
+<td><p>Every registered metric measured on <code class="docutils literal notranslate"><span class="pre">input_name</span></code> (<a class="reference internal" href="#muvid.footage.scoring.registry.Scorer.inputs" title="muvid.footage.scoring.registry.Scorer.inputs"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Scorer.inputs</span></code></a>).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.register_artifact" title="muvid.footage.scoring.registry.register_artifact"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_artifact</span></code></a>(artifact, *[, replace])</p></td>
 <td><p>Add a shared master artifact; a taken name is refused unless <code class="docutils literal notranslate"><span class="pre">replace</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.register_scorer" title="muvid.footage.scoring.registry.register_scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_scorer</span></code></a>(scorer, *[, replace])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.register_scorer" title="muvid.footage.scoring.registry.register_scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_scorer</span></code></a>(scorer, *[, replace])</p></td>
 <td><p>Add <code class="docutils literal notranslate"><span class="pre">scorer</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.scorers" title="muvid.footage.scoring.registry.scorers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scorers</span></code></a>(*[, include_lipsync])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.scorers" title="muvid.footage.scoring.registry.scorers"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scorers</span></code></a>(*[, include_lipsync])</p></td>
 <td><p>Registered scorers in registration order; the opt-in tier only when asked.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.unregister_scorer" title="muvid.footage.scoring.registry.unregister_scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unregister_scorer</span></code></a>(name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.registry.unregister_scorer" title="muvid.footage.scoring.registry.unregister_scorer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unregister_scorer</span></code></a>(name)</p></td>
 <td><p>Remove a scorer (tests, plugin teardown).</p></td>
 </tr>
 </tbody>
@@ -403,6 +406,16 @@ built once per run, and only when a running scorer needs it.</p>
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.scoring.registry.metrics_reading">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.registry.</span></span><span class="sig-name descname"><span class="pre">metrics_reading</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/registry.html#metrics_reading"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.registry.metrics_reading" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.registry.metrics_reading'">¶</a></dt>
+<dd><p>Every registered metric measured on <code class="docutils literal notranslate"><span class="pre">input_name</span></code> (<a class="reference internal" href="#muvid.footage.scoring.registry.Scorer.inputs" title="muvid.footage.scoring.registry.Scorer.inputs"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Scorer.inputs</span></code></a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#set" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">set</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.scoring.registry.register_artifact">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.registry.</span></span><span class="sig-name descname"><span class="pre">register_artifact</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">artifact</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">replace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/registry.html#register_artifact"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.registry.register_artifact" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.registry.register_artifact'">¶</a></dt>
 <dd><p>Add a shared master artifact; a taken name is refused unless <code class="docutils literal notranslate"><span class="pre">replace</span></code>.</p>
@@ -473,6 +486,7 @@ names.</p>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.artifact'" class="reference internal" href="#muvid.footage.scoring.registry.artifact"><code class="docutils literal notranslate"><span class="pre">artifact()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.default_metrics'" class="reference internal" href="#muvid.footage.scoring.registry.default_metrics"><code class="docutils literal notranslate"><span class="pre">default_metrics()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.metrics_of_tier'" class="reference internal" href="#muvid.footage.scoring.registry.metrics_of_tier"><code class="docutils literal notranslate"><span class="pre">metrics_of_tier()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.registry.metrics_reading'" class="reference internal" href="#muvid.footage.scoring.registry.metrics_reading"><code class="docutils literal notranslate"><span class="pre">metrics_reading()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.register_artifact'" class="reference internal" href="#muvid.footage.scoring.registry.register_artifact"><code class="docutils literal notranslate"><span class="pre">register_artifact()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.register_scorer'" class="reference internal" href="#muvid.footage.scoring.registry.register_scorer"><code class="docutils literal notranslate"><span class="pre">register_scorer()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.registry.scorers'" class="reference internal" href="#muvid.footage.scoring.registry.scorers"><code class="docutils literal notranslate"><span class="pre">scorers()</span></code></a></li>
@@ -490,7 +504,7 @@ names.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=e7715e22"></script>
+<script src="../_static/documentation_options.js?v=4309da3b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

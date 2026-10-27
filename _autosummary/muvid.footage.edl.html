@@ -168,73 +168,76 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 <p class="rubric">Module Attributes</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_EDL_ENTRIES" title="muvid.footage.edl.MAX_EDL_ENTRIES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_EDL_ENTRIES</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.COINCIDENT_S" title="muvid.footage.edl.COINCIDENT_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">COINCIDENT_S</span></code></a></p></td>
+<td><p>Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_EDL_ENTRIES" title="muvid.footage.edl.MAX_EDL_ENTRIES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_EDL_ENTRIES</span></code></a></p></td>
 <td><p>Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-<code class="docutils literal notranslate"><span class="pre">edl</span></code> paths.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_SCALE" title="muvid.footage.edl.MAX_LOOK_SCALE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_SCALE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_SCALE" title="muvid.footage.edl.MAX_LOOK_SCALE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_SCALE</span></code></a></p></td>
 <td><p>How many times the delivery canvas a <code class="docutils literal notranslate"><span class="pre">look</span></code> may ask for, PER DIMENSION (env-tunable).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LINKS" title="muvid.footage.edl.MAX_LOOK_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_LINKS</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LINKS" title="muvid.footage.edl.MAX_LOOK_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_LINKS</span></code></a></p></td>
 <td><p>How many filter links one look may carry, and how many of those may set a size.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LARGE_LINKS" title="muvid.footage.edl.MAX_LOOK_LARGE_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_LARGE_LINKS</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_LARGE_LINKS" title="muvid.footage.edl.MAX_LOOK_LARGE_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_LARGE_LINKS</span></code></a></p></td>
 <td><p>How many links of a look may hold a frame LARGER than the canvas (by area) — the bound on what actually costs memory (muvid#199).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS" title="muvid.footage.edl.MAX_LOOK_HEAVY_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MAX_LOOK_HEAVY_LINKS" title="muvid.footage.edl.MAX_LOOK_HEAVY_LINKS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MAX_LOOK_HEAVY_LINKS</span></code></a></p></td>
 <td><p>How many heavy links a look may carry — and none of them on a frame larger than the canvas.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.DFLT_LOOK_CANVAS" title="muvid.footage.edl.DFLT_LOOK_CANVAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DFLT_LOOK_CANVAS</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.DFLT_LOOK_CANVAS" title="muvid.footage.edl.DFLT_LOOK_CANVAS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DFLT_LOOK_CANVAS</span></code></a></p></td>
 <td><p>The canvas <a class="reference internal" href="#muvid.footage.edl.validate_edl" title="muvid.footage.edl.validate_edl"><code class="xref py py-func docutils literal notranslate"><span class="pre">validate_edl()</span></code></a> bounds a look against when its caller names none: the element-wise maximum of <code class="docutils literal notranslate"><span class="pre">workspace.CANVASES</span></code>, so the default is the LOOSEST bound that is still a bound — never an absent one.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_SPLIT" title="muvid.footage.edl.TRANSITION_SPLIT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_SPLIT</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_SPLIT" title="muvid.footage.edl.TRANSITION_SPLIT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_SPLIT</span></code></a></p></td>
 <td><p>the fraction taken from BEFORE the boundary.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_TRANSITION_S" title="muvid.footage.edl.MIN_TRANSITION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_TRANSITION_S</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_TRANSITION_S" title="muvid.footage.edl.MIN_TRANSITION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_TRANSITION_S</span></code></a></p></td>
 <td><p>Shortest transition that is not a lie.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_CURVES" title="muvid.footage.edl.TRANSITION_CURVES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_CURVES</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.TRANSITION_CURVES" title="muvid.footage.edl.TRANSITION_CURVES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRANSITION_CURVES</span></code></a></p></td>
 <td><p>The transition curves muvid offers.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_CONFIDENCE" title="muvid.footage.edl.MIN_CONFIDENCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_CONFIDENCE</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_CONFIDENCE" title="muvid.footage.edl.MIN_CONFIDENCE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_CONFIDENCE</span></code></a></p></td>
 <td><p>Below this, a whole-clip correlation coefficient does not vouch for its offset (env <code class="docutils literal notranslate"><span class="pre">MUVID_FOOTAGE_MIN_CONFIDENCE</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_SUPPORT" title="muvid.footage.edl.MIN_SUPPORT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_SUPPORT</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_SUPPORT" title="muvid.footage.edl.MIN_SUPPORT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_SUPPORT</span></code></a></p></td>
 <td><p>Support must EXCEED this for an offset to be vouched for (env <code class="docutils literal notranslate"><span class="pre">MUVID_FOOTAGE_MIN_SUPPORT</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_MARGIN" title="muvid.footage.edl.MIN_MARGIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_MARGIN</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MIN_MARGIN" title="muvid.footage.edl.MIN_MARGIN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MIN_MARGIN</span></code></a></p></td>
 <td><p>Margin must EXCEED this for an offset to be vouched for (env <code class="docutils literal notranslate"><span class="pre">MUVID_FOOTAGE_MIN_MARGIN</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.MEASURED" title="muvid.footage.edl.MEASURED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MEASURED</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.MEASURED" title="muvid.footage.edl.MEASURED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MEASURED</span></code></a></p></td>
 <td><p>the aligner found the offset, or a person set it.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.UNPLACED" title="muvid.footage.edl.UNPLACED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNPLACED</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.UNPLACED" title="muvid.footage.edl.UNPLACED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNPLACED</span></code></a></p></td>
 <td><p>Two more <code class="docutils literal notranslate"><span class="pre">source</span></code> values, for records that are NEVER persisted.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.STILL_DURATION_S" title="muvid.footage.edl.STILL_DURATION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STILL_DURATION_S</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.STILL_DURATION_S" title="muvid.footage.edl.STILL_DURATION_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">STILL_DURATION_S</span></code></a></p></td>
 <td><p>it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.SLIP_MAX_S" title="muvid.footage.edl.SLIP_MAX_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SLIP_MAX_S</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.SLIP_MAX_S" title="muvid.footage.edl.SLIP_MAX_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SLIP_MAX_S</span></code></a></p></td>
 <td><p>about one beat at 128 BPM.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.RATE_MAX_DEV" title="muvid.footage.edl.RATE_MAX_DEV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RATE_MAX_DEV</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.RATE_MAX_DEV" title="muvid.footage.edl.RATE_MAX_DEV"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RATE_MAX_DEV</span></code></a></p></td>
 <td><p>8 %, a nudge that keeps a dancer looking like themselves.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.EDGE_S" title="muvid.footage.edl.EDGE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.EDGE_S" title="muvid.footage.edl.EDGE_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></p></td>
 <td><p>phone clips start and stop with the shake of a thumb on the button.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.NO_VOUCHED_COVERAGE" title="muvid.footage.edl.NO_VOUCHED_COVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_VOUCHED_COVERAGE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.NO_VOUCHED_COVERAGE" title="muvid.footage.edl.NO_VOUCHED_COVERAGE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NO_VOUCHED_COVERAGE</span></code></a></p></td>
 <td><p>nothing the aligner vouches for covers it at all.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.UNVOUCHED_SELECTION" title="muvid.footage.edl.UNVOUCHED_SELECTION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_SELECTION</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.UNVOUCHED_SELECTION" title="muvid.footage.edl.UNVOUCHED_SELECTION"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNVOUCHED_SELECTION</span></code></a></p></td>
 <td><p>A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS" title="muvid.footage.edl.EXCLUSION_REASONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.EXCLUSION_REASONS" title="muvid.footage.edl.EXCLUSION_REASONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">EXCLUSION_REASONS</span></code></a></p></td>
 <td><p>Every reason <a class="reference internal" href="#muvid.footage.edl.exclude_unvouched" title="muvid.footage.edl.exclude_unvouched"><code class="xref py py-func docutils literal notranslate"><span class="pre">exclude_unvouched()</span></code></a> can give, for a caller matching on the value.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOK_FILTERS</span></code></a></p></td>
 <td><p>The filters a <code class="docutils literal notranslate"><span class="pre">look</span></code> may name.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED" title="muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED" title="muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOOKS_EFFECTS_NOT_OFFERED</span></code></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">looks</span></code> effects muvid's gate does not offer, each with why.</p></td>
 </tr>
 </tbody>
@@ -410,6 +413,14 @@ falsy (<code class="docutils literal notranslate"><span class="pre">None</span><
 transition arithmetic: the extra source material a blend needs is measured
 in FRAMES at the render fps, which only the assembler knows.</p>
 </dd></dl>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.edl.COINCIDENT_S">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.edl.</span></span><span class="sig-name descname"><span class="pre">COINCIDENT_S</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.001</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.COINCIDENT_S" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.COINCIDENT_S'">¶</a></dt>
+<dd><p>Spans shorter than this (seconds) are treated as coincident / zero — guards float
+noise. Public because a planner must agree with the gate on which two moments are
+one: comparing at a finer tolerance, it can emit a span the gate calls zero
+(muvid#210: a beat 60 us before a piece’s end left a 60 us take-over).</p>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.footage.edl.CropWindow">
@@ -1648,6 +1659,7 @@ render-time window that is never stored.</p>
 <li><a :data-current="activeSection === '#muvid.footage.edl.AssemblyCut.transition'" class="reference internal" href="#muvid.footage.edl.AssemblyCut.transition"><code class="docutils literal notranslate"><span class="pre">AssemblyCut.transition</span></code></a></li>
 </ul>
 </li>
+<li><a :data-current="activeSection === '#muvid.footage.edl.COINCIDENT_S'" class="reference internal" href="#muvid.footage.edl.COINCIDENT_S"><code class="docutils literal notranslate"><span class="pre">COINCIDENT_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.CropWindow'" class="reference internal" href="#muvid.footage.edl.CropWindow"><code class="docutils literal notranslate"><span class="pre">CropWindow</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.DFLT_LOOK_CANVAS'" class="reference internal" href="#muvid.footage.edl.DFLT_LOOK_CANVAS"><code class="docutils literal notranslate"><span class="pre">DFLT_LOOK_CANVAS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.edl.EDGE_S'" class="reference internal" href="#muvid.footage.edl.EDGE_S"><code class="docutils literal notranslate"><span class="pre">EDGE_S</span></code></a></li>
@@ -1733,7 +1745,7 @@ render-time window that is never stored.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=e7715e22"></script>
+<script src="../_static/documentation_options.js?v=4309da3b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

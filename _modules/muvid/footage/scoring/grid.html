@@ -612,8 +612,8 @@
 </span><span id="line-393">    <span class="n">align_fingerprint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
 </span><span id="line-394">    <span class="n">beat_times</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
 </span><span id="line-395">    <span class="n">downbeat_times</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
-</span><span id="line-396">    <span class="n">beat_fingerprint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
-</span><span id="line-397">    <span class="n">beat_metrics</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
+</span><span id="line-396">    <span class="n">input_fingerprints</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-397">    <span class="n">input_metrics</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="line-398">    <span class="n">extra</span><span class="p">:</span> <span class="n">Mapping</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 </span><span id="line-399"><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 </span><span id="line-400"><span class="w">    </span><span class="sd">"""Persist per-clip raw arrays + a manifest, crash-consistently.</span>
@@ -623,253 +623,356 @@
 </span><span id="line-404"><span class="sd">    ``scores/manifest.json``, written LAST via tmp+rename — so a concurrent reader sees a</span>
 </span><span id="line-405"><span class="sd">    whole consistent state or the prior one, never a torn mix. NaN never enters the manifest</span>
 </span><span id="line-406"><span class="sd">    (all-masked metric → ``null`` norm).</span>
-</span><span id="line-407"><span class="sd">    """</span>
-</span><span id="line-408">    <span class="n">d</span> <span class="o">=</span> <span class="n">scores_dir</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
-</span><span id="line-409">    <span class="n">d</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-410">
-</span><span id="line-411">    <span class="c1"># Compute per-metric-global norms once (shared by save + the manifest).</span>
-</span><span id="line-412">    <span class="n">tensor</span> <span class="o">=</span> <span class="n">build_tensor</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="n">t0</span><span class="o">=</span><span class="n">t0</span><span class="p">,</span> <span class="n">hop_s</span><span class="o">=</span><span class="n">hop_s</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="p">))</span>
-</span><span id="line-413">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">clip_ids</span>
-</span><span id="line-414">
-</span><span id="line-415">    <span class="n">written</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-416">    <span class="k">for</span> <span class="n">ci</span><span class="p">,</span> <span class="n">cid</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clip_ids</span><span class="p">):</span>
-</span><span id="line-417">        <span class="n">arrays</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-418">        <span class="k">for</span> <span class="n">mi</span><span class="p">,</span> <span class="n">metric</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metrics</span><span class="p">):</span>
-</span><span id="line-419">            <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__raw"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">]</span>
-</span><span id="line-420">            <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__mask"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">]</span>
-</span><span id="line-421">        <span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
-</span><span id="line-422">
-</span><span id="line-423">        <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
-</span><span id="line-424">        <span class="n">np</span><span class="o">.</span><span class="n">savez_compressed</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="o">**</span><span class="n">arrays</span><span class="p">)</span>
-</span><span id="line-425">        <span class="n">atomic_write_bytes</span><span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">.npz"</span><span class="p">,</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
-</span><span id="line-426">        <span class="n">written</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span>
-</span><span id="line-427">
-</span><span id="line-428">    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-429">        <span class="s2">"song_hash"</span><span class="p">:</span> <span class="n">song_hash</span><span class="p">,</span>
-</span><span id="line-430">        <span class="s2">"align_fingerprint"</span><span class="p">:</span> <span class="n">align_fingerprint</span><span class="p">,</span>
-</span><span id="line-431">        <span class="s2">"t0"</span><span class="p">:</span> <span class="n">t0</span><span class="p">,</span>
-</span><span id="line-432">        <span class="s2">"hop_s"</span><span class="p">:</span> <span class="n">hop_s</span><span class="p">,</span>
-</span><span id="line-433">        <span class="s2">"n"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
-</span><span id="line-434">        <span class="s2">"clips"</span><span class="p">:</span> <span class="n">clip_ids</span><span class="p">,</span>
-</span><span id="line-435">        <span class="s2">"metrics"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="p">),</span>
-</span><span id="line-436">        <span class="s2">"directions"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="line-437">            <span class="n">m</span><span class="p">:</span> <span class="n">_metric_direction</span><span class="p">(</span>
-</span><span id="line-438">                <span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="p">{</span><span class="n">tr</span><span class="o">.</span><span class="n">metric</span><span class="p">:</span> <span class="n">tr</span> <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span> <span class="n">tracks</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="p">[])}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">clip_ids</span><span class="p">},</span> <span class="n">m</span>
-</span><span id="line-439">            <span class="p">)</span>
-</span><span id="line-440">            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span>
-</span><span id="line-441">        <span class="p">},</span>
-</span><span id="line-442">        <span class="s2">"norms"</span><span class="p">:</span> <span class="p">{</span><span class="n">m</span><span class="p">:</span> <span class="n">tensor</span><span class="o">.</span><span class="n">norms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">},</span>  <span class="c1"># None → null (JSON-safe)</span>
-</span><span id="line-443">        <span class="s2">"coverage"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="line-444">            <span class="n">m</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span>
-</span><span id="line-445">                <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">]))</span>
-</span><span id="line-446">                <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">),</span>
-</span><span id="line-447">                <span class="mi">4</span><span class="p">,</span>
-</span><span id="line-448">            <span class="p">)</span>
-</span><span id="line-449">            <span class="k">for</span> <span class="n">mi</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
-</span><span id="line-450">        <span class="p">},</span>
-</span><span id="line-451">        <span class="s2">"beats"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="line-452">            <span class="s2">"beat_times"</span><span class="p">:</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">beat_times</span><span class="p">],</span>
-</span><span id="line-453">            <span class="s2">"downbeat_times"</span><span class="p">:</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">downbeat_times</span><span class="p">],</span>
-</span><span id="line-454">        <span class="p">},</span>
-</span><span id="line-455">        <span class="c1"># omit-when-absent: a run on the estimator's grid writes the manifest it always did</span>
-</span><span id="line-456">        <span class="o">**</span><span class="p">({</span><span class="s2">"beat_fingerprint"</span><span class="p">:</span> <span class="n">beat_fingerprint</span><span class="p">}</span> <span class="k">if</span> <span class="n">beat_fingerprint</span> <span class="k">else</span> <span class="p">{}),</span>
-</span><span id="line-457">        <span class="c1"># the metrics measured on the beat grid, so a grid change stales only them</span>
-</span><span id="line-458">        <span class="c1"># (muvid#206); a manifest without the key stales every metric</span>
-</span><span id="line-459">        <span class="s2">"beat_metrics"</span><span class="p">:</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">beat_metrics</span><span class="p">)],</span>
-</span><span id="line-460">        <span class="o">**</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span> <span class="k">if</span> <span class="n">extra</span> <span class="k">else</span> <span class="p">{}),</span>
-</span><span id="line-461">    <span class="p">}</span>
-</span><span id="line-462">    <span class="c1"># manifest LAST — its presence signals a complete scores/ dir. allow_nan=False makes any</span>
-</span><span id="line-463">    <span class="c1"># stray NaN/Inf FAIL LOUD here rather than silently emit invalid JSON (the "NaN never</span>
-</span><span id="line-464">    <span class="c1"># reaches a serializer" invariant — norm params for an all-masked metric are already None).</span>
-</span><span id="line-465">    <span class="n">atomic_write_bytes</span><span class="p">(</span>
-</span><span id="line-466">        <span class="n">d</span> <span class="o">/</span> <span class="n">MANIFEST_NAME</span><span class="p">,</span>
-</span><span id="line-467">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">allow_nan</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">),</span>
-</span><span id="line-468">    <span class="p">)</span></div>
+</span><span id="line-407">
+</span><span id="line-408"><span class="sd">    ``input_fingerprints`` names, per keyed master input (``registry.INPUTS``), the</span>
+</span><span id="line-409"><span class="sd">    value the metrics were measured on (``""``: the input's default, which the song</span>
+</span><span id="line-410"><span class="sd">    already keys); ``input_metrics`` names the metrics that read each — so a change to</span>
+</span><span id="line-411"><span class="sd">    one input stales only its metrics (muvid#206), for any input (muvid#213).</span>
+</span><span id="line-412"><span class="sd">    """</span>
+</span><span id="line-413">    <span class="n">_check_input_record</span><span class="p">(</span><span class="n">input_fingerprints</span> <span class="ow">or</span> <span class="p">{},</span> <span class="n">input_metrics</span> <span class="ow">or</span> <span class="p">{})</span>
+</span><span id="line-414">    <span class="n">d</span> <span class="o">=</span> <span class="n">scores_dir</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+</span><span id="line-415">    <span class="n">d</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-416">
+</span><span id="line-417">    <span class="c1"># Compute per-metric-global norms once (shared by save + the manifest).</span>
+</span><span id="line-418">    <span class="n">tensor</span> <span class="o">=</span> <span class="n">build_tensor</span><span class="p">(</span><span class="n">tracks</span><span class="p">,</span> <span class="n">t0</span><span class="o">=</span><span class="n">t0</span><span class="p">,</span> <span class="n">hop_s</span><span class="o">=</span><span class="n">hop_s</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="p">))</span>
+</span><span id="line-419">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">clip_ids</span>
+</span><span id="line-420">
+</span><span id="line-421">    <span class="n">written</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-422">    <span class="k">for</span> <span class="n">ci</span><span class="p">,</span> <span class="n">cid</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">clip_ids</span><span class="p">):</span>
+</span><span id="line-423">        <span class="n">arrays</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-424">        <span class="k">for</span> <span class="n">mi</span><span class="p">,</span> <span class="n">metric</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metrics</span><span class="p">):</span>
+</span><span id="line-425">            <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__raw"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">]</span>
+</span><span id="line-426">            <span class="n">arrays</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__mask"</span><span class="p">]</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">]</span>
+</span><span id="line-427">        <span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+</span><span id="line-428">
+</span><span id="line-429">        <span class="n">buf</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+</span><span id="line-430">        <span class="n">np</span><span class="o">.</span><span class="n">savez_compressed</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span> <span class="o">**</span><span class="n">arrays</span><span class="p">)</span>
+</span><span id="line-431">        <span class="n">atomic_write_bytes</span><span class="p">(</span><span class="n">d</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">.npz"</span><span class="p">,</span> <span class="n">buf</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
+</span><span id="line-432">        <span class="n">written</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span>
+</span><span id="line-433">
+</span><span id="line-434">    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-435">        <span class="s2">"song_hash"</span><span class="p">:</span> <span class="n">song_hash</span><span class="p">,</span>
+</span><span id="line-436">        <span class="s2">"align_fingerprint"</span><span class="p">:</span> <span class="n">align_fingerprint</span><span class="p">,</span>
+</span><span id="line-437">        <span class="s2">"t0"</span><span class="p">:</span> <span class="n">t0</span><span class="p">,</span>
+</span><span id="line-438">        <span class="s2">"hop_s"</span><span class="p">:</span> <span class="n">hop_s</span><span class="p">,</span>
+</span><span id="line-439">        <span class="s2">"n"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+</span><span id="line-440">        <span class="s2">"clips"</span><span class="p">:</span> <span class="n">clip_ids</span><span class="p">,</span>
+</span><span id="line-441">        <span class="s2">"metrics"</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="p">),</span>
+</span><span id="line-442">        <span class="s2">"directions"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="line-443">            <span class="n">m</span><span class="p">:</span> <span class="n">_metric_direction</span><span class="p">(</span>
+</span><span id="line-444">                <span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="p">{</span><span class="n">tr</span><span class="o">.</span><span class="n">metric</span><span class="p">:</span> <span class="n">tr</span> <span class="k">for</span> <span class="n">tr</span> <span class="ow">in</span> <span class="n">tracks</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="p">[])}</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">clip_ids</span><span class="p">},</span> <span class="n">m</span>
+</span><span id="line-445">            <span class="p">)</span>
+</span><span id="line-446">            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span>
+</span><span id="line-447">        <span class="p">},</span>
+</span><span id="line-448">        <span class="s2">"norms"</span><span class="p">:</span> <span class="p">{</span><span class="n">m</span><span class="p">:</span> <span class="n">tensor</span><span class="o">.</span><span class="n">norms</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">},</span>  <span class="c1"># None → null (JSON-safe)</span>
+</span><span id="line-449">        <span class="s2">"coverage"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="line-450">            <span class="n">m</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span>
+</span><span id="line-451">                <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">]))</span>
+</span><span id="line-452">                <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span><span class="p">),</span>
+</span><span id="line-453">                <span class="mi">4</span><span class="p">,</span>
+</span><span id="line-454">            <span class="p">)</span>
+</span><span id="line-455">            <span class="k">for</span> <span class="n">mi</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+</span><span id="line-456">        <span class="p">},</span>
+</span><span id="line-457">        <span class="s2">"beats"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="line-458">            <span class="s2">"beat_times"</span><span class="p">:</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">beat_times</span><span class="p">],</span>
+</span><span id="line-459">            <span class="s2">"downbeat_times"</span><span class="p">:</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">downbeat_times</span><span class="p">],</span>
+</span><span id="line-460">        <span class="p">},</span>
+</span><span id="line-461">        <span class="o">**</span><span class="n">_input_record</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">input_fingerprints</span> <span class="ow">or</span> <span class="p">{},</span> <span class="n">input_metrics</span> <span class="ow">or</span> <span class="p">{}),</span>
+</span><span id="line-462">        <span class="o">**</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">extra</span><span class="p">)</span> <span class="k">if</span> <span class="n">extra</span> <span class="k">else</span> <span class="p">{}),</span>
+</span><span id="line-463">    <span class="p">}</span>
+</span><span id="line-464">    <span class="c1"># manifest LAST — its presence signals a complete scores/ dir. allow_nan=False makes any</span>
+</span><span id="line-465">    <span class="c1"># stray NaN/Inf FAIL LOUD here rather than silently emit invalid JSON (the "NaN never</span>
+</span><span id="line-466">    <span class="c1"># reaches a serializer" invariant — norm params for an all-masked metric are already None).</span>
+</span><span id="line-467">    <span class="n">atomic_write_bytes</span><span class="p">(</span>
+</span><span id="line-468">        <span class="n">d</span> <span class="o">/</span> <span class="n">MANIFEST_NAME</span><span class="p">,</span>
+</span><span id="line-469">        <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">allow_nan</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">),</span>
+</span><span id="line-470">    <span class="p">)</span></div>
 
-</span><span id="line-469">
-</span><span id="line-470">
+</span><span id="line-471">
+</span><span id="line-472">
+</span><span id="line-473"><span class="c1">#: The manifest keys of the per-input record (muvid#213): ``{input: fingerprint}``</span>
+</span><span id="line-474"><span class="c1">#: (``""`` entries omitted) and ``{input: [metrics that read it]}`` (every keyed input</span>
+</span><span id="line-475"><span class="c1">#: the writer knows listed, so an input missing from it means the manifest predates it).</span>
+</span><span id="line-476"><span class="c1">#: The names are the caller's: this module stores and compares them and knows none,</span>
+</span><span id="line-477"><span class="c1">#: except the legacy beat grid below.</span>
+</span><span id="line-478"><span class="n">INPUT_FINGERPRINTS</span> <span class="o">=</span> <span class="s2">"input_fingerprints"</span>
+</span><span id="line-479"><span class="n">INPUT_METRICS</span> <span class="o">=</span> <span class="s2">"input_metrics"</span>
+</span><span id="line-480"><span class="c1">#: The beat grid's input name (``registry.BEATS``; a test pins the two equal) and its</span>
+</span><span id="line-481"><span class="c1">#: record as manifests before muvid#213 wrote it — still WRITTEN beside the general one,</span>
+</span><span id="line-482"><span class="c1">#: because an older build reads only these: without ``beat_fingerprint`` it would serve</span>
+</span><span id="line-483"><span class="c1">#: metrics measured on a declared grid as current once the grid is cleared (without</span>
+</span><span id="line-484"><span class="c1">#: ``beat_metrics`` it would only re-score everything). Both can go once no deployed</span>
+</span><span id="line-485"><span class="c1">#: build predates #213.</span>
+</span><span id="line-486"><span class="n">_LEGACY_INPUT</span> <span class="o">=</span> <span class="s2">"beats"</span>
+</span><span id="line-487"><span class="n">_LEGACY_BEAT_FINGERPRINT</span> <span class="o">=</span> <span class="s2">"beat_fingerprint"</span>
+</span><span id="line-488"><span class="n">_LEGACY_BEAT_METRICS</span> <span class="o">=</span> <span class="s2">"beat_metrics"</span>
+</span><span id="line-489">
+</span><span id="line-490">
+</span><span id="line-491"><span class="k">def</span><span class="w"> </span><span class="nf">_check_input_record</span><span class="p">(</span><span class="n">input_fingerprints</span><span class="p">,</span> <span class="n">input_metrics</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-492"><span class="w">    </span><span class="sd">"""Refuse a malformed per-input record BEFORE anything is written."""</span>
+</span><span id="line-493">    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">fp</span> <span class="ow">in</span> <span class="n">input_fingerprints</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-494">        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+</span><span id="line-495">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-496">                <span class="sa">f</span><span class="s2">"input fingerprints map names to strings: </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">fp</span><span class="si">!r}</span><span class="s2">"</span>
+</span><span id="line-497">            <span class="p">)</span>
+</span><span id="line-498">    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">ms</span> <span class="ow">in</span> <span class="n">input_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+</span><span id="line-499">        <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-500">            <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+</span><span id="line-501">            <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">ms</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span>
+</span><span id="line-502">            <span class="ow">or</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">ms</span><span class="p">)</span>
+</span><span id="line-503">        <span class="p">):</span>
+</span><span id="line-504">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-505">                <span class="sa">f</span><span class="s2">"input metrics map names to metric lists: </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">: </span><span class="si">{</span><span class="n">ms</span><span class="si">!r}</span><span class="s2">"</span>
+</span><span id="line-506">            <span class="p">)</span>
+</span><span id="line-507">
+</span><span id="line-508">
+</span><span id="line-509"><span class="k">def</span><span class="w"> </span><span class="nf">_input_record</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">input_fingerprints</span><span class="p">,</span> <span class="n">input_metrics</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-510"><span class="w">    </span><span class="sd">"""The manifest's per-input keys: the general record, and the legacy beat mirror."""</span>
+</span><span id="line-511">    <span class="n">reads</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-512">        <span class="n">name</span><span class="p">:</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">names</span><span class="p">)]</span>
+</span><span id="line-513">        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">names</span> <span class="ow">in</span> <span class="n">input_metrics</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</span><span id="line-514">    <span class="p">}</span>
+</span><span id="line-515">    <span class="n">fingerprints</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">input_fingerprints</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span><span class="p">}</span>
+</span><span id="line-516">    <span class="n">beat_fp</span> <span class="o">=</span> <span class="n">fingerprints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_LEGACY_INPUT</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+</span><span id="line-517">    <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-518">        <span class="n">INPUT_FINGERPRINTS</span><span class="p">:</span> <span class="n">fingerprints</span><span class="p">,</span>
+</span><span id="line-519">        <span class="n">INPUT_METRICS</span><span class="p">:</span> <span class="n">reads</span><span class="p">,</span>
+</span><span id="line-520">        <span class="c1"># omit-when-absent, as before: a run on the estimate writes what it always did</span>
+</span><span id="line-521">        <span class="o">**</span><span class="p">({</span><span class="n">_LEGACY_BEAT_FINGERPRINT</span><span class="p">:</span> <span class="n">beat_fp</span><span class="p">}</span> <span class="k">if</span> <span class="n">beat_fp</span> <span class="k">else</span> <span class="p">{}),</span>
+</span><span id="line-522">        <span class="o">**</span><span class="p">(</span>
+</span><span id="line-523">            <span class="p">{</span><span class="n">_LEGACY_BEAT_METRICS</span><span class="p">:</span> <span class="n">reads</span><span class="p">[</span><span class="n">_LEGACY_INPUT</span><span class="p">]}</span>
+</span><span id="line-524">            <span class="k">if</span> <span class="n">_LEGACY_INPUT</span> <span class="ow">in</span> <span class="n">reads</span>
+</span><span id="line-525">            <span class="k">else</span> <span class="p">{}</span>
+</span><span id="line-526">        <span class="p">),</span>
+</span><span id="line-527">    <span class="p">}</span>
+</span><span id="line-528">
+</span><span id="line-529">
+<div class="viewcode-block" id="recorded_fingerprint">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.grid.html#muvid.footage.scoring.grid.recorded_fingerprint">[docs]</a>
+</span><span id="line-530"><span class="k">def</span><span class="w"> </span><span class="nf">recorded_fingerprint</span><span class="p">(</span><span class="n">manifest</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">input_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-531"><span class="w">    </span><span class="sd">"""The fingerprint of ``input_name`` the manifest's metrics were measured on</span>
+</span><span id="line-532"><span class="sd">    (``""``: the input's default), read from the record of muvid#213 or, for a manifest</span>
+</span><span id="line-533"><span class="sd">    written before it, the beat grid's legacy key."""</span>
+</span><span id="line-534">    <span class="n">record</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">INPUT_FINGERPRINTS</span><span class="p">)</span>
+</span><span id="line-535">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+</span><span id="line-536">        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">input_name</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+</span><span id="line-537">    <span class="k">if</span> <span class="n">input_name</span> <span class="o">==</span> <span class="n">_LEGACY_INPUT</span><span class="p">:</span>
+</span><span id="line-538">        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_LEGACY_BEAT_FINGERPRINT</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+</span><span id="line-539">    <span class="k">return</span> <span class="s2">""</span></div>
+
+</span><span id="line-540">
+</span><span id="line-541">
+</span><span id="line-542"><span class="k">def</span><span class="w"> </span><span class="nf">_metrics_reading</span><span class="p">(</span><span class="n">manifest</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">input_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"list[str] | None"</span><span class="p">:</span>
+</span><span id="line-543"><span class="w">    </span><span class="sd">"""The persisted metrics measured on ``input_name``; ``None`` when the manifest does</span>
+</span><span id="line-544"><span class="sd">    not say (it predates the record or that input, or the record is not a list of</span>
+</span><span id="line-545"><span class="sd">    names), which stales every metric."""</span>
+</span><span id="line-546">    <span class="n">record</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">INPUT_METRICS</span><span class="p">)</span>
+</span><span id="line-547">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+</span><span id="line-548">        <span class="n">names</span> <span class="o">=</span> <span class="n">record</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">input_name</span><span class="p">)</span>
+</span><span id="line-549">    <span class="k">elif</span> <span class="n">input_name</span> <span class="o">==</span> <span class="n">_LEGACY_INPUT</span><span class="p">:</span>
+</span><span id="line-550">        <span class="n">names</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">_LEGACY_BEAT_METRICS</span><span class="p">)</span>
+</span><span id="line-551">    <span class="k">else</span><span class="p">:</span>
+</span><span id="line-552">        <span class="n">names</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-553">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">names</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">names</span><span class="p">):</span>
+</span><span id="line-554">        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+</span><span id="line-555">    <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-556">
+</span><span id="line-557">
+</span><span id="line-558"><span class="k">def</span><span class="w"> </span><span class="nf">_changed_inputs</span><span class="p">(</span><span class="n">manifest</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">input_fingerprints</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+</span><span id="line-559"><span class="w">    </span><span class="sd">"""The inputs whose current value is not the recorded one — over every name either</span>
+</span><span id="line-560"><span class="sd">    side knows, so a name only the caller knows (a manifest predating the input, or a</span>
+</span><span id="line-561"><span class="sd">    misspelling) reads as changed, which stales every metric: never as current."""</span>
+</span><span id="line-562">    <span class="n">names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">input_fingerprints</span><span class="p">)</span>
+</span><span id="line-563">    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="p">(</span><span class="n">INPUT_FINGERPRINTS</span><span class="p">,</span> <span class="n">INPUT_METRICS</span><span class="p">):</span>
+</span><span id="line-564">        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">),</span> <span class="n">Mapping</span><span class="p">):</span>
+</span><span id="line-565">            <span class="n">names</span> <span class="o">|=</span> <span class="nb">set</span><span class="p">(</span><span class="n">manifest</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+</span><span id="line-566">    <span class="k">if</span> <span class="n">_LEGACY_BEAT_FINGERPRINT</span> <span class="ow">in</span> <span class="n">manifest</span> <span class="ow">or</span> <span class="n">_LEGACY_BEAT_METRICS</span> <span class="ow">in</span> <span class="n">manifest</span><span class="p">:</span>
+</span><span id="line-567">        <span class="n">names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">_LEGACY_INPUT</span><span class="p">)</span>
+</span><span id="line-568">    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span>
+</span><span id="line-569">        <span class="n">name</span>
+</span><span id="line-570">        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span>
+</span><span id="line-571">        <span class="k">if</span> <span class="n">recorded_fingerprint</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="o">!=</span> <span class="p">(</span><span class="n">input_fingerprints</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+</span><span id="line-572">    <span class="p">)</span>
+</span><span id="line-573">
+</span><span id="line-574">
 <div class="viewcode-block" id="stale_metrics">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.grid.html#muvid.footage.scoring.grid.stale_metrics">[docs]</a>
-</span><span id="line-471"><span class="k">def</span><span class="w"> </span><span class="nf">stale_metrics</span><span class="p">(</span>
-</span><span id="line-472">    <span class="n">manifest</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-473">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-474">    <span class="n">song_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-475">    <span class="n">align_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-476">    <span class="n">beat_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-477"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-478"><span class="w">    </span><span class="sd">"""Which of the persisted metrics no longer match the CURRENT song, alignments and</span>
-</span><span id="line-479"><span class="sd">    beat grid: ``[]`` when all are current, every metric when the song or an alignment</span>
-</span><span id="line-480"><span class="sd">    changed (every track is placed through them), and only the metrics measured on the</span>
-</span><span id="line-481"><span class="sd">    beat grid when only the grid changed (muvid#206). ``None`` when there are no scores.</span>
-</span><span id="line-482">
-</span><span id="line-483"><span class="sd">    ``beat_fingerprint`` names the beat grid the beat metrics were measured on: ``""`` for</span>
-</span><span id="line-484"><span class="sd">    the estimator's (a function of the song, already keyed by ``song_hash``), else the</span>
-</span><span id="line-485"><span class="sd">    grid a person declared (muvid#187). A manifest predating the fingerprint was measured</span>
-</span><span id="line-486"><span class="sd">    on the estimate; one predating ``beat_metrics`` stales every metric on a grid change.</span>
-</span><span id="line-487">
-</span><span id="line-488"><span class="sd">    &gt;&gt;&gt; m = {"song_hash": "h", "align_fingerprint": "f", "metrics": ["q", "b"],</span>
-</span><span id="line-489"><span class="sd">    ...      "beat_metrics": ["b"]}</span>
-</span><span id="line-490"><span class="sd">    &gt;&gt;&gt; kw = {"song_hash": "h", "align_fingerprint": "f"}</span>
-</span><span id="line-491"><span class="sd">    &gt;&gt;&gt; stale_metrics(m, beat_fingerprint="", **kw), stale_metrics(m, beat_fingerprint="x", **kw)</span>
-</span><span id="line-492"><span class="sd">    ([], ['b'])</span>
-</span><span id="line-493"><span class="sd">    """</span>
-</span><span id="line-494">    <span class="n">verdict</span> <span class="o">=</span> <span class="n">_staleness</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">song_hash</span><span class="p">,</span> <span class="n">align_fingerprint</span><span class="p">,</span> <span class="n">beat_fingerprint</span><span class="p">)</span>
-</span><span id="line-495">    <span class="k">if</span> <span class="n">verdict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-496">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-497">    <span class="n">every</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"metrics"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span>
-</span><span id="line-498">    <span class="k">if</span> <span class="n">verdict</span> <span class="o">==</span> <span class="s2">"all"</span><span class="p">:</span>
-</span><span id="line-499">        <span class="k">return</span> <span class="n">every</span> <span class="ow">or</span> <span class="kc">None</span>  <span class="c1"># nothing measured to name: as good as no scores</span>
-</span><span id="line-500">    <span class="k">if</span> <span class="n">verdict</span> <span class="o">==</span> <span class="s2">"beats"</span><span class="p">:</span>
-</span><span id="line-501">        <span class="k">return</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">every</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"beat_metrics"</span><span class="p">,</span> <span class="n">every</span><span class="p">))]</span>
-</span><span id="line-502">    <span class="k">return</span> <span class="p">[]</span></div>
+</span><span id="line-575"><span class="k">def</span><span class="w"> </span><span class="nf">stale_metrics</span><span class="p">(</span>
+</span><span id="line-576">    <span class="n">manifest</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-577">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-578">    <span class="n">song_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-579">    <span class="n">align_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-580">    <span class="n">input_fingerprints</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="line-581"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-582"><span class="w">    </span><span class="sd">"""Which of the persisted metrics no longer match the CURRENT song, alignments and</span>
+</span><span id="line-583"><span class="sd">    keyed inputs: ``[]`` when all are current, every metric when the song or an</span>
+</span><span id="line-584"><span class="sd">    alignment changed (every track is placed through them), and only the metrics that</span>
+</span><span id="line-585"><span class="sd">    read a changed input otherwise (muvid#206, #213). ``None`` when there are no scores.</span>
+</span><span id="line-586">
+</span><span id="line-587"><span class="sd">    ``input_fingerprints`` names each keyed input's current value (absent or ``""``: its</span>
+</span><span id="line-588"><span class="sd">    default, which ``song_hash`` already keys) — for the beat grid, the grid a person</span>
+</span><span id="line-589"><span class="sd">    declared (muvid#187). A manifest that does not say which metrics read a changed</span>
+</span><span id="line-590"><span class="sd">    input stales every metric.</span>
+</span><span id="line-591">
+</span><span id="line-592"><span class="sd">    &gt;&gt;&gt; m = {"song_hash": "h", "align_fingerprint": "f", "metrics": ["q", "b"],</span>
+</span><span id="line-593"><span class="sd">    ...      "input_metrics": {"beats": ["b"]}}</span>
+</span><span id="line-594"><span class="sd">    &gt;&gt;&gt; kw = {"song_hash": "h", "align_fingerprint": "f"}</span>
+</span><span id="line-595"><span class="sd">    &gt;&gt;&gt; stale_metrics(m, input_fingerprints={}, **kw)</span>
+</span><span id="line-596"><span class="sd">    []</span>
+</span><span id="line-597"><span class="sd">    &gt;&gt;&gt; stale_metrics(m, input_fingerprints={"beats": "x"}, **kw)</span>
+</span><span id="line-598"><span class="sd">    ['b']</span>
+</span><span id="line-599"><span class="sd">    """</span>
+</span><span id="line-600">    <span class="k">if</span> <span class="ow">not</span> <span class="n">manifest</span><span class="p">:</span>
+</span><span id="line-601">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-602">    <span class="n">every</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"metrics"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">[])</span>
+</span><span id="line-603">    <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-604">        <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"song_hash"</span><span class="p">)</span> <span class="o">!=</span> <span class="n">song_hash</span>
+</span><span id="line-605">        <span class="ow">or</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"align_fingerprint"</span><span class="p">)</span> <span class="o">!=</span> <span class="n">align_fingerprint</span>
+</span><span id="line-606">    <span class="p">):</span>
+</span><span id="line-607">        <span class="k">return</span> <span class="n">every</span> <span class="ow">or</span> <span class="kc">None</span>  <span class="c1"># nothing measured to name: as good as no scores</span>
+</span><span id="line-608">    <span class="n">stale</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-609">    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_changed_inputs</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">input_fingerprints</span><span class="p">):</span>
+</span><span id="line-610">        <span class="n">reading</span> <span class="o">=</span> <span class="n">_metrics_reading</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+</span><span id="line-611">        <span class="n">stale</span> <span class="o">|=</span> <span class="nb">set</span><span class="p">(</span><span class="n">every</span> <span class="k">if</span> <span class="n">reading</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">reading</span><span class="p">)</span>
+</span><span id="line-612">    <span class="k">return</span> <span class="p">[</span><span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">every</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">stale</span><span class="p">]</span></div>
 
-</span><span id="line-503">
-</span><span id="line-504">
-</span><span id="line-505"><span class="k">def</span><span class="w"> </span><span class="nf">_staleness</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">song_hash</span><span class="p">,</span> <span class="n">align_fingerprint</span><span class="p">,</span> <span class="n">beat_fingerprint</span><span class="p">):</span>
-</span><span id="line-506"><span class="w">    </span><span class="sd">"""``None`` (no scores) | ``"all"`` | ``"beats"`` | ``"none"``."""</span>
-</span><span id="line-507">    <span class="k">if</span> <span class="ow">not</span> <span class="n">manifest</span><span class="p">:</span>
-</span><span id="line-508">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-509">    <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-510">        <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"song_hash"</span><span class="p">)</span> <span class="o">!=</span> <span class="n">song_hash</span>
-</span><span id="line-511">        <span class="ow">or</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"align_fingerprint"</span><span class="p">)</span> <span class="o">!=</span> <span class="n">align_fingerprint</span>
-</span><span id="line-512">    <span class="p">):</span>
-</span><span id="line-513">        <span class="k">return</span> <span class="s2">"all"</span>
-</span><span id="line-514">    <span class="k">if</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"beat_fingerprint"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span> <span class="o">!=</span> <span class="n">beat_fingerprint</span><span class="p">:</span>
-</span><span id="line-515">        <span class="k">return</span> <span class="s2">"beats"</span>
-</span><span id="line-516">    <span class="k">return</span> <span class="s2">"none"</span>
-</span><span id="line-517">
-</span><span id="line-518">
+</span><span id="line-613">
+</span><span id="line-614">
 <div class="viewcode-block" id="manifest_is_current">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.grid.html#muvid.footage.scoring.grid.manifest_is_current">[docs]</a>
-</span><span id="line-519"><span class="k">def</span><span class="w"> </span><span class="nf">manifest_is_current</span><span class="p">(</span>
-</span><span id="line-520">    <span class="n">manifest</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-</span><span id="line-521">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-522">    <span class="n">song_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-523">    <span class="n">align_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-524">    <span class="n">beat_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-525"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="line-526"><span class="w">    </span><span class="sd">"""Whether EVERY persisted metric matches the current song, alignments and beat grid</span>
-</span><span id="line-527"><span class="sd">    (:func:`stale_metrics` says which do not) — the same answer the readers act on: a</span>
-</span><span id="line-528"><span class="sd">    grid change with no metric measured on the grid leaves the scores current."""</span>
-</span><span id="line-529">    <span class="n">verdict</span> <span class="o">=</span> <span class="n">_staleness</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">song_hash</span><span class="p">,</span> <span class="n">align_fingerprint</span><span class="p">,</span> <span class="n">beat_fingerprint</span><span class="p">)</span>
-</span><span id="line-530">    <span class="n">kw</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">song_hash</span><span class="o">=</span><span class="n">song_hash</span><span class="p">,</span> <span class="n">align_fingerprint</span><span class="o">=</span><span class="n">align_fingerprint</span><span class="p">)</span>
-</span><span id="line-531">    <span class="k">return</span> <span class="n">verdict</span> <span class="o">==</span> <span class="s2">"none"</span> <span class="ow">or</span> <span class="p">(</span>
-</span><span id="line-532">        <span class="n">verdict</span> <span class="o">==</span> <span class="s2">"beats"</span>
-</span><span id="line-533">        <span class="ow">and</span> <span class="s2">"beat_metrics"</span> <span class="ow">in</span> <span class="n">manifest</span>  <span class="c1"># a manifest predating it stales every metric</span>
-</span><span id="line-534">        <span class="ow">and</span> <span class="ow">not</span> <span class="n">stale_metrics</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">beat_fingerprint</span><span class="o">=</span><span class="n">beat_fingerprint</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span>
-</span><span id="line-535">    <span class="p">)</span></div>
+</span><span id="line-615"><span class="k">def</span><span class="w"> </span><span class="nf">manifest_is_current</span><span class="p">(</span>
+</span><span id="line-616">    <span class="n">manifest</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-617">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-618">    <span class="n">song_hash</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-619">    <span class="n">align_fingerprint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-620">    <span class="n">input_fingerprints</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
+</span><span id="line-621"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-622"><span class="w">    </span><span class="sd">"""Whether EVERY persisted metric matches the current song, alignments and keyed</span>
+</span><span id="line-623"><span class="sd">    inputs (:func:`stale_metrics` says which do not) — the same answer the readers act</span>
+</span><span id="line-624"><span class="sd">    on: an input change no metric read leaves the scores current, and one the manifest</span>
+</span><span id="line-625"><span class="sd">    does not say which metrics read leaves it stale."""</span>
+</span><span id="line-626">    <span class="n">stale</span> <span class="o">=</span> <span class="n">stale_metrics</span><span class="p">(</span>
+</span><span id="line-627">        <span class="n">manifest</span><span class="p">,</span>
+</span><span id="line-628">        <span class="n">song_hash</span><span class="o">=</span><span class="n">song_hash</span><span class="p">,</span>
+</span><span id="line-629">        <span class="n">align_fingerprint</span><span class="o">=</span><span class="n">align_fingerprint</span><span class="p">,</span>
+</span><span id="line-630">        <span class="n">input_fingerprints</span><span class="o">=</span><span class="n">input_fingerprints</span><span class="p">,</span>
+</span><span id="line-631">    <span class="p">)</span>
+</span><span id="line-632">    <span class="k">return</span> <span class="n">stale</span> <span class="o">==</span> <span class="p">[]</span> <span class="ow">and</span> <span class="nb">all</span><span class="p">(</span>
+</span><span id="line-633">        <span class="n">_metrics_reading</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+</span><span id="line-634">        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_changed_inputs</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="n">input_fingerprints</span><span class="p">)</span>
+</span><span id="line-635">    <span class="p">)</span></div>
 
-</span><span id="line-536">
-</span><span id="line-537">
+</span><span id="line-636">
+</span><span id="line-637">
 <div class="viewcode-block" id="mask_metrics">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.grid.html#muvid.footage.scoring.grid.mask_metrics">[docs]</a>
-</span><span id="line-538"><span class="k">def</span><span class="w"> </span><span class="nf">mask_metrics</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="s2">"ScoreTensor"</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">"ScoreTensor"</span><span class="p">:</span>
-</span><span id="line-539"><span class="w">    </span><span class="sd">"""``tensor`` with ``metrics`` read as not measured (masked, ``NaN``) — how a stale</span>
-</span><span id="line-540"><span class="sd">    metric is served beside current ones: absent, never a low score (muvid#206)."""</span>
-</span><span id="line-541">    <span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
-</span><span id="line-542">
-</span><span id="line-543">    <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">tensor</span><span class="o">.</span><span class="n">metric_index</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">tensor</span><span class="o">.</span><span class="n">metrics</span><span class="p">]</span>
-</span><span id="line-544">    <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
-</span><span id="line-545">        <span class="k">return</span> <span class="n">tensor</span>
-</span><span id="line-546">    <span class="n">M</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">tensor</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">tensor</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-</span><span id="line-547">    <span class="n">M</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="line-548">    <span class="n">S</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-</span><span id="line-549">    <span class="n">raw</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
-</span><span id="line-550">    <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="n">S</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span></div>
+</span><span id="line-638"><span class="k">def</span><span class="w"> </span><span class="nf">mask_metrics</span><span class="p">(</span><span class="n">tensor</span><span class="p">:</span> <span class="s2">"ScoreTensor"</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s2">"ScoreTensor"</span><span class="p">:</span>
+</span><span id="line-639"><span class="w">    </span><span class="sd">"""``tensor`` with ``metrics`` read as not measured (masked, ``NaN``) — how a stale</span>
+</span><span id="line-640"><span class="sd">    metric is served beside current ones: absent, never a low score (muvid#206)."""</span>
+</span><span id="line-641">    <span class="kn">import</span><span class="w"> </span><span class="nn">dataclasses</span>
+</span><span id="line-642">
+</span><span id="line-643">    <span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">tensor</span><span class="o">.</span><span class="n">metric_index</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span> <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">tensor</span><span class="o">.</span><span class="n">metrics</span><span class="p">]</span>
+</span><span id="line-644">    <span class="k">if</span> <span class="ow">not</span> <span class="n">idx</span><span class="p">:</span>
+</span><span id="line-645">        <span class="k">return</span> <span class="n">tensor</span>
+</span><span id="line-646">    <span class="n">M</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="n">raw</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">tensor</span><span class="o">.</span><span class="n">S</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span> <span class="n">tensor</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+</span><span id="line-647">    <span class="n">M</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-648">    <span class="n">S</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+</span><span id="line-649">    <span class="n">raw</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+</span><span id="line-650">    <span class="k">return</span> <span class="n">dataclasses</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="n">M</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="n">S</span><span class="p">,</span> <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">)</span></div>
 
-</span><span id="line-551">
-</span><span id="line-552">
+</span><span id="line-651">
+</span><span id="line-652">
 <div class="viewcode-block" id="tracks_of">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.grid.html#muvid.footage.scoring.grid.tracks_of">[docs]</a>
-</span><span id="line-553"><span class="k">def</span><span class="w"> </span><span class="nf">tracks_of</span><span class="p">(</span>
-</span><span id="line-554">    <span class="n">tensor</span><span class="p">:</span> <span class="s2">"ScoreTensor"</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
-</span><span id="line-555"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScoreTrack</span><span class="p">]]:</span>
-</span><span id="line-556"><span class="w">    </span><span class="sd">"""The persisted ``metrics`` of ``tensor`` as tracks again, per clip — what a partial</span>
-</span><span id="line-557"><span class="sd">    re-score keeps beside the metrics it recomputes."""</span>
-</span><span id="line-558">    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScoreTrack</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-559">    <span class="k">for</span> <span class="n">ci</span><span class="p">,</span> <span class="n">cid</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">clip_ids</span><span class="p">):</span>
-</span><span id="line-560">        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
-</span><span id="line-561">            <span class="n">mi</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">metric_index</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
-</span><span id="line-562">            <span class="n">out</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cid</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-563">                <span class="n">ScoreTrack</span><span class="p">(</span>
-</span><span id="line-564">                    <span class="n">cid</span><span class="p">,</span>
-</span><span id="line-565">                    <span class="n">m</span><span class="p">,</span>
-</span><span id="line-566">                    <span class="n">tensor</span><span class="o">.</span><span class="n">t0</span><span class="p">,</span>
-</span><span id="line-567">                    <span class="n">tensor</span><span class="o">.</span><span class="n">hop_s</span><span class="p">,</span>
-</span><span id="line-568">                    <span class="n">tensor</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">],</span>
-</span><span id="line-569">                    <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">],</span>
-</span><span id="line-570">                    <span class="n">directions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="s2">"higher_better"</span><span class="p">),</span>
-</span><span id="line-571">                <span class="p">)</span>
-</span><span id="line-572">            <span class="p">)</span>
-</span><span id="line-573">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-653"><span class="k">def</span><span class="w"> </span><span class="nf">tracks_of</span><span class="p">(</span>
+</span><span id="line-654">    <span class="n">tensor</span><span class="p">:</span> <span class="s2">"ScoreTensor"</span><span class="p">,</span> <span class="n">metrics</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">directions</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span>
+</span><span id="line-655"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScoreTrack</span><span class="p">]]:</span>
+</span><span id="line-656"><span class="w">    </span><span class="sd">"""The persisted ``metrics`` of ``tensor`` as tracks again, per clip — what a partial</span>
+</span><span id="line-657"><span class="sd">    re-score keeps beside the metrics it recomputes."""</span>
+</span><span id="line-658">    <span class="n">out</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScoreTrack</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-659">    <span class="k">for</span> <span class="n">ci</span><span class="p">,</span> <span class="n">cid</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">clip_ids</span><span class="p">):</span>
+</span><span id="line-660">        <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+</span><span id="line-661">            <span class="n">mi</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">metric_index</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+</span><span id="line-662">            <span class="n">out</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">cid</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-663">                <span class="n">ScoreTrack</span><span class="p">(</span>
+</span><span id="line-664">                    <span class="n">cid</span><span class="p">,</span>
+</span><span id="line-665">                    <span class="n">m</span><span class="p">,</span>
+</span><span id="line-666">                    <span class="n">tensor</span><span class="o">.</span><span class="n">t0</span><span class="p">,</span>
+</span><span id="line-667">                    <span class="n">tensor</span><span class="o">.</span><span class="n">hop_s</span><span class="p">,</span>
+</span><span id="line-668">                    <span class="n">tensor</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">],</span>
+</span><span id="line-669">                    <span class="n">tensor</span><span class="o">.</span><span class="n">M</span><span class="p">[</span><span class="n">ci</span><span class="p">,</span> <span class="p">:,</span> <span class="n">mi</span><span class="p">],</span>
+</span><span id="line-670">                    <span class="n">directions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="s2">"higher_better"</span><span class="p">),</span>
+</span><span id="line-671">                <span class="p">)</span>
+</span><span id="line-672">            <span class="p">)</span>
+</span><span id="line-673">    <span class="k">return</span> <span class="n">out</span></div>
 
-</span><span id="line-574">
-</span><span id="line-575">
-</span><span id="line-576"><span class="k">def</span><span class="w"> </span><span class="nf">load_manifest</span><span class="p">(</span><span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-577">    <span class="n">p</span> <span class="o">=</span> <span class="n">scores_dir</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_NAME</span>
-</span><span id="line-578">    <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-579">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-580">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-581">        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-582">    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-583">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-584">
-</span><span id="line-585">
+</span><span id="line-674">
+</span><span id="line-675">
+</span><span id="line-676"><span class="k">def</span><span class="w"> </span><span class="nf">load_manifest</span><span class="p">(</span><span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-677">    <span class="n">p</span> <span class="o">=</span> <span class="n">scores_dir</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span> <span class="o">/</span> <span class="n">MANIFEST_NAME</span>
+</span><span id="line-678">    <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-679">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-680">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-681">        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-682">    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-683">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-684">
+</span><span id="line-685">
 <div class="viewcode-block" id="load_tensor">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.grid.html#muvid.footage.scoring.grid.load_tensor">[docs]</a>
-</span><span id="line-586"><span class="k">def</span><span class="w"> </span><span class="nf">load_tensor</span><span class="p">(</span><span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScoreTensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-587"><span class="w">    </span><span class="sd">"""Reconstruct the :class:`ScoreTensor` from persisted arrays + manifest, or ``None``.</span>
-</span><span id="line-588">
-</span><span id="line-589"><span class="sd">    Geometry + norms come from the manifest (SSOT); each clip's ``.npz`` supplies raw+mask.</span>
-</span><span id="line-590"><span class="sd">    A clip/metric absent from a ``.npz`` is filled as an all-masked column.</span>
-</span><span id="line-591"><span class="sd">    """</span>
-</span><span id="line-592">    <span class="n">manifest</span> <span class="o">=</span> <span class="n">load_manifest</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
-</span><span id="line-593">    <span class="k">if</span> <span class="n">manifest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-594">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-595">    <span class="n">d</span> <span class="o">=</span> <span class="n">scores_dir</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
-</span><span id="line-596">    <span class="n">t0</span><span class="p">,</span> <span class="n">hop_s</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">manifest</span><span class="p">[</span><span class="s2">"t0"</span><span class="p">],</span> <span class="n">manifest</span><span class="p">[</span><span class="s2">"hop_s"</span><span class="p">],</span> <span class="n">manifest</span><span class="p">[</span><span class="s2">"n"</span><span class="p">]</span>
-</span><span id="line-597">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">manifest</span><span class="p">[</span><span class="s2">"clips"</span><span class="p">])</span>
-</span><span id="line-598">    <span class="n">metrics</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">manifest</span><span class="p">[</span><span class="s2">"metrics"</span><span class="p">])</span>
-</span><span id="line-599">    <span class="n">directions</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"directions"</span><span class="p">,</span> <span class="p">{})</span>
-</span><span id="line-600">    <span class="n">norms</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"norms"</span><span class="p">,</span> <span class="p">{})</span>
-</span><span id="line-601">
-</span><span id="line-602">    <span class="n">tracks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScoreTrack</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-603">    <span class="k">for</span> <span class="n">cid</span> <span class="ow">in</span> <span class="n">clip_ids</span><span class="p">:</span>
-</span><span id="line-604">        <span class="n">npz_path</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">.npz"</span>
-</span><span id="line-605">        <span class="n">tracks</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-606">        <span class="k">if</span> <span class="ow">not</span> <span class="n">npz_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-607">            <span class="k">continue</span>
-</span><span id="line-608">        <span class="c1"># Wrap BOTH np.load and the lazy member reads: a corrupted-but-openable npz raises</span>
-</span><span id="line-609">        <span class="c1"># on member access, not at open. A bad clip → all-masked columns, not a crash.</span>
-</span><span id="line-610">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-611">            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">npz_path</span><span class="p">)</span>
-</span><span id="line-612">            <span class="n">clip_tracks</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-613">            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
-</span><span id="line-614">                <span class="n">rk</span><span class="p">,</span> <span class="n">mk</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__raw"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__mask"</span>
-</span><span id="line-615">                <span class="k">if</span> <span class="n">rk</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">and</span> <span class="n">mk</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
-</span><span id="line-616">                    <span class="n">clip_tracks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-617">                        <span class="n">ScoreTrack</span><span class="p">(</span>
-</span><span id="line-618">                            <span class="n">clip_id</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span>
-</span><span id="line-619">                            <span class="n">metric</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span>
-</span><span id="line-620">                            <span class="n">t0</span><span class="o">=</span><span class="n">t0</span><span class="p">,</span>
-</span><span id="line-621">                            <span class="n">hop_s</span><span class="o">=</span><span class="n">hop_s</span><span class="p">,</span>
-</span><span id="line-622">                            <span class="n">raw_values</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">rk</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-</span><span id="line-623">                            <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">mk</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
-</span><span id="line-624">                            <span class="n">direction</span><span class="o">=</span><span class="n">directions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="s2">"higher_better"</span><span class="p">),</span>
-</span><span id="line-625">                        <span class="p">)</span>
-</span><span id="line-626">                    <span class="p">)</span>
-</span><span id="line-627">            <span class="n">tracks</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="n">clip_tracks</span>
-</span><span id="line-628">        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-</span><span id="line-629">            <span class="n">tracks</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># corrupted npz → build_tensor fills all-masked columns</span>
-</span><span id="line-630">    <span class="k">return</span> <span class="n">build_tensor</span><span class="p">(</span>
-</span><span id="line-631">        <span class="n">tracks</span><span class="p">,</span>
-</span><span id="line-632">        <span class="n">t0</span><span class="o">=</span><span class="n">t0</span><span class="p">,</span>
-</span><span id="line-633">        <span class="n">hop_s</span><span class="o">=</span><span class="n">hop_s</span><span class="p">,</span>
-</span><span id="line-634">        <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
-</span><span id="line-635">        <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
-</span><span id="line-636">        <span class="n">clip_ids</span><span class="o">=</span><span class="n">clip_ids</span><span class="p">,</span>
-</span><span id="line-637">        <span class="n">norms</span><span class="o">=</span><span class="n">norms</span><span class="p">,</span>
-</span><span id="line-638">    <span class="p">)</span></div>
+</span><span id="line-686"><span class="k">def</span><span class="w"> </span><span class="nf">load_tensor</span><span class="p">(</span><span class="n">project_root</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ScoreTensor</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-687"><span class="w">    </span><span class="sd">"""Reconstruct the :class:`ScoreTensor` from persisted arrays + manifest, or ``None``.</span>
+</span><span id="line-688">
+</span><span id="line-689"><span class="sd">    Geometry + norms come from the manifest (SSOT); each clip's ``.npz`` supplies raw+mask.</span>
+</span><span id="line-690"><span class="sd">    A clip/metric absent from a ``.npz`` is filled as an all-masked column.</span>
+</span><span id="line-691"><span class="sd">    """</span>
+</span><span id="line-692">    <span class="n">manifest</span> <span class="o">=</span> <span class="n">load_manifest</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+</span><span id="line-693">    <span class="k">if</span> <span class="n">manifest</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-694">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-695">    <span class="n">d</span> <span class="o">=</span> <span class="n">scores_dir</span><span class="p">(</span><span class="n">project_root</span><span class="p">)</span>
+</span><span id="line-696">    <span class="n">t0</span><span class="p">,</span> <span class="n">hop_s</span><span class="p">,</span> <span class="n">n</span> <span class="o">=</span> <span class="n">manifest</span><span class="p">[</span><span class="s2">"t0"</span><span class="p">],</span> <span class="n">manifest</span><span class="p">[</span><span class="s2">"hop_s"</span><span class="p">],</span> <span class="n">manifest</span><span class="p">[</span><span class="s2">"n"</span><span class="p">]</span>
+</span><span id="line-697">    <span class="n">clip_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">manifest</span><span class="p">[</span><span class="s2">"clips"</span><span class="p">])</span>
+</span><span id="line-698">    <span class="n">metrics</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">manifest</span><span class="p">[</span><span class="s2">"metrics"</span><span class="p">])</span>
+</span><span id="line-699">    <span class="n">directions</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"directions"</span><span class="p">,</span> <span class="p">{})</span>
+</span><span id="line-700">    <span class="n">norms</span> <span class="o">=</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"norms"</span><span class="p">,</span> <span class="p">{})</span>
+</span><span id="line-701">
+</span><span id="line-702">    <span class="n">tracks</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="n">ScoreTrack</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-703">    <span class="k">for</span> <span class="n">cid</span> <span class="ow">in</span> <span class="n">clip_ids</span><span class="p">:</span>
+</span><span id="line-704">        <span class="n">npz_path</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">cid</span><span class="si">}</span><span class="s2">.npz"</span>
+</span><span id="line-705">        <span class="n">tracks</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-706">        <span class="k">if</span> <span class="ow">not</span> <span class="n">npz_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-707">            <span class="k">continue</span>
+</span><span id="line-708">        <span class="c1"># Wrap BOTH np.load and the lazy member reads: a corrupted-but-openable npz raises</span>
+</span><span id="line-709">        <span class="c1"># on member access, not at open. A bad clip → all-masked columns, not a crash.</span>
+</span><span id="line-710">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-711">            <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">npz_path</span><span class="p">)</span>
+</span><span id="line-712">            <span class="n">clip_tracks</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-713">            <span class="k">for</span> <span class="n">metric</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+</span><span id="line-714">                <span class="n">rk</span><span class="p">,</span> <span class="n">mk</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__raw"</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">metric</span><span class="si">}</span><span class="s2">__mask"</span>
+</span><span id="line-715">                <span class="k">if</span> <span class="n">rk</span> <span class="ow">in</span> <span class="n">data</span> <span class="ow">and</span> <span class="n">mk</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+</span><span id="line-716">                    <span class="n">clip_tracks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-717">                        <span class="n">ScoreTrack</span><span class="p">(</span>
+</span><span id="line-718">                            <span class="n">clip_id</span><span class="o">=</span><span class="n">cid</span><span class="p">,</span>
+</span><span id="line-719">                            <span class="n">metric</span><span class="o">=</span><span class="n">metric</span><span class="p">,</span>
+</span><span id="line-720">                            <span class="n">t0</span><span class="o">=</span><span class="n">t0</span><span class="p">,</span>
+</span><span id="line-721">                            <span class="n">hop_s</span><span class="o">=</span><span class="n">hop_s</span><span class="p">,</span>
+</span><span id="line-722">                            <span class="n">raw_values</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">rk</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+</span><span id="line-723">                            <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="n">mk</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+</span><span id="line-724">                            <span class="n">direction</span><span class="o">=</span><span class="n">directions</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">metric</span><span class="p">,</span> <span class="s2">"higher_better"</span><span class="p">),</span>
+</span><span id="line-725">                        <span class="p">)</span>
+</span><span id="line-726">                    <span class="p">)</span>
+</span><span id="line-727">            <span class="n">tracks</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="n">clip_tracks</span>
+</span><span id="line-728">        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+</span><span id="line-729">            <span class="n">tracks</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># corrupted npz → build_tensor fills all-masked columns</span>
+</span><span id="line-730">    <span class="k">return</span> <span class="n">build_tensor</span><span class="p">(</span>
+</span><span id="line-731">        <span class="n">tracks</span><span class="p">,</span>
+</span><span id="line-732">        <span class="n">t0</span><span class="o">=</span><span class="n">t0</span><span class="p">,</span>
+</span><span id="line-733">        <span class="n">hop_s</span><span class="o">=</span><span class="n">hop_s</span><span class="p">,</span>
+</span><span id="line-734">        <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+</span><span id="line-735">        <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
+</span><span id="line-736">        <span class="n">clip_ids</span><span class="o">=</span><span class="n">clip_ids</span><span class="p">,</span>
+</span><span id="line-737">        <span class="n">norms</span><span class="o">=</span><span class="n">norms</span><span class="p">,</span>
+</span><span id="line-738">    <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -884,7 +987,7 @@
 </footer>
     </div>
     
-    <script src="../../../../_static/documentation_options.js?v=e7715e22"></script>
+    <script src="../../../../_static/documentation_options.js?v=4309da3b"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>
