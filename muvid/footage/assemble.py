@@ -94,6 +94,12 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Sequence
 
+from muvid.footage.colour import (
+    DELIVERY_COLOR_RANGE,
+    DELIVERY_COLOR_SPACE,
+    DELIVERY_TAG,
+    read_source_colour,
+)
 from muvid.footage.edl import TRANSITION_SPLIT, AssemblyCut
 
 #: Default output frame rate for the assembled video.
@@ -409,7 +415,12 @@ def _crop_filter(cut: "AssemblyCut") -> str:
 
 
 def _part_filter(
-    cut: "AssemblyCut", *, w: int, h: int, fps: int, tail: str = ""
+    cut: "AssemblyCut",
+    *,
+    w: int,
+    h: int,
+    fps: int,
+    tail: str = "",
 ) -> str:
     """THE per-cut filter chain. ONE implementation, used by BOTH render sites.
 
@@ -424,7 +435,7 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale, pad, setsar, fps, tpad [, look] [, tail]``
+    ``[retime,] [crop,] scale, pad, setsar, fps, tpad [, look], setparams [, tail]``
 
     ``retime`` is a cut's speed (``setpts=(PTS-STARTPTS)/rate``) and it comes BEFORE
     ``fps``, so ``fps`` picks frames on the retimed clock. (Measured on ffmpeg 9.0: the
@@ -452,30 +463,62 @@ def _part_filter(
     ``tail`` is the only difference between the two sites, and it is a parameter
     rather than a second string.
 
-    With no crop and no look this returns exactly the bytes it always did — the
-    ``look``-absent path is unchanged character for character, which is the
-    property ``tests/test_edl_look.py`` pins.
+    ``scale`` also converts to the delivery colour (:mod:`muvid.footage.colour`,
+    muvid#195) — from ``cut.source_matrix`` when the source's own tag cannot be
+    trusted —
+    and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
+    frame the ENCODER gets: after the look, because a look can drop the frame's
+    colour tags (ffmpeg 6.1's ``zoompan`` — a punch-in — left a part untagged that
+    its look-less twin was not; ``looks``' own steps convert with explicit
+    matrices, so they do not depend on the tag).
+
+    The conversion is this ``scale``, not the encoder options, although on ffmpeg
+    8.0.1 the options alone do the same (that build negotiates ``-colorspace`` /
+    ``-color_range`` through the filtergraph and inserts the conversion itself;
+    measured on 7.0.2, it does not). The ``scale`` is what makes the builds agree.
+
+    With no crop and no look this returns exactly the pinned bytes —
+    ``tests/test_edl_look.py`` pins the ``look``-absent chain character for
+    character, so changing it is a deliberate two-place edit (the last one was the
+    colour conversion of muvid#195).
     """
     crop = _crop_filter(cut)
     rate = getattr(cut, "rate", 1.0)
+    in_matrix = getattr(cut, "source_matrix", None)
     retime = f"setpts=(PTS-STARTPTS)/{rate:.6f}," if rate != 1.0 else ""
     return (
         f"{retime}"
         f"{crop + ',' if crop else ''}"
-        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease"
+        f"{f':in_color_matrix={in_matrix}' if in_matrix else ''}"
+        f":out_color_matrix={DELIVERY_COLOR_SPACE}:out_range={DELIVERY_COLOR_RANGE},"
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},"
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
+        f",{DELIVERY_TAG}"
         f"{tail}"
     )
 
 
 def _video_codec_args(crf: int, preset: str) -> list[str]:
+    """The encode every part shares, tagged :data:`DELIVERY_COLOR_SPACE` /
+    :data:`DELIVERY_COLOR_RANGE` — identical tags on every part are also what lets
+    the concat stage stream-copy them into one consistently tagged video. The
+    options repeat :data:`DELIVERY_TAG` for a build that reads the codec context
+    rather than the frames."""
     return [
         "-c:v",
         "libx264",
         "-pix_fmt",
         "yuv420p",
+        "-colorspace",
+        DELIVERY_COLOR_SPACE,
+        "-color_primaries",
+        DELIVERY_COLOR_SPACE,
+        "-color_trc",
+        DELIVERY_COLOR_SPACE,
+        "-color_range",
+        DELIVERY_COLOR_RANGE,
         "-crf",
         str(crf),
         "-preset",
@@ -510,6 +553,30 @@ def _source_input(path: str, clip_in: float, seconds: float, *, fps: int) -> lis
     return ["-ss", f"{clip_in:.6f}", "-t", f"{seconds:.6f}", "-i", path]
 
 
+def _source_matrices(cuts: Sequence[AssemblyCut], note=None) -> "dict[str, str]":
+    """Read each distinct source's colour once (:func:`~muvid.footage.colour.read_source_colour`):
+    the matrix to convert FROM for each source whose tag cannot be trusted, and a
+    finding for each HDR source, which is delivered as SDR without tone mapping
+    (muvid#201). One ``ffprobe`` per source, not per cut."""
+    matrices: "dict[str, str]" = {}
+    seen: "dict[str, str]" = {}  # path -> clip id, first cut that shows it
+    for cut in cuts:
+        if cut.clip_path and cut.clip_path not in seen:
+            seen[cut.clip_path] = cut.clip_id
+    for path, clip_id in seen.items():
+        colour = read_source_colour(path)
+        if colour.in_matrix:
+            matrices[path] = colour.in_matrix
+        if colour.hdr_transfer:
+            _emit(
+                f"clip {clip_id!r} is HDR ({colour.hdr_transfer}); it is delivered "
+                f"as SDR {DELIVERY_COLOR_SPACE} without tone mapping, so it will look "
+                "washed out (muvid#201)",
+                note,
+            )
+    return matrices
+
+
 def _render_part(
     cut: AssemblyCut,
     part: Path,
@@ -542,7 +609,7 @@ def _render_part(
             fps=fps,
         ) + ["-vf", vf]
     else:  # a gap entry: no footage for this span — fill black on the same grid
-        vf = f"setsar=1,fps={fps}"
+        vf = f"setsar=1,fps={fps},{DELIVERY_TAG}"
         args = [
             "-f",
             "lavfi",
@@ -795,6 +862,8 @@ def assemble_music_video(
     try:
         # Planned in full BEFORE any encoding, so a transition that does not fit at
         # this fps fails on cut 0 rather than after forty parts are on disk.
+        matrices = _source_matrices(cuts, on_note)
+        cuts = [replace(c, source_matrix=matrices.get(c.clip_path)) for c in cuts]
         plan = _part_plan(cuts, fps, on_note)
         if any(p.kind == "xfade" for p in plan):
             require_filter("xfade", needed_for="EDL transitions")
@@ -813,7 +882,12 @@ def assemble_music_video(
             name = f"part{i:04d}.mp4"
             part = parts_dir / name
             render_kwargs = dict(
-                w=w, h=h, fps=fps, n_frames=p.n_frames, crf=crf, preset=preset
+                w=w,
+                h=h,
+                fps=fps,
+                n_frames=p.n_frames,
+                crf=crf,
+                preset=preset,
             )
             if p.kind == "xfade":
                 _render_transition(p, part, w=w, h=h, fps=fps, crf=crf, preset=preset)

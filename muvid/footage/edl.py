@@ -862,6 +862,11 @@ class AssemblyCut:
     #: Carried through from the EDL entry: the assembler reads ``duration * rate``
     #: seconds of source and retimes it (``setpts``, before ``fps``) onto the span.
     rate: float = 1.0
+    #: NOT from the EDL: the matrix the assembler's ``scale`` converts this cut's
+    #: source FROM, set by the assembler once per render when the source's own tag
+    #: cannot be trusted (an untagged HD clip — :mod:`muvid.footage.colour`).
+    #: ``None`` lets ``scale`` read the frame's tag.
+    source_matrix: "str | None" = None
 
     @property
     def duration(self) -> float:
@@ -1895,8 +1900,12 @@ _LOOK_GEOMETRY_FILTERS = {
         # RGB-domain step in ``scale=in_color_matrix=M:out_color_matrix=M`` once a
         # colour space is declared (muvid#190). They pick the YUV<->RGB matrix and
         # never touch the frame size, so such a link is not a resize while its
-        # input fits the canvas (`_look_resizes`, muvid#196).
-        free=frozenset({"flags", "in_color_matrix", "out_color_matrix"}),
+        # input fits the canvas (`_look_resizes`, muvid#196). `in_range`/
+        # `out_range` ride on the same wrapper once a colour RANGE is declared too,
+        # which `stylize` does since the assembler normalises it (muvid#195).
+        free=frozenset(
+            {"flags", "in_color_matrix", "out_color_matrix", "in_range", "out_range"}
+        ),
         positional=("w", "h"),
     ),
     "pad": _FilterOptions(

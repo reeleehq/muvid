@@ -324,9 +324,11 @@ _STREAM_SIZE = re.compile(r"Video: wrapped_avframe[^\n]*?, (\d+)x(\d+)")
 def _produced(src, look):
     """``(rc, (w, h) or None)`` for ``look`` spliced where the assembler splices it."""
     vf = (
-        f"scale={SRC_W}:{SRC_H}:force_original_aspect_ratio=decrease,"
+        f"scale={SRC_W}:{SRC_H}:force_original_aspect_ratio=decrease"
+        ":out_color_matrix=bt709:out_range=tv,"
         f"pad={SRC_W}:{SRC_H}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,"
-        f"tpad=stop=-1:stop_mode=clone,{look}"
+        f"tpad=stop=-1:stop_mode=clone,{look},"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709"
     )
     proc = subprocess.run(
         [
