@@ -27,7 +27,7 @@ from __future__ import annotations
 import os
 import threading
 from dataclasses import replace
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 from muvid.footage.scoring import registry
 from muvid.footage.scoring.grid import DEFAULT_HOP_S, grid_len, save_scores
@@ -110,6 +110,7 @@ def score_project(
     progress_cb: Callable[[dict], None] | None = None,
     should_cancel: Callable[[], bool] | None = None,
     beat_source: "Callable[[Any], registry.MasterBeats] | None" = None,
+    keep_tracks: "Mapping[str, Sequence[Any]] | None" = None,
 ) -> dict:
     """Score every aligned clip of ``project`` → persist the tensor; return a summary dict.
 
@@ -128,6 +129,9 @@ def score_project(
             (muvid#187). Its ``fingerprint`` goes into the manifest, so
             :func:`~muvid.footage.scoring.grid.manifest_is_current` can tell scores
             measured on one grid from another.
+        keep_tracks: ``{clip_id: [ScoreTrack]}`` of CURRENT metrics to persist beside the
+            ones this run measures — a partial re-score (muvid#206). The metric axis is
+            then theirs and these together.
     """
     with _SCORING_SEMAPHORE:
         return _score(
@@ -139,6 +143,7 @@ def score_project(
             progress_cb=progress_cb,
             should_cancel=should_cancel,
             beat_source=beat_source,
+            keep_tracks=keep_tracks,
         )
 
 
@@ -202,6 +207,7 @@ def _score(
     progress_cb,
     should_cancel,
     beat_source=None,
+    keep_tracks=None,
 ):
     from muvid.footage.scoring import frames as F
     from muvid.footage.scoring.quality import quality_gate_mask
@@ -346,12 +352,24 @@ def _score(
 
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 
-    # Metric axis = the wanted metrics actually produced by ≥1 clip.
+    # A partial re-score keeps the current metrics it did not recompute (muvid#206).
+    for cid, kept in (keep_tracks or {}).items():
+        if cid in tracks_by_clip:
+            tracks_by_clip[cid].extend(tr for tr in kept if tr.metric not in wanted)
+    kept_metrics = {
+        tr.metric for trs in (keep_tracks or {}).values() for tr in trs
+    } - wanted
+    # Metric axis = the metrics actually produced by ≥1 clip (wanted, or kept).
     produced = {tr.metric for trs in tracks_by_clip.values() for tr in trs}
     metric_axis = [
         m
-        for m in registry.default_metrics(include_lipsync=want_lipsync)
-        if m in produced and m in wanted
+        for m in registry.default_metrics(include_lipsync=True)
+        if m in produced and (m in wanted or m in kept_metrics)
+    ]
+    # the metrics measured on the beat grid, by what each running scorer declared;
+    # a kept metric is current, so it was not
+    beat_metrics = [
+        m for sc in active if registry.BEATS in sc.inputs for m in sc.metrics
     ]
 
     import math
@@ -371,6 +389,7 @@ def _score(
         beat_times=bg.beat_times,
         downbeat_times=bg.downbeat_times,
         beat_fingerprint=bg.fingerprint,
+        beat_metrics=beat_metrics,
         extra={
             "shot_boundaries": shots_by_clip,
             "tempo_bpm": round(tempo, 3) if math.isfinite(tempo) else None,

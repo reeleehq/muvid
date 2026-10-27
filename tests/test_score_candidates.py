@@ -90,8 +90,10 @@ def test_bad_candidates_are_refused_plainly(ramp_scores, bad, match):
 
 
 def test_it_needs_current_scores(ramp_scores):
-    service.set_beat_grid(ramp_scores, tempo_bpm=100.0)
-    with pytest.raises(FootageError, match="stale"):
+    # the toy scorer reads no beat grid (muvid#206), so declaring one leaves it current;
+    # moving the clip stales every metric
+    service.set_offset(ramp_scores, clip_id="A", offset_s=1.0)
+    with pytest.raises(FootageError, match="stale|no scores yet"):
         service.score_candidates(
             ramp_scores,
             candidates=[{"clip_id": "A", "song_start": 0.0, "song_end": 1.0}],

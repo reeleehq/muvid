@@ -859,8 +859,11 @@ Invalidation is deliberate: `set_song` drops `alignments.json` and every score t
 (the song is the alignment reference); `align_footage` only invalidates scores when
 `align_fingerprint` actually changed, because the tensor is the most expensive artifact
 in the pipeline. `set_beat_grid` / `clear_beat_grid` delete nothing: the manifest's
-`beat_fingerprint` makes the scores stale (the reply says `scores_stale: true`), and
-clearing a grid makes scores measured on the estimate current again (muvid#187).
+`beat_fingerprint` makes the metrics measured on the beat grid stale (the scorers that
+declare `inputs=(BEATS,)`; the manifest's `beat_metrics`) while the rest stay served,
+the reply says `scores_stale: true`, and a default `score` recomputes only the stale ones
+(muvid#206); clearing a grid makes scores measured on the estimate current again
+(muvid#187).
 
 ## Optional extras
 

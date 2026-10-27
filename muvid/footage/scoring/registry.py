@@ -47,6 +47,11 @@ from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
 if TYPE_CHECKING:  # pragma: no cover
     from muvid.footage.scoring.grid import ScoreTrack
 
+#: The master input "the beat grid" (:attr:`Scorer.inputs`): ``ClipContext.beat``'s
+#: ``beat_times``. The onset envelope is the song's own measurement, so reading only it
+#: is not reading the grid.
+BEATS = "beats"
+
 #: The tiers. ``core`` runs by default; ``lipsync`` only when the opt-in is enabled.
 CORE_TIER = "core"
 LIPSYNC_TIER = "lipsync"
@@ -173,6 +178,10 @@ class Scorer:
     #: the shared master artifacts it reads (:func:`register_artifact`), by name. Each is
     #: built once per run, and only when a running scorer needs it.
     needs: tuple[str, ...] = ()
+    #: the master INPUTS its metrics are measured on beyond the song and the clip's
+    #: placement (which every metric reads): :data:`BEATS` for the beat grid. A change to
+    #: one stales only the metrics that declared it (muvid#206).
+    inputs: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.metrics:
@@ -304,7 +313,12 @@ register_scorer(
     )
 )
 register_scorer(
-    Scorer("motion_beat", ("motion_beat_bas", "motion_onset_xcorr"), _run_motion_beat)
+    Scorer(
+        "motion_beat",
+        ("motion_beat_bas", "motion_onset_xcorr"),
+        _run_motion_beat,
+        inputs=(BEATS,),
+    )
 )
 register_scorer(
     Scorer(

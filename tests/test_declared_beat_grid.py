@@ -266,7 +266,14 @@ def scored_proj(proj, tmp_path, monkeypatch):
 
     before = dict(R._SCORERS)
     R.register_scorer(
-        R.Scorer("beats_seen", ("beats_seen",), run, needs_frames=False, gated=False)
+        R.Scorer(
+            "beats_seen",
+            ("beats_seen",),
+            run,
+            needs_frames=False,
+            gated=False,
+            inputs=(R.BEATS,),  # it reads the beat grid, so a grid change stales it
+        )
     )
     yield proj, seen, estimate
     R._SCORERS.clear()
@@ -332,3 +339,61 @@ def test_every_reader_of_the_scores_sees_a_grid_change_as_stale(scored_proj):
     doc = service.editor_document(proj)
     assert any("stale" in w for w in doc.get("warnings", []))
     assert "clip-score-track" not in json.dumps(doc)
+
+
+def test_a_grid_change_stales_only_the_beat_metrics_and_rescoring_redoes_only_them(
+    scored_proj,
+):
+    """muvid#206: declaring a grid keeps the quality-like metrics usable — served,
+    and used by the weighted selector — names the beat metric stale (masked, never a
+    low score), and a default re-score recomputes only it."""
+    import numpy as np
+
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.grid import ScoreTrack, load_tensor
+
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+
+    def track(ctx, metric, value):
+        raw = np.full(ctx.grid.n, value, dtype="float32")
+        return ScoreTrack(
+            ctx.clip_id, metric, ctx.grid.t0, ctx.grid.hop_s, raw, np.isfinite(raw)
+        )
+
+    def q(ctx):
+        calls["q"] += 1
+        return [track(ctx, "q_m", 0.7)]
+
+    def b(ctx):
+        calls["b"] += 1
+        return [track(ctx, "b_m", float(len(ctx.beat.beat_times)))]
+
+    R._SCORERS.clear()
+    R.register_scorer(R.Scorer("q", ("q_m",), q, needs_frames=False, gated=False))
+    R.register_scorer(
+        R.Scorer("b", ("b_m",), b, needs_frames=False, gated=False, inputs=(R.BEATS,))
+    )
+    service.run_scoring(proj)
+    before = load_tensor(proj.root)
+
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    out = service.scores(proj, clip_id="A")
+    assert out["stale_metrics"] == ["b_m"]
+    assert service.scores(proj)["stale_metrics"] == ["b_m"]
+    ctx = service._selection_context(proj, "weighted", None, None, None)
+    t = ctx.tensor
+    assert t is not None and t.M[0, :, t.metric_index("q_m")].all()
+    assert not t.M[0, :, t.metric_index("b_m")].any()  # masked, not zero
+
+    calls.update(q=0, b=0)
+    rescore = service.run_scoring(proj)
+    assert rescore["rescored"] == ["b_m"] and calls == {"q": 0, "b": 1}
+    after = load_tensor(proj.root)
+    assert "stale_metrics" not in service.scores(proj)
+    qi, bi = after.metric_index("q_m"), after.metric_index("b_m")
+    assert np.array_equal(
+        after.raw[0, :, qi], before.raw[0, :, before.metric_index("q_m")]
+    )
+    declared = len(service.declared_beat_grid(proj)["beat_times"])
+    assert float(after.raw[0, 0, bi]) == declared  # measured on the declared grid
