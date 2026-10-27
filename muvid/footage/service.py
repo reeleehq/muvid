@@ -1098,24 +1098,37 @@ def align(fp) -> dict:
         raise FootageError(
             "no videos to listen to — add a video (photos have no sound to place them by)"
         )
-    previous = fp.load_alignments()
-    declared = {a.clip_id: a for a in previous if a.source == DECLARED}
-    to_measure = [(cid, p) for cid, p in clips if cid not in declared]
+    song_hash = fp.song_hash()
+    declared_before = {a.clip_id for a in fp.load_alignments() if a.source == DECLARED}
+    to_measure = [(cid, p) for cid, p in clips if cid not in declared_before]
     measured = (
         _align(str(fp.song_path()), to_measure, song_duration=fp.song_duration())
         if to_measure
         else []
     )
-    by_id = {a.clip_id: a for a in measured} | declared
-    aligns = [by_id[cid] for cid, _ in clips if cid in by_id]
-    fp.save_alignments(aligns)
-    # Scores are keyed to the offsets they were computed under (align_fingerprint is that
-    # key's SSOT), so a re-align that reproduces the same offsets must not throw away the
-    # most expensive artifact in the pipeline (muvid#24 B4). Correctness does not depend on
-    # deleting here — the read path refuses stale scores via manifest_is_current — this
-    # only reclaims storage the moment the scores are known to be stale.
-    if align_fingerprint(aligns) != align_fingerprint(previous):
-        fp.invalidate_scores()
+    # The measurement took a while, so merge under the lock against what is on disk NOW
+    # (muvid#236): an offset declared meanwhile wins over the one just measured, and a
+    # clip removed meanwhile gets no record.
+    with fp.alignments_lock():
+        if fp.song_hash() != song_hash:
+            raise FootageError(
+                "the song changed while the videos were being placed — run align again"
+            )
+        previous = fp.load_alignments()
+        declared = {a.clip_id: a for a in previous if a.source == DECLARED}
+        present = fp.clip_paths()
+        clips = [(cid, p) for cid, p in clips if cid in present]
+        by_id = {a.clip_id: a for a in measured} | declared
+        aligns = [by_id[cid] for cid, _ in clips if cid in by_id]
+        fp.save_alignments(aligns)
+        # Scores are keyed to the offsets they were computed under (align_fingerprint is
+        # that key's SSOT), so a re-align that reproduces the same offsets must not throw
+        # away the most expensive artifact in the pipeline (muvid#24 B4). Correctness
+        # does not depend on deleting here — the read path refuses stale scores via
+        # manifest_is_current — this only reclaims storage the moment the scores are
+        # known to be stale.
+        if align_fingerprint(aligns) != align_fingerprint(previous):
+            fp.invalidate_scores()
     # Every clip has a record now, so "did not overlap" is a REPORTED PROPERTY of a clip
     # that is still there, not an inference from something missing. A clip is never removed
     # from the project or from the alignment artifact by anything but an explicit request.
@@ -1211,21 +1224,22 @@ def measure_spans(fp) -> dict:
     # Minutes may have passed: re-read, and attach spans only where the song and the
     # placement are still the ones measured — never write back a stale copy (an offset
     # set meanwhile would be reverted, an old song's offsets brought back; muvid#59)
-    if fp.song_hash() != song_hash:
-        raise FootageError(
-            "the song changed while the videos were being checked — run measure_spans again"
-        )
-
     def same(a, b):
         return (a.clip_id, a.offset_s, a.source) == (b.clip_id, b.offset_s, b.source)
 
-    aligns = [
-        replace(a, spans=spans[a.clip_id])
-        if a.clip_id in placed and same(a, placed[a.clip_id])
-        else a
-        for a in fp.load_alignments()
-    ]
-    fp.save_alignments(aligns)
+    with fp.alignments_lock():  # muvid#236: no write lands between re-read and save
+        if fp.song_hash() != song_hash:
+            raise FootageError(
+                "the song changed while the videos were being checked — run "
+                "measure_spans again"
+            )
+        aligns = [
+            replace(a, spans=spans[a.clip_id])
+            if a.clip_id in placed and same(a, placed[a.clip_id])
+            else a
+            for a in fp.load_alignments()
+        ]
+        fp.save_alignments(aligns)
     rows = []
     for a in aligns:
         gaps = unverified_stretches(a)
@@ -1271,20 +1285,26 @@ def set_offset(fp, *, clip_id: str, offset_s: float) -> dict:
         raise FootageError(
             f"offset_s must be a finite number of seconds, got {offset_s}"
         )
+    song_hash = fp.song_hash()
     record = declared_alignment(
         clip_id,
         offset,
         clip_duration=_clip_duration(fp, clip_id),
         song_duration=fp.song_duration(),
     )
-    previous = fp.load_alignments()
-    order = [c["clip_id"] for c in known]
-    by_id = {a.clip_id: a for a in previous} | {clip_id: record}
-    aligns = [by_id[cid] for cid in order if cid in by_id]
-    fp.save_alignments(aligns)
-    stale = align_fingerprint(aligns) != align_fingerprint(previous)
-    if stale:
-        fp.invalidate_scores()
+    with fp.alignments_lock():  # muvid#236
+        if fp.song_hash() != song_hash:
+            raise FootageError("the song changed meanwhile — place the video again")
+        previous = fp.load_alignments()
+        order = [c["clip_id"] for c in fp.list_clips()]
+        if clip_id not in order:
+            raise FootageError(_unknown_clip_message(clip_id, fp.list_clips()))
+        by_id = {a.clip_id: a for a in previous} | {clip_id: record}
+        aligns = [by_id[cid] for cid in order if cid in by_id]
+        fp.save_alignments(aligns)
+        stale = align_fingerprint(aligns) != align_fingerprint(previous)
+        if stale:
+            fp.invalidate_scores()
     return {"alignment": record.to_dict(), "scores_invalidated": stale}
 
 
@@ -1302,17 +1322,18 @@ def clear_offset(fp, *, clip_id: str) -> dict:
     known = fp.list_clips()
     if clip_id not in {c["clip_id"] for c in known}:
         raise FootageError(_unknown_clip_message(clip_id, known))
-    previous = fp.load_alignments()
-    record = next((a for a in previous if a.clip_id == clip_id), None)
-    if record is None or record.source != DECLARED:
-        raise FootageError(
-            f"clip {clip_id!r} has no offset placed by hand — nothing to forget"
-        )
-    aligns = [a for a in previous if a.clip_id != clip_id]
-    fp.save_alignments(aligns)
-    stale = align_fingerprint(aligns) != align_fingerprint(previous)
-    if stale:
-        fp.invalidate_scores()
+    with fp.alignments_lock():  # muvid#236
+        previous = fp.load_alignments()
+        record = next((a for a in previous if a.clip_id == clip_id), None)
+        if record is None or record.source != DECLARED:
+            raise FootageError(
+                f"clip {clip_id!r} has no offset placed by hand — nothing to forget"
+            )
+        aligns = [a for a in previous if a.clip_id != clip_id]
+        fp.save_alignments(aligns)
+        stale = align_fingerprint(aligns) != align_fingerprint(previous)
+        if stale:
+            fp.invalidate_scores()
     return {
         "cleared": clip_id,
         "offset_s": record.offset_s,

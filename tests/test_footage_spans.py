@@ -260,3 +260,105 @@ def test_a_clip_that_stops_matching_is_reported_where_it_stops(tmp_path):
     # on the song the clip runs 10..60 s (the song ends at 60), i.e. clip time 0..50
     assert tail and tail[-1][1] == pytest.approx(50.0)
     assert sum(e - s for s, e in tail) == pytest.approx(20.0, abs=window_s)
+
+
+# -- one lock for every writer of alignments.json (muvid#236) --------------------------
+
+
+def _writers(fp, tmp_path):
+    """Each writer of alignments.json, as a call that should block while the lock is held."""
+    song = tmp_path / "song2.wav"
+    song.write_bytes(b"RIFF-other-song")
+    return {
+        "set_offset": lambda: service.set_offset(fp, clip_id="C", offset_s=2.0),
+        "clear_offset": lambda: service.clear_offset(fp, clip_id="A"),
+        "measure_spans": lambda: service.measure_spans(fp),
+        "align": lambda: service.align(fp),
+        "remove_clip": lambda: fp.remove_clip("C"),
+        "set_song": lambda: service.set_song(fp, path=str(song), duration_s=30.0),
+    }
+
+
+@pytest.mark.parametrize(
+    "writer",
+    ["set_offset", "clear_offset", "measure_spans", "align", "remove_clip", "set_song"],
+)
+def test_every_writer_of_the_alignments_waits_for_the_lock(fp, tmp_path, monkeypatch, writer):
+    import threading
+    import time
+
+    import muvid.footage.align as A
+
+    monkeypatch.setattr(
+        A, "measure_spans", lambda song, clips, *, song_duration: ({c: () for c, _ in clips}, 20.0)
+    )
+    monkeypatch.setattr(
+        A,
+        "align_footage",
+        lambda song, clips, *, song_duration: [
+            FootageAlignment(c, 1.0, 0.9, 20.0, (1.0, 21.0)) for c, _ in clips
+        ],
+    )
+    call = _writers(fp, tmp_path)[writer]
+    path = fp.root / "alignments.json"
+    before = path.read_bytes() if path.exists() else None
+    errors = []
+
+    def run():
+        try:
+            call()
+        except Exception as exc:  # noqa: BLE001 - reported by the assertion below
+            errors.append(exc)
+
+    with fp.alignments_lock():
+        t = threading.Thread(target=run)
+        t.start()
+        time.sleep(0.5)
+        assert t.is_alive(), f"{writer} did not wait for the alignments lock"
+        assert (path.read_bytes() if path.exists() else None) == before
+    t.join(10)
+    assert not t.is_alive() and not errors, errors
+
+
+def test_an_offset_declared_while_align_measures_survives_it(fp, monkeypatch):
+    """align measures without the lock and merges under it, against what is on disk."""
+    import muvid.footage.align as A
+
+    def slow_align(song, clips, *, song_duration):
+        service.set_offset(fp, clip_id="C", offset_s=5.0)  # a person, meanwhile
+        return [FootageAlignment(c, 1.0, 0.9, 20.0, (1.0, 21.0)) for c, _ in clips]
+
+    monkeypatch.setattr(A, "align_footage", slow_align)
+    out = service.align(fp)
+    c = next(a for a in fp.load_alignments() if a.clip_id == "C")
+    assert (c.offset_s, c.source) == (5.0, "declared")
+    assert "C" in out["kept_declared"]
+
+
+def test_a_clip_removed_while_align_measures_gets_no_record(fp, monkeypatch):
+    import muvid.footage.align as A
+
+    def slow_align(song, clips, *, song_duration):
+        fp.remove_clip("C")
+        return [FootageAlignment(c, 1.0, 0.9, 20.0, (1.0, 21.0)) for c, _ in clips]
+
+    monkeypatch.setattr(A, "align_footage", slow_align)
+    service.align(fp)
+    assert "C" not in {a.clip_id for a in fp.load_alignments()}
+
+
+def test_a_song_replaced_while_align_measures_is_refused(fp, tmp_path, monkeypatch):
+    import muvid.footage.align as A
+    from muvid.footage.errors import FootageError
+
+    other = tmp_path / "other.wav"
+    other.write_bytes(b"RIFF-new")
+
+    def slow_align(song, clips, *, song_duration):
+        service.set_song(fp, path=str(other), duration_s=30.0)
+        return [FootageAlignment(c, 1.0, 0.9, 20.0, (1.0, 21.0)) for c, _ in clips]
+
+    monkeypatch.setattr(A, "align_footage", slow_align)
+    with pytest.raises(FootageError, match="song changed"):
+        service.align(fp)
+    assert fp.load_alignments() == []
