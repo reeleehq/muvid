@@ -174,11 +174,10 @@ _MIN_CONFIDENCE = MIN_CONFIDENCE
 def set_song(
     fp,
     *,
-    path: str = "",
+    path: str,
     ext: str = "",
     filename: str = "",
     duration_s: Optional[float] = None,
-    candidate_id: str = "",
 ) -> dict:
     """Set the project's song — the clean master every video is aligned to and whose
     audio the finished video uses. Replaces any previous song.
@@ -193,32 +192,7 @@ def set_song(
     Returns ``song_duration`` (seconds), the stored ``song`` (name, and the
     ``artifact_id`` to play it by when the project is hosted) and whether an alignment
     was dropped.
-
-    ``candidate_id`` sets one of the project's song candidates instead
-    (``add_song_candidate``, ranked by ``rank_songs``; muvid#135).
     """
-    if candidate_id:
-        if path:
-            raise FootageError("give a song file or a candidate_id, not both")
-        try:
-            path = str(fp.song_candidate_path(candidate_id))
-        except KeyError:
-            raise FootageError(
-                f"no song candidate {candidate_id!r}; candidates: "
-                f"{[c['candidate_id'] for c in fp.song_candidates()]}"
-            ) from None
-        filename = filename or next(
-            (
-                c["name"]
-                for c in fp.song_candidates()
-                if c["candidate_id"] == candidate_id.strip()
-            ),
-            "",
-        )
-        if Path(filename).suffix == "":
-            filename = filename + Path(path).suffix
-    elif not path:
-        raise FootageError("no song given — upload a song file")
     src = _existing_file(path, what="song")
     _refuse_oversize(src, cap=SONG_MAX_BYTES, what="song")
     dur = float(duration_s) if duration_s is not None else _probe_duration(src)
@@ -252,9 +226,11 @@ def add_song_candidate(
 ) -> dict:
     """Add a song the videos could be cut to instead — a CANDIDATE (muvid#135). Bring
     two or more, ask ``rank_songs`` which one the videos fit best, then make it the
-    song with ``set_song(candidate_id=...)``. A candidate is not the project's song:
-    nothing is listened to against it. ``candidate_id`` defaults to the file's name.
-    Size- and duration-capped like the song."""
+    song with ``use_song_candidate``. A candidate is not the project's song: nothing is
+    listened to against it. ``candidate_id`` defaults to the file's name (made unique);
+    an id already in use is refused. Size- and duration-capped like the song."""
+    from muvid.catalog import hash_file
+
     src = _existing_file(path, what="song")
     _refuse_oversize(src, cap=SONG_MAX_BYTES, what="song")
     dur = float(duration_s) if duration_s is not None else _probe_duration(src)
@@ -262,31 +238,56 @@ def add_song_candidate(
         raise FootageError(
             f"song is {dur:.0f}s; the {SONG_MAX_DURATION_S}s limit is exceeded"
         )
-    name = Path(filename).name if filename else src.name
-    if len(fp.song_candidates()) >= MAX_SONG_CANDIDATES:
+    taken = {c["candidate_id"] for c in fp.song_candidates()}
+    if len(taken) >= MAX_SONG_CANDIDATES:
         raise FootageError(
             f"{MAX_SONG_CANDIDATES} song candidates at most — remove one first"
         )
-    # a file's name made an id: anything but letters, digits, _ and - becomes _
-    default_id = re.sub(r"[^A-Za-z0-9_-]+", "_", Path(name).stem).strip("_")[:64]
+    name = Path(filename).name if filename else src.name
+    if candidate_id:
+        cid = _normalised_id(candidate_id, label="candidate_id")
+        if cid in taken:
+            raise FootageError(
+                f"song candidate {cid!r} already exists — remove it first, or pick "
+                "another candidate_id"
+            )
+    else:
+        cid = _unique_id(_id_from_name(name, fallback="song"), taken)
     cid = fp.add_song_candidate(
-        _normalised_id(candidate_id or default_id or "song", label="candidate_id"),
+        cid,
         str(src),
         ext=_ext_of(ext, filename, src),
         name=name,
         duration_s=round(dur, 2),
+        song_hash=hash_file(src),
     )
+    _warm(_candidate_analysis, fp, cid)  # measured while the person waits anyway
     return {"candidate_id": cid, "candidates": fp.song_candidates()}
 
 
 def remove_song_candidate(fp, *, candidate_id: str) -> dict:
     """Forget a song candidate and its file (the project's own song is untouched)."""
-    if not fp.remove_song_candidate(candidate_id):
-        raise FootageError(
-            f"no song candidate {candidate_id!r}; candidates: "
-            f"{[c['candidate_id'] for c in fp.song_candidates()]}"
-        )
-    return {"removed": candidate_id.strip(), "candidates": fp.song_candidates()}
+    cid = _normalised_id(candidate_id, label="candidate_id")
+    if not fp.remove_song_candidate(cid):
+        raise FootageError(_unknown_candidate_message(fp, cid))
+    return {"removed": cid, "candidates": fp.song_candidates()}
+
+
+def use_song_candidate(fp, *, candidate_id: str) -> dict:
+    """Make a song candidate the project's song (``rank_songs`` says which fits best).
+    Exactly as ``set_song`` with that file: the previous song is REPLACED and every
+    clip's offset and footage score measured against it is thrown away — add the
+    previous song as a candidate first to keep it to come back to. The candidate stays
+    a candidate."""
+    cid = _normalised_id(candidate_id, label="candidate_id")
+    row = next((c for c in fp.song_candidates() if c["candidate_id"] == cid), None)
+    if row is None:
+        raise FootageError(_unknown_candidate_message(fp, cid))
+    path = fp.song_candidate_path(cid)
+    filename = row["name"] if Path(row["name"]).suffix else row["name"] + path.suffix
+    return set_song(
+        fp, path=str(path), filename=filename, duration_s=row.get("duration_s")
+    )
 
 
 def rank_songs(fp) -> dict:
@@ -294,21 +295,28 @@ def rank_songs(fp) -> dict:
     project's song when it has one, ranked by planning the cut to each — nothing is
     rendered — on the planner's own terms: the videos' picture changing on the song's
     beat, their feel (lively or calm) fitting its loud and quiet parts, the song left
-    with no picture, and pictures shown more than once to fill it.
+    with no picture, and how many times over the footage must be shown to fill it.
 
     Returns ``ranking`` (best first): each song's ``candidate_id`` (``null`` for the
     project's own song), ``name``, ``score`` (higher fits better), the measures, and a
-    ``sentence`` saying why. Every video and photo is cut to the music for this, as
-    "Cut it for me" does for footage without the song in it.
+    ``sentence`` saying why; ``best`` names the first. Every video and photo is cut to
+    the music for the comparison (a video synced to the project's song is synced only
+    to that one); the project's song is cut on its declared beat grid when it has one.
+    A candidate that IS the project's song is ranked once.
     """
     from muvid.footage.music_cut import song_fit, song_fit_sentence
 
-    songs = [
-        (c["candidate_id"], c["name"], fp.song_candidate_path(c["candidate_id"]))
-        for c in fp.song_candidates()
-    ]
+    songs = []
     if fp.has_song():
-        songs.insert(0, (None, fp.song_info()["name"], fp.song_path()))
+        songs.append((None, fp.song_info()["name"], fp.song_path(), song_analysis(fp)))
+    ours = fp.song_hash() if fp.has_song() else None
+    for c in fp.song_candidates():
+        if c.get("song_hash") and c.get("song_hash") == ours:
+            continue
+        cid = c["candidate_id"]
+        songs.append(
+            (cid, c["name"], fp.song_candidate_path(cid), _candidate_analysis(fp, cid))
+        )
     if len(songs) < 2:
         raise FootageError(
             "nothing to choose between — add song candidates (add_song_candidate)"
@@ -317,11 +325,11 @@ def rank_songs(fp) -> dict:
     if not sources:
         raise FootageError("no videos or photos to cut to the songs — add some first")
     rows = []
-    for candidate_id, name, path in songs:
+    for candidate_id, name, path, analysis in songs:
         fit = song_fit(
             str(path),
             sources,
-            analysis=_analysis_of(fp, Path(path)),
+            analysis=analysis,
             envelope_of=lambda s: _activity_envelope(fp, s),
             canvas=fp.canvas(),
         )
@@ -335,6 +343,27 @@ def rank_songs(fp) -> dict:
         )
     rows.sort(key=lambda r: -r["score"])
     return {"ranking": rows, "best": rows[0]["candidate_id"]}
+
+
+def _unknown_candidate_message(fp, cid: str) -> str:
+    return (
+        f"no song candidate {cid!r}; candidates: "
+        f"{[c['candidate_id'] for c in fp.song_candidates()]}"
+    )
+
+
+def _id_from_name(name: str, *, fallback: str) -> str:
+    """A file's name made an id: anything but letters, digits, _ and - becomes _."""
+    return re.sub(r"[^A-Za-z0-9_-]+", "_", Path(name).stem).strip("_")[:60] or fallback
+
+
+def _unique_id(base: str, taken: set) -> str:
+    """``base``, or ``base_2``, ``base_3``... — the first not in ``taken``."""
+    cid, n = base, 1
+    while cid in taken:
+        n += 1
+        cid = f"{base}_{n}"
+    return cid
 
 
 def _ranking_sources(fp) -> list:
@@ -357,24 +386,12 @@ def _ranking_sources(fp) -> list:
     ]
 
 
-def _analysis_of(fp, path: Path):
-    """The beats, bars and sections of the song file at ``path``, measured once and
-    kept (``beats/``) by its content hash — the project's song or a candidate."""
-    from muvid.catalog import hash_file
-    from muvid.footage import music_cut
-    from muvid.footage.media_views import read_json, write_json
-    from muvid.montage.analysis import Analysis
-
-    cache = Path(fp.root) / "beats" / f"{hash_file(path)[:16]}-montage-analysis.json"
-    cached = read_json(cache)
-    if cached is not None:
-        try:
-            return Analysis.from_dict(cached)
-        except (KeyError, TypeError, ValueError):
-            pass  # an older shape: measure again
-    analysis = music_cut._default_analysis(str(path))
-    write_json(cache, analysis.to_dict())
-    return analysis
+def _candidate_analysis(fp, candidate_id: str):
+    """A candidate's beats, bars and sections, measured once and kept by its hash."""
+    row = next(c for c in fp.song_candidates() if c["candidate_id"] == candidate_id)
+    return _measured_song_analysis(
+        fp, path=fp.song_candidate_path(candidate_id), key=row.get("song_hash")
+    )
 
 
 def add_clip(
@@ -715,21 +732,26 @@ def song_analysis(fp):
     return _with_declared_grid(fp, _measured_song_analysis(fp))
 
 
-def _measured_song_analysis(fp):
-    """The estimator's analysis of the song, cached; a declared grid is NOT in it."""
+def _measured_song_analysis(fp, *, path=None, key=None):
+    """The estimator's analysis of the song (or of the song file at ``path``, keyed by
+    its content hash ``key`` — a candidate, muvid#135), cached; a declared grid is NOT
+    in it."""
+    from muvid.catalog import hash_file
     from muvid.footage import music_cut
     from muvid.footage.media_views import read_json, write_json
     from muvid.montage.analysis import Analysis
 
-    path = Path(fp.root) / "beats" / f"{fp.song_hash()[:16]}-montage-analysis.json"
-    cached = read_json(path)
+    song = Path(path) if path is not None else fp.song_path()
+    key = key or (fp.song_hash() if path is None else hash_file(song))
+    cache = Path(fp.root) / "beats" / f"{key[:16]}-montage-analysis.json"
+    cached = read_json(cache)
     if cached is not None:
         try:
             return Analysis.from_dict(cached)
         except (KeyError, TypeError, ValueError):
             pass  # an older shape: measure again
-    analysis = music_cut._default_analysis(str(fp.song_path()))
-    write_json(path, analysis.to_dict())
+    analysis = music_cut._default_analysis(str(song))
+    write_json(cache, analysis.to_dict())
     return analysis
 
 
@@ -4776,6 +4798,8 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec(
         "remove_song_candidate", "Remove a song to choose from", "destroy", mcp=False
     ),
+    # replaces the song (as set_song does): its offsets and scores go with it
+    OpSpec("use_song_candidate", "Use this song", "destroy", mcp=False),
     OpSpec(
         "rank_songs", "Find the song the videos fit best", "read", runs="job", mcp=False
     ),

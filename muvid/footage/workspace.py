@@ -366,15 +366,18 @@ class MusicVideoFootageProject:
         ext: str,
         name: str = "",
         duration_s: "float | None" = None,
+        song_hash: str = "",
     ) -> str:
         """Store a song the footage could be cut to instead — a CANDIDATE, ranked by
-        ``rank_songs`` and chosen with ``set_song(candidate_id=...)``. It is not the
-        project's song: nothing is aligned or scored against it. Returns its id."""
+        ``rank_songs`` and chosen with ``use_song_candidate``. It is not the project's
+        song: nothing is aligned or scored against it. Returns its id.
+
+        The file lands first, the manifest names it, and only then is a stale file of
+        the same id with another extension removed — a crash never leaves the
+        manifest naming a missing file."""
         cid = normalise_id(candidate_id, label="candidate_id")
         folder = self.root / "song_candidates"
         folder.mkdir(parents=True, exist_ok=True)
-        for old in _files_with_stem(folder, cid):
-            old.unlink()
         dest = replace_file(src_path, folder / f"{cid}{_safe_ext(ext)}")
         artifact_id = self._register(dest, kind="audio")
         m = self.manifest()
@@ -382,9 +385,13 @@ class MusicVideoFootageProject:
         rows[:] = [r for r in rows if r.get("candidate_id") != cid]
         row = {"candidate_id": cid, "file": dest.name, "name": name or cid}
         _set_or_drop(row, "duration_s", duration_s)
+        _set_or_drop(row, "song_hash", song_hash or None)
         _set_or_drop(row, "artifact_id", artifact_id)
         rows.append(row)
         self._write_manifest(m)
+        for old in _files_with_stem(folder, cid):
+            if old != dest:
+                old.unlink()
         return cid
 
     def song_candidates(self) -> list[dict]:
@@ -410,10 +417,10 @@ class MusicVideoFootageProject:
         kept = [r for r in rows if r.get("candidate_id") != cid]
         if len(kept) == len(rows):
             return False
+        m["song_candidates"] = kept
+        self._write_manifest(m)  # the manifest first: it never names a missing file
         for old in _files_with_stem(self.root / "song_candidates", cid):
             old.unlink()
-        m["song_candidates"] = kept
-        self._write_manifest(m)
         return True
 
     # -- footage clips -------------------------------------------------------

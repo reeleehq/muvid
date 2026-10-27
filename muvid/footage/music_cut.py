@@ -609,10 +609,11 @@ def liveliness(src: FreeSource, env: "Optional[Envelope]") -> Optional[float]:
 AFFECT_MIN_SPREAD = 0.25
 
 
-def _affect_fit(sources, analysis, energy_at, *, affect_of, envelope):
-    """The planner's ``affect_fit`` (muvid#134) — ``|arousal - slot loudness|`` in
-    [0, 1], arousal being the picture's ``affect_of`` value rescaled over the pool and
-    the loudness its section's — or ``None`` when there is nothing to match: no
+def _affect_mismatch(sources, analysis, energy_at, *, affect_of, envelope):
+    """``mismatch(start, end, source_index)`` — ``|arousal - loudness|`` in [0, 1] for a
+    picture shown over ``[start, end)`` (muvid#134), arousal being the picture's
+    ``affect_of`` value rescaled over the pool and the loudness its section's — or
+    ``None`` when there is nothing to match: no
     ``affect_of``, fewer than two sections with a measured loudness, or affects that do
     not differ by :data:`AFFECT_MIN_SPREAD`. A picture with no affect sits in the
     middle."""
@@ -626,36 +627,38 @@ def _affect_fit(sources, analysis, energy_at, *, affect_of, envelope):
         return None
     arousal = {i: (0.5 if v is None else (v - lo) / (hi - lo)) for i, v in raw.items()}
 
-    def fit(draft, media) -> float:
-        loud = (energy_at((draft.start + draft.end) / 2.0) + 1.0) / 2.0
-        return abs(arousal.get(media.index, 0.5) - loud)
+    def mismatch(start: float, end: float, index: int) -> float:
+        loud = (energy_at((start + end) / 2.0) + 1.0) / 2.0
+        return abs(arousal.get(index, 0.5) - loud)
 
-    return fit
+    return mismatch
 
 
-def _cut_affect_fit(entries, sources, affect_fit) -> Optional[float]:
+def _cut_affect_fit(entries, sources, mismatch) -> Optional[float]:
     """``1 - mismatch`` averaged over the cuts' time, or ``None`` without affect."""
-    if affect_fit is None or not entries:
+    if mismatch is None or not entries:
         return None
-    from types import SimpleNamespace
-
     index = {s.clip_id: i for i, s in enumerate(sources)}
     total = good = 0.0
     for e in entries:
         length = e.song_end - e.song_start
-        slot = SimpleNamespace(start=e.song_start, end=e.song_end)
-        media = SimpleNamespace(index=index.get(e.clip_id, -1))
-        good += length * (1.0 - affect_fit(slot, media))
+        good += length * (
+            1.0 - mismatch(e.song_start, e.song_end, index.get(e.clip_id, -1))
+        )
         total += length
     return round(good / total, 3) if total else None
 
 
-#: How a song's fit to the footage is scored (muvid#135), from the planner's own
-#: account of cutting the footage to it: the pictures changing on its beat (the mean
-#: ``on_beat``, 1 = no more than anywhere), their feel fitting its sections
-#: (``affect_fit``), the song left uncovered, and the pictures shown more than once to
-#: fill it. Uncovered time is the worst — a black hole in the video.
-SONG_FIT_WEIGHTS = {"beat": 1.0, "affect": 1.0, "uncovered": 3.0, "reuse": 0.5}
+#: How a song's fit to the footage is scored (muvid#135), from the planner's own account
+#: of cutting the footage to it, each term on a bounded scale: the pictures changing on
+#: its beat (``tanh(on_beat - 1)``, measured pictures only), their feel fitting its loud
+#: and quiet parts (``affect_fit`` mapped to [-1, 1]), the song left with no picture (a
+#: fraction — a black hole in the video, the worst), and how many times over the footage
+#: must be shown to fill it (above once, capped at 1).
+SONG_FIT_WEIGHTS = {"beat": 1.0, "affect": 1.0, "uncovered": 3.0, "reuse": 1.0}
+#: How many seconds of footage a photo counts for when judging repetition: shown much
+#: longer than a few moves, the same photo is repetition.
+STILL_FOOTAGE_S = 4.0
 
 
 def song_fit(
@@ -664,38 +667,43 @@ def song_fit(
     *,
     analysis: Any = None,
     weights: Mapping[str, float] = SONG_FIT_WEIGHTS,
+    still_footage_s: float = STILL_FOOTAGE_S,
     **fill_kw,
 ) -> dict:
     """How well ``sources`` cut to the music of ``song_path`` (muvid#135): plan the cut
-    (:func:`fill_spans`, pure — nothing is rendered) and score the plan by its own
-    terms. ``{"score", "on_beat", "affect_fit", "uncovered_s", "shows_per_picture",
-    "duration_s", "n_cuts"}``; higher ``score`` fits better. ``fill_kw`` reaches
-    :func:`fill_spans` (``envelope_of``, ``order``, ``archetype``...); the order
-    defaults to ``planner`` so the pictures' feel can be matched to the song.
+    (:func:`fill_spans`, pure — nothing is rendered) and score the plan on its own
+    terms (:data:`SONG_FIT_WEIGHTS`). ``{"score", "on_beat", "affect_fit",
+    "uncovered_s", "times_over", "duration_s", "n_cuts"}``; higher ``score`` fits
+    better. ``on_beat`` is ``None`` when no video's picture was measured, ``affect_fit``
+    when the feel could not be matched (each then counts nothing). ``fill_kw`` reaches
+    :func:`fill_spans`; the order defaults to ``planner`` so the feel can be matched.
     """
     fill_kw.setdefault("order", "planner")
     cut = fill_spans(song_path, sources, analysis=analysis, **fill_kw)
     r = cut.report
-    duration = float(analysis.duration if analysis is not None else 0.0) or sum(
-        e.song_end - e.song_start for e in cut.entries
-    ) + float(r.get("uncovered_s", 0.0))
-    on_beat = [v for v in r.get("on_beat", {}).values()]
-    beat = float(np.mean(on_beat)) if on_beat else 1.0
-    shows = sum(r.get("uses", {}).values()) / max(1, len(sources))
-    uncovered = float(r.get("uncovered_s", 0.0)) / duration if duration else 0.0
+    covered = sum(e.song_end - e.song_start for e in cut.entries)
+    uncovered_s = float(r.get("uncovered_s", 0.0))
+    duration = float(getattr(analysis, "duration", 0.0) or covered + uncovered_s)
+    measured = set(r.get("measured_pictures", ()))
+    beats = [v for cid, v in r.get("on_beat", {}).items() if cid in measured]
+    beat = float(np.mean(beats)) if beats else None
+    footage = sum(
+        still_footage_s if s.is_still else float(s.duration_s or 0.0) for s in sources
+    )
+    times_over = covered / footage if footage else 0.0
     affect = r.get("affect_fit")
     score = (
-        weights["beat"] * (beat - 1.0)
-        + weights["affect"] * ((affect if affect is not None else 0.5) - 0.5)
-        - weights["uncovered"] * uncovered
-        - weights["reuse"] * max(0.0, shows - 1.0)
+        weights["beat"] * (math.tanh(beat - 1.0) if beat is not None else 0.0)
+        + weights["affect"] * (2.0 * affect - 1.0 if affect is not None else 0.0)
+        - weights["uncovered"] * (uncovered_s / duration if duration else 0.0)
+        - weights["reuse"] * min(1.0, max(0.0, times_over - 1.0))
     )
     return {
         "score": round(score, 4),
-        "on_beat": round(beat, 3),
+        "on_beat": None if beat is None else round(beat, 3),
         "affect_fit": affect,
-        "uncovered_s": round(float(r.get("uncovered_s", 0.0)), 2),
-        "shows_per_picture": round(shows, 2),
+        "uncovered_s": round(uncovered_s, 2),
+        "times_over": round(times_over, 2),
         "duration_s": round(duration, 2),
         "n_cuts": len(cut.entries),
     }
@@ -704,12 +712,12 @@ def song_fit(
 def song_fit_sentence(name: str, fit: dict) -> str:
     """One sentence a person reads about ``fit`` (:func:`song_fit`) for song ``name``."""
     parts = []
-    if fit["on_beat"] > 1.05:
+    beat = fit["on_beat"]
+    if beat is not None and beat > 1.05:
         parts.append(
-            f"the videos change on its beat {fit['on_beat']:.1f} times as often as "
-            "elsewhere"
+            f"the videos change on its beat {beat:.1f} times as often as elsewhere"
         )
-    elif fit["on_beat"] < 0.95:
+    elif beat is not None and beat < 0.95:
         parts.append("the videos change off its beat more than on it")
     if fit["affect_fit"] is not None:
         parts.append(
@@ -720,9 +728,9 @@ def song_fit_sentence(name: str, fit: dict) -> str:
     if fit["uncovered_s"] > 0:
         parts.append(f"{fit['uncovered_s']:.0f} s of it would have no picture")
     parts.append(
-        f"each picture is shown {fit['shows_per_picture']:.1f} times on average"
-        if fit["shows_per_picture"] > 1.05
-        else "no picture has to be shown twice"
+        f"the footage would be shown about {fit['times_over']:.1f} times over to fill it"
+        if fit["times_over"] > 1.05
+        else "it needs no footage twice"
     )
     return f"{name}: " + "; ".join(parts) + "."
 
@@ -831,12 +839,17 @@ def fill_spans(
         return envelopes[src.clip_id]
 
     energy_at = _section_energy(analysis)
-    affect_fit = (
+    mismatch = (
         None
         if order == "taken"
-        else _affect_fit(
+        else _affect_mismatch(
             sources, analysis, energy_at, affect_of=affect_of, envelope=envelope
         )
+    )
+    affect_fit = (  # the planner's shape: (slot, media) -> mismatch
+        None
+        if mismatch is None
+        else (lambda draft, media: mismatch(draft.start, draft.end, media.index))
     )
     plan = plan_montage(
         analysis,
@@ -946,7 +959,7 @@ def fill_spans(
         "affect": bool(plan.reuse.get("affect")),
         # how well the pictures' feel fits the sections', over cut time: 1 a perfect
         # match, 0 the opposite; None when affect did not apply (muvid#135 ranks on it)
-        "affect_fit": _cut_affect_fit(entries, sources, affect_fit),
+        "affect_fit": _cut_affect_fit(entries, sources, mismatch),
         "sections": [
             {"label": s.label, "start": round(s.start, 2), "end": round(s.end, 2)}
             for s in analysis.sections
