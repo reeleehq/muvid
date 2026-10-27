@@ -65,4 +65,6 @@ def shot_boundaries(
         return []
     from mixing.video import shots  # lazy: mixing.video is not free to import
 
-    return [start + offset_s for start, _end in shots(str(clip_path), strategy=strategy)[1:]]
+    return [
+        start + offset_s for start, _end in shots(str(clip_path), strategy=strategy)[1:]
+    ]

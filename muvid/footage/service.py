@@ -1279,6 +1279,7 @@ def measure_spans(fp) -> dict:
         [(cid, paths[cid]) for cid in placed],
         song_duration=fp.song_duration(),
     )
+
     # Minutes may have passed: re-read, and attach spans only where the song and the
     # placement are still the ones measured — never write back a stale copy (an offset
     # set meanwhile would be reverted, an old song's offsets brought back; muvid#59)

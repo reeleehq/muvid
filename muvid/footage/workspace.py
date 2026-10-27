@@ -506,7 +506,9 @@ class MusicVideoFootageProject:
             # Look the clip up UNDER the lock: a second remove that overlapped this one
             # must refuse, not drop the measured records made since the first (muvid#236).
             m = self.manifest()
-            entry = next((c for c in m.get("clips", []) if c.get("clip_id") == cid), None)
+            entry = next(
+                (c for c in m.get("clips", []) if c.get("clip_id") == cid), None
+            )
             if entry is None:
                 raise KeyError(cid)
             had_alignment = alignment.exists()
