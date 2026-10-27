@@ -2988,141 +2988,215 @@
 
 </span><span id="line-2742">
 </span><span id="line-2743">
-</span><span id="line-2744"><span class="k">def</span><span class="w"> </span><span class="nf">_validate_transition</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">prev</span><span class="p">,</span> <span class="n">by_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-2745"><span class="w">    </span><span class="sd">"""The four things a transition has to satisfy. Raises ``ValueError``.</span>
-</span><span id="line-2746">
-</span><span id="line-2747"><span class="sd">    Split out only for length; it is part of :func:`validate_edl`, which remains</span>
-</span><span id="line-2748"><span class="sd">    the ONE gate. Nothing else may check these.</span>
-</span><span id="line-2749"><span class="sd">    """</span>
-</span><span id="line-2750">    <span class="n">t</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">transition</span>
-</span><span id="line-2751">    <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-2752">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2753">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> carries a transition but is the first entry — there is "</span>
-</span><span id="line-2754">            <span class="s2">"nothing to blend in FROM. A transition annotates an entry's entrance, "</span>
-</span><span id="line-2755">            <span class="s2">"so the first entry of the edit cannot have one. (An entry preceded by "</span>
-</span><span id="line-2756">            <span class="s2">"a gap CAN: it blends in from black.)"</span>
-</span><span id="line-2757">        <span class="p">)</span>
-</span><span id="line-2758">    <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">curve</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">TRANSITION_CURVES</span><span class="p">:</span>
-</span><span id="line-2759">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2760">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: unknown transition curve </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">curve</span><span class="si">!r}</span><span class="s2">; "</span>
-</span><span id="line-2761">            <span class="sa">f</span><span class="s2">"muvid offers </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">TRANSITION_CURVES</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span>
-</span><span id="line-2762">        <span class="p">)</span>
-</span><span id="line-2763">    <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">duration_s</span> <span class="o">&lt;</span> <span class="n">MIN_TRANSITION_S</span><span class="p">:</span>
-</span><span id="line-2764">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2765">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: transition duration </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">duration_s</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s is below the "</span>
-</span><span id="line-2766">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">MIN_TRANSITION_S</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s floor. A transition shorter than about a frame "</span>
-</span><span id="line-2767">            <span class="s2">"renders as a hard cut, which is a direction that silently did nothing."</span>
-</span><span id="line-2768">        <span class="p">)</span>
-</span><span id="line-2769">
-</span><span id="line-2770">    <span class="c1"># (1) It must FIT IN SONG TIME. An entry can be claimed from BOTH ends — its own</span>
-</span><span id="line-2771">    <span class="c1"># incoming transition eats the head of its span, its successor's eats the tail —</span>
-</span><span id="line-2772">    <span class="c1"># and checking each transition against a whole span in isolation lets two</span>
-</span><span id="line-2773">    <span class="c1"># legal-looking transitions together consume more than the span between them.</span>
-</span><span id="line-2774">    <span class="c1">#</span>
-</span><span id="line-2775">    <span class="c1"># Two checks, each looking ONE way, and that is exactly enough. A forward term</span>
-</span><span id="line-2776">    <span class="c1"># for the successor's claim would be dead: entry i+1's backward check evaluates</span>
-</span><span id="line-2777">    <span class="c1"># the identical inequality, so it could never be the sole cause of a rejection.</span>
-</span><span id="line-2778">    <span class="c1"># (Mutation testing is how that was established — the term was written first and</span>
-</span><span id="line-2779">    <span class="c1"># deleting it left the suite green.)</span>
-</span><span id="line-2780">    <span class="n">lead</span><span class="p">,</span> <span class="n">trail</span> <span class="o">=</span> <span class="n">blend_lead</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="n">blend_trail</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
-</span><span id="line-2781">    <span class="n">prev_own_trail</span> <span class="o">=</span> <span class="n">blend_trail</span><span class="p">(</span><span class="n">prev</span><span class="o">.</span><span class="n">transition</span><span class="p">)</span> <span class="k">if</span> <span class="n">prev</span><span class="o">.</span><span class="n">transition</span> <span class="k">else</span> <span class="mf">0.0</span>
-</span><span id="line-2782">    <span class="k">if</span> <span class="n">prev_own_trail</span> <span class="o">+</span> <span class="n">lead</span> <span class="o">&gt;</span> <span class="n">_span</span><span class="p">(</span><span class="n">prev</span><span class="p">)</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">:</span>
-</span><span id="line-2783">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2784">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: its transition needs </span><span class="si">{</span><span class="n">lead</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s from the END of entry "</span>
-</span><span id="line-2785">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">, whose </span><span class="si">{</span><span class="n">_span</span><span class="p">(</span><span class="n">prev</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s span"</span>
-</span><span id="line-2786">            <span class="o">+</span> <span class="p">(</span>
-</span><span id="line-2787">                <span class="sa">f</span><span class="s2">" already gives </span><span class="si">{</span><span class="n">prev_own_trail</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s to its own transition. "</span>
-</span><span id="line-2788">                <span class="s2">"Together they exceed it."</span>
-</span><span id="line-2789">                <span class="k">if</span> <span class="n">prev_own_trail</span>
-</span><span id="line-2790">                <span class="k">else</span> <span class="s2">" is shorter than that."</span>
-</span><span id="line-2791">            <span class="p">)</span>
-</span><span id="line-2792">        <span class="p">)</span>
-</span><span id="line-2793">    <span class="k">if</span> <span class="n">trail</span> <span class="o">&gt;</span> <span class="n">_span</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">:</span>
-</span><span id="line-2794">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2795">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: its transition needs </span><span class="si">{</span><span class="n">trail</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s from the START of its "</span>
-</span><span id="line-2796">            <span class="sa">f</span><span class="s2">"own </span><span class="si">{</span><span class="n">_span</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s span, which is shorter than that."</span>
-</span><span id="line-2797">        <span class="p">)</span>
-</span><span id="line-2798">
-</span><span id="line-2799">    <span class="c1"># (2) It must fit in each side's aligned COVERAGE, evaluated PER SIDE. A blend</span>
-</span><span id="line-2800">    <span class="c1"># reads past its own span into the neighbour's source material — legitimately,</span>
-</span><span id="line-2801">    <span class="c1"># which is why this is not the overlap rule above. A gap side is skipped: its</span>
-</span><span id="line-2802">    <span class="c1"># black source is synthetic and re-parameterizable, so it can always supply the</span>
-</span><span id="line-2803">    <span class="c1"># window.</span>
-</span><span id="line-2804">    <span class="k">if</span> <span class="ow">not</span> <span class="n">prev</span><span class="o">.</span><span class="n">is_gap</span><span class="p">:</span>
-</span><span id="line-2805">        <span class="n">a</span> <span class="o">=</span> <span class="n">placed_as</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">by_id</span><span class="p">[</span><span class="n">prev</span><span class="o">.</span><span class="n">clip_id</span><span class="p">])</span>
-</span><span id="line-2806">        <span class="c1"># UNCLAMPED, deliberately: `derive_cuts` clamps `clip_in` at 0 for the</span>
-</span><span id="line-2807">        <span class="c1"># renderer, and reading a clamped value here would let a short clip pass</span>
-</span><span id="line-2808">        <span class="c1"># by silently pretending it starts earlier than it does.</span>
-</span><span id="line-2809">        <span class="n">end_in_clip</span> <span class="o">=</span> <span class="n">clip_in_of</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">_span</span><span class="p">(</span><span class="n">prev</span><span class="p">)</span> <span class="o">*</span> <span class="n">prev</span><span class="o">.</span><span class="n">rate</span>
-</span><span id="line-2810">        <span class="k">if</span> <span class="n">end_in_clip</span> <span class="o">+</span> <span class="n">trail</span> <span class="o">*</span> <span class="n">prev</span><span class="o">.</span><span class="n">rate</span> <span class="o">&gt;</span> <span class="n">a</span><span class="o">.</span><span class="n">duration_s</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">:</span>
-</span><span id="line-2811">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2812">                <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: the transition needs </span><span class="si">{</span><span class="n">trail</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s of clip "</span>
-</span><span id="line-2813">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prev</span><span class="o">.</span><span class="n">clip_id</span><span class="si">!r}</span><span class="s2"> PAST the end of entry </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">'s span, but the clip "</span>
-</span><span id="line-2814">                <span class="sa">f</span><span class="s2">"ends </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">duration_s</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">end_in_clip</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s after it."</span>
-</span><span id="line-2815">            <span class="p">)</span>
-</span><span id="line-2816">    <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">is_gap</span><span class="p">:</span>
-</span><span id="line-2817">        <span class="n">a</span> <span class="o">=</span> <span class="n">placed_as</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">by_id</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">])</span>
-</span><span id="line-2818">        <span class="n">start_in_clip</span> <span class="o">=</span> <span class="n">clip_in_of</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
-</span><span id="line-2819">        <span class="k">if</span> <span class="n">start_in_clip</span> <span class="o">-</span> <span class="n">lead</span> <span class="o">*</span> <span class="n">e</span><span class="o">.</span><span class="n">rate</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">_EPS</span><span class="p">:</span>
-</span><span id="line-2820">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-2821">                <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: the transition needs </span><span class="si">{</span><span class="n">lead</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s of clip "</span>
-</span><span id="line-2822">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="si">!r}</span><span class="s2"> BEFORE its span starts, but the span begins only "</span>
-</span><span id="line-2823">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">start_in_clip</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s into the clip."</span>
-</span><span id="line-2824">            <span class="p">)</span>
-</span><span id="line-2825">
-</span><span id="line-2826">
+<div class="viewcode-block" id="blend_reads">
+<a class="viewcode-back" href="../../../_autosummary/muvid.footage.edl.html#muvid.footage.blend_reads">[docs]</a>
+</span><span id="line-2744"><span class="k">def</span><span class="w"> </span><span class="nf">blend_reads</span><span class="p">(</span>
+</span><span id="line-2745">    <span class="n">transition</span><span class="p">:</span> <span class="s2">"Transition | None"</span><span class="p">,</span>
+</span><span id="line-2746">    <span class="n">next_transition</span><span class="p">:</span> <span class="s2">"Transition | None"</span><span class="p">,</span>
+</span><span id="line-2747">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-2748">    <span class="n">rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+</span><span id="line-2749"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"tuple[float, float]"</span><span class="p">:</span>
+</span><span id="line-2750"><span class="w">    </span><span class="sd">"""``(lead, trail)``: clip seconds a cut's blends read before its in-point (its own</span>
+</span><span id="line-2751"><span class="sd">    ``transition``) and past its end (the FOLLOWING cut's), at the cut's ``rate`` — as</span>
+</span><span id="line-2752"><span class="sd">    :func:`_validate_transition` scales them.</span>
+</span><span id="line-2753">
+</span><span id="line-2754"><span class="sd">    &gt;&gt;&gt; blend_reads(Transition(duration_s=1.0, curve="fade"), None, rate=2.0)</span>
+</span><span id="line-2755"><span class="sd">    (1.0, 0.0)</span>
+</span><span id="line-2756"><span class="sd">    """</span>
+</span><span id="line-2757">    <span class="n">lead</span> <span class="o">=</span> <span class="n">blend_lead</span><span class="p">(</span><span class="n">transition</span><span class="p">)</span> <span class="o">*</span> <span class="n">rate</span> <span class="k">if</span> <span class="n">transition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.0</span>
+</span><span id="line-2758">    <span class="n">trail</span> <span class="o">=</span> <span class="n">blend_trail</span><span class="p">(</span><span class="n">next_transition</span><span class="p">)</span> <span class="o">*</span> <span class="n">rate</span> <span class="k">if</span> <span class="n">next_transition</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.0</span>
+</span><span id="line-2759">    <span class="k">return</span> <span class="n">lead</span><span class="p">,</span> <span class="n">trail</span></div>
+
+</span><span id="line-2760">
+</span><span id="line-2761">
+<div class="viewcode-block" id="in_point_bounds">
+<a class="viewcode-back" href="../../../_autosummary/muvid.footage.edl.html#muvid.footage.in_point_bounds">[docs]</a>
+</span><span id="line-2762"><span class="k">def</span><span class="w"> </span><span class="nf">in_point_bounds</span><span class="p">(</span>
+</span><span id="line-2763">    <span class="n">cut</span><span class="p">:</span> <span class="s2">"EdlEntry"</span><span class="p">,</span>
+</span><span id="line-2764">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-2765">    <span class="n">clip_duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-2766">    <span class="n">next_transition</span><span class="p">:</span> <span class="s2">"Transition | None"</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-2767">    <span class="n">edge_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-2768"><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"tuple[float, float] | None"</span><span class="p">:</span>
+</span><span id="line-2769"><span class="w">    </span><span class="sd">"""The legal ``source_in`` values ``(lo, hi)`` for free cut ``cut`` in a clip of</span>
+</span><span id="line-2770"><span class="sd">    ``clip_duration_s`` seconds — THE owner of that arithmetic (muvid#192), so every</span>
+</span><span id="line-2771"><span class="sd">    writer that picks an in-point asks the question :func:`_validate_transition` and</span>
+</span><span id="line-2772"><span class="sd">    the containment check enforce.</span>
+</span><span id="line-2773">
+</span><span id="line-2774"><span class="sd">    Read from ``cut``: its span, which reads ``span * rate`` of the clip; its own</span>
+</span><span id="line-2775"><span class="sd">    ``transition``, which reads :func:`blend_lead` before the in-point; its ``slip_s``,</span>
+</span><span id="line-2776"><span class="sd">    which the gate adds to ``source_in`` (:func:`clip_in_of`). ``next_transition`` is</span>
+</span><span id="line-2777"><span class="sd">    the FOLLOWING cut's blend, which reads :func:`blend_trail` past this cut's end in</span>
+</span><span id="line-2778"><span class="sd">    this clip. Both blends scale by this cut's rate, as the gate scales them.</span>
+</span><span id="line-2779">
+</span><span id="line-2780"><span class="sd">    ``edge_s`` keeps a margin from each end of the clip (a thumb on the button,</span>
+</span><span id="line-2781"><span class="sd">    :data:`EDGE_S`) when there is room for it, and gives it up symmetrically when there</span>
+</span><span id="line-2782"><span class="sd">    is not: the margin is a preference, the gate's bounds are not. ``None`` when the</span>
+</span><span id="line-2783"><span class="sd">    clip cannot hold the span and both blends at all.</span>
+</span><span id="line-2784">
+</span><span id="line-2785"><span class="sd">    &gt;&gt;&gt; t = Transition(duration_s=1.0, curve="fade")</span>
+</span><span id="line-2786"><span class="sd">    &gt;&gt;&gt; cut = EdlEntry(10.0, 12.0, "c", transition=t)</span>
+</span><span id="line-2787"><span class="sd">    &gt;&gt;&gt; in_point_bounds(cut, clip_duration_s=10.0, next_transition=t)</span>
+</span><span id="line-2788"><span class="sd">    (0.5, 7.5)</span>
+</span><span id="line-2789"><span class="sd">    &gt;&gt;&gt; in_point_bounds(cut, clip_duration_s=10.0, edge_s=0.25)</span>
+</span><span id="line-2790"><span class="sd">    (0.75, 7.75)</span>
+</span><span id="line-2791"><span class="sd">    &gt;&gt;&gt; in_point_bounds(cut, clip_duration_s=3.25, next_transition=t, edge_s=0.25)</span>
+</span><span id="line-2792"><span class="sd">    (0.625, 0.625)</span>
+</span><span id="line-2793"><span class="sd">    &gt;&gt;&gt; in_point_bounds(replace(cut, slip_s=-0.25), clip_duration_s=10.0, next_transition=t)</span>
+</span><span id="line-2794"><span class="sd">    (0.75, 7.75)</span>
+</span><span id="line-2795"><span class="sd">    &gt;&gt;&gt; in_point_bounds(cut, clip_duration_s=2.9, next_transition=t) is None</span>
+</span><span id="line-2796"><span class="sd">    True</span>
+</span><span id="line-2797"><span class="sd">    """</span>
+</span><span id="line-2798">    <span class="n">rate</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cut</span><span class="p">,</span> <span class="s2">"rate"</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+</span><span id="line-2799">    <span class="n">lead</span><span class="p">,</span> <span class="n">trail</span> <span class="o">=</span> <span class="n">blend_reads</span><span class="p">(</span><span class="n">cut</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span> <span class="n">next_transition</span><span class="p">,</span> <span class="n">rate</span><span class="o">=</span><span class="n">rate</span><span class="p">)</span>
+</span><span id="line-2800">    <span class="n">slip</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cut</span><span class="p">,</span> <span class="s2">"slip_s"</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+</span><span id="line-2801">    <span class="n">span</span> <span class="o">=</span> <span class="p">(</span><span class="n">cut</span><span class="o">.</span><span class="n">song_end</span> <span class="o">-</span> <span class="n">cut</span><span class="o">.</span><span class="n">song_start</span><span class="p">)</span> <span class="o">*</span> <span class="n">rate</span>
+</span><span id="line-2802">    <span class="c1"># the gate's room for clip_in = source_in + slip, moved into source_in, which is a</span>
+</span><span id="line-2803">    <span class="c1"># time in the clip and so never negative (`_as_entry` refuses it)</span>
+</span><span id="line-2804">    <span class="n">lo</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">lead</span> <span class="o">-</span> <span class="n">slip</span><span class="p">)</span>
+</span><span id="line-2805">    <span class="n">hi</span> <span class="o">=</span> <span class="n">clip_duration_s</span> <span class="o">-</span> <span class="n">span</span> <span class="o">-</span> <span class="n">trail</span> <span class="o">-</span> <span class="n">slip</span>
+</span><span id="line-2806">    <span class="k">if</span> <span class="n">hi</span> <span class="o">&lt;</span> <span class="n">lo</span> <span class="o">-</span> <span class="n">_EPS</span><span class="p">:</span>
+</span><span id="line-2807">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-2808">    <span class="n">edge</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">edge_s</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">lo</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span><span id="line-2809">    <span class="k">return</span> <span class="n">lo</span> <span class="o">+</span> <span class="n">edge</span><span class="p">,</span> <span class="nb">max</span><span class="p">(</span><span class="n">lo</span> <span class="o">+</span> <span class="n">edge</span><span class="p">,</span> <span class="n">hi</span> <span class="o">-</span> <span class="n">edge</span><span class="p">)</span></div>
+
+</span><span id="line-2810">
+</span><span id="line-2811">
+</span><span id="line-2812"><span class="k">def</span><span class="w"> </span><span class="nf">_validate_transition</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">prev</span><span class="p">,</span> <span class="n">by_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-2813"><span class="w">    </span><span class="sd">"""The four things a transition has to satisfy. Raises ``ValueError``.</span>
+</span><span id="line-2814">
+</span><span id="line-2815"><span class="sd">    Split out only for length; it is part of :func:`validate_edl`, which remains</span>
+</span><span id="line-2816"><span class="sd">    the ONE gate. Nothing else may check these.</span>
+</span><span id="line-2817"><span class="sd">    """</span>
+</span><span id="line-2818">    <span class="n">t</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">transition</span>
+</span><span id="line-2819">    <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-2820">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2821">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> carries a transition but is the first entry — there is "</span>
+</span><span id="line-2822">            <span class="s2">"nothing to blend in FROM. A transition annotates an entry's entrance, "</span>
+</span><span id="line-2823">            <span class="s2">"so the first entry of the edit cannot have one. (An entry preceded by "</span>
+</span><span id="line-2824">            <span class="s2">"a gap CAN: it blends in from black.)"</span>
+</span><span id="line-2825">        <span class="p">)</span>
+</span><span id="line-2826">    <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">curve</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">TRANSITION_CURVES</span><span class="p">:</span>
+</span><span id="line-2827">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2828">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: unknown transition curve </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">curve</span><span class="si">!r}</span><span class="s2">; "</span>
+</span><span id="line-2829">            <span class="sa">f</span><span class="s2">"muvid offers </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">TRANSITION_CURVES</span><span class="p">)</span><span class="si">}</span><span class="s2">."</span>
+</span><span id="line-2830">        <span class="p">)</span>
+</span><span id="line-2831">    <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">duration_s</span> <span class="o">&lt;</span> <span class="n">MIN_TRANSITION_S</span><span class="p">:</span>
+</span><span id="line-2832">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2833">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: transition duration </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">duration_s</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s is below the "</span>
+</span><span id="line-2834">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">MIN_TRANSITION_S</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s floor. A transition shorter than about a frame "</span>
+</span><span id="line-2835">            <span class="s2">"renders as a hard cut, which is a direction that silently did nothing."</span>
+</span><span id="line-2836">        <span class="p">)</span>
+</span><span id="line-2837">
+</span><span id="line-2838">    <span class="c1"># (1) It must FIT IN SONG TIME. An entry can be claimed from BOTH ends — its own</span>
+</span><span id="line-2839">    <span class="c1"># incoming transition eats the head of its span, its successor's eats the tail —</span>
+</span><span id="line-2840">    <span class="c1"># and checking each transition against a whole span in isolation lets two</span>
+</span><span id="line-2841">    <span class="c1"># legal-looking transitions together consume more than the span between them.</span>
+</span><span id="line-2842">    <span class="c1">#</span>
+</span><span id="line-2843">    <span class="c1"># Two checks, each looking ONE way, and that is exactly enough. A forward term</span>
+</span><span id="line-2844">    <span class="c1"># for the successor's claim would be dead: entry i+1's backward check evaluates</span>
+</span><span id="line-2845">    <span class="c1"># the identical inequality, so it could never be the sole cause of a rejection.</span>
+</span><span id="line-2846">    <span class="c1"># (Mutation testing is how that was established — the term was written first and</span>
+</span><span id="line-2847">    <span class="c1"># deleting it left the suite green.)</span>
+</span><span id="line-2848">    <span class="n">lead</span><span class="p">,</span> <span class="n">trail</span> <span class="o">=</span> <span class="n">blend_lead</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="n">blend_trail</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span><span id="line-2849">    <span class="n">prev_own_trail</span> <span class="o">=</span> <span class="n">blend_trail</span><span class="p">(</span><span class="n">prev</span><span class="o">.</span><span class="n">transition</span><span class="p">)</span> <span class="k">if</span> <span class="n">prev</span><span class="o">.</span><span class="n">transition</span> <span class="k">else</span> <span class="mf">0.0</span>
+</span><span id="line-2850">    <span class="k">if</span> <span class="n">prev_own_trail</span> <span class="o">+</span> <span class="n">lead</span> <span class="o">&gt;</span> <span class="n">_span</span><span class="p">(</span><span class="n">prev</span><span class="p">)</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">:</span>
+</span><span id="line-2851">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2852">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: its transition needs </span><span class="si">{</span><span class="n">lead</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s from the END of entry "</span>
+</span><span id="line-2853">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">, whose </span><span class="si">{</span><span class="n">_span</span><span class="p">(</span><span class="n">prev</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s span"</span>
+</span><span id="line-2854">            <span class="o">+</span> <span class="p">(</span>
+</span><span id="line-2855">                <span class="sa">f</span><span class="s2">" already gives </span><span class="si">{</span><span class="n">prev_own_trail</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s to its own transition. "</span>
+</span><span id="line-2856">                <span class="s2">"Together they exceed it."</span>
+</span><span id="line-2857">                <span class="k">if</span> <span class="n">prev_own_trail</span>
+</span><span id="line-2858">                <span class="k">else</span> <span class="s2">" is shorter than that."</span>
+</span><span id="line-2859">            <span class="p">)</span>
+</span><span id="line-2860">        <span class="p">)</span>
+</span><span id="line-2861">    <span class="k">if</span> <span class="n">trail</span> <span class="o">&gt;</span> <span class="n">_span</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">:</span>
+</span><span id="line-2862">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2863">            <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: its transition needs </span><span class="si">{</span><span class="n">trail</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s from the START of its "</span>
+</span><span id="line-2864">            <span class="sa">f</span><span class="s2">"own </span><span class="si">{</span><span class="n">_span</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s span, which is shorter than that."</span>
+</span><span id="line-2865">        <span class="p">)</span>
+</span><span id="line-2866">
+</span><span id="line-2867">    <span class="c1"># (2) It must fit in each side's aligned COVERAGE, evaluated PER SIDE. A blend</span>
+</span><span id="line-2868">    <span class="c1"># reads past its own span into the neighbour's source material — legitimately,</span>
+</span><span id="line-2869">    <span class="c1"># which is why this is not the overlap rule above. A gap side is skipped: its</span>
+</span><span id="line-2870">    <span class="c1"># black source is synthetic and re-parameterizable, so it can always supply the</span>
+</span><span id="line-2871">    <span class="c1"># window.</span>
+</span><span id="line-2872">    <span class="k">if</span> <span class="ow">not</span> <span class="n">prev</span><span class="o">.</span><span class="n">is_gap</span><span class="p">:</span>
+</span><span id="line-2873">        <span class="n">a</span> <span class="o">=</span> <span class="n">placed_as</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">by_id</span><span class="p">[</span><span class="n">prev</span><span class="o">.</span><span class="n">clip_id</span><span class="p">])</span>
+</span><span id="line-2874">        <span class="c1"># UNCLAMPED, deliberately: `derive_cuts` clamps `clip_in` at 0 for the</span>
+</span><span id="line-2875">        <span class="c1"># renderer, and reading a clamped value here would let a short clip pass</span>
+</span><span id="line-2876">        <span class="c1"># by silently pretending it starts earlier than it does.</span>
+</span><span id="line-2877">        <span class="n">end_in_clip</span> <span class="o">=</span> <span class="n">clip_in_of</span><span class="p">(</span><span class="n">prev</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="o">+</span> <span class="n">_span</span><span class="p">(</span><span class="n">prev</span><span class="p">)</span> <span class="o">*</span> <span class="n">prev</span><span class="o">.</span><span class="n">rate</span>
+</span><span id="line-2878">        <span class="k">if</span> <span class="n">end_in_clip</span> <span class="o">+</span> <span class="n">trail</span> <span class="o">*</span> <span class="n">prev</span><span class="o">.</span><span class="n">rate</span> <span class="o">&gt;</span> <span class="n">a</span><span class="o">.</span><span class="n">duration_s</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">:</span>
+</span><span id="line-2879">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2880">                <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: the transition needs </span><span class="si">{</span><span class="n">trail</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s of clip "</span>
+</span><span id="line-2881">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">prev</span><span class="o">.</span><span class="n">clip_id</span><span class="si">!r}</span><span class="s2"> PAST the end of entry </span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">'s span, but the clip "</span>
+</span><span id="line-2882">                <span class="sa">f</span><span class="s2">"ends </span><span class="si">{</span><span class="n">a</span><span class="o">.</span><span class="n">duration_s</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">end_in_clip</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s after it."</span>
+</span><span id="line-2883">            <span class="p">)</span>
+</span><span id="line-2884">    <span class="k">if</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">is_gap</span><span class="p">:</span>
+</span><span id="line-2885">        <span class="n">a</span> <span class="o">=</span> <span class="n">placed_as</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">by_id</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">])</span>
+</span><span id="line-2886">        <span class="n">start_in_clip</span> <span class="o">=</span> <span class="n">clip_in_of</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</span><span id="line-2887">        <span class="k">if</span> <span class="n">start_in_clip</span> <span class="o">-</span> <span class="n">lead</span> <span class="o">*</span> <span class="n">e</span><span class="o">.</span><span class="n">rate</span> <span class="o">&lt;</span> <span class="o">-</span><span class="n">_EPS</span><span class="p">:</span>
+</span><span id="line-2888">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-2889">                <span class="sa">f</span><span class="s2">"EDL entry </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">: the transition needs </span><span class="si">{</span><span class="n">lead</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s of clip "</span>
+</span><span id="line-2890">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="si">!r}</span><span class="s2"> BEFORE its span starts, but the span begins only "</span>
+</span><span id="line-2891">                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">start_in_clip</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">s into the clip."</span>
+</span><span id="line-2892">            <span class="p">)</span>
+</span><span id="line-2893">
+</span><span id="line-2894">
 <div class="viewcode-block" id="derive_cuts">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.edl.html#muvid.footage.derive_cuts">[docs]</a>
-</span><span id="line-2827"><span class="k">def</span><span class="w"> </span><span class="nf">derive_cuts</span><span class="p">(</span>
-</span><span id="line-2828">    <span class="n">edl</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">],</span>
-</span><span id="line-2829">    <span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span>
-</span><span id="line-2830">    <span class="n">clip_paths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-</span><span id="line-2831"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">AssemblyCut</span><span class="p">]:</span>
-</span><span id="line-2832"><span class="w">    </span><span class="sd">"""Turn a *validated* EDL into render-ready cuts — the ONE place ``clip_in`` is derived.</span>
-</span><span id="line-2833">
-</span><span id="line-2834"><span class="sd">    Strategies emit only ``{song_start, song_end, clip_id}``; the sign convention</span>
-</span><span id="line-2835"><span class="sd">    ``clip_in = song_start - offset + slip`` lives in :func:`clip_in_of` (SSOT), so no</span>
-</span><span id="line-2836"><span class="sd">    strategy can desync the cut.</span>
-</span><span id="line-2837"><span class="sd">    """</span>
-</span><span id="line-2838">    <span class="n">by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="o">.</span><span class="n">clip_id</span><span class="p">:</span> <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alignments</span><span class="p">}</span>
-</span><span id="line-2839">    <span class="n">cuts</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-2840">    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">edl</span><span class="p">:</span>
-</span><span id="line-2841">        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">is_gap</span><span class="p">:</span>
-</span><span id="line-2842">            <span class="c1"># A gap has no source: the assembler renders fill (black) for the span.</span>
-</span><span id="line-2843">            <span class="n">cuts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-2844">                <span class="n">AssemblyCut</span><span class="p">(</span>
-</span><span id="line-2845">                    <span class="n">song_start</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span>
-</span><span id="line-2846">                    <span class="n">song_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_end</span><span class="p">,</span>
-</span><span id="line-2847">                    <span class="n">clip_id</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
-</span><span id="line-2848">                    <span class="n">clip_in</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-</span><span id="line-2849">                    <span class="n">clip_path</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
-</span><span id="line-2850">                    <span class="n">transition</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span>
-</span><span id="line-2851">                    <span class="n">crop</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop</span><span class="p">,</span>
-</span><span id="line-2852">                    <span class="n">crop_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop_end</span><span class="p">,</span>
-</span><span id="line-2853">                    <span class="n">look</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look</span><span class="p">,</span>
-</span><span id="line-2854">                    <span class="n">look_time_varying</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look_time_varying</span><span class="p">,</span>
-</span><span id="line-2855">                <span class="p">)</span>
-</span><span id="line-2856">            <span class="p">)</span>
-</span><span id="line-2857">            <span class="k">continue</span>
-</span><span id="line-2858">        <span class="n">a</span> <span class="o">=</span> <span class="n">placed_as</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">by_id</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">])</span>
-</span><span id="line-2859">        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">clip_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">clip_paths</span><span class="p">:</span>
-</span><span id="line-2860">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no stored file for clip </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-2861">        <span class="n">cuts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-2862">            <span class="n">AssemblyCut</span><span class="p">(</span>
-</span><span id="line-2863">                <span class="n">song_start</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span>
-</span><span id="line-2864">                <span class="n">song_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_end</span><span class="p">,</span>
-</span><span id="line-2865">                <span class="n">clip_id</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
-</span><span id="line-2866">                <span class="n">clip_in</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">clip_in_of</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">a</span><span class="p">)),</span>
-</span><span id="line-2867">                <span class="n">clip_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">clip_paths</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">]),</span>
-</span><span id="line-2868">                <span class="n">transition</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span>
-</span><span id="line-2869">                <span class="n">crop</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop</span><span class="p">,</span>
-</span><span id="line-2870">                <span class="n">crop_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop_end</span><span class="p">,</span>
-</span><span id="line-2871">                <span class="n">look</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look</span><span class="p">,</span>
-</span><span id="line-2872">                <span class="n">look_time_varying</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look_time_varying</span><span class="p">,</span>
-</span><span id="line-2873">                <span class="n">rate</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">rate</span><span class="p">,</span>
-</span><span id="line-2874">            <span class="p">)</span>
-</span><span id="line-2875">        <span class="p">)</span>
-</span><span id="line-2876">    <span class="k">return</span> <span class="n">cuts</span></div>
+</span><span id="line-2895"><span class="k">def</span><span class="w"> </span><span class="nf">derive_cuts</span><span class="p">(</span>
+</span><span id="line-2896">    <span class="n">edl</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">EdlEntry</span><span class="p">],</span>
+</span><span id="line-2897">    <span class="n">alignments</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">FootageAlignment</span><span class="p">],</span>
+</span><span id="line-2898">    <span class="n">clip_paths</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+</span><span id="line-2899"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">AssemblyCut</span><span class="p">]:</span>
+</span><span id="line-2900"><span class="w">    </span><span class="sd">"""Turn a *validated* EDL into render-ready cuts — the ONE place ``clip_in`` is derived.</span>
+</span><span id="line-2901">
+</span><span id="line-2902"><span class="sd">    Strategies emit only ``{song_start, song_end, clip_id}``; the sign convention</span>
+</span><span id="line-2903"><span class="sd">    ``clip_in = song_start - offset + slip`` lives in :func:`clip_in_of` (SSOT), so no</span>
+</span><span id="line-2904"><span class="sd">    strategy can desync the cut.</span>
+</span><span id="line-2905"><span class="sd">    """</span>
+</span><span id="line-2906">    <span class="n">by_id</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="o">.</span><span class="n">clip_id</span><span class="p">:</span> <span class="n">a</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">alignments</span><span class="p">}</span>
+</span><span id="line-2907">    <span class="n">cuts</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-2908">    <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">edl</span><span class="p">:</span>
+</span><span id="line-2909">        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">is_gap</span><span class="p">:</span>
+</span><span id="line-2910">            <span class="c1"># A gap has no source: the assembler renders fill (black) for the span.</span>
+</span><span id="line-2911">            <span class="n">cuts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-2912">                <span class="n">AssemblyCut</span><span class="p">(</span>
+</span><span id="line-2913">                    <span class="n">song_start</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span>
+</span><span id="line-2914">                    <span class="n">song_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_end</span><span class="p">,</span>
+</span><span id="line-2915">                    <span class="n">clip_id</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
+</span><span id="line-2916">                    <span class="n">clip_in</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+</span><span id="line-2917">                    <span class="n">clip_path</span><span class="o">=</span><span class="s2">""</span><span class="p">,</span>
+</span><span id="line-2918">                    <span class="n">transition</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span>
+</span><span id="line-2919">                    <span class="n">crop</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop</span><span class="p">,</span>
+</span><span id="line-2920">                    <span class="n">crop_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop_end</span><span class="p">,</span>
+</span><span id="line-2921">                    <span class="n">look</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look</span><span class="p">,</span>
+</span><span id="line-2922">                    <span class="n">look_time_varying</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look_time_varying</span><span class="p">,</span>
+</span><span id="line-2923">                <span class="p">)</span>
+</span><span id="line-2924">            <span class="p">)</span>
+</span><span id="line-2925">            <span class="k">continue</span>
+</span><span id="line-2926">        <span class="n">a</span> <span class="o">=</span> <span class="n">placed_as</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">by_id</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">])</span>
+</span><span id="line-2927">        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">clip_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">clip_paths</span><span class="p">:</span>
+</span><span id="line-2928">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no stored file for clip </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-2929">        <span class="n">cuts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-2930">            <span class="n">AssemblyCut</span><span class="p">(</span>
+</span><span id="line-2931">                <span class="n">song_start</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_start</span><span class="p">,</span>
+</span><span id="line-2932">                <span class="n">song_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">song_end</span><span class="p">,</span>
+</span><span id="line-2933">                <span class="n">clip_id</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span>
+</span><span id="line-2934">                <span class="n">clip_in</span><span class="o">=</span><span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">clip_in_of</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">a</span><span class="p">)),</span>
+</span><span id="line-2935">                <span class="n">clip_path</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">clip_paths</span><span class="p">[</span><span class="n">e</span><span class="o">.</span><span class="n">clip_id</span><span class="p">]),</span>
+</span><span id="line-2936">                <span class="n">transition</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">transition</span><span class="p">,</span>
+</span><span id="line-2937">                <span class="n">crop</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop</span><span class="p">,</span>
+</span><span id="line-2938">                <span class="n">crop_end</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">crop_end</span><span class="p">,</span>
+</span><span id="line-2939">                <span class="n">look</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look</span><span class="p">,</span>
+</span><span id="line-2940">                <span class="n">look_time_varying</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">look_time_varying</span><span class="p">,</span>
+</span><span id="line-2941">                <span class="n">rate</span><span class="o">=</span><span class="n">e</span><span class="o">.</span><span class="n">rate</span><span class="p">,</span>
+</span><span id="line-2942">            <span class="p">)</span>
+</span><span id="line-2943">        <span class="p">)</span>
+</span><span id="line-2944">    <span class="k">return</span> <span class="n">cuts</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -3137,7 +3211,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=cfdca9bd"></script>
+    <script src="../../../_static/documentation_options.js?v=6ba42da4"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

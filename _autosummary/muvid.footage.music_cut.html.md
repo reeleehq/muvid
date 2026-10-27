@@ -95,12 +95,12 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 The result: free cuts for the requested spans, and an account of how they were
 chosen (tempo, style, how well each video’s picture landed on the beat).
 
-### muvid.footage.music_cut.choose_source_in(env, , clip_duration, length, beat_offsets=(), used=(), energy=0.0, lead_s=0.0, trail_s=0.0, ordinal=0)
+### muvid.footage.music_cut.choose_source_in(env, , clip_duration, length, beat_offsets=(), used=(), energy=0.0, room=None, ordinal=0)
 
 Where in a video a cut of `length` seconds should start: `(source_in, fit)`.
 
-Scores every in-point on the envelope’s grid (`lead_s`/`trail_s` of extra
-footage kept free on either side, for a blend), by three terms:
+Scores every in-point on the envelope’s grid within `room` — the legal in-points,
+`_room()` (a blend-less cut’s when omitted) — by three terms:
 
 * **hits on the beat** — the mean picture-change hit at each `beat_offsets` (beats
   inside the cut, in seconds from its start), relative to the video’s own mean hit:

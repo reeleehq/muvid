@@ -35,12 +35,14 @@ muvid.footage.edl
    .. autosummary::
    
       blend_lead
+      blend_reads
       blend_trail
       clip_in_of
       clip_time_at
       derive_cuts
       exclude_unvouched
       fill_gaps
+      in_point_bounds
       looks_effects_offered
       placed_as
       unplaced

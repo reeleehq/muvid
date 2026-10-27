@@ -57,20 +57,22 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 
 ### Functions
 
-| [`blend_lead`](#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                |
-|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`blend_trail`](#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                 |
-| [`clip_in_of`](#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part. |
-| [`clip_time_at`](#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                     |
-| [`derive_cuts`](#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                          |
-| [`exclude_unvouched`](#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                              |
-| [`fill_gaps`](#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                          |
-| [`looks_effects_offered`](#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                              |
-| [`placed_as`](#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                        |
-| [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                    |
-| [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                             |
-| [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                               |
-| [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.             |
+| [`blend_lead`](#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                                                                                                      |
+|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`blend_reads`](#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                |
+| [`blend_trail`](#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                       |
+| [`clip_in_of`](#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                       |
+| [`clip_time_at`](#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                           |
+| [`derive_cuts`](#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                |
+| [`exclude_unvouched`](#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                    |
+| [`fill_gaps`](#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                |
+| [`in_point_bounds`](#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce. |
+| [`looks_effects_offered`](#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                    |
+| [`placed_as`](#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                              |
+| [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                          |
+| [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                   |
+| [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                     |
+| [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                   |
 
 ### Classes
 
@@ -842,6 +844,20 @@ Seconds a transition reads BEFORE its own cut’s start (in that cut’s source)
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
+### muvid.footage.edl.blend_reads(transition, next_transition, , rate=1.0)
+
+`(lead, trail)`: clip seconds a cut’s blends read before its in-point (its own
+`transition`) and past its end (the FOLLOWING cut’s), at the cut’s `rate` — as
+`_validate_transition()` scales them.
+
+```pycon
+>>> blend_reads(Transition(duration_s=1.0, curve="fade"), None, rate=2.0)
+(1.0, 0.0)
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
 ### muvid.footage.edl.blend_trail(t)
 
 Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).
@@ -959,6 +975,42 @@ rule; the tests pin both so the coherence stays deliberate.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](#muvid.footage.edl.EdlEntry)]
+
+### muvid.footage.edl.in_point_bounds(cut, , clip_duration_s, next_transition=None, edge_s=0.0)
+
+The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of
+`clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every
+writer that picks an in-point asks the question `_validate_transition()` and
+the containment check enforce.
+
+Read from `cut`: its span, which reads `span * rate` of the clip; its own
+`transition`, which reads [`blend_lead()`](#muvid.footage.edl.blend_lead) before the in-point; its `slip_s`,
+which the gate adds to `source_in` ([`clip_in_of()`](#muvid.footage.edl.clip_in_of)). `next_transition` is
+the FOLLOWING cut’s blend, which reads [`blend_trail()`](#muvid.footage.edl.blend_trail) past this cut’s end in
+this clip. Both blends scale by this cut’s rate, as the gate scales them.
+
+`edge_s` keeps a margin from each end of the clip (a thumb on the button,
+[`EDGE_S`](#muvid.footage.edl.EDGE_S)) when there is room for it, and gives it up symmetrically when there
+is not: the margin is a preference, the gate’s bounds are not. `None` when the
+clip cannot hold the span and both blends at all.
+
+```pycon
+>>> t = Transition(duration_s=1.0, curve="fade")
+>>> cut = EdlEntry(10.0, 12.0, "c", transition=t)
+>>> in_point_bounds(cut, clip_duration_s=10.0, next_transition=t)
+(0.5, 7.5)
+>>> in_point_bounds(cut, clip_duration_s=10.0, edge_s=0.25)
+(0.75, 7.75)
+>>> in_point_bounds(cut, clip_duration_s=3.25, next_transition=t, edge_s=0.25)
+(0.625, 0.625)
+>>> in_point_bounds(replace(cut, slip_s=-0.25), clip_duration_s=10.0, next_transition=t)
+(0.75, 7.75)
+>>> in_point_bounds(cut, clip_duration_s=2.9, next_transition=t) is None
+True
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.edl.looks_effects_offered()
 
