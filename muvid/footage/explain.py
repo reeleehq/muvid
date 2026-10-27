@@ -362,6 +362,23 @@ def _why_stretch(e, grid, envelope_of, from_s: float) -> str:
     return f", chosen because its picture changes on {k} of the {m} beat{'s' if m > 1 else ''} inside this cut"
 
 
+#: The selection strategies in words, for a sentence a person reads.
+_STRATEGY_WORDS = {
+    "best_confidence": "the best-aligned video at each moment",
+    "longest_take": "the longest takes",
+    "fewest_cuts": "the fewest cuts",
+}
+#: Why the score-driven cut fell back (``select_score``'s causes), in words.
+_FALLBACK_CAUSES = {
+    "no_weighted_metrics": "no score it was asked to weigh was measured",
+    "coverage_gap": "the videos leave part of the song uncovered",
+    "infeasible": "no cut kept every shot long enough",
+    "dwell_infeasible": "no cut kept every shot long enough",
+    "empty_span": "there was no song to cut",
+    "reconstruct_failed": "the cut could not be assembled",
+}
+
+
 def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
     from muvid.footage.music_cut import SLOW_TEMPO_BPM
 
@@ -391,12 +408,19 @@ def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
     fallback = selection.get("fallback")
     if fallback and selection.get("strategy") == "weighted":
         # what `select_score.selection_notice` recorded: the score-driven cut could not
-        # run, so the edit is not the one the scores chose (muvid#184)
-        cause = selection.get("cause")
+        # run, so the edit is not the one the scores chose (muvid#184), said in words
+        # rather than internal ids (muvid#207)
+        cause = _FALLBACK_CAUSES.get(selection.get("cause") or "", "")
         said.append(
-            "The score-driven choice of videos could not be made"
+            "The videos could not be chosen by their scores"
             + (f" ({cause})" if cause else "")
-            + f", so {fallback} placed them instead — these cuts do not follow the scores."
+            + f", so {_STRATEGY_WORDS.get(fallback, 'a simpler rule')} chose them "
+            "instead — these cuts do not follow the scores."
+        )
+    elif selection.get("cause") == "dwell_relaxed":
+        said.append(
+            "No cut could keep every shot at least the minimum length, so that minimum "
+            "was dropped to find one."
         )
     style = selection.get("style") or ""
     pace = selection.get("pace") or ""

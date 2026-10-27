@@ -161,10 +161,15 @@ def test_a_weighted_edit_that_fell_back_says_so():
     """muvid#184 item 5: ``strategy: weighted`` alone would claim a score-driven edit."""
     an = _analysis(bpm=60.0)
     entries = [EdlEntry(0.0, 4.0, "v1", source_in=0.0)]
-    fell_back = {"strategy": "weighted", "fallback": "best_confidence", "cause": "no_scores"}
+    fell_back = {"strategy": "weighted", "fallback": "best_confidence", "cause": "coverage_gap"}
     out = explain(entries, analysis=an, song_duration=4.0, clips=_clips(), selection=fell_back)
-    assert "best_confidence placed them instead" in out["summary"]
-    assert "(no_scores)" in out["summary"]
+    # in words, not ids (muvid#207)
+    assert "the best-aligned video at each moment chose them" in out["summary"]
+    assert "(the videos leave part of the song uncovered)" in out["summary"]
+    assert "best_confidence" not in out["summary"] and "coverage_gap" not in out["summary"]
+    relaxed = {"strategy": "weighted", "cause": "dwell_relaxed"}
+    out = explain(entries, analysis=an, song_duration=4.0, clips=_clips(), selection=relaxed)
+    assert "minimum was dropped" in out["summary"]
     plain = explain(
         entries, analysis=an, song_duration=4.0, clips=_clips(), selection={"strategy": "weighted"}
     )

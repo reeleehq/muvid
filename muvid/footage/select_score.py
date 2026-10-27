@@ -519,6 +519,28 @@ def _prefix(g_row: np.ndarray) -> np.ndarray:
     return p
 
 
+def _seg_reward(prefix, ki: int, kj: int, length: float, *, hop: float, cfg) -> float:
+    """A segment's reward: the time-integral of the composite over grid frames
+    ``[ki, kj)`` MINUS the soft penalty for exceeding ``l_max`` — THE arithmetic, shared
+    by the DP and :func:`span_reward` so the two cannot drift."""
+    r = hop * float(prefix[kj] - prefix[ki])
+    return r - cfg.l_max_overrun_penalty * max(0.0, length - cfg.l_max_s)
+
+
+def span_reward(tensor, alignment, start: float, end: float, *, config) -> float:
+    """What the ``weighted`` DP would earn for showing ``alignment``'s clip over
+    ``[start, end)`` song seconds (muvid#207): the composite under ``config``'s weights
+    integrated over the span — 0 where nothing is measured — with the unvouched-clip
+    demotion (:data:`UNVOUCHED_REWARD_PENALTY`) and the ``l_max`` overrun penalty. The
+    switch cost ``lambda_switch`` is a property of a cut between two segments, not of a
+    segment, so it is not in it."""
+    g, _ = _composite_rows(tensor, config.weights, [alignment.clip_id])
+    g = _demote_unvouched(g, [alignment])
+    ki = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
+    kj = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
+    return _seg_reward(_prefix(g[0]), ki, kj, end - start, hop=tensor.hop_s, cfg=config)
+
+
 def _kappa(b: float, hop_s: float, n: int, t0: float = 0.0) -> int:
     """First grid index ≥ (b − t0)/hop_s, clamped to [0, n]."""
     return int(min(max(0, int(np.ceil((b - t0) / hop_s - 1e-9))), n))
@@ -546,7 +568,6 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     hop, n = tensor.hop_s, tensor.n
     l_min, l_max = cfg.l_min_s, cfg.l_max_s
     lam = cfg.lambda_switch
-    overrun = cfg.l_max_overrun_penalty
     # Bound the transition window for performance; the base case (i=0) is uncapped so a
     # lone clip can still cover the whole span as one (overrun-penalized) segment.
     max_seg_s = max(4.0 * l_max, l_max + 8.0)
@@ -555,9 +576,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     kap = [_kappa(b, hop, n, tensor.t0) for b in B]
 
     def seg_reward(c, i, j):
-        # Time-integral of the composite MINUS a soft penalty for exceeding l_max.
-        r = hop * float(prefixes[c][kap[j]] - prefixes[c][kap[i]])
-        return r - overrun * max(0.0, (B[j] - B[i]) - l_max)
+        return _seg_reward(prefixes[c], kap[i], kap[j], B[j] - B[i], hop=hop, cfg=cfg)
 
     def contains(c, i, j):
         a = aligns[c]
