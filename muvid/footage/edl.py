@@ -490,6 +490,7 @@ class UnreliableAlignmentError(ValueError):
 #: ``FootageAlignment.source`` values: the aligner found the offset, or a person set it.
 MEASURED = "measured"
 DECLARED = "declared"
+
 ALIGNMENT_SOURCES = (MEASURED, DECLARED)
 #: Two more ``source`` values, for records that are NEVER persisted. ``UNPLACED`` stands
 #: for a clip (or a still) nobody has placed on the song — :func:`unplaced` — so that a
@@ -524,6 +525,57 @@ def unplaced(clip_id: str, duration_s: float) -> "FootageAlignment":
         reliable=False,
         source=UNPLACED,
     )
+
+
+#: How far a measured span's offset may sit from its clip's offset and still be read
+#: as THAT placement (seconds) — ``mixing``'s own span tolerance
+#: (``SPAN_OFFSET_TOLERANCE_S``), restated so this module stays import-light.
+SPAN_OFFSET_TOLERANCE_S = 0.25
+
+
+@dataclass(frozen=True)
+class MeasuredSpan:
+    """One stretch of a clip that aligns to the song, measured window by window
+    (``mixing.audio.aligned_spans``; muvid#16 slice 1).
+
+    ``clip_start_s``/``clip_end_s`` are clip time; ``offset_s`` places the stretch on
+    the song (``song = clip + offset_s``). A clip whose parts sit at different offsets
+    (a take stopped and restarted) has several; material the song does not contain has
+    none. Edges are accurate to about the analysis window, which is enough to tell two
+    takes apart and NOT enough to cut on — nothing cuts on them yet.
+    """
+
+    clip_start_s: float
+    clip_end_s: float
+    offset_s: float
+    confidence: float
+    support: "float | None" = None
+    margin: "float | None" = None
+
+    def to_dict(self) -> dict:
+        return {
+            "clip_start_s": self.clip_start_s,
+            "clip_end_s": self.clip_end_s,
+            "offset_s": self.offset_s,
+            "confidence": self.confidence,
+            "support": self.support,
+            "margin": self.margin,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MeasuredSpan":
+        def opt(key):
+            v = d.get(key)
+            return None if v is None else float(v)
+
+        return cls(
+            clip_start_s=float(d["clip_start_s"]),
+            clip_end_s=float(d["clip_end_s"]),
+            offset_s=float(d["offset_s"]),
+            confidence=float(d["confidence"]),
+            support=opt("support"),
+            margin=opt("margin"),
+        )
 
 
 @dataclass(frozen=True)
@@ -595,9 +647,17 @@ class FootageAlignment:
     #: ``source`` before reading either as evidence. Records on disk that predate the
     #: field were all written by the aligner, so it defaults to measured.
     source: str = "measured"
+    #: The clip's stretches measured window by window, at whatever offset each aligns
+    #: (:class:`MeasuredSpan`, muvid#16 slice 1) — ``None`` when not measured (the
+    #: default: it costs a correlation per window), ``()`` when nothing in the clip
+    #: aligns. A REPORT for now: nothing cuts on, scores by, or refuses on it, which is
+    #: why :func:`~muvid.footage.scoring.grid.align_fingerprint` does not hash it.
+    #: Omitted from :meth:`to_dict` when ``None``, so records without it stay
+    #: byte-identical.
+    spans: "tuple[MeasuredSpan, ...] | None" = None
 
     def to_dict(self) -> dict:
-        return {
+        out = {
             "clip_id": self.clip_id,
             "offset_s": self.offset_s,
             "confidence": self.confidence,
@@ -611,6 +671,9 @@ class FootageAlignment:
             "margin": self.margin,
             "source": self.source,
         }
+        if self.spans is not None:
+            out["spans"] = [s.to_dict() for s in self.spans]
+        return out
 
     @classmethod
     def from_dict(cls, d: dict) -> "FootageAlignment":
@@ -629,7 +692,11 @@ class FootageAlignment:
         hop_s = None if hop_s is None else float(hop_s)
         margin = d.get("margin")
         margin = None if margin is None else float(margin)
+        spans = d.get("spans")
         return cls(
+            # a malformed span is skipped, never the record: a placement is not
+            # removed by a measurement that went wrong on disk
+            spans=(_read_spans(spans) if isinstance(spans, list) else None),
             clip_id=d["clip_id"],
             offset_s=float(d["offset_s"]),
             confidence=confidence,
@@ -667,6 +734,56 @@ class FootageAlignment:
             # came from `align_footage`, and nothing else wrote alignments.json.
             source=str(d.get("source") or MEASURED),
         )
+
+
+def _read_spans(rows: list) -> "tuple[MeasuredSpan, ...]":
+    """The well-formed spans among ``rows`` (a malformed one is skipped)."""
+    out = []
+    for row in rows:
+        try:
+            out.append(MeasuredSpan.from_dict(row))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return tuple(out)
+
+
+def unverified_stretches(
+    a: FootageAlignment, *, tolerance_s: float = SPAN_OFFSET_TOLERANCE_S
+) -> "list[tuple[float, float]] | None":
+    """The clip-time stretches of ``a``'s placement on the song that no measured span
+    confirms AT ``a.offset_s`` (muvid#16 slice 1): the part of the clip the single
+    offset says is in sync and the window-by-window measurement could not verify there
+    — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.
+
+    ``None`` when spans were not measured; ``[]`` when every placed second is confirmed.
+    Edges inherit the spans' resolution (about the analysis window).
+
+    >>> a = FootageAlignment("c", 0.0, 0.9, 78.0, (0.0, 78.0),
+    ...     spans=(MeasuredSpan(0.0, 60.0, 0.01, 0.8),))
+    >>> unverified_stretches(a)
+    [(60.0, 78.0)]
+    """
+    if a.spans is None:
+        return None
+    lo = max(0.0, a.coverage[0] - a.offset_s)
+    hi = min(a.duration_s, a.coverage[1] - a.offset_s)
+    confirmed = sorted(
+        (start, end)
+        for start, end in (
+            (max(lo, s.clip_start_s), min(hi, s.clip_end_s))
+            for s in a.spans
+            if abs(s.offset_s - a.offset_s) <= tolerance_s
+        )
+        if start < end  # a span outside the placement confirms none of it
+    )
+    out, at = [], lo
+    for start, end in confirmed:
+        if start > at + _EPS:
+            out.append((at, start))
+        at = max(at, end)
+    if hi > at + _EPS:
+        out.append((at, hi))
+    return out
 
 
 @dataclass(frozen=True)

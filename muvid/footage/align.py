@@ -23,6 +23,7 @@ from muvid.footage.edl import (
     MIN_MARGIN,
     MIN_SUPPORT,
     FootageAlignment,
+    MeasuredSpan,
     vouches_for,
 )
 
@@ -38,6 +39,7 @@ __all__ = [
     "MIN_SUPPORT",
     "WINDOW_PARAMETERS",
     "align_footage",
+    "measure_spans",
     "vouches_for",
 ]
 
@@ -128,6 +130,46 @@ def align_footage(
         **estimator_kwargs,
     )
     return [_as_alignment(clip_ids[a.index], a) for a in aligned]
+
+
+def measure_spans(
+    song_path: str,
+    clips: Sequence[tuple],
+    *,
+    song_duration: float | None = None,
+    sample_rate: int = ALIGN_SAMPLE_RATE,
+) -> "tuple[dict[str, tuple[MeasuredSpan, ...]], float]":
+    """Each clip's stretches that align to the song, window by window
+    (``mixing.audio.aligned_spans``; muvid#16 slice 1), and the window they were
+    measured on — which is also how accurate their edges are.
+
+    About one correlation per window per clip, against one per clip for
+    :func:`align_footage`, which is why it is opt-in. No broad except: a ``mixing``
+    failure is a traceback, never a quietly empty measurement.
+    """
+    from mixing.audio import aligned_spans  # lazy: heavy
+    from mixing.audio.audio_ops import SPAN_WINDOW_S  # not re-exported by mixing.audio
+
+    out = {}
+    for clip_id, path in clips:
+        out[clip_id] = tuple(
+            MeasuredSpan(
+                clip_start_s=float(s.clip_start_s),
+                clip_end_s=float(s.clip_end_s),
+                offset_s=float(s.offset_s),
+                confidence=float(s.confidence),
+                support=None if s.support is None else float(s.support),
+                margin=None if s.margin is None else float(s.margin),
+            )
+            for s in aligned_spans(
+                song_path,
+                str(path),
+                reference_duration=song_duration,
+                sample_rate=sample_rate,
+                window_s=SPAN_WINDOW_S,  # named, so the reported accuracy is the one used
+            )
+        )
+    return out, float(SPAN_WINDOW_S)
 
 
 def _refuse_window_parameters(estimator_kwargs: dict) -> None:

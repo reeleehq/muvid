@@ -88,7 +88,7 @@ def _renamings() -> list:
     rows = []
     for spec in service.FOOTAGE_OP_SPECS:
         tool = op_tool_name(spec.name)
-        if tool == spec.name:
+        if tool == spec.name or not spec.mcp:  # no tool to name for a host-only op
             continue
         rows.append((re.compile(rf"``{spec.name}``"), f"``{tool}``"))
         if "_" in spec.name:

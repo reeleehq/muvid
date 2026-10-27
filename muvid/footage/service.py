@@ -64,6 +64,7 @@ from muvid.footage.edl import (
     MIN_MARGIN,
     MIN_SUPPORT,
     FootageAlignment,
+    unverified_stretches,
 )
 from muvid.footage.errors import FootageCancelled, FootageError
 
@@ -938,6 +939,82 @@ def align(fp) -> dict:
         # Should always be empty; non-empty is a bug upstream, not a verdict on footage.
         "unrecorded": [cid for cid, _ in clips if cid not in aligned_ids],
         "kept_declared": sorted(declared),
+    }
+
+
+def measure_spans(fp) -> dict:
+    """Check, stretch by stretch, which parts of each placed video actually match the
+    song where it is placed, and save what was found (muvid#16).
+
+    ``align`` places a whole video at ONE offset. This listens to it window by window
+    (slower: about one measurement per 10 s of video) and records, on each video's
+    alignment, the stretches that match the song and at what offset each (``spans``) —
+    for measured and hand-placed offsets alike. ``unverified`` then names, per video,
+    the stretches of its placement no span confirms at its offset: the end of a take
+    that stopped matching, a dropout, another take. Edges are accurate to about
+    ``span_edge_accuracy_s`` (the analysis window), and a shorter stretch may not show.
+
+    A report for now: cutting, scoring and rendering do not use it. Re-aligning or
+    re-placing a video replaces its record, so measure again afterwards.
+    """
+    from muvid.footage.align import measure_spans as _measure
+
+    if not fp.has_song():
+        raise FootageError("no song set — call set_song first")
+    song_hash = fp.song_hash()
+    stills = {c["clip_id"] for c in fp.list_clips() if c.get("kind") == STILL_KIND}
+    paths = fp.clip_paths()
+    # photos have no sound to listen to (as in `align`), and a record whose file is
+    # gone is kept as it is
+    placed = {
+        a.clip_id: a
+        for a in fp.load_alignments()
+        if a.clip_id in paths and a.clip_id not in stills
+    }
+    if not placed:
+        raise FootageError("no video is placed yet — call align (or set_offset) first")
+    spans, window_s = _measure(
+        str(fp.song_path()),
+        [(cid, paths[cid]) for cid in placed],
+        song_duration=fp.song_duration(),
+    )
+    # Minutes may have passed: re-read, and attach spans only where the song and the
+    # placement are still the ones measured — never write back a stale copy (an offset
+    # set meanwhile would be reverted, an old song's offsets brought back; muvid#59)
+    if fp.song_hash() != song_hash:
+        raise FootageError(
+            "the song changed while the videos were being checked — run measure_spans again"
+        )
+
+    def same(a, b):
+        return (a.clip_id, a.offset_s, a.source) == (b.clip_id, b.offset_s, b.source)
+
+    aligns = [
+        replace(a, spans=spans[a.clip_id])
+        if a.clip_id in placed and same(a, placed[a.clip_id])
+        else a
+        for a in fp.load_alignments()
+    ]
+    fp.save_alignments(aligns)
+    rows = []
+    for a in aligns:
+        gaps = unverified_stretches(a)
+        if gaps:
+            rows.append(
+                {
+                    "clip_id": a.clip_id,
+                    "stretches": [[round(s, 3), round(e, 3)] for s, e in gaps],
+                    "seconds": round(sum(e - s for s, e in gaps), 3),
+                }
+            )
+    return {
+        "spans": {
+            a.clip_id: [s.to_dict() for s in a.spans]
+            for a in aligns
+            if a.spans is not None
+        },
+        "unverified": rows,
+        "span_edge_accuracy_s": window_s,
     }
 
 
@@ -4488,6 +4565,9 @@ class OpSpec:
     #: Count ceilings the op enforces (``max_videos``, ``max_photos``), so a client can
     #: show "8 of 12" and refuse the extra files before sending a byte (muvid#170).
     limits: Mapping[str, int] = field(default_factory=dict, hash=False)
+    #: Whether the MCP transport serves it (:mod:`muvid.mcp._footage_ops`). ``False``
+    #: for an op only a host that honours ``runs="job"`` should run.
+    mcp: bool = True
 
 
 #: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.
@@ -4519,6 +4599,16 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("align", "Listen to the videos", "write", runs="job"),
     OpSpec("set_offset", "Place a video on the song by hand", "write"),
     OpSpec("clear_offset", "Forget where I placed this video", "destroy"),
+    OpSpec(
+        "measure_spans",
+        "Check which parts of each video match the song",
+        "write",
+        runs="job",
+        # minutes per project (about align's cost): a host runs it as a job; the MCP
+        # transport would block a request on it, so it waits for a job-backed tool
+        # (muvid#16's latency decision)
+        mcp=False,
+    ),
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
     OpSpec("beat_grid", "Find the beat", "read"),
