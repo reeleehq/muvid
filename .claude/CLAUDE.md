@@ -289,8 +289,10 @@ Pipeline: `align → score → select → EDL → assemble`.
 - **Gate, don't zero.** "no face / no data" is a `mask`=NA, never a 0 score.
 - **Compute once on the master.** Beat grid and vocal stem come from the clean song and
   map to each clip through its offset. Never per clip.
-- **Scoring is keyed on INPUTS ONLY** — `song_hash` + alignment fingerprint + metric set
-  + hop. Weights enter at *assemble* time, so one tensor serves every preset.
+- **Scoring is keyed on INPUTS ONLY** — `song_hash` + alignment fingerprint + beat
+  fingerprint (the declared grid's beats, `""` for the estimate — muvid#187) + metric set
+  + hop. Weights enter at *assemble* time, so one tensor serves every preset. Every reader
+  of the tensor asks `service._scores_current`; a stale tensor is never served.
 
 ## The slug trap (issue #4) — read before renaming anything
 
@@ -848,7 +850,9 @@ at the same time. When you add a field here, decide which of those three it is. 
 Invalidation is deliberate: `set_song` drops `alignments.json` and every score track
 (the song is the alignment reference); `align_footage` only invalidates scores when
 `align_fingerprint` actually changed, because the tensor is the most expensive artifact
-in the pipeline.
+in the pipeline. `set_beat_grid` / `clear_beat_grid` delete nothing: the manifest's
+`beat_fingerprint` makes the scores stale (the reply says `scores_stale: true`), and
+clearing a grid makes scores measured on the estimate current again (muvid#187).
 
 ## Optional extras
 

@@ -8,6 +8,7 @@ snapping drift over 2.5 minutes. ``set_beat_grid`` mirrors ``set_offset``: recor
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -306,3 +307,28 @@ def test_clearing_the_grid_makes_declared_scores_stale_and_never_leaks_its_beats
     assert service.beat_grid(proj)["beats"] == [
         round(float(t), 4) for t in estimate.beat_times
     ]
+
+
+def test_every_reader_of_the_scores_sees_a_grid_change_as_stale(scored_proj):
+    """The #187 review: a beat grid change deletes nothing, so each reader of the tensor
+    must ask whether it is current — the weighted selector and the editor document as
+    well as ``scores``. And set/clear say when they left the scores stale."""
+    proj, _seen, _estimate = scored_proj
+    service.run_scoring(proj, metrics=["beats_seen"])
+    ctx = lambda: service._selection_context(proj, "weighted", None, None, None)  # noqa: E731
+    assert ctx().tensor is not None
+
+    out = service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    assert out["scores_stale"] is True
+    assert ctx().tensor is None  # measured on the estimate: not used to cut
+    service.run_scoring(proj, metrics=["beats_seen"])
+    assert ctx().tensor is not None
+    assert "scores_stale" not in service.set_beat_grid(
+        proj, tempo_bpm=100.0, first_beat_s=0.3, beats_per_bar=3
+    )  # renumbering the bars moves no beat: the scores stay current
+
+    assert service.clear_beat_grid(proj)["scores_stale"] is True
+    pytest.importorskip("lacing")
+    doc = service.editor_document(proj)
+    assert any("stale" in w for w in doc.get("warnings", []))
+    assert "clip-score-track" not in json.dumps(doc)
