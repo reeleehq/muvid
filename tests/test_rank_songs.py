@@ -155,6 +155,15 @@ def test_candidates_are_stored_listed_and_removed_without_paths(fp, tmp_path):
     assert fp.song_candidates() == [] and not path.exists()
 
 
+def test_status_lists_the_candidates_without_paths(fp, tmp_path):
+    """A screen lists the songs to choose from off ``status`` (reelee-web#593)."""
+    assert service.status(fp)["song_candidates"] == []
+    _candidate(fp, tmp_path, "Other Song.mp3", b"ID3-other")
+    (row,) = service.status(fp)["song_candidates"]
+    assert row["candidate_id"] == "Other_Song" and row["name"] == "Other Song.mp3"
+    assert "file" not in row
+
+
 def test_a_default_id_is_made_unique_and_an_explicit_duplicate_refused(fp, tmp_path):
     """The #135 review: "a_b.mp3" silently replaced "a b.mp3"; non-Latin names all
     became one id."""

@@ -930,7 +930,9 @@ def status(fp) -> dict:
     ``aligned`` lists the clips that have an offset; ``alignments`` says for each one
     whether the offset was ``measured`` (by ``align``) or ``declared`` (``set_offset``)
     and whether it is trusted for rendering (``reliable``). ``renders`` is newest first
-    (the same rows ``renders`` gives — no server paths).
+    (the same rows ``renders`` gives — no server paths). ``song_candidates`` are the
+    songs it could be cut to instead (``add_song_candidate``; no server paths), so a
+    screen can list them without a second read.
     ``next_step`` names the operation that moves the project forward and why.
     """
     m = fp.manifest()
@@ -946,6 +948,7 @@ def status(fp) -> dict:
         "aligned": [a.clip_id for a in aligns],
         "renders": render_rows,
         "song": fp.song_info(),
+        "song_candidates": fp.song_candidates(),
         "alignments": [_alignment_row(a) for a in aligns],
         # how "Cut it for me" will use each clip: synced, or cut to the music
         "roles": footage_roles(fp),
