@@ -125,7 +125,11 @@ _LOOK_FILTER_COSTS: "dict[str, tuple[str, float]]" = {
     "lut3d": ("rgb", 1.2),
 }
 #: What one RGB<->YUV conversion costs, in frames of the size it converts: measured
-#: 2.1-2.6 (it holds a frame of each side), rounded up.
+#: 2.1-2.6 (it holds a frame of each side), rounded up. Measured in alternations that
+#: ran in the wide format already (gbrp<->yuv444p after the first RGB link), so unlike
+#: an allocation it is NOT scaled by :data:`_LOOK_WIDE_FACTOR` — doubling it priced a
+#: 327 MB look at 166 and refused it (the #229 review measured the remaining gap at
+#: about 30% on an alternation-heavy look, 1004 MB, well under the ceiling).
 _LOOK_CONVERSION_FRAMES = 3.0
 #: The family the frame a look is handed is in: the assembler's normalised YUV.
 _LOOK_INPUT_FAMILY = "yuv"
