@@ -2548,6 +2548,26 @@ def exclusion_note(x) -> str:
     )
 
 
+def _unverified_notes(entries, aligns) -> list[str]:
+    """One ``warnings`` line per cut that shows a clip's unverified stretch (muvid#241) —
+    footage its measured spans say does not match the song there
+    (:func:`~muvid.footage.edl.unverified_in_cut`). Selection prefers away from such a
+    stretch (muvid#16), so on the auto path one that survives had no better cover; on a
+    caller's own edit it is what they chose. Either way this line is the only signal.
+    A declared offset is never flagged: a person placed it."""
+    from muvid.footage.edl import unverified_in_cut
+
+    by_id = {a.clip_id: a for a in aligns}
+    return [
+        f"uses {hi - lo:.1f} s of clip {e.clip_id!r} at {lo:.1f}-{hi:.1f} s that its "
+        "measured spans do not confirm matches the song there. Watch that stretch; if "
+        "it is out of sync, place the clip by hand or cut that stretch out."
+        for e in entries
+        if e.clip_id in by_id
+        for lo, hi in unverified_in_cut(e, by_id[e.clip_id])
+    ]
+
+
 def _auto_edl(aligns, song_dur: float, *, strategy, context, recover: bool):
     """The auto path, in one place: select -> set aside -> gap-fill (muvid#88).
 
@@ -2873,7 +2893,8 @@ def propose_edit(
             excluded=excluded,
             span=span,
         ),
-        "warnings": [exclusion_note(x) for x in excluded],
+        "warnings": [exclusion_note(x) for x in excluded]
+        + _unverified_notes(window, aligns),
     }
     from muvid.footage.select_score import selection_notice
 
@@ -4173,6 +4194,7 @@ def assemble(
     render_dir = fp.new_render_dir(render_id)
     # The render-plan findings, on their way to the CALLER (who has no stderr).
     notes: list[str] = [exclusion_note(x) for x in excluded]
+    notes += _unverified_notes(entries, aligns)  # both paths: a warning transforms nothing
     if selection_report:
         notes.append(selection_report["message"])
     # A render that covers only part of the song is that part's length, and its music
@@ -4519,6 +4541,7 @@ def _editor_document(fp, *, edit_id: str = "", attributed_to: str = "") -> dict:
                 recover=True,
             )
             warnings += [exclusion_note(x) for x in excluded]
+            warnings += _unverified_notes(proposal, placements)
             if music and music.get("error"):
                 warnings.append(music["error"])
         entries = validate_edl(

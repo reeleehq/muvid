@@ -30,6 +30,7 @@ import inspect
 from typing import Callable, Sequence
 
 from muvid.footage.edl import (
+    SELECTION_MIN_UNVERIFIED_S,
     EdlEntry,
     FootageAlignment,
     selection_unverified_stretches,
@@ -182,14 +183,19 @@ def select_edl(
 
 def _breakpoints(alignments: Sequence[FootageAlignment]) -> list[float]:
     """Sorted unique coverage boundaries — the elementary-interval grid — and the edges
-    of every clip's unverified stretches (muvid#16), so a preference can change there."""
-    bs = set()
-    for a in alignments:
-        bs.add(round(a.coverage[0], 6))
-        bs.add(round(a.coverage[1], 6))
-        for start, end in selection_unverified_stretches(a):
-            bs.add(round(start, 6))
-            bs.add(round(end, 6))
+    of every clip's unverified stretches (muvid#16), so a preference can change there.
+
+    A stretch edge closer than :data:`SELECTION_MIN_UNVERIFIED_S` to a boundary already
+    on the grid is left off it (muvid#241 review): its position is only good to the span
+    window, and an interval that short between them is a flash cut made on noise.
+    """
+    bs = {round(x, 6) for a in alignments for x in a.coverage}
+    edges = sorted(
+        round(x, 6) for a in alignments for st in selection_unverified_stretches(a) for x in st
+    )
+    for x in edges:
+        if all(abs(x - b) >= SELECTION_MIN_UNVERIFIED_S for b in bs):
+            bs.add(x)
     return sorted(bs)
 
 
