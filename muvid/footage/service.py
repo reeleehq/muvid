@@ -1769,27 +1769,18 @@ def _clip_scores(
 
 
 def _composite_lane(fp, tensor, clip_id, weights, max_points) -> dict:
-    """The clip's weighted composite — what ``weighted`` ranks it by — as a lane.
+    """The clip's weighted composite — what ``weighted`` ranks it by — as a lane
+    (:func:`muvid.footage.select_score.composite_lane`): ``null`` where no weighted
+    metric could be measured for the frame."""
+    from muvid.footage.select_score import composite_lane
 
-    Before the unvouched-clip demotion the DP applies on top. ``null`` where no weighted
-    metric could be measured for the frame: the selector uses 0 there (a cumulative sum cannot hold a NaN), but a lane that drew it as a
-    real low score would be the muvid#19 defect again, one layer up.
-    """
-    import numpy as np
-
-    from muvid.footage.select_score import _composite
-
-    aligns = [a for a in fp.load_alignments() if a.clip_id == clip_id]
-    if not aligns:
+    if not any(a.clip_id == clip_id for a in fp.load_alignments()):
         return {"values": None, "reason": "clip has no placement"}
-    g, total = _composite(tensor, weights, aligns)
-    if total <= 0:
+    if not any(float(weights.get(m, 0.0)) > 0 for m in tensor.metrics):
         return {"values": None, "reason": "no weighted metric is in the scores"}
-    ci = tensor.clip_index(clip_id)
-    w = np.array([max(0.0, float(weights.get(m, 0.0))) for m in tensor.metrics])
-    measured = (tensor.M[ci].astype(float) @ w) > 0
-    lane = np.where(measured, g[0], np.nan)
-    return {"values": _decimate_values(lane, max_points)}
+    return {
+        "values": _decimate_values(composite_lane(tensor, weights, clip_id), max_points)
+    }
 
 
 def _stride(n: int, max_points: int) -> int:

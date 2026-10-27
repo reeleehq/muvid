@@ -630,3 +630,18 @@ def test_bad_weights_and_unknown_metrics_are_refusals_not_tracebacks():
     with pytest.raises(FootageError, match=r"unknown metric\(s\) \['bogus'\]"):
         require_scorable(_P(), metrics=["bogus"])
     assert require_scorable(_P(), metrics=["sharpness"])
+
+
+def test_composite_lane_is_the_composite_with_nan_where_nothing_was_measured():
+    """The public lane (muvid#184): the DP's composite where a weighted metric was
+    measured, NaN (never the DP's 0) where none was, all-NaN for an unknown clip."""
+    from muvid.footage.select_score import composite_lane
+
+    weights = {"m1": 1.0, "m2": 1.0}
+    lane = composite_lane(_two_metric_tensor(available=False), weights, "A")
+    assert lane.tolist() == [pytest.approx(1.0)]
+    nothing = _two_metric_tensor(available=False)
+    nothing.M[0, 0, 0] = False
+    assert np.isnan(composite_lane(nothing, weights, "A")).all()
+    assert np.isnan(composite_lane(nothing, weights, "Z")).all()
+    assert np.isnan(composite_lane(nothing, {"m3": 1.0}, "A")).all()  # no weight
