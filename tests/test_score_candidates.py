@@ -135,3 +135,57 @@ def test_a_clip_id_is_stripped_like_every_other_op_strips_it(ramp_scores):
         candidates=[{"clip_id": " A ", "song_start": 20.0, "song_end": 21.0}],
     )
     assert out["candidates"][0]["clip_id"] == "A"
+
+
+def test_reward_counts_an_unmeasured_span_as_zero_where_composite_says_null(
+    ramp_scores,
+):
+    """muvid#207: `composite` averages measured frames only (null when none was);
+    `reward` is the DP's arithmetic, in which an unmeasured frame EARNS 0 — so it ranks
+    takes as the selector does. Placement fields ride along."""
+    early = {"clip_id": "A", "song_start": 0.0, "song_end": 5.0}  # ramp unmeasured
+    late = {"clip_id": "A", "song_start": 25.0, "song_end": 30.0}
+    a, b = service.score_candidates(
+        ramp_scores, candidates=[early, late], weights={"ramp": 1.0}
+    )["candidates"]
+    assert a["composite"] is None and a["reward"] == 0.0
+    assert b["reward"] > a["reward"] and b["reward"] <= 5.0 + 1e-6
+    assert b["reliable"] is True and b["coverage"] == 1.0
+
+
+def test_span_reward_demotes_an_unvouched_clip_and_charges_the_overrun():
+    """The same terms as the DP's segment reward (one shared function)."""
+    from dataclasses import replace
+
+    from muvid.footage.edl import FootageAlignment
+    from muvid.footage.scoring.grid import ScoreTensor
+    from muvid.footage.select_score import (
+        UNVOUCHED_REWARD_PENALTY,
+        resolve_config,
+        span_rewards,
+    )
+
+    n, hop = 100, 0.1
+    S = np.ones((1, n, 1), dtype=np.float32)
+    tensor = ScoreTensor(["A"], ["m"], 0.0, hop, n, S, np.ones((1, n, 1), bool), S, {})
+    vouched = FootageAlignment("A", 0.0, 1.0, 10.0, (0.0, 10.0), reliable=True)
+    cfg = resolve_config(weights={"m": 1.0})
+
+    def reward(a, start, end):
+        return span_rewards(tensor, [a], [("A", start, end)], config=cfg)[0]
+
+    assert reward(vouched, 0.0, 2.0) == pytest.approx(2.0)  # 2 s of perfect footage
+    down = reward(replace(vouched, reliable=False), 0.0, 2.0)
+    assert down == pytest.approx(2.0 - 2.0 * UNVOUCHED_REWARD_PENALTY)
+    assert reward(vouched, 0.0, cfg.l_max_s + 1.0) < cfg.l_max_s + 1.0  # overrun
+    # the DP refuses a segment its clip does not contain: no reward to rank by
+    assert reward(vouched, 5.0, 11.0) is None
+    assert reward(vouched, 2.01, 2.06) is None  # holds no grid frame
+    none_weighed = resolve_config(weights={"zz": 1.0}, preset=None)
+    no_w = span_rewards(
+        tensor,
+        [vouched],
+        [("A", 0.0, 2.0)],
+        config=replace(none_weighed, weights={"zz": 1.0}),
+    )
+    assert no_w == [None]

@@ -267,13 +267,11 @@ def run_weighted(
     )
 
     boundaries = _boundary_set(aligns, tensor, context, cfg)
-    composite, W = _composite(tensor, cfg.weights, aligns)
+    composite, W = dp_composite(tensor, aligns, config=cfg)
     if W <= 0:
         # No weighted metric present in the tensor → nothing to optimize; defer to the
         # alignment-only default rather than emit an arbitrary path.
         return _fallback(aligns, song_duration, cause="no_weighted_metrics")
-
-    composite = _demote_unvouched(composite, aligns)
 
     entries, cause = _viterbi(aligns, boundaries, composite, tensor, cfg)
     solved_cfg = cfg  # the config that actually produced `entries` (escalate on THIS)
@@ -519,6 +517,53 @@ def _prefix(g_row: np.ndarray) -> np.ndarray:
     return p
 
 
+def _seg_reward(prefix, ki: int, kj: int, length: float, *, hop: float, cfg) -> float:
+    """A segment's reward: the time-integral of the composite over grid frames
+    ``[ki, kj)`` MINUS the soft penalty for exceeding ``l_max`` — THE arithmetic, shared
+    by the DP and :func:`span_rewards` so the two cannot drift."""
+    r = hop * float(prefix[kj] - prefix[ki])
+    return r - cfg.l_max_overrun_penalty * max(0.0, length - cfg.l_max_s)
+
+
+def dp_composite(tensor, aligns, *, config) -> "tuple[np.ndarray, float]":
+    """THE per-frame reward the ``weighted`` DP integrates, one row per alignment: the
+    composite under ``config``'s weights (0 where nothing is measured) with the
+    unvouched-clip demotion (:data:`UNVOUCHED_REWARD_PENALTY`); and the total weight,
+    ``0`` when no weighted metric is in the tensor (the DP then does not run)."""
+    composite, total = _composite(tensor, config.weights, aligns)
+    return _demote_unvouched(composite, aligns), total
+
+
+def span_rewards(tensor, aligns, spans, *, config) -> "list[float | None]":
+    """What the ``weighted`` DP would earn for each ``(clip_id, start, end)`` span
+    (muvid#207), by its own arithmetic (:func:`dp_composite`, :func:`_seg_reward`; the
+    switch cost ``lambda_switch`` belongs to a cut between segments, not to one). The
+    rewards are built once per call, so many spans cost one composite.
+
+    ``None`` where the DP could never choose the span: the clip's placement does not
+    cover all of it (the DP refuses a segment its clip does not contain), it holds no
+    grid frame, or no weighted metric is in the scores.
+    """
+    rows, total = dp_composite(tensor, aligns, config=config)
+    by_id = {a.clip_id: (a, _prefix(row)) for a, row in zip(aligns, rows)}
+    out: "list[float | None]" = []
+    for cid, start, end in spans:
+        placed = by_id.get(cid)
+        ki = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
+        kj = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
+        if placed is None or total <= 0 or kj <= ki:
+            out.append(None)
+            continue
+        a, prefix = placed
+        if start < a.offset_s - _EPS or end > a.offset_s + a.duration_s + _EPS:
+            out.append(None)
+            continue
+        out.append(
+            _seg_reward(prefix, ki, kj, end - start, hop=tensor.hop_s, cfg=config)
+        )
+    return out
+
+
 def _kappa(b: float, hop_s: float, n: int, t0: float = 0.0) -> int:
     """First grid index ≥ (b − t0)/hop_s, clamped to [0, n]."""
     return int(min(max(0, int(np.ceil((b - t0) / hop_s - 1e-9))), n))
@@ -546,7 +591,6 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     hop, n = tensor.hop_s, tensor.n
     l_min, l_max = cfg.l_min_s, cfg.l_max_s
     lam = cfg.lambda_switch
-    overrun = cfg.l_max_overrun_penalty
     # Bound the transition window for performance; the base case (i=0) is uncapped so a
     # lone clip can still cover the whole span as one (overrun-penalized) segment.
     max_seg_s = max(4.0 * l_max, l_max + 8.0)
@@ -555,9 +599,7 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg):
     kap = [_kappa(b, hop, n, tensor.t0) for b in B]
 
     def seg_reward(c, i, j):
-        # Time-integral of the composite MINUS a soft penalty for exceeding l_max.
-        r = hop * float(prefixes[c][kap[j]] - prefixes[c][kap[i]])
-        return r - overrun * max(0.0, (B[j] - B[i]) - l_max)
+        return _seg_reward(prefixes[c], kap[i], kap[j], B[j] - B[i], hop=hop, cfg=cfg)
 
     def contains(c, i, j):
         a = aligns[c]
