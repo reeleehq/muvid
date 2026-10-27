@@ -93,7 +93,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_matrix=None)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -130,16 +130,24 @@ seconds of source and retimes it (`setpts`, before `fps`) onto the span.
 * **Type:**
   Carried through from the EDL entry
 
+#### source_colour *: [Any](https://docs.python.org/3/library/typing.html#typing.Any)* *= None*
+
+this cut’s source’s colour as the assembler probed it once per
+render ([`muvid.footage.colour.SourceColour`](muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) — the matrix to convert FROM
+when the source’s tag cannot be trusted, an HDR transfer and its missing tags).
+`None`: `scale` reads the frame’s own tags.
+
+* **Type:**
+  NOT from the EDL
+
 #### *property* source_duration *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds of the clip this cut consumes — its span at its rate.
 
-#### source_matrix *: [str](https://docs.python.org/3/builtins/stdtypes.html#str) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+#### source_tonemap *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
 
-the matrix the assembler’s `scale` converts this cut’s
-source FROM, set by the assembler once per render when the source’s own tag
-cannot be trusted (an untagged HD clip — [`muvid.footage.colour`](muvid.footage.colour.html.md#module-muvid.footage.colour)).
-`None` lets `scale` read the frame’s tag.
+whether the assembler tone-maps this cut’s HDR source — the
+probe says HDR AND this ffmpeg can ([`muvid.footage.colour.can_tonemap()`](muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap)).
 
 * **Type:**
   NOT from the EDL

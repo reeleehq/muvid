@@ -42,9 +42,11 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Module Attributes
 
-| [`CORE_TIER`](#muvid.footage.scoring.registry.CORE_TIER)   | The tiers.                                                           |
-|--------------------------------------------------------------|----------------------------------------------------------------------|
-| [`VOCAL_STEM`](#muvid.footage.scoring.registry.VOCAL_STEM)  | The master vocal stem (Demucs), the lip-sync tier's shared artifact. |
+| [`BEATS`](#muvid.footage.scoring.registry.BEATS)      | `ClipContext.beat`'s `beat_times`.                                        |
+|-------------------------------------------------------------|---------------------------------------------------------------------------|
+| [`INPUTS`](#muvid.footage.scoring.registry.INPUTS)     | Every master input a score is keyed on beyond the song and the placement. |
+| [`CORE_TIER`](#muvid.footage.scoring.registry.CORE_TIER)  | The tiers.                                                                |
+| [`VOCAL_STEM`](#muvid.footage.scoring.registry.VOCAL_STEM) | The master vocal stem (Demucs), the lip-sync tier's shared artifact.      |
 
 ### Functions
 
@@ -73,6 +75,15 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 A shared master artifact — computed ONCE per run on the song, never per clip —
 that a scorer can declare in `needs`. `build(song_path, scores_dir)` makes it;
 `stage` is its progress label.
+
+### muvid.footage.scoring.registry.BEATS *= 'beats'*
+
+`ClipContext.beat`’s
+`beat_times`. The onset envelope is the song’s own measurement, so reading only it
+is not reading the grid.
+
+* **Type:**
+  The master input “the beat grid” ([`Scorer.inputs`](#muvid.footage.scoring.registry.Scorer.inputs))
 
 ### muvid.footage.scoring.registry.CORE_TIER *= 'core'*
 
@@ -107,6 +118,10 @@ The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.footage.scoring.registry.INPUTS *= ('beats',)*
+
+Every master input a score is keyed on beyond the song and the placement.
+
 ### *class* muvid.footage.scoring.registry.MasterBeats(beat_times, downbeat_times, tempo_bpm, onset_env, onset_hop_s, fingerprint='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
@@ -126,7 +141,7 @@ From the estimator’s `mixing.audio.BeatGrid`.
 * **Return type:**
   [`MasterBeats`](#muvid.footage.scoring.registry.MasterBeats)
 
-### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=())
+### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=(), inputs=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -138,10 +153,23 @@ One row of the registry. `run(ctx) -> tracks` is the whole behaviour.
 orchestrator: an unavailable scorer does not run and its reason is recorded in the
 run’s `skipped_scorers` (a missing dependency is a recorded reason, not a crash).
 
+#### inputs *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]]*
+
+the master INPUTS each metric is measured on beyond the song and the clip’s
+placement (which every metric reads), by metric: `{"motion_beat_bas": (BEATS,)}`.
+A change to one stales only the metrics that declared it (muvid#206).
+
 #### needs *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]* *= ()*
 
 the shared master artifacts it reads ([`register_artifact()`](#muvid.footage.scoring.registry.register_artifact)), by name. Each is
 built once per run, and only when a running scorer needs it.
+
+#### reads(input_name)
+
+The metrics of this scorer measured on `input_name`.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.footage.scoring.registry.VOCAL_STEM *= 'vocal_stem'*
 

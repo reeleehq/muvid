@@ -1,4 +1,4 @@
-> built 2026-10-27 05:23 UTC from d33b22b (main) · muvid 0.0.111. Details: build_info.json
+> built 2026-10-27 05:43 UTC from 5633471 (main) · muvid 0.0.112. Details: build_info.json
 
 # index.html.md
 
@@ -3089,35 +3089,41 @@ source is read here first ([`read_source_colour()`](_autosummary/muvid.footage.c
   ([`is_hd()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.is_hd)) is therefore converted FROM BT.709; an SD one keeps swscale’s
   BT.601, which is the SD convention.
 - **An HDR source** (HLG or PQ transfer — iPhone footage records HLG by default).
-  Only the YCbCr matrix and range are converted; BT.2020 primaries and an HDR
-  transfer are not, so the delivered SDR picture looks washed out. Before muvid#195
-  the part kept its HDR tags, which an HDR-aware player honoured; now it is tagged
-  BT.709. That is not fixed here (tone mapping, muvid#201), so it is REPORTED: the
-  assembler sends a finding naming each HDR clip.
+  Converting only the YCbCr matrix and range leaves BT.2020 primaries and an HDR
+  transfer behind, so the delivered SDR picture is washed out (measured: 10.0 dB
+  against the SDR original). So it is TONE MAPPED (muvid#201, [`tonemap_chain()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain)):
+  to linear light with [`HDR_REFERENCE_WHITE_NITS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_REFERENCE_WHITE_NITS) as SDR white, to BT.709
+  primaries, [`TONEMAP`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.TONEMAP) with `TONEMAP_PARAM`, then BT.709 limited — 24.7 dB
+  on the same clip. A build without `zscale` / `tonemap` cannot, and the assembler
+  then reports each HDR clip it delivers washed out.
 
 Import-light (stdlib only at module top): the look compiler imports the constants.
 
 ### Module Attributes
 
-| [`DELIVERY_COLOR_SPACE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE)   | The delivery matrix — and the primaries and transfer it is tagged with.                                                                                                                                 |
-|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`DELIVERY_COLOR_RANGE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE)   | limited ("tv"), the range H.264 delivery is read in.                                                                                                                                                    |
-| [`DELIVERY_TAG`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_TAG)           | The frame-level tag the assembler places last in each part's chain, after the look (and on a gap's black).                                                                                              |
-| [`HD_MIN_WIDTH`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HD_MIN_WIDTH)           | Where players draw the line between SD (BT.601) and HD (BT.709) for an untagged source: at least this wide, OR taller than [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT) (mpv's rule). |
-| [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT)          | The tallest SD frame (PAL, 576 lines).                                                                                                                                                                  |
-| [`HDR_TRANSFERS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_TRANSFERS)          | ffprobe's names for the transfers that make a source HDR (HLG, PQ).                                                                                                                                     |
+| [`DELIVERY_COLOR_SPACE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_SPACE)     | The delivery matrix — and the primaries and transfer it is tagged with.                                                                                                                                 |
+|---------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`DELIVERY_COLOR_RANGE`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_COLOR_RANGE)     | limited ("tv"), the range H.264 delivery is read in.                                                                                                                                                    |
+| [`DELIVERY_TAG`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.DELIVERY_TAG)             | The frame-level tag the assembler places last in each part's chain, after the look (and on a gap's black).                                                                                              |
+| [`HD_MIN_WIDTH`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HD_MIN_WIDTH)             | Where players draw the line between SD (BT.601) and HD (BT.709) for an untagged source: at least this wide, OR taller than [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT) (mpv's rule). |
+| [`SD_MAX_HEIGHT`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SD_MAX_HEIGHT)            | The tallest SD frame (PAL, 576 lines).                                                                                                                                                                  |
+| [`HDR_TRANSFERS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_TRANSFERS)            | ffprobe's names for the transfers that make a source HDR (HLG, PQ).                                                                                                                                     |
+| [`HDR_REFERENCE_WHITE_NITS`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.HDR_REFERENCE_WHITE_NITS) | BT.2408's reference white, where an HLG camera puts diffuse white.                                                                                                                                      |
+| [`TONEMAP`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.TONEMAP)                  | The `tonemap` curve for the highlights above SDR white.                                                                                                                                                 |
 
 ### Functions
 
-| [`read_source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.read_source_colour)(path, \*[, probe])   | The [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) of the first video stream of `path`.   |
-|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
-| [`is_hd`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.is_hd)(width, height)                    | Whether players read an untagged `width` x `height` source as HD (BT.709).                               |
-| [`source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.source_colour)(stream)                   | A probed video stream's [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour).                   |
+| [`can_tonemap`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap)()                         | Whether this ffmpeg has the filters [`tonemap_chain()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain) needs.                                             |
+|----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`tonemap_chain`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain)([fill])                 | HDR -> the SDR delivery colour, for a frame already at the canvas size (float frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. |
+| [`read_source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.read_source_colour)(path, \*[, probe]) | The [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) of the first video stream of `path`.                                                  |
+| [`is_hd`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.is_hd)(width, height)                  | Whether players read an untagged `width` x `height` source as HD (BT.709).                                                                              |
+| [`source_colour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.source_colour)(stream)                 | A probed video stream's [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour).                                                                  |
 
 ### Classes
 
-| [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer])   | What the assembler needs to know about one source's colour.   |
-|--------------------------------------------------------------------------------------------|---------------------------------------------------------------|
+| [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)([in_matrix, hdr_transfer, hdr_fill])   | What the assembler needs to know about one source's colour.   |
+|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
 
 ### muvid.footage.colour.DELIVERY_COLOR_RANGE *= 'tv'*
 
@@ -3138,6 +3144,14 @@ look (and on a gap’s black). On the FRAME, not only on the encoder: ffmpeg 8.0
 the stream’s colour description from the frames and ignores `-color_primaries`
 / `-color_trc` (measured: both came out `unknown` with the options alone).
 
+### muvid.footage.colour.HDR_REFERENCE_WHITE_NITS *= 203*
+
+BT.2408’s reference white, where an
+HLG camera puts diffuse white.
+
+* **Type:**
+  The HDR luminance (nits) that becomes SDR white
+
 ### muvid.footage.colour.HDR_TRANSFERS *= frozenset({'arib-std-b67', 'smpte2084'})*
 
 ffprobe’s names for the transfers that make a source HDR (HLG, PQ).
@@ -3153,11 +3167,18 @@ Width matters for letterboxed HD — an untagged 1280x536 BT.709 clip measured
 
 The tallest SD frame (PAL, 576 lines).
 
-### *class* muvid.footage.colour.SourceColour(in_matrix=None, hdr_transfer=None)
+### *class* muvid.footage.colour.SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 What the assembler needs to know about one source’s colour.
+
+#### hdr_fill *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)], ...]* *= ()*
+
+For an HDR source, the colour tags it does NOT carry, filled with the HDR
+standard’s own (BT.2020) — `{"color_primaries": "bt2020"}` — because `zscale`
+refuses to convert from a colour it is not told (the #201 review: “no path between
+colorspaces” on an HLG clip with untagged primaries, which rendered before).
 
 #### hdr_transfer *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= None*
 
@@ -3167,6 +3188,24 @@ The source’s HDR transfer (`"arib-std-b67"`, `"smpte2084"`), else `None`.
 
 The matrix to give `scale` as `in_color_matrix`; `None` lets it read the
 frame’s own tag (a tagged source, an RGB picture, an untagged SD one).
+
+### muvid.footage.colour.TONEMAP *= 'mobius'*
+
+The `tonemap` curve for the highlights above SDR white. `mobius` is the identity
+up to `TONEMAP_PARAM` and rolls off smoothly above it. Measured on an HLG clip
+of an SDR original, decoded as BT.709 (no highlight above white): `clip` 25.2 dB,
+`mobius` 0.85 24.7, 0.7 23.1, `reinhard` 15.8, `hable` 11.3. On an HLG clip of
+eight bands from signal 0.60 to 0.95 (0.75 is reference white), the #201 review:
+`clip` sends 56% of the pixels to Y >= 235 and keeps no detail in the four bands
+above white; `mobius` 0.85 sends 6% there and keeps 6/2/1/0/1 code values in the
+top five; `mobius` 0.5 sends none but costs 8 codes at signal 0.70.
+
+### muvid.footage.colour.can_tonemap()
+
+Whether this ffmpeg has the filters [`tonemap_chain()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.tonemap_chain) needs.
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 
 ### muvid.footage.colour.is_hd(width, height)
 
@@ -3196,24 +3235,43 @@ A probed video stream’s [`SourceColour`](_autosummary/muvid.footage.colour.htm
 
 ```pycon
 >>> source_colour({"pix_fmt": "yuv420p", "width": 1920, "height": 1080})
-SourceColour(in_matrix='bt709', hdr_transfer=None)
+SourceColour(in_matrix='bt709', hdr_transfer=None, hdr_fill=())
 >>> source_colour({"pix_fmt": "yuv420p", "width": 1280, "height": 536})
-SourceColour(in_matrix='bt709', hdr_transfer=None)
+SourceColour(in_matrix='bt709', hdr_transfer=None, hdr_fill=())
 >>> source_colour({"pix_fmt": "yuv420p", "width": 640, "height": 480})  # SD
-SourceColour(in_matrix=None, hdr_transfer=None)
+SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
 >>> source_colour({"pix_fmt": "yuv420p", "height": 1080, "color_space": "smpte170m"})
-SourceColour(in_matrix=None, hdr_transfer=None)
+SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
 >>> source_colour({"pix_fmt": "rgb24", "height": 1080})  # RGB has no matrix
-SourceColour(in_matrix=None, hdr_transfer=None)
+SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
 >>> source_colour({"pix_fmt": "yuvj420p", "height": 1080})  # JFIF: BT.601
-SourceColour(in_matrix=None, hdr_transfer=None)
+SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
 >>> source_colour({"pix_fmt": "yuv420p10le", "height": 2160,
 ...                "color_space": "bt2020nc", "color_transfer": "arib-std-b67"})
-SourceColour(in_matrix=None, hdr_transfer='arib-std-b67')
+SourceColour(in_matrix=None, hdr_transfer='arib-std-b67', hdr_fill=(('color_primaries', 'bt2020'),))
+>>> source_colour({"pix_fmt": "yuv420p10le", "height": 2160,
+...                "color_transfer": "arib-std-b67"}).hdr_fill
+(('color_primaries', 'bt2020'), ('colorspace', 'bt2020nc'))
 ```
 
 * **Return type:**
   [`SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour)
+
+### muvid.footage.colour.tonemap_chain(fill=())
+
+HDR -> the SDR delivery colour, for a frame already at the canvas size (float
+frames at the source’s 4K would cost 100 MB each), ending in 8-bit 4:2:0. `fill`
+names the colour tags the source left out ([`SourceColour.hdr_fill`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour.hdr_fill)).
+
+```pycon
+>>> tonemap_chain().split(",")[0]
+'zscale=t=linear:npl=203'
+>>> tonemap_chain((("color_primaries", "bt2020"),)).split(",")[0]
+'setparams=color_primaries=bt2020'
+```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 
 # _autosummary/muvid.footage.edl.html.md
@@ -3313,7 +3371,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_matrix=None)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3350,16 +3408,24 @@ seconds of source and retimes it (`setpts`, before `fps`) onto the span.
 * **Type:**
   Carried through from the EDL entry
 
+#### source_colour *: [Any](https://docs.python.org/3/library/typing.html#typing.Any)* *= None*
+
+this cut’s source’s colour as the assembler probed it once per
+render ([`muvid.footage.colour.SourceColour`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.SourceColour) — the matrix to convert FROM
+when the source’s tag cannot be trusted, an HDR transfer and its missing tags).
+`None`: `scale` reads the frame’s own tags.
+
+* **Type:**
+  NOT from the EDL
+
 #### *property* source_duration *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds of the clip this cut consumes — its span at its rate.
 
-#### source_matrix *: [str](https://docs.python.org/3/builtins/stdtypes.html#str) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+#### source_tonemap *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
 
-the matrix the assembler’s `scale` converts this cut’s
-source FROM, set by the assembler once per render when the source’s own tag
-cannot be trusted (an untagged HD clip — [`muvid.footage.colour`](_autosummary/muvid.footage.colour.html.md#module-muvid.footage.colour)).
-`None` lets `scale` read the frame’s tag.
+whether the assembler tone-maps this cut’s HDR source — the
+probe says HDR AND this ffmpeg can ([`muvid.footage.colour.can_tonemap()`](_autosummary/muvid.footage.colour.html.md#muvid.footage.colour.can_tonemap)).
 
 * **Type:**
   NOT from the EDL
@@ -6470,19 +6536,22 @@ Pure numpy — no cv2/torch/ffmpeg here. Imported only under the `muvid[scoring]
 
 ### Functions
 
-| [`align_fingerprint`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint)(alignments)                     | A stable, ORDER-INDEPENDENT fingerprint of a set of alignments (offsets + durations).                                                                               |
-|----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`apply_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.apply_norm)(raw, norm, \*, direction)              | Map raw values to a robust [0,1] score (higher = better), preserving NaN.                                                                                           |
-| [`build_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.build_tensor)(tracks, \*, t0, hop_s, n[, ...])     | Assemble per-clip [`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack) lists into a normalized [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor). |
-| [`compute_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.compute_norm)(raw_tracks, masks, \*, direction)    | Per-metric-GLOBAL robust norm params from every clip's raw track for one metric.                                                                                    |
-| [`grid_len`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.grid_len)(song_duration[, hop_s])                  | Number of grid frames spanning `[0, song_duration]` at `hop_s`.                                                                                                     |
-| `load_manifest`(project_root)                                                                      |                                                                                                                                                                     |
-| [`load_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.load_tensor)(project_root)                         | Reconstruct the [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) from persisted arrays + manifest, or `None`.                                           |
-| [`manifest_is_current`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether persisted scores match the CURRENT song + alignments + beat grid (else they are stale).                                                                     |
-| [`resample_to_grid`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.resample_to_grid)(sample_times, ...[, max_gap_s])  | Resample irregular `(song_time, value)` samples onto the fixed grid.                                                                                                |
-| [`save_scores`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.save_scores)(project_root, tracks, \*, t0, ...)    | Persist per-clip raw arrays + a manifest, crash-consistently.                                                                                                       |
-| `scores_dir`(project_root)                                                                         |                                                                                                                                                                     |
-| `scores_present`(project_root)                                                                     |                                                                                                                                                                     |
+| [`align_fingerprint`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.align_fingerprint)(alignments)                     | A stable, ORDER-INDEPENDENT fingerprint of a set of alignments (offsets + durations).                                                                                                                                                                                                                 |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`apply_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.apply_norm)(raw, norm, \*, direction)              | Map raw values to a robust [0,1] score (higher = better), preserving NaN.                                                                                                                                                                                                                             |
+| [`build_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.build_tensor)(tracks, \*, t0, hop_s, n[, ...])     | Assemble per-clip [`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack) lists into a normalized [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor).                                                                                                                                   |
+| [`compute_norm`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.compute_norm)(raw_tracks, masks, \*, direction)    | Per-metric-GLOBAL robust norm params from every clip's raw track for one metric.                                                                                                                                                                                                                      |
+| [`grid_len`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.grid_len)(song_duration[, hop_s])                  | Number of grid frames spanning `[0, song_duration]` at `hop_s`.                                                                                                                                                                                                                                       |
+| `load_manifest`(project_root)                                                                      |                                                                                                                                                                                                                                                                                                       |
+| [`load_tensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.load_tensor)(project_root)                         | Reconstruct the [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor) from persisted arrays + manifest, or `None`.                                                                                                                                                                             |
+| [`manifest_is_current`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current)(manifest, \*, song_hash, ...) | Whether EVERY persisted metric matches the current song, alignments and beat grid ([`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) says which do not) — the same answer the readers act on: a grid change with no metric measured on the grid leaves the scores current.             |
+| [`mask_metrics`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.mask_metrics)(tensor, metrics)                     | `tensor` with `metrics` read as not measured (masked, `NaN`) — how a stale metric is served beside current ones: absent, never a low score (muvid#206).                                                                                                                                               |
+| [`resample_to_grid`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.resample_to_grid)(sample_times, ...[, max_gap_s])  | Resample irregular `(song_time, value)` samples onto the fixed grid.                                                                                                                                                                                                                                  |
+| [`save_scores`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.save_scores)(project_root, tracks, \*, t0, ...)    | Persist per-clip raw arrays + a manifest, crash-consistently.                                                                                                                                                                                                                                         |
+| `scores_dir`(project_root)                                                                         |                                                                                                                                                                                                                                                                                                       |
+| `scores_present`(project_root)                                                                     |                                                                                                                                                                                                                                                                                                       |
+| [`stale_metrics`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics)(manifest, \*, song_hash, ...)       | Which of the persisted metrics no longer match the CURRENT song, alignments and beat grid: `[]` when all are current, every metric when the song or an alignment changed (every track is placed through them), and only the metrics measured on the beat grid when only the grid changed (muvid#206). |
+| [`tracks_of`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.tracks_of)(tensor, metrics, directions)            | The persisted `metrics` of `tensor` as tracks again, per clip — what a partial re-score keeps beside the metrics it recomputes.                                                                                                                                                                       |
 
 ### Classes
 
@@ -6596,21 +6665,20 @@ A clip/metric absent from a `.npz` is filled as an all-masked column.
 
 ### muvid.footage.scoring.grid.manifest_is_current(manifest, , song_hash, align_fingerprint, beat_fingerprint)
 
-Whether persisted scores match the CURRENT song + alignments + beat grid (else they
-are stale).
-
-Guards the read path: a re-align (or a new song) that raced the score job’s rmtree, or a
-manifest predating the fingerprint, is detected here so no stale/mislabeled scores are
-served to the editor or the weighted selector.
-
-`beat_fingerprint` names the beat grid the beat metrics were measured on: `""` for
-the estimator’s (a function of the song, already keyed by `song_hash`), else the
-grid a person declared (muvid#187). Required, so no reader can forget it: declaring a
-grid makes earlier scores stale, and clearing it makes the estimate’s scores current
-again. A manifest predating the key was measured on the estimate.
+Whether EVERY persisted metric matches the current song, alignments and beat grid
+([`stale_metrics()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.stale_metrics) says which do not) — the same answer the readers act on: a
+grid change with no metric measured on the grid leaves the scores current.
 
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
+### muvid.footage.scoring.grid.mask_metrics(tensor, metrics)
+
+`tensor` with `metrics` read as not measured (masked, `NaN`) — how a stale
+metric is served beside current ones: absent, never a low score (muvid#206).
+
+* **Return type:**
+  [`ScoreTensor`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTensor)
 
 ### muvid.footage.scoring.grid.resample_to_grid(sample_times, sample_values, , t0, hop_s, n, max_gap_s=None)
 
@@ -6631,7 +6699,7 @@ Outside `[first_sample, last_sample]` the grid is masked (no extrapolation).
 * **Returns:**
   `(values, mask)` — `values` float32[n] (NaN where masked), `mask` bool[n].
 
-### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), beat_fingerprint='', extra=None)
+### muvid.footage.scoring.grid.save_scores(project_root, tracks, , t0, hop_s, n, metrics, song_hash, align_fingerprint='', beat_times=(), downbeat_times=(), beat_fingerprint='', beat_metrics=(), extra=None)
 
 Persist per-clip raw arrays + a manifest, crash-consistently.
 
@@ -6643,6 +6711,37 @@ whole consistent state or the prior one, never a torn mix. NaN never enters the 
 
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.scoring.grid.stale_metrics(manifest, , song_hash, align_fingerprint, beat_fingerprint)
+
+Which of the persisted metrics no longer match the CURRENT song, alignments and
+beat grid: `[]` when all are current, every metric when the song or an alignment
+changed (every track is placed through them), and only the metrics measured on the
+beat grid when only the grid changed (muvid#206). `None` when there are no scores.
+
+`beat_fingerprint` names the beat grid the beat metrics were measured on: `""` for
+the estimator’s (a function of the song, already keyed by `song_hash`), else the
+grid a person declared (muvid#187). A manifest predating the fingerprint was measured
+on the estimate; one predating `beat_metrics` stales every metric on a grid change.
+
+```pycon
+>>> m = {"song_hash": "h", "align_fingerprint": "f", "metrics": ["q", "b"],
+...      "beat_metrics": ["b"]}
+>>> kw = {"song_hash": "h", "align_fingerprint": "f"}
+>>> stale_metrics(m, beat_fingerprint="", **kw), stale_metrics(m, beat_fingerprint="x", **kw)
+([], ['b'])
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.scoring.grid.tracks_of(tensor, metrics, directions)
+
+The persisted `metrics` of `tensor` as tracks again, per clip — what a partial
+re-score keeps beside the metrics it recomputes.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`ScoreTrack`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.ScoreTrack)]]
 
 
 # _autosummary/muvid.footage.scoring.html.md
@@ -6824,12 +6923,25 @@ Import-safe: every heavy import (cv2/mediapipe/librosa/torch) is inside a functi
 |----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
 | [`score_project`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.score_project)(project, \*[, metrics, hop_s, ...]) | Score every aligned clip of `project` → persist the tensor; return a summary dict.      |
 
+### Classes
+
+| [`KeptScores`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.KeptScores)(tracks, recompute, song_hash, ...)   | What a partial re-score keeps (muvid#206): the CURRENT metrics' tracks per clip, the stale metrics to measure again, and the song and alignments the kept tracks were measured under — re-checked under the scoring lock.   |
+|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
 ### muvid.footage.scoring.orchestrator.DEFAULT_METRICS *= ('sharpness', 'exposure', 'stability_shake', 'face_framing', 'motion_beat_bas', 'motion_onset_xcorr')*
 
 The torch-free CORE metric set (prod-safe) AS REGISTERED AT IMPORT — a snapshot kept
 for callers that read the constant. A scorer registered later is picked up by the
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
+
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+What a partial re-score keeps (muvid#206): the CURRENT metrics’ tracks per clip,
+the stale metrics to measure again, and the song and alignments the kept tracks
+were measured under — re-checked under the scoring lock.
 
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 
@@ -6838,7 +6950,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, beat_source=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, beat_source=None, keep=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -6857,6 +6969,10 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
     (muvid#187). Its `fingerprint` goes into the manifest, so
     [`manifest_is_current()`](_autosummary/muvid.footage.scoring.grid.html.md#muvid.footage.scoring.grid.manifest_is_current) can tell scores
     measured on one grid from another.
+  * **keep** ([`KeptScores`](_autosummary/muvid.footage.scoring.orchestrator.html.md#muvid.footage.scoring.orchestrator.KeptScores) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – a partial re-score (muvid#206): the CURRENT metrics’ tracks to persist
+    beside the `keep.recompute` ones this run measures (`metrics` is then
+    ignored). Re-checked against the song and alignments under the scoring lock:
+    if either changed since they were read, the run scores in full instead.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
@@ -6957,9 +7073,11 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Module Attributes
 
-| [`CORE_TIER`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.CORE_TIER)   | The tiers.                                                           |
-|--------------------------------------------------------------|----------------------------------------------------------------------|
-| [`VOCAL_STEM`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.VOCAL_STEM)  | The master vocal stem (Demucs), the lip-sync tier's shared artifact. |
+| [`BEATS`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.BEATS)      | `ClipContext.beat`'s `beat_times`.                                        |
+|-------------------------------------------------------------|---------------------------------------------------------------------------|
+| [`INPUTS`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.INPUTS)     | Every master input a score is keyed on beyond the song and the placement. |
+| [`CORE_TIER`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.CORE_TIER)  | The tiers.                                                                |
+| [`VOCAL_STEM`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.VOCAL_STEM) | The master vocal stem (Demucs), the lip-sync tier's shared artifact.      |
 
 ### Functions
 
@@ -6988,6 +7106,15 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 A shared master artifact — computed ONCE per run on the song, never per clip —
 that a scorer can declare in `needs`. `build(song_path, scores_dir)` makes it;
 `stage` is its progress label.
+
+### muvid.footage.scoring.registry.BEATS *= 'beats'*
+
+`ClipContext.beat`’s
+`beat_times`. The onset envelope is the song’s own measurement, so reading only it
+is not reading the grid.
+
+* **Type:**
+  The master input “the beat grid” ([`Scorer.inputs`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.Scorer.inputs))
 
 ### muvid.footage.scoring.registry.CORE_TIER *= 'core'*
 
@@ -7022,6 +7149,10 @@ The song-time grid every track lands on: `n` frames, `hop_s` apart, from `t0`.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.footage.scoring.registry.INPUTS *= ('beats',)*
+
+Every master input a score is keyed on beyond the song and the placement.
+
 ### *class* muvid.footage.scoring.registry.MasterBeats(beat_times, downbeat_times, tempo_bpm, onset_env, onset_hop_s, fingerprint='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
@@ -7041,7 +7172,7 @@ From the estimator’s `mixing.audio.BeatGrid`.
 * **Return type:**
   [`MasterBeats`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.MasterBeats)
 
-### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=())
+### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=(), inputs=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -7053,10 +7184,23 @@ One row of the registry. `run(ctx) -> tracks` is the whole behaviour.
 orchestrator: an unavailable scorer does not run and its reason is recorded in the
 run’s `skipped_scorers` (a missing dependency is a recorded reason, not a crash).
 
+#### inputs *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]]*
+
+the master INPUTS each metric is measured on beyond the song and the clip’s
+placement (which every metric reads), by metric: `{"motion_beat_bas": (BEATS,)}`.
+A change to one stales only the metrics that declared it (muvid#206).
+
 #### needs *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]* *= ()*
 
 the shared master artifacts it reads ([`register_artifact()`](_autosummary/muvid.footage.scoring.registry.html.md#muvid.footage.scoring.registry.register_artifact)), by name. Each is
 built once per run, and only when a running scorer needs it.
+
+#### reads(input_name)
+
+The metrics of this scorer measured on `input_name`.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
 ### muvid.footage.scoring.registry.VOCAL_STEM *= 'vocal_stem'*
 
@@ -7229,7 +7373,7 @@ selects cleanly on the metrics it has.
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
 
-### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict())
+### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict(), stale_metrics=())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -7246,6 +7390,14 @@ A sink the strategy WRITES its run meta into (`fallback`/`cause`/`config`/
 `lambda_effective`), so the caller learns what the DP did without
 `SelectionStrategy` changing its `list[EdlEntry]` return type. The context is
 frozen; the dict is not, and it is excluded from equality (muvid#19).
+
+#### stale_metrics *: [Sequence](https://docs.python.org/3/library/typing.html#typing.Sequence)[[str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= ()*
+
+`tensor`
+reads them as not measured, so the cut ignores them, and the caller is told.
+
+* **Type:**
+  Metrics the persisted scores hold but that are STALE (muvid#206)
 
 ### muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY *= 2.0*
 
@@ -8086,6 +8238,10 @@ The render canvas: an explicit per-render override, else the project’s.
 Score every aligned clip and persist the tensor (the engine behind [`score()`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score),
 with the job hooks a background runner passes).
 
+With no `metrics` named and scores that are stale in only SOME metrics (a beat grid
+was declared or cleared, muvid#206), only those are recomputed and the current ones
+are kept; the reply’s `rescored` lists them. Anything else re-scores in full.
+
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
@@ -8172,8 +8328,9 @@ it are a pickup, bar 0) number the bars.
 It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
 re-estimating never replaces it (`clear_beat_grid` forgets it). The cut-to-the-music
 planner, `explain_edit`, `fit_to_beat`, the `weighted` strategy’s beat snap and
-footage scoring use it: scores made before it are stale until `score` runs again (and
-current again if the grid is cleared) — `scores_stale: true` says so. A grid belongs to the
+footage scoring use it: the beat-derived metrics scored before it are stale (the
+others stay current) until `score` runs again, which recomputes only them — and
+they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 
@@ -13111,8 +13268,9 @@ it are a pickup, bar 0) number the bars.
 It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
 re-estimating never replaces it (`footage_clear_beat_grid` forgets it). The cut-to-the-music
 planner, `footage_explain_edit`, `footage_fit_to_beat`, the `weighted` strategy’s beat snap and
-footage scoring use it: scores made before it are stale until `score_footage` runs again (and
-current again if the grid is cleared) — `scores_stale: true` says so. A grid belongs to the
+footage scoring use it: the beat-derived metrics scored before it are stale (the
+others stay current) until `score_footage` runs again, which recomputes only them — and
+they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 
@@ -18295,20 +18453,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 05:23 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d33b22bbba27a2d9fbe0c264b88f1cade3e0cc42"><code>d33b22b</code></a> on branch <code>main</code>, for **muvid 0.0.111** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 05:43 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5633471d538b15b0be7700eea8d25507bb97f536"><code>5633471</code></a> on branch <code>main</code>, for **muvid 0.0.112** (from <code>pyproject.toml</code>).
 
 #### WARNING
 The documentation and the package may be misaligned:
 
-- The documented version (0.0.111) is ahead of the latest release on PyPI (0.0.109): these docs describe unreleased code.
+- The documented version (0.0.112) is ahead of the latest release on PyPI (0.0.111): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d33b22bbba27a2d9fbe0c264b88f1cade3e0cc42"><code>d33b22bbba27a2d9fbe0c264b88f1cade3e0cc42</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5633471d538b15b0be7700eea8d25507bb97f536"><code>5633471d538b15b0be7700eea8d25507bb97f536</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.111</code>                                                                                                                                  |
+| Tags at this commit | none                                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18317,9 +18475,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40454192293">40454192293</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40456090308">40456090308</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>6846f16b36680702c8606fcad0a89e2543d16566</code> (in the history of the built commit) |
+| Event commit | <code>e5a6d16bb0c8bef0d0b6e59f8db723eebe9426d6</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18344,13 +18502,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.109/">0.0.109</a>, older than the documented version (0.0.111).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.111/">0.0.111</a>, older than the documented version (0.0.112).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout d33b22bbba27a2d9fbe0c264b88f1cade3e0cc42
+git checkout 5633471d538b15b0be7700eea8d25507bb97f536
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

@@ -70,7 +70,7 @@ selects cleanly on the metrics it has.
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
 
-### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict())
+### *class* muvid.footage.select_score.SelectionContext(tensor, beat_times=(), downbeat_times=(), shot_boundaries=None, pins=None, config=WeightedSelectionConfig(), report=dict(), stale_metrics=())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -87,6 +87,14 @@ A sink the strategy WRITES its run meta into (`fallback`/`cause`/`config`/
 `lambda_effective`), so the caller learns what the DP did without
 `SelectionStrategy` changing its `list[EdlEntry]` return type. The context is
 frozen; the dict is not, and it is excluded from equality (muvid#19).
+
+#### stale_metrics *: [Sequence](https://docs.python.org/3/library/typing.html#typing.Sequence)[[str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= ()*
+
+`tensor`
+reads them as not measured, so the cut ignores them, and the caller is told.
+
+* **Type:**
+  Metrics the persisted scores hold but that are STALE (muvid#206)
 
 ### muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY *= 2.0*
 

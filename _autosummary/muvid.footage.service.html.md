@@ -720,6 +720,10 @@ The render canvas: an explicit per-render override, else the project’s.
 Score every aligned clip and persist the tensor (the engine behind [`score()`](#muvid.footage.service.score),
 with the job hooks a background runner passes).
 
+With no `metrics` named and scores that are stale in only SOME metrics (a beat grid
+was declared or cleared, muvid#206), only those are recomputed and the current ones
+are kept; the reply’s `rescored` lists them. Anything else re-scores in full.
+
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
@@ -806,8 +810,9 @@ it are a pickup, bar 0) number the bars.
 It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
 re-estimating never replaces it (`clear_beat_grid` forgets it). The cut-to-the-music
 planner, `explain_edit`, `fit_to_beat`, the `weighted` strategy’s beat snap and
-footage scoring use it: scores made before it are stale until `score` runs again (and
-current again if the grid is cleared) — `scores_stale: true` says so. A grid belongs to the
+footage scoring use it: the beat-derived metrics scored before it are stale (the
+others stay current) until `score` runs again, which recomputes only them — and
+they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 

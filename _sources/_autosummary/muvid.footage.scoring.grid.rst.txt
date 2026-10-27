@@ -22,10 +22,13 @@ muvid.footage.scoring.grid
       load_manifest
       load_tensor
       manifest_is_current
+      mask_metrics
       resample_to_grid
       save_scores
       scores_dir
       scores_present
+      stale_metrics
+      tracks_of
    
    .. rubric:: Classes
 

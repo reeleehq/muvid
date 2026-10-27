@@ -14,11 +14,15 @@ muvid.footage.colour
       HD_MIN_WIDTH
       SD_MAX_HEIGHT
       HDR_TRANSFERS
+      HDR_REFERENCE_WHITE_NITS
+      TONEMAP
    
    .. rubric:: Functions
 
    .. autosummary::
    
+      can_tonemap
+      tonemap_chain
       read_source_colour
       is_hd
       source_colour

@@ -593,8 +593,9 @@ it are a pickup, bar 0) number the bars.
 It is recorded as `source: "declared"` and returned by `beat_grid` from then on;
 re-estimating never replaces it (`footage_clear_beat_grid` forgets it). The cut-to-the-music
 planner, `footage_explain_edit`, `footage_fit_to_beat`, the `weighted` strategy’s beat snap and
-footage scoring use it: scores made before it are stale until `score_footage` runs again (and
-current again if the grid is cleared) — `scores_stale: true` says so. A grid belongs to the
+footage scoring use it: the beat-derived metrics scored before it are stale (the
+others stay current) until `score_footage` runs again, which recomputes only them — and
+they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
 song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 

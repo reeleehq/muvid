@@ -17,3 +17,9 @@ muvid.footage.scoring.orchestrator
       list_available_extractors
       score_project
    
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      KeptScores
+   

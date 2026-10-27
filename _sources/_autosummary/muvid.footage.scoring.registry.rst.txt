@@ -8,6 +8,8 @@ muvid.footage.scoring.registry
 
    .. autosummary::
    
+      BEATS
+      INPUTS
       CORE_TIER
       VOCAL_STEM
    
