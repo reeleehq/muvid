@@ -437,7 +437,8 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale, pad, setsar, fps, tpad [, look], setparams [, tail]``
+    ``[retime,] [crop,] scale [, tonemap], pad, setsar, fps, tpad [, look], setparams
+    [, tail]``
 
     ``retime`` is a cut's speed (``setpts=(PTS-STARTPTS)/rate``) and it comes BEFORE
     ``fps``, so ``fps`` picks frames on the retimed clock. (Measured on ffmpeg 9.0: the
@@ -466,9 +467,11 @@ def _part_filter(
     rather than a second string.
 
     ``scale`` also converts to the delivery colour (:mod:`muvid.footage.colour`,
-    muvid#195) — from ``cut.source_matrix`` when the source's own tag cannot be
-    trusted —
-    and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
+    muvid#195) — from ``cut.source_colour.in_matrix`` when the source's own tag cannot
+    be trusted. An HDR source (``cut.source_tonemap``) is instead fitted at its own
+    colour and then tone-mapped at canvas size
+    (:func:`~muvid.footage.colour.tonemap_chain`, its missing tags filled first,
+    muvid#201) — and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
     frame the ENCODER gets: after the look, because a look can drop the frame's
     colour tags (ffmpeg 6.1's ``zoompan`` — a punch-in — left a part untagged that
     its look-less twin was not; ``looks``' own steps convert with explicit
@@ -486,13 +489,14 @@ def _part_filter(
     """
     crop = _crop_filter(cut)
     rate = getattr(cut, "rate", 1.0)
-    in_matrix = getattr(cut, "source_matrix", None)
+    colour = getattr(cut, "source_colour", None)
     retime = f"setpts=(PTS-STARTPTS)/{rate:.6f}," if rate != 1.0 else ""
     fit = f"scale={w}:{h}:force_original_aspect_ratio=decrease"
     if getattr(cut, "source_tonemap", False):
         # HDR: fit at the source's own colour, then tone-map at canvas size (muvid#201)
-        convert = f"{fit},{tonemap_chain()},"
+        convert = f"{fit},{tonemap_chain(colour.hdr_fill if colour else ())},"
     else:
+        in_matrix = colour.in_matrix if colour else None
         convert = (
             f"{fit}"
             f"{f':in_color_matrix={in_matrix}' if in_matrix else ''}"
@@ -590,7 +594,7 @@ def _with_source_colour(cuts: Sequence[AssemblyCut], note=None) -> list[Assembly
             return c
         return replace(
             c,
-            source_matrix=colour.in_matrix,
+            source_colour=colour,
             source_tonemap=bool(colour.hdr_transfer) and tonemap,
         )
 

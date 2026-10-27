@@ -66,26 +66,34 @@ HDR_TRANSFERS = frozenset({"arib-std-b67", "smpte2084"})
 #: HLG camera puts diffuse white.
 HDR_REFERENCE_WHITE_NITS = 203
 #: The ``tonemap`` curve for the highlights above SDR white. ``mobius`` is the identity
-#: up to :data:`TONEMAP_PARAM` and rolls off smoothly above it; measured on an HLG clip
-#: of an SDR original, decoded as BT.709: ``clip`` 25.2 dB, ``mobius`` 0.85 24.7,
-#: ``mobius`` 0.7 23.1, ``reinhard`` 15.8, ``hable`` 11.3 — ``clip`` scores best only
-#: because that clip has no highlight above white to blow out.
+#: up to :data:`TONEMAP_PARAM` and rolls off smoothly above it. Measured on an HLG clip
+#: of an SDR original, decoded as BT.709 (no highlight above white): ``clip`` 25.2 dB,
+#: ``mobius`` 0.85 24.7, 0.7 23.1, ``reinhard`` 15.8, ``hable`` 11.3. On an HLG clip of
+#: eight bands from signal 0.60 to 0.95 (0.75 is reference white), the #201 review:
+#: ``clip`` sends 56% of the pixels to Y >= 235 and keeps no detail in the four bands
+#: above white; ``mobius`` 0.85 sends 6% there and keeps 6/2/1/0/1 code values in the
+#: top five; ``mobius`` 0.5 sends none but costs 8 codes at signal 0.70.
 TONEMAP = "mobius"
 TONEMAP_PARAM = 0.85
 #: The filters :func:`tonemap_chain` needs (``zscale`` is libzimg, WTFPL).
 TONEMAP_FILTERS = ("zscale", "tonemap")
 
 
-def tonemap_chain() -> str:
+def tonemap_chain(fill: "tuple[tuple[str, str], ...]" = ()) -> str:
     """HDR -> the SDR delivery colour, for a frame already at the canvas size (float
-    frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0.
+    frames at the source's 4K would cost 100 MB each), ending in 8-bit 4:2:0. ``fill``
+    names the colour tags the source left out (:attr:`SourceColour.hdr_fill`).
 
     >>> tonemap_chain().split(",")[0]
     'zscale=t=linear:npl=203'
+    >>> tonemap_chain((("color_primaries", "bt2020"),)).split(",")[0]
+    'setparams=color_primaries=bt2020'
     """
     d = DELIVERY_COLOR_SPACE
+    tags = ":".join(f"{k}={v}" for k, v in fill)
     return (
-        f"zscale=t=linear:npl={HDR_REFERENCE_WHITE_NITS},format=gbrpf32le,"
+        (f"setparams={tags}," if tags else "")
+        + f"zscale=t=linear:npl={HDR_REFERENCE_WHITE_NITS},format=gbrpf32le,"
         f"zscale=p={d},tonemap={TONEMAP}:param={TONEMAP_PARAM}:desat=0,"
         f"zscale=t={d}:m={d}:r={DELIVERY_COLOR_RANGE},format=yuv420p"
     )
@@ -110,6 +118,11 @@ class SourceColour:
     in_matrix: Optional[str] = None
     #: The source's HDR transfer (``"arib-std-b67"``, ``"smpte2084"``), else ``None``.
     hdr_transfer: Optional[str] = None
+    #: For an HDR source, the colour tags it does NOT carry, filled with the HDR
+    #: standard's own (BT.2020) — ``{"color_primaries": "bt2020"}`` — because ``zscale``
+    #: refuses to convert from a colour it is not told (the #201 review: "no path between
+    #: colorspaces" on an HLG clip with untagged primaries, which rendered before).
+    hdr_fill: "tuple[tuple[str, str], ...]" = ()
 
 
 def is_hd(width: int, height: int) -> bool:
@@ -125,20 +138,23 @@ def source_colour(stream: dict) -> SourceColour:
     """A probed video stream's :class:`SourceColour`.
 
     >>> source_colour({"pix_fmt": "yuv420p", "width": 1920, "height": 1080})
-    SourceColour(in_matrix='bt709', hdr_transfer=None)
+    SourceColour(in_matrix='bt709', hdr_transfer=None, hdr_fill=())
     >>> source_colour({"pix_fmt": "yuv420p", "width": 1280, "height": 536})
-    SourceColour(in_matrix='bt709', hdr_transfer=None)
+    SourceColour(in_matrix='bt709', hdr_transfer=None, hdr_fill=())
     >>> source_colour({"pix_fmt": "yuv420p", "width": 640, "height": 480})  # SD
-    SourceColour(in_matrix=None, hdr_transfer=None)
+    SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
     >>> source_colour({"pix_fmt": "yuv420p", "height": 1080, "color_space": "smpte170m"})
-    SourceColour(in_matrix=None, hdr_transfer=None)
+    SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
     >>> source_colour({"pix_fmt": "rgb24", "height": 1080})  # RGB has no matrix
-    SourceColour(in_matrix=None, hdr_transfer=None)
+    SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
     >>> source_colour({"pix_fmt": "yuvj420p", "height": 1080})  # JFIF: BT.601
-    SourceColour(in_matrix=None, hdr_transfer=None)
+    SourceColour(in_matrix=None, hdr_transfer=None, hdr_fill=())
     >>> source_colour({"pix_fmt": "yuv420p10le", "height": 2160,
     ...                "color_space": "bt2020nc", "color_transfer": "arib-std-b67"})
-    SourceColour(in_matrix=None, hdr_transfer='arib-std-b67')
+    SourceColour(in_matrix=None, hdr_transfer='arib-std-b67', hdr_fill=(('color_primaries', 'bt2020'),))
+    >>> source_colour({"pix_fmt": "yuv420p10le", "height": 2160,
+    ...                "color_transfer": "arib-std-b67"}).hdr_fill
+    (('color_primaries', 'bt2020'), ('colorspace', 'bt2020nc'))
     """
     untagged_hd_yuv = (
         stream.get("color_space", "") in _UNTAGGED
@@ -148,10 +164,22 @@ def source_colour(stream: dict) -> SourceColour:
         and is_hd(int(stream.get("width") or 0), int(stream.get("height") or 0))
     )
     transfer = stream.get("color_transfer")
-    return SourceColour(
-        in_matrix=DELIVERY_COLOR_SPACE if untagged_hd_yuv else None,
-        hdr_transfer=transfer if transfer in HDR_TRANSFERS else None,
-    )
+    if transfer in HDR_TRANSFERS:
+        fill = tuple(
+            (tag, value)
+            for key, tag, value in _HDR_TAGS
+            if stream.get(key, "") in _UNTAGGED
+        )
+        return SourceColour(hdr_transfer=transfer, hdr_fill=fill)
+    return SourceColour(in_matrix=DELIVERY_COLOR_SPACE if untagged_hd_yuv else None)
+
+
+#: (ffprobe key, setparams option, the HDR standard's value) for the tags an HDR source
+#: may leave out.
+_HDR_TAGS = (
+    ("color_primaries", "color_primaries", "bt2020"),
+    ("color_space", "colorspace", "bt2020nc"),
+)
 
 
 def read_source_colour(

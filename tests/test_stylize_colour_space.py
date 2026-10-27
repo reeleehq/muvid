@@ -187,7 +187,7 @@ def test_an_untagged_hd_clip_is_read_as_bt709_the_way_players_read_it(tmp_path):
     untag = "setparams=colorspace=unknown:color_primaries=unknown:color_trc=unknown"
     ref, clip = _hd_clip(tmp_path, "untagged", tag=untag)
     (cut,) = _with_source_colour([AssemblyCut(0.0, 0.4, "A", 0.0, str(clip))])
-    assert cut.source_matrix == "bt709" and not cut.source_tonemap
+    assert cut.source_colour.in_matrix == "bt709" and not cut.source_tonemap
     part = tmp_path / "part.mp4"
     _render_part(
         cut,
@@ -272,3 +272,80 @@ def test_an_hdr_clip_is_reported_when_this_ffmpeg_cannot_tone_map_it(
         )
     assert not cut.source_tonemap
     assert len(notes) == 1 and "'cam'" in notes[0] and "arib-std-b67" in notes[0]
+
+
+def _flat_hlg(tmp_path, colour: str, *, untag: str = "") -> Path:
+    """A flat HLG BT.2020 frame of the SDR ``colour``; ``untag`` names a tag to leave out
+    (``color_primaries`` or ``colorspace``), as some cameras and phones do."""
+    tags = {
+        "color_trc": "arib-std-b67",
+        "color_primaries": "bt2020",
+        "colorspace": "bt2020nc",
+    }
+    if untag:
+        tags[untag] = "unknown"
+    setp = ":".join(f"{k}={v}" for k, v in tags.items())
+    out = tmp_path / f"flat_{colour}_{untag or 'all'}.mkv"
+    _run(
+        ["-f", "lavfi", "-i", f"color=c={colour}:size=320x240:duration=0.4:rate={_FPS}"]
+        + ["-vf"]
+        + [
+            "format=rgb24,zscale=tin=bt709:t=arib-std-b67:pin=bt709:p=bt2020:min=bt709"
+            f":m=bt2020nc:r=tv:npl=203,format=yuv420p10le,setparams={setp}:range=tv"
+        ]
+        + [x for k, v in tags.items() for x in (f"-{k}", v)]
+        + ["-c:v", "ffv1", str(out)]
+    )
+    return out
+
+
+def _mean_y(video: Path) -> float:
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(video), "-frames:v", "1", "-f", "rawvideo"]
+        + ["-pix_fmt", "yuv420p", "-"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    return sum(raw[: 320 * 240]) / (320 * 240)
+
+
+def _tonemapped(tmp_path, clip: Path, name: str) -> Path:
+    (cut,) = _with_source_colour([AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))])
+    assert cut.source_tonemap
+    part = tmp_path / f"{name}.mp4"
+    _render_part(
+        cut,
+        part,
+        w=320,
+        h=240,
+        fps=_FPS,
+        n_frames=int(0.4 * _FPS),
+        crf=1,
+        preset="veryfast",
+    )
+    return part
+
+
+@needs_ffmpeg_filter("zscale", "tonemap")
+def test_reference_white_and_mid_grey_land_where_sdr_puts_them(tmp_path):
+    """The #201 review: the PSNR test cannot see a wrong reference white (100 nits
+    scores 24.4 dB). Levels can: measured, 18% grey comes out at Y 117 against SDR's
+    116 (151 with a 100-nit white, 92 with 400), and white at Y 228 (181 with 400)."""
+    grey = _mean_y(_tonemapped(tmp_path, _flat_hlg(tmp_path, "0x767676"), "grey"))
+    white = _mean_y(_tonemapped(tmp_path, _flat_hlg(tmp_path, "white"), "white"))
+    assert abs(grey - 116) <= 8, grey
+    assert white >= 220, white
+
+
+@needs_ffmpeg_filter("zscale", "tonemap")
+@pytest.mark.parametrize("untag", ["color_primaries", "colorspace"])
+def test_an_hdr_clip_missing_a_colour_tag_still_renders(tmp_path, untag):
+    """The #201 review's regression: zscale refuses to convert from a colour it is not
+    told ("no path between colorspaces"), so an HLG clip with untagged primaries or
+    matrix failed the whole render where it used to render washed out. The missing
+    tag is filled with BT.2020's."""
+    clip = _flat_hlg(tmp_path, "0x767676", untag=untag)
+    (cut,) = _with_source_colour([AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))])
+    assert dict(cut.source_colour.hdr_fill), cut.source_colour
+    grey = _mean_y(_tonemapped(tmp_path, clip, f"grey_{untag}"))
+    assert abs(grey - 116) <= 8, grey
