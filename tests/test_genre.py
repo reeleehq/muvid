@@ -91,6 +91,7 @@ def test_music_video_publishes_the_cut_bounds_its_operations_enforce():
         "rate_max_dev": edl.RATE_MAX_DEV,
         "transition_split": edl.TRANSITION_SPLIT,
     }
+    assert nw.genre_limits("music_video")["transition_split"] is edl.TRANSITION_SPLIT
     assert music_cut.EDGE_S is edl.EDGE_S  # one definition, not a copy
 
 

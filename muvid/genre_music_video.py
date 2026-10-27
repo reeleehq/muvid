@@ -188,8 +188,8 @@ FOOTAGE_OPS: tuple[GenreOp, ...] = register_genre_ops(
 )
 
 
-#: The numeric bounds the operations enforce, for a frontend that validates the same
-#: ones (reelee#692): ``edge_s`` is how far a cut stays from a source video's first and
+#: The numeric bounds and constants the operations use, for a frontend that must agree
+#: with them (reelee#692): ``edge_s`` is how far a cut stays from a source video's first and
 #: last frame, ``slip_max_s`` the largest slip of a cut, ``rate_max_dev`` how far a cut's
 #: speed may move from 1, ``transition_split`` the share of a transition's duration that
 #: leads the cut (the rest trails it). Values are the constants the code reads, never copies. (Not
