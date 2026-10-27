@@ -2056,10 +2056,20 @@ def _decimate_list(xs, max_points: int) -> list:
 
 def strategies(fp=None) -> dict:
     """The ways to cut on offer — the selection strategies ``propose_edit`` accepts
-    (``weighted`` reads the footage scores; the rest use only the alignment)."""
-    from muvid.footage.strategy import DEFAULT_STRATEGY, list_strategies
+    (``weighted`` reads the footage scores; the rest use only the alignment), with
+    ``titles``: each one's name in words, for a screen to label it with."""
+    from muvid.footage.strategy import (
+        DEFAULT_STRATEGY,
+        list_strategies,
+        strategy_title,
+    )
 
-    return {"strategies": list_strategies(), "default": DEFAULT_STRATEGY}
+    slugs = list_strategies()
+    return {
+        "strategies": slugs,
+        "default": DEFAULT_STRATEGY,
+        "titles": {s: strategy_title(s) for s in slugs},
+    }
 
 
 #: Every optional :class:`~muvid.footage.edl.EdlEntry` field :func:`edl_json` carries,

@@ -645,3 +645,131 @@ def test_composite_lane_is_the_composite_with_nan_where_nothing_was_measured():
     assert np.isnan(composite_lane(nothing, weights, "A")).all()
     assert np.isnan(composite_lane(nothing, weights, "Z")).all()
     assert np.isnan(composite_lane(nothing, {"m3": 1.0}, "A")).all()  # no weight
+
+
+# ---------------------------------------------------------------------------
+# muvid#217: causes worded beside their source, the DP value pinned to span_rewards
+# ---------------------------------------------------------------------------
+
+
+def _emitted_causes() -> set[str]:
+    """Every cause literal ``select_score`` can hand back: a ``cause=`` argument, a
+    ``"cause":`` dict value, and the second element of ``_viterbi``'s ``return None, …``."""
+    import ast
+    import inspect
+
+    from muvid.footage import select_score
+
+    def strings(node):  # a literal, or literals joined by `or` / `x if c else y`
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return {node.value}
+        if isinstance(node, ast.BoolOp):
+            return set().union(*map(strings, node.values))
+        if isinstance(node, ast.IfExp):
+            return strings(node.body) | strings(node.orelse)
+        return set()  # a value read from elsewhere (`report.get("cause")`) is not a cause
+
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(inspect.getsource(select_score))):
+        if isinstance(node, ast.keyword) and node.arg == "cause":
+            found |= strings(node.value)
+        elif isinstance(node, ast.Dict):
+            for k, v in zip(node.keys, node.values):
+                if isinstance(k, ast.Constant) and k.value == "cause":
+                    found |= strings(v)
+        elif isinstance(node, ast.Return) and isinstance(node.value, ast.Tuple):
+            elts = node.value.elts
+            if len(elts) == 3 and isinstance(elts[1], ast.Constant):
+                found |= strings(elts[1])
+    return found
+
+
+def test_every_cause_the_dp_emits_is_worded_and_every_worded_cause_is_emitted():
+    from muvid.footage.select_score import FALLBACK_CAUSES, RUN_CAUSES
+
+    emitted = _emitted_causes()
+    assert {"coverage_gap", "infeasible", "optimal"} <= emitted  # the scan works
+    assert emitted <= set(FALLBACK_CAUSES) | set(RUN_CAUSES), (
+        "a cause with no words: add it to select_score.FALLBACK_CAUSES"
+    )
+    assert set(FALLBACK_CAUSES) <= emitted, "a worded cause nothing emits"
+    assert not set(FALLBACK_CAUSES) & set(RUN_CAUSES)
+
+
+def _random_fixture(seed, *, n_clips=3, song=24.0, hop=0.1, beat=0.5, **cfg_kw):
+    from muvid.footage.select_score import SelectionContext, WeightedSelectionConfig
+
+    rng = np.random.default_rng(seed)
+    n = int(np.ceil(song / hop)) + 1
+    aligns = [_align(chr(65 + c), 0.0, song, song) for c in range(n_clips)]
+    comps = {
+        a.clip_id: np.clip(
+            np.repeat(rng.random(n // 20 + 1), 20)[:n] + 0.1 * rng.random(n), 0, 1
+        )
+        for a in aligns
+    }
+    tensor = make_tensor(aligns, comps, hop=hop, n=n)
+    cfg = WeightedSelectionConfig(weights={"m": 1.0}, **cfg_kw)
+    beats = list(np.arange(beat, song, beat))
+    return aligns, song, tensor, SelectionContext(tensor=tensor, beat_times=beats, config=cfg)
+
+
+@pytest.mark.parametrize(
+    "seed, cfg_kw",
+    [
+        (0, {}),
+        (1, {"lambda_switch": 0.1, "l_min_s": 0.5, "l_max_s": 3.0}),
+        # a long l_max overrun is charged: the penalty term must agree too
+        (2, {"lambda_switch": 2.0, "l_max_s": 2.0, "l_max_overrun_penalty": 0.3}),
+        (3, {"lambda_switch": 0.0, "l_min_s": 1.0}),
+    ],
+)
+def test_dp_value_is_the_span_rewards_of_its_edit_minus_a_switch_cost_per_cut(
+    seed, cfg_kw
+):
+    """muvid#217 item 3: ``span_rewards`` and the DP share one arithmetic, measured on
+    the DP's own answer — so a candidate's reward is the reward the DP optimised."""
+    from muvid.footage.select_score import run_weighted, span_rewards
+
+    aligns, song, tensor, ctx = _random_fixture(seed, **cfg_kw)
+    entries, meta = run_weighted(aligns, song, ctx)
+    assert meta["cause"] == "optimal"
+    rewards = span_rewards(
+        tensor,
+        aligns,
+        [(e.clip_id, e.song_start, e.song_end) for e in entries],
+        config=ctx.config,
+    )
+    assert None not in rewards
+    cuts = len(entries) - 1
+    assert sum(rewards) - meta["lambda_effective"] * cuts == pytest.approx(
+        meta["dp_value"], abs=1e-6
+    )
+
+
+def test_a_fallback_carries_no_dp_value():
+    from muvid.footage.select_score import run_weighted
+
+    aligns, song, tensor, ctx = _random_fixture(0)
+    gap = [_align("A", 0.0, 8.0, song), _align("B", 12.0, 12.0, song)]
+    _, meta = run_weighted(gap, song, ctx)
+    assert meta["fallback"] == "best_confidence" and "dp_value" not in meta
+
+
+def test_strategies_have_titles_shared_by_the_registry_and_the_strategies_op():
+    from muvid.footage import service
+
+    out = service.strategies()
+    assert set(out["titles"]) == set(out["strategies"])
+    assert out["titles"]["best_confidence"] == "Best-aligned video at each moment"
+    assert out["titles"]["weighted"] == "Best footage by its scores"
+    S.register_selection_strategy("my_rule_217", S.best_confidence)
+    try:
+        assert S.strategy_title("my_rule_217") == "My rule 217"
+        S.register_selection_strategy("my_rule_217", S.best_confidence, title="Mine")
+        assert S.strategy_title("my_rule_217") == "Mine"
+        S.register_selection_strategy("my_rule_217", S.best_confidence)
+        assert S.strategy_title("my_rule_217") == "My rule 217"  # not the old words
+    finally:
+        S._STRATEGIES.pop("my_rule_217", None)
+        S._TITLES.pop("my_rule_217", None)

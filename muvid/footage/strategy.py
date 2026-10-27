@@ -47,19 +47,30 @@ _STRATEGIES: dict[str, SelectionStrategy] = {}
 #: use, so listing/registering the score-driven ``weighted`` strategy never pulls numpy onto
 #: the import-light path (thorwhalen/muvid#13; keeps ``import muvid.footage`` cv2/numpy-free).
 _LAZY_STRATEGIES: dict[str, str] = {}
+#: Each strategy's name in words — what a screen labels it with and what ``explain``
+#: says when one cut a video (muvid#217), so the two share one wording.
+_TITLES: dict[str, str] = {}
 _EPS = 1e-6
 
 
-def register_selection_strategy(slug: str, fn: SelectionStrategy) -> SelectionStrategy:
-    """Register a selection strategy under ``slug`` (returns it, for inline use)."""
+def register_selection_strategy(
+    slug: str, fn: SelectionStrategy, *, title: str | None = None
+) -> SelectionStrategy:
+    """Register a selection strategy under ``slug`` (returns it, for inline use).
+
+    ``title`` is its name in words (default: from the slug, see :func:`strategy_title`).
+    """
     _check_slug(slug)
     if not callable(fn):
         raise TypeError("a selection strategy must be callable")
     _STRATEGIES[slug] = fn
+    _set_title(slug, title)
     return fn
 
 
-def register_lazy_strategy(slug: str, target_ref: str) -> None:
+def register_lazy_strategy(
+    slug: str, target_ref: str, *, title: str | None = None
+) -> None:
     """Register a strategy by a ``"module:func"`` reference, imported only on first use.
 
     Lets a heavy strategy (numpy DP, cv2, …) be *listed* and *named* without importing its
@@ -69,6 +80,20 @@ def register_lazy_strategy(slug: str, target_ref: str) -> None:
     if ":" not in target_ref:
         raise ValueError(f"target_ref must be 'module:func', got {target_ref!r}")
     _LAZY_STRATEGIES[slug] = target_ref
+    _set_title(slug, title)
+
+
+def _set_title(slug: str, title: str | None) -> None:
+    if title is not None:
+        _TITLES[slug] = title
+    else:  # a re-registration without a title must not keep the old one's words
+        _TITLES.pop(slug, None)
+
+
+def strategy_title(slug: str) -> str:
+    """``slug``'s name in words: its registered ``title``, else the slug made readable
+    (``"my_rule"`` -> ``"My rule"``), so every listed strategy has one."""
+    return _TITLES.get(slug) or slug.replace("_", " ").capitalize()
 
 
 def _check_slug(slug: str) -> None:
@@ -254,17 +279,21 @@ def fewest_cuts(alignments, song_duration) -> list[EdlEntry]:
     return _build(alignments, pick)
 
 
-for _slug, _fn in [
-    ("best_confidence", best_confidence),
-    ("longest_take", longest_take),
-    ("fewest_cuts", fewest_cuts),
+for _slug, _fn, _title in [
+    ("best_confidence", best_confidence, "Best-aligned video at each moment"),
+    ("longest_take", longest_take, "Longest takes"),
+    ("fewest_cuts", fewest_cuts, "Fewest cuts"),
 ]:
-    register_selection_strategy(_slug, _fn)
+    register_selection_strategy(_slug, _fn, title=_title)
 
 # The score-driven beat-snapped semi-Markov Viterbi selector (thorwhalen/muvid#13). Lazy:
 # its module pulls numpy, so it is registered by reference and imported only when resolved —
 # keeping `import muvid.footage` numpy-free (and `list_strategies()` shows it regardless).
-register_lazy_strategy("weighted", "muvid.footage.select_score:weighted_selection")
+register_lazy_strategy(
+    "weighted",
+    "muvid.footage.select_score:weighted_selection",
+    title="Best footage by its scores",
+)
 
 #: The default auto-strategy when none is chosen.
 DEFAULT_STRATEGY = "best_confidence"

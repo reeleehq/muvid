@@ -164,7 +164,8 @@ def test_a_weighted_edit_that_fell_back_says_so():
     fell_back = {"strategy": "weighted", "fallback": "best_confidence", "cause": "coverage_gap"}
     out = explain(entries, analysis=an, song_duration=4.0, clips=_clips(), selection=fell_back)
     # in words, not ids (muvid#207)
-    assert "the best-aligned video at each moment chose them" in out["summary"]
+    # the title on the strategy registry (muvid#217)
+    assert "the simpler rule “Best-aligned video at each moment” chose them" in out["summary"]
     assert "(the videos leave part of the song uncovered)" in out["summary"]
     assert "best_confidence" not in out["summary"] and "coverage_gap" not in out["summary"]
     relaxed = {"strategy": "weighted", "cause": "dwell_relaxed"}
