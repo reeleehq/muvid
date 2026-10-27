@@ -57,7 +57,9 @@ dependencies = [
     # repeat can carry a positive margin (measured: an offset 7.97 s wrong at support
     # 0.487, margin +0.115). So the floor stays at 0.5 and margin is the second
     # condition. See `edl.MIN_SUPPORT` for the full table.
-    "mixing[media]>=0.0.51",
+    # 0.0.77: `mixing.loudness.file_loudness` (mixing#109), the bounded-memory meter
+    # `verify_video`'s loudness check uses (muvid#219). The 0.0.51 reasons above hold.
+    "mixing[media]>=0.0.77",
     "numpy",
     # 0.1.44 is where `graze.content_kind` exists alongside `graze.share_links`. muvid
     # needs both halves: normalise a pasted share link before fetching, then assert the

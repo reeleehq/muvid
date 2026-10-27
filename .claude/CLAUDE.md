@@ -901,7 +901,7 @@ a declared grid as current once the grid is cleared; readers go through
 | `editor` | the lacing bridge | `lacing` |
 | `ui` | the local single-page UI | `fastapi`, `uvicorn`, `pydantic` |
 
-Core (`pip install muvid`) is `argh`, `mixing>=0.0.51`, `numpy`, `graze>=0.1.44`.
+Core (`pip install muvid`) is `argh`, `mixing>=0.0.77` (0.0.51 for the alignment gate, below; 0.0.77 for `verify_video`'s bounded-memory loudness meter, muvid#219), `numpy`, `graze>=0.1.44`.
 **`import muvid` must never pull any extra** — `muvid/__init__.py` is a PEP 562 lazy
 facade, `muvid.footage.scoring.__init__` is lazy the same way, and the genre modules
 import only `nw`. This is tested by subprocess import-safety checks that assert the
