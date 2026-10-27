@@ -97,10 +97,11 @@ MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 #: The total bounds the graph; it does not bound memory on its own, and neither
 #: does the resize count below — :data:`MAX_LOOK_LARGE_LINKS` and
 #: :data:`MAX_LOOK_HEAVY_LINKS` are what do (muvid#199). Together the measured worst
-#: look the gate keeps is **493 MB** (one ``bilateral`` at canvas size, two links at
-#: the size cap, the rest alternating RGB and YUV at canvas size; ffmpeg 8.0.1,
-#: 1920x1080, measured by ``test_the_worst_look_the_gate_keeps_is_measured_under_its_
-#: ceiling``) against 3171 MB before any cap. A single total-link cap loose enough for
+#: look found that the gate keeps is **649 MB** (an RGB link, ``zoompan`` to the size
+#: cap and a ``vignette`` there, back to canvas size, the one ``bilateral``, then
+#: ``vignette``/``gblur`` — which keep a frame-sized float buffer of their own; ffmpeg
+#: 8.0.1, 1920x1080, measured by ``test_the_worst_look_the_gate_keeps_is_measured_
+#: under_its_ceiling``) against 3171 MB before any cap. A single total-link cap loose enough for
 #: a rich grade would leave the multiplicative worst case an order of magnitude higher.
 #:
 #: The values are generous by construction: muvid's own compilers emit **1**

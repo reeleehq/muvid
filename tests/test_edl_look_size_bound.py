@@ -964,7 +964,7 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
 
 
 #: The ceiling the worst look the gate keeps must stay under, in MB of peak RSS for one
-#: ffmpeg at a 1920x1080 canvas. Measured 493 MB on ffmpeg 8.0.1 (16 threads); the
+#: ffmpeg at a 1920x1080 canvas. Measured 649 MB on ffmpeg 8.0.1 (608 MB on 7.0.2); the
 #: fragment muvid#199 was filed for reached 2527 MB and the review's `bilateral` one
 #: 2976 MB, so this has room for a build or a thread count that spends more, and none
 #: for either defect.
@@ -974,18 +974,19 @@ _WORST_KEPT_LOOK_MB = 1024
 @needs_ffmpeg
 @pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
 def test_the_worst_look_the_gate_keeps_is_measured_under_its_ceiling():
-    """The worst case the look caps state, MEASURED (muvid#199): sixteen links — the
-    one heavy `bilateral` allowed, at canvas size, two links at the 4x size cap, the
-    rest alternating RGB and YUV at canvas size (the worst of the shapes the review
-    and the author measured). Run in a fresh interpreter so the reading is that ffmpeg
-    alone."""
+    """The worst case the look caps state, MEASURED (muvid#199): sixteen links — an
+    RGB link, `zoompan` to the 4x size cap with a `vignette` there, back to canvas
+    size, the one heavy `bilateral` allowed, then `vignette`/`gblur` (the worst of the
+    shapes two review rounds measured). Run in a fresh interpreter so the reading is
+    that ffmpeg alone."""
     from muvid.footage.edl import EdlEntry, _validate_look
 
-    mix = "colorchannelmixer=rr=1,eq=gamma=1"
+    blur = "vignette,gblur=sigma=5"
     worst = ",".join(
-        ["scale=7680:4320", "colorchannelmixer=rr=1", "scale=1920:1080"]
-        + ["bilateral=sigmaS=60:sigmaR=0.05:planes=7"]
-        + [mix] * 6
+        ["colorchannelmixer=rr=1", "zoompan=d=1:s=7680x4320", "vignette"]
+        + ["scale=1920:1080", "bilateral=sigmaS=1:planes=7"]
+        + [blur] * 5
+        + ["vignette"]
     )
     assert len(worst.split(",")) == MAX_LOOK_LINKS
     _validate_look(0, EdlEntry(0.0, 1.0, "A", look=worst), (1920, 1080))  # kept
