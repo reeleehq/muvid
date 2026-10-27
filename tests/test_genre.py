@@ -110,3 +110,35 @@ def test_old_hyphenated_visualizer_slug_is_not_an_alias():
 
     with pytest.raises(KeyError):
         nw.get_genre("music-visualizer")
+
+
+def test_an_nw_older_than_the_floor_is_refused_with_the_remedy_and_registers_nothing():
+    """muvid#248: a ``GenreOp`` without a field the genre passes (``invalidates`` before
+    nw 0.0.92) fails the import naming the field and the extra, not as a bare
+    ``TypeError`` — and BEFORE the genre is registered, so no genre with zero operations
+    (or a factory that still creates projects) is left in the host's catalogue."""
+    import subprocess
+    import sys
+
+    code = """
+import dataclasses, nw
+nw.GenreOp = dataclasses.make_dataclass(
+    "GenreOp",
+    [(f.name, object, dataclasses.field(default=None))
+     for f in dataclasses.fields(nw.GenreOp) if f.name != "invalidates"],
+)
+try:
+    import muvid.genre_music_video
+except ImportError as exc:
+    print("refused:", exc)
+try:
+    nw.get_genre("music_video")
+    print("registered")
+except Exception:
+    print("absent")
+"""
+    out = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True
+    ).stdout
+    assert "refused:" in out and "invalidates" in out and "'mcp' extra" in out, out
+    assert out.strip().endswith("absent"), out

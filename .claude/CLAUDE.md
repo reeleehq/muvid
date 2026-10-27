@@ -366,7 +366,10 @@ so **one** `import muvid.genre` surfaces both genres and both project factories.
   `strategy_names` is a wiring bug, not a feature.
 - `muvid` CORE never imports `nw`. The floor is pinned in the `[mcp]` extra
   (`nw>=0.0.15`, which is where `register_genre_project_factory` exists — the import
-  doubles as the version guard).
+  doubles as the version guard). **Not in the base dependencies, deliberately** (muvid#248):
+  nw brings falaw, lacing and pydantic to an ffmpeg-only core. A missing KEYWORD is not an
+  import error, so `genre_music_video._require_genre_op_fields` asks the installed
+  `GenreOp` (never a version number) before anything registers.
 - `muvid/mcp/scoring_tools.py:80` uses `nw.jobs` as the durable/cancellable async job
   substrate. Reuse it; do not grow a second job system.
 

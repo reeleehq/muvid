@@ -58,36 +58,6 @@ _CANVAS_INFO: dict[str, dict] = {
 }
 
 
-MUSIC_VIDEO: Genre = register_genre(
-    Genre(
-        slug=MUSIC_VIDEO_SLUG,
-        title="Music Video (footage)",
-        description=(
-            "Assemble a music video for a fixed song from several uploaded video clips — "
-            "each a different-device recording of that song. Clips are aligned to the "
-            "song by audio, overlaps are resolved by a selection strategy, and the edit "
-            "is rendered over the clean song audio."
-        ),
-        transform_names=(),
-        strategy_names=(),
-        projection_entrypoint=None,
-        status="available",
-        intake_kinds=("music-video", "footage", "multicam", "performance"),
-        cost_profile=None,  # ffmpeg-only, no AI/keys — free
-        defaults={"canvas": "landscape"},
-        templates=tuple(
-            Template(
-                slug=name,
-                title=info["title"],
-                description=info["description"],
-                params={"canvas": name},
-            )
-            for name, info in _CANVAS_INFO.items()
-        ),
-    )
-)
-
-
 def _music_video_project_factory(
     caller, project_id, *, title, template, params, projects_dir=None
 ):
@@ -126,9 +96,6 @@ def _music_video_project_factory(
         "title": title,
         "canvas": canvas,
     }
-
-
-register_genre_project_factory(MUSIC_VIDEO_SLUG, _music_video_project_factory)
 
 
 # -- the operations a host serves on a music video (nw genre ops) --------------------
@@ -170,7 +137,7 @@ def _as_genre_op(spec) -> GenreOp:
     fn.__name__ = fn.__qualname__ = spec.name
     fn.__doc__ = _with_limits(inspect.getdoc(op), spec.limits)
     fn.__signature__ = sig.replace(parameters=params)
-    return GenreOp(
+    fields = dict(
         name=spec.name,
         fn=fn,
         title=spec.title,
@@ -181,12 +148,70 @@ def _as_genre_op(spec) -> GenreOp:
         max_upload_bytes=spec.max_upload_bytes,
         invalidates=spec.invalidates,
     )
+    _require_genre_op_fields(GenreOp, fields)
+    return GenreOp(**fields)
 
+
+def _require_genre_op_fields(op_cls, fields) -> None:
+    """Refuse, naming the remedy, when the installed nw's ``GenreOp`` lacks a field
+    this module passes (muvid#248).
+
+    nw's floor lives in muvid's ``mcp`` extra, and a missing NAME fails ``import nw``
+    loudly on its own. A missing keyword does not: ``invalidates`` (nw 0.0.92, nw#161)
+    reached a host that has nw without the extra as ``TypeError: unexpected keyword
+    argument``, which names neither the package nor the fix. The check asks the class
+    rather than a version number on purpose: an editable checkout's recorded version
+    goes stale, so a version compare would refuse a working source tree.
+    """
+    missing = sorted(fields.keys() - inspect.signature(op_cls).parameters.keys())
+    if missing:
+        raise ImportError(
+            f"muvid's {MUSIC_VIDEO_SLUG!r} genre needs an nw whose GenreOp has "
+            f"{', '.join(missing)}; the installed nw is older than the floor muvid's "
+            "'mcp' extra declares. Upgrade nw to that floor (update an editable "
+            "checkout, or install muvid's 'mcp' extra)."
+        )
+
+
+# Built BEFORE anything is registered: an nw too old for these ops refuses here
+# (``_require_genre_op_fields``), and must not leave a genre with no operations, or a
+# project factory, behind it (muvid#248).
+_ops = [_as_genre_op(spec) for spec in _service.FOOTAGE_OP_SPECS]
+
+MUSIC_VIDEO: Genre = register_genre(
+    Genre(
+        slug=MUSIC_VIDEO_SLUG,
+        title="Music Video (footage)",
+        description=(
+            "Assemble a music video for a fixed song from several uploaded video clips — "
+            "each a different-device recording of that song. Clips are aligned to the "
+            "song by audio, overlaps are resolved by a selection strategy, and the edit "
+            "is rendered over the clean song audio."
+        ),
+        transform_names=(),
+        strategy_names=(),
+        projection_entrypoint=None,
+        status="available",
+        intake_kinds=("music-video", "footage", "multicam", "performance"),
+        cost_profile=None,  # ffmpeg-only, no AI/keys — free
+        defaults={"canvas": "landscape"},
+        templates=tuple(
+            Template(
+                slug=name,
+                title=info["title"],
+                description=info["description"],
+                params={"canvas": name},
+            )
+            for name, info in _CANVAS_INFO.items()
+        ),
+    )
+)
+
+
+register_genre_project_factory(MUSIC_VIDEO_SLUG, _music_video_project_factory)
 
 #: The catalogue a host serves for ``music_video`` — one ``nw.GenreOp`` per operation.
-FOOTAGE_OPS: tuple[GenreOp, ...] = register_genre_ops(
-    MUSIC_VIDEO_SLUG, [_as_genre_op(spec) for spec in _service.FOOTAGE_OP_SPECS]
-)
+FOOTAGE_OPS: tuple[GenreOp, ...] = register_genre_ops(MUSIC_VIDEO_SLUG, _ops)
 
 
 #: The numeric bounds and constants the operations use, for a frontend that must agree
