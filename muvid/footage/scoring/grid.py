@@ -393,8 +393,8 @@ def save_scores(
     align_fingerprint: str = "",
     beat_times: Sequence[float] = (),
     downbeat_times: Sequence[float] = (),
-    beat_fingerprint: str = "",
-    beat_metrics: Sequence[str] = (),
+    input_fingerprints: Mapping[str, str] | None = None,
+    input_metrics: Mapping[str, Sequence[str]] | None = None,
     extra: Mapping | None = None,
 ) -> None:
     """Persist per-clip raw arrays + a manifest, crash-consistently.
@@ -404,6 +404,11 @@ def save_scores(
     ``scores/manifest.json``, written LAST via tmp+rename — so a concurrent reader sees a
     whole consistent state or the prior one, never a torn mix. NaN never enters the manifest
     (all-masked metric → ``null`` norm).
+
+    ``input_fingerprints`` names, per keyed master input (``registry.INPUTS``), the
+    value the metrics were measured on (``""``: the input's default, which the song
+    already keys); ``input_metrics`` names the metrics that read each — so a change to
+    one input stales only its metrics (muvid#206), for any input (muvid#213).
     """
     d = scores_dir(project_root)
     d.mkdir(parents=True, exist_ok=True)
@@ -452,11 +457,7 @@ def save_scores(
             "beat_times": [round(float(t), 4) for t in beat_times],
             "downbeat_times": [round(float(t), 4) for t in downbeat_times],
         },
-        # omit-when-absent: a run on the estimator's grid writes the manifest it always did
-        **({"beat_fingerprint": beat_fingerprint} if beat_fingerprint else {}),
-        # the metrics measured on the beat grid, so a grid change stales only them
-        # (muvid#206); a manifest without the key stales every metric
-        "beat_metrics": [m for m in metrics if m in set(beat_metrics)],
+        **_input_record(metrics, input_fingerprints or {}, input_metrics or {}),
         **(dict(extra) if extra else {}),
     }
     # manifest LAST — its presence signals a complete scores/ dir. allow_nan=False makes any
@@ -468,52 +469,118 @@ def save_scores(
     )
 
 
+#: The manifest keys of the per-input record (muvid#213): ``{input: fingerprint}``
+#: (``""`` entries omitted) and ``{input: [metrics that read it]}`` (every keyed input
+#: listed, so an input missing from it means the manifest predates that input).
+INPUT_FINGERPRINTS = "input_fingerprints"
+INPUT_METRICS = "input_metrics"
+#: The beat grid's record as manifests before muvid#213 wrote it, still WRITTEN beside
+#: the general one: an older build reads only these, and without them it would serve
+#: metrics measured on a declared grid as current once the grid is cleared.
+_LEGACY_BEAT_FINGERPRINT = "beat_fingerprint"
+_LEGACY_BEAT_METRICS = "beat_metrics"
+
+
+def _input_record(metrics, input_fingerprints, input_metrics) -> dict:
+    """The manifest's per-input keys: the general record, and the legacy beat mirror."""
+    from muvid.footage.scoring.registry import BEATS, INPUTS
+
+    unknown = sorted((set(input_fingerprints) | set(input_metrics)) - set(INPUTS))
+    if unknown:
+        raise ValueError(f"unknown keyed input(s) {unknown}; muvid keys {list(INPUTS)}")
+    reads = {
+        name: [m for m in metrics if m in set(input_metrics.get(name, ()))]
+        for name in INPUTS
+    }
+    fingerprints = {k: v for k, v in input_fingerprints.items() if v}
+    beat_fp = fingerprints.get(BEATS, "")
+    return {
+        INPUT_FINGERPRINTS: fingerprints,
+        INPUT_METRICS: reads,
+        # omit-when-absent, as before: a run on the estimate writes what it always did
+        **({_LEGACY_BEAT_FINGERPRINT: beat_fp} if beat_fp else {}),
+        _LEGACY_BEAT_METRICS: reads[BEATS],
+    }
+
+
+def recorded_fingerprint(manifest: Mapping, input_name: str) -> str:
+    """The fingerprint of ``input_name`` the manifest's metrics were measured on
+    (``""``: the input's default), read from the record of muvid#213 or, for a manifest
+    written before it, the beat grid's legacy key."""
+    from muvid.footage.scoring.registry import BEATS
+
+    record = manifest.get(INPUT_FINGERPRINTS)
+    if isinstance(record, Mapping):
+        return str(record.get(input_name, "") or "")
+    if input_name == BEATS:
+        return str(manifest.get(_LEGACY_BEAT_FINGERPRINT, "") or "")
+    return ""
+
+
+def _metrics_reading(manifest: Mapping, input_name: str) -> "list[str] | None":
+    """The persisted metrics measured on ``input_name``; ``None`` when the manifest does
+    not say (it predates the record, or that input), which stales every metric."""
+    from muvid.footage.scoring.registry import BEATS
+
+    record = manifest.get(INPUT_METRICS)
+    if isinstance(record, Mapping):
+        names = record.get(input_name)
+    elif input_name == BEATS:
+        names = manifest.get(_LEGACY_BEAT_METRICS)
+    else:
+        names = None
+    return list(names) if isinstance(names, list) else None
+
+
 def stale_metrics(
     manifest: dict | None,
     *,
     song_hash: str,
     align_fingerprint: str,
-    beat_fingerprint: str,
+    input_fingerprints: Mapping[str, str],
 ) -> list[str] | None:
     """Which of the persisted metrics no longer match the CURRENT song, alignments and
-    beat grid: ``[]`` when all are current, every metric when the song or an alignment
-    changed (every track is placed through them), and only the metrics measured on the
-    beat grid when only the grid changed (muvid#206). ``None`` when there are no scores.
+    keyed inputs: ``[]`` when all are current, every metric when the song or an
+    alignment changed (every track is placed through them), and only the metrics that
+    read a changed input otherwise (muvid#206, #213). ``None`` when there are no scores.
 
-    ``beat_fingerprint`` names the beat grid the beat metrics were measured on: ``""`` for
-    the estimator's (a function of the song, already keyed by ``song_hash``), else the
-    grid a person declared (muvid#187). A manifest predating the fingerprint was measured
-    on the estimate; one predating ``beat_metrics`` stales every metric on a grid change.
+    ``input_fingerprints`` names each keyed input's current value (absent or ``""``: its
+    default, which ``song_hash`` already keys) — for the beat grid, the grid a person
+    declared (muvid#187). A manifest that does not say which metrics read a changed
+    input stales every metric.
 
     >>> m = {"song_hash": "h", "align_fingerprint": "f", "metrics": ["q", "b"],
-    ...      "beat_metrics": ["b"]}
+    ...      "input_metrics": {"beats": ["b"]}}
     >>> kw = {"song_hash": "h", "align_fingerprint": "f"}
-    >>> stale_metrics(m, beat_fingerprint="", **kw), stale_metrics(m, beat_fingerprint="x", **kw)
-    ([], ['b'])
+    >>> stale_metrics(m, input_fingerprints={}, **kw)
+    []
+    >>> stale_metrics(m, input_fingerprints={"beats": "x"}, **kw)
+    ['b']
     """
-    verdict = _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint)
-    if verdict is None:
-        return None
-    every = list(manifest.get("metrics") or [])
-    if verdict == "all":
-        return every or None  # nothing measured to name: as good as no scores
-    if verdict == "beats":
-        return [m for m in every if m in set(manifest.get("beat_metrics", every))]
-    return []
-
-
-def _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint):
-    """``None`` (no scores) | ``"all"`` | ``"beats"`` | ``"none"``."""
     if not manifest:
         return None
+    every = list(manifest.get("metrics") or [])
     if (
         manifest.get("song_hash") != song_hash
         or manifest.get("align_fingerprint") != align_fingerprint
     ):
-        return "all"
-    if manifest.get("beat_fingerprint", "") != beat_fingerprint:
-        return "beats"
-    return "none"
+        return every or None  # nothing measured to name: as good as no scores
+    stale: set[str] = set()
+    for name in _changed_inputs(manifest, input_fingerprints):
+        reading = _metrics_reading(manifest, name)
+        stale |= set(every if reading is None else reading)
+    return [m for m in every if m in stale]
+
+
+def _changed_inputs(manifest: Mapping, input_fingerprints: Mapping[str, str]) -> list:
+    """The keyed inputs whose current value is not the one the manifest recorded."""
+    from muvid.footage.scoring.registry import INPUTS
+
+    return [
+        name
+        for name in INPUTS
+        if recorded_fingerprint(manifest, name) != (input_fingerprints.get(name) or "")
+    ]
 
 
 def manifest_is_current(
@@ -521,17 +588,21 @@ def manifest_is_current(
     *,
     song_hash: str,
     align_fingerprint: str,
-    beat_fingerprint: str,
+    input_fingerprints: Mapping[str, str],
 ) -> bool:
-    """Whether EVERY persisted metric matches the current song, alignments and beat grid
-    (:func:`stale_metrics` says which do not) — the same answer the readers act on: a
-    grid change with no metric measured on the grid leaves the scores current."""
-    verdict = _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint)
-    kw = dict(song_hash=song_hash, align_fingerprint=align_fingerprint)
-    return verdict == "none" or (
-        verdict == "beats"
-        and "beat_metrics" in manifest  # a manifest predating it stales every metric
-        and not stale_metrics(manifest, beat_fingerprint=beat_fingerprint, **kw)
+    """Whether EVERY persisted metric matches the current song, alignments and keyed
+    inputs (:func:`stale_metrics` says which do not) — the same answer the readers act
+    on: an input change no metric read leaves the scores current, and one the manifest
+    does not say which metrics read leaves it stale."""
+    stale = stale_metrics(
+        manifest,
+        song_hash=song_hash,
+        align_fingerprint=align_fingerprint,
+        input_fingerprints=input_fingerprints,
+    )
+    return stale == [] and all(
+        _metrics_reading(manifest, name) is not None
+        for name in _changed_inputs(manifest, input_fingerprints)
     )
 
 
