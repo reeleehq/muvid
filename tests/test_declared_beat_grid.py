@@ -629,11 +629,18 @@ def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
 
     monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
     sections = {"fp": ""}
-    beats_fps = service._input_fingerprints
+    rows = service._keyed_inputs
+    # since muvid#224 a second input is ONE row, read by the run and the readers alike
     monkeypatch.setattr(
         service,
-        "_input_fingerprints",
-        lambda fp: {**beats_fps(fp), "sections": sections["fp"]},
+        "_keyed_inputs",
+        lambda: {
+            **rows(),
+            "sections": R.KeyedInput(
+                read=lambda fp: (None, sections["fp"]),
+                fingerprint=lambda fp: sections["fp"],
+            ),
+        },
     )
 
     def track(ctx, metric):
@@ -667,3 +674,122 @@ def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
     }
     sections["fp"] = "map1"  # a section map is declared
     assert service.scores(proj)["stale_metrics"] == ["s_m"]
+
+
+def test_every_keyed_input_has_a_provider_in_the_service():
+    """muvid#224: a keyed input with no provider used to be read as its default by the
+    staleness question, silently. The service's one table must cover them all."""
+    from muvid.footage.scoring import registry as R
+
+    assert set(service._keyed_inputs()) == set(R.INPUTS)
+
+
+def test_a_run_refuses_an_input_with_no_provider_or_an_unknown_one(
+    scored_proj, monkeypatch
+):
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.orchestrator import _read_inputs
+
+    proj, _seen, _ = scored_proj
+    monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
+    with pytest.raises(ValueError, match="no provider.*sections"):
+        _read_inputs(proj, None)
+
+    def bogus(fp):
+        return None, ""
+
+    with pytest.raises(ValueError, match="unknown keyed input.*typo"):
+        _read_inputs(proj, {"sections": bogus, "typo": bogus})
+
+
+def _with_sections(monkeypatch, R, *, read_fp, now_fp):
+    """A second keyed input, ``sections``, whose ``read`` reports ``read_fp`` and whose
+    cheap ``fingerprint`` reports ``now_fp`` — callables, so a test can move them."""
+    monkeypatch.setattr(R, "INPUTS", (R.BEATS, "sections"))
+    rows = service._keyed_inputs
+    monkeypatch.setattr(
+        service,
+        "_keyed_inputs",
+        lambda: {
+            **rows(),
+            "sections": R.KeyedInput(
+                read=lambda fp: (None, read_fp()), fingerprint=lambda fp: now_fp()
+            ),
+        },
+    )
+
+
+def _frameless(R, name, metric, inputs=()):
+    import numpy as np
+
+    from muvid.footage.scoring.grid import ScoreTrack
+
+    def run(ctx):
+        raw = np.full(ctx.grid.n, 0.5, dtype="float32")
+        return [
+            ScoreTrack(
+                ctx.clip_id, metric, ctx.grid.t0, ctx.grid.hop_s, raw, np.isfinite(raw)
+            )
+        ]
+
+    return R.Scorer(
+        name,
+        (metric,),
+        run,
+        needs_frames=False,
+        gated=False,
+        inputs={metric: tuple(inputs)} if inputs else {},
+    )
+
+
+def test_the_run_records_the_fingerprint_it_read_with_the_value(
+    scored_proj, monkeypatch
+):
+    """The value and its key come from ONE read (the #187 race, for every input): the
+    manifest records what ``read`` returned, never a second look — here the cheap
+    ``fingerprint`` disagrees on purpose (the #224 review's mutation passed before)."""
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.grid import load_manifest
+
+    proj, _seen, _ = scored_proj
+    _with_sections(monkeypatch, R, read_fp=lambda: "READ", now_fp=lambda: "WRONG")
+    service.run_scoring(proj)
+    assert load_manifest(proj.root)["input_fingerprints"]["sections"] == "READ"
+
+
+def test_a_kept_metric_whose_input_moved_while_waiting_is_measured_again(
+    scored_proj, monkeypatch
+):
+    """The #224 review: a partial re-score re-checked only the song and the offsets, so
+    an input changing between choosing the kept tracks and reading the inputs left a
+    kept metric measured on its old value — served as current."""
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.grid import load_manifest
+
+    proj, _seen, _ = scored_proj
+    current = {"read": "m1", "now": "m1"}
+    _with_sections(
+        monkeypatch, R, read_fp=lambda: current["read"], now_fp=lambda: current["now"]
+    )
+    R._SCORERS.clear()
+    R.register_scorer(_frameless(R, "b", "b_m", (R.BEATS,)))
+    R.register_scorer(_frameless(R, "s", "s_m", ("sections",)))
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)  # b_m stale
+    current["read"] = "m2"  # the section map moves AFTER the kept tracks are chosen
+    out = service.run_scoring(proj)
+    assert "rescored" not in out  # scored in full: s_m was not kept
+    assert load_manifest(proj.root)["input_fingerprints"]["sections"] == "m2"
+
+
+def test_naming_the_beat_provider_twice_is_refused(scored_proj):
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring import score_project
+
+    proj, _seen, _ = scored_proj
+    with pytest.raises(ValueError, match="once"):
+        score_project(
+            proj,
+            inputs={R.BEATS: lambda p: (None, "")},
+            beat_source=service._master_beats,
+        )

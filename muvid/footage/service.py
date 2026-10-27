@@ -1554,7 +1554,7 @@ def run_scoring(
         enable_lipsync=enable_lipsync,
         progress_cb=progress_cb,
         should_cancel=should_cancel,
-        beat_source=_master_beats,
+        inputs={name: k.read for name, k in _keyed_inputs().items()},
         keep=keep,
     )
     return out
@@ -1565,8 +1565,14 @@ def _kept_scores(fp, *, hop_s: float):
     stale in SOME metrics only, on the same grid step, and every aligned clip has
     tracks to keep (a clip skipped last time is scored in full, or it would get only
     the stale metrics)."""
-    from muvid.footage.scoring.grid import load_manifest, load_tensor, tracks_of
+    from muvid.footage.scoring.grid import (
+        load_manifest,
+        load_tensor,
+        recorded_fingerprint,
+        tracks_of,
+    )
     from muvid.footage.scoring.orchestrator import KeptScores
+    from muvid.footage.scoring.registry import INPUTS
 
     manifest = load_manifest(fp.root)
     stale = _stale_metrics(fp, manifest) if manifest else None
@@ -1586,6 +1592,9 @@ def _kept_scores(fp, *, hop_s: float):
         # second read of the project, which an offset could move in between
         song_hash=manifest.get("song_hash", ""),
         align_fingerprint=manifest.get("align_fingerprint", ""),
+        input_fingerprints={
+            name: recorded_fingerprint(manifest, name) for name in INPUTS
+        },
     )
 
 
@@ -1632,12 +1641,31 @@ def _beat_fingerprint(declared: Optional[dict]) -> str:
     return hashlib.sha256(blob).hexdigest()[:16]
 
 
-def _input_fingerprints(fp) -> dict:
-    """The CURRENT value of every keyed input scores are measured on, by name (muvid#213)
-    — the one place a new keyed input's fingerprint is read for the staleness question."""
-    from muvid.footage.scoring.registry import BEATS
+def _keyed_inputs() -> dict:
+    """How this service provides every keyed master input scores are measured on
+    (``registry.INPUTS``), by name (muvid#224): THE table both the scoring run (value and
+    fingerprint, read together) and the staleness readers (the fingerprint alone) use,
+    so the two cannot compute an input's key two ways. A new keyed input is a name in
+    ``registry.INPUTS``, a ``Scorer.inputs`` declaration and a row here — and a test
+    fails while the row is missing. Built per call so each row reads this module's
+    functions at call time."""
+    from muvid.footage.scoring.registry import BEATS, KeyedInput
 
-    return {BEATS: _beat_fingerprint(declared_beat_grid(fp))}
+    def beats(fp):
+        master = _master_beats(fp)
+        return master, master.fingerprint
+
+    return {
+        BEATS: KeyedInput(
+            read=beats,
+            fingerprint=lambda fp: _beat_fingerprint(declared_beat_grid(fp)),
+        )
+    }
+
+
+def _input_fingerprints(fp) -> dict:
+    """The CURRENT fingerprint of every keyed input, by name (muvid#213, #224)."""
+    return {name: k.fingerprint(fp) for name, k in _keyed_inputs().items()}
 
 
 def _stale_metrics(fp, manifest: Optional[dict]) -> Optional[list]:
