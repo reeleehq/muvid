@@ -290,7 +290,9 @@ python -m muvid.lyricvid render song.mp3 out.mp4 --timed-text glyphs.json --trea
   `--timing-overrides song.json` applies the song's recorded judgements
   `{"<0-based line index>": "fine"}` (the aligner was right, the vendor window
   is junk). The overrides are a person's call about ONE song: record them in
-  that song's spec, never in code, and never invent one. Both land under
+  that song's spec (under `timing_overrides`; a spec without that key is refused,
+  so a spec recording none says `"timing_overrides": null` — muvid#162), never in
+  code, and never invent one. Both land under
   `repaired` in the report. In Python: `apply_timing_overrides(...)` then
   `repair_spills(...)` on `reconcile`'s result.
 - `ー` has no onset; it is placed midway between its neighbours, unmeasured.

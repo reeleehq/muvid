@@ -313,25 +313,18 @@ def _timing_overrides_arg(value: str) -> dict:
     """``--timing-overrides``: a JSON file or inline JSON. Empty means none.
 
     The JSON is either a song spec, whose ``timing_overrides`` key holds the
-    mapping (absent or null: none recorded), or the mapping itself — read as
-    one as soon as any key looks like a line index or any value is an
-    override, or when EVERY entry is a string value under a key containing a
-    digit (a typo such as ``{"x1": "fien"}``), so a typo in it is refused by
-    the check rather than read as "a spec with none" and dropped with the
-    valid entries beside it. A spec with any other field (``title``...) stays
-    a spec, whatever digits its other keys hold.
+    mapping (null: none recorded), or the mapping itself — read as one as soon as
+    any key looks like a line index or any value is an override, or when EVERY
+    entry is a string value under a key containing a digit (a typo such as
+    ``{"x1": "fien"}``), so a typo in it is refused by the check rather than
+    dropped with the valid entries beside it. ``{}`` is an empty mapping.
 
-    Without a song-spec schema to check field names against, two near-misses are
-    caught by spelling (muvid#162), on this opt-in path only: a spec key within
-    :data:`_NEAR_MISS_KEY_EDITS` edits of ``timing_overrides`` is refused ("did you
-    mean"), and a mapping whose EVERY value is within
-    :data:`_NEAR_MISS_VALUE_EDITS` of an override (``{"x": "fien"}``) is read as
-    overrides, so the check refuses it — which also refuses a spec whose every field
-    is one short word like "fire" (give it ``"timing_overrides": null``). A spec read
-    as recording none is said on stderr with its keys, so a typo nothing caught is
-    still visible rather than silently applying nothing.
+    Anything else is REFUSED (muvid#162): with no song-spec schema to check field
+    names against, a JSON without the key cannot be told from a misspelt one —
+    ``{"title": "x", "timing_override": {...}}``, or ``{"x": "fien"}`` — and reading
+    either as "none recorded" applied nothing in silence. The flag is opt-in, so a
+    spec that records none says so with ``"timing_overrides": null``.
     """
-    import sys
     from pathlib import Path
 
     from muvid.lyricvid.glyph_align import TIMING_OVERRIDES
@@ -347,19 +340,8 @@ def _timing_overrides_arg(value: str) -> dict:
         ) from None
     if not isinstance(obj, dict):
         raise SystemExit("--timing-overrides must be a JSON object")
-    near = [
-        k
-        for k in obj
-        if k != _OVERRIDES_KEY
-        and _edit_distance(_spelling(k), _OVERRIDES_KEY) <= _NEAR_MISS_KEY_EDITS
-    ]
-    if near and _OVERRIDES_KEY not in obj:
-        raise SystemExit(
-            f"--timing-overrides: the spec has {near[0]!r}; did you mean "
-            f"{_OVERRIDES_KEY!r}?"
-        )
-    if _OVERRIDES_KEY in obj:
-        found = obj[_OVERRIDES_KEY]
+    if "timing_overrides" in obj:
+        found = obj["timing_overrides"]
         if found is None:
             return {}
         if not isinstance(found, dict):
@@ -375,68 +357,15 @@ def _timing_overrides_arg(value: str) -> dict:
                 for k, v in obj.items()
             )
         )
-        or (  # every value a misspelt override: "fien" (muvid#162)
-            bool(obj)
-            and all(
-                isinstance(v, str)
-                and any(
-                    _edit_distance(_spelling(v), o) <= _NEAR_MISS_VALUE_EDITS
-                    for o in TIMING_OVERRIDES
-                )
-                for v in obj.values()
-            )
-        )
     )
-    if looks_like_overrides:
+    if looks_like_overrides or not obj:
         return obj
-    if obj:  # a song spec with none recorded: said, so a typo is never silent
-        print(
-            f"--timing-overrides: read as a song spec recording no "
-            f"{_OVERRIDES_KEY} (its keys: {', '.join(map(str, obj))}); none applied",
-            file=sys.stderr,
-        )
-    return {}
-
-
-#: The song-spec key that holds the timing overrides.
-_OVERRIDES_KEY = "timing_overrides"
-#: How many edits (:func:`_edit_distance`) a spec key may be from ``timing_overrides``
-#: and still be read as a misspelling of it (muvid#162) — two, on a 16-letter key no
-#: real field name comes near...
-_NEAR_MISS_KEY_EDITS = 2
-#: ...and a value from an override word: one (``fien``, ``fin``), because two edits
-#: from a four-letter word reach ordinary words ("one" is two from "fine").
-_NEAR_MISS_VALUE_EDITS = 1
-
-
-def _spelling(text) -> str:
-    """``text`` as spelling is compared: lower case, ``-`` and spaces as ``_``."""
-    return str(text).strip().lower().replace("-", "_").replace(" ", "_")
-
-
-def _edit_distance(a: str, b: str) -> int:
-    """Edits from ``a`` to ``b``: insert, delete, substitute, or swap two neighbours,
-    each one edit (optimal string alignment) — so a transposed typo costs one.
-
-    >>> _edit_distance("fien", "fine"), _edit_distance("timing_override", "timing_overrides")
-    (1, 1)
-    >>> _edit_distance("one", "fine")
-    2
-    """
-    d = [
-        [i + j if i * j == 0 else 0 for j in range(len(b) + 1)]
-        for i in range(len(a) + 1)
-    ]
-    for i in range(1, len(a) + 1):
-        for j in range(1, len(b) + 1):
-            d[i][j] = min(
-                d[i - 1][j] + 1,
-                d[i][j - 1] + 1,
-                d[i - 1][j - 1] + (a[i - 1] != b[j - 1]),
-            )
-            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
-                d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
-    return d[-1][-1]
+    raise SystemExit(
+        "--timing-overrides: this JSON is neither a timing-overrides mapping "
+        '({"<line index>": "fine"}) nor a song spec with a "timing_overrides" key '
+        f"(its keys: {', '.join(map(str, obj))}) — check that key's spelling, or, "
+        'to record none, give the spec "timing_overrides": null'
+    )
 
 
 _FUNCS = [
