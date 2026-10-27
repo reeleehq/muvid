@@ -866,7 +866,9 @@ def selection_unverified_stretches(a: FootageAlignment) -> "list[tuple[float, fl
     ]
 
 
-def unverified_in_cut(e: "EdlEntry", a: FootageAlignment) -> "list[tuple[float, float]]":
+def unverified_in_cut(
+    e: "EdlEntry", a: FootageAlignment
+) -> "list[tuple[float, float]]":
     """The song-time stretches of cut ``e`` that show its clip ``a`` where
     :func:`selection_unverified_stretches` says the clip does not match the song
     (muvid#241). Read in the clip's own time through :func:`clip_in_of`, so a slipped or
@@ -890,7 +892,10 @@ def unverified_in_cut(e: "EdlEntry", a: FootageAlignment) -> "list[tuple[float, 
         lo, hi = max(start - a.offset_s, clip_in), min(end - a.offset_s, clip_out)
         if hi - lo > _EPS:
             out.append(
-                (e.song_start + (lo - clip_in) / rate, e.song_start + (hi - clip_in) / rate)
+                (
+                    e.song_start + (lo - clip_in) / rate,
+                    e.song_start + (hi - clip_in) / rate,
+                )
             )
     return out
 

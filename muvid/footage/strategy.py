@@ -191,7 +191,10 @@ def _breakpoints(alignments: Sequence[FootageAlignment]) -> list[float]:
     """
     bs = {round(x, 6) for a in alignments for x in a.coverage}
     edges = sorted(
-        round(x, 6) for a in alignments for st in selection_unverified_stretches(a) for x in st
+        round(x, 6)
+        for a in alignments
+        for st in selection_unverified_stretches(a)
+        for x in st
     )
     for x in edges:
         if all(abs(x - b) >= SELECTION_MIN_UNVERIFIED_S for b in bs):

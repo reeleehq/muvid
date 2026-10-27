@@ -4255,7 +4255,9 @@ def assemble(
     render_dir = fp.new_render_dir(render_id)
     # The render-plan findings, on their way to the CALLER (who has no stderr).
     notes: list[str] = [exclusion_note(x) for x in excluded]
-    notes += _unverified_notes(entries, aligns)  # both paths: a warning transforms nothing
+    notes += _unverified_notes(
+        entries, aligns
+    )  # both paths: a warning transforms nothing
     if selection_report:
         notes.append(selection_report["message"])
     # A render that covers only part of the song is that part's length, and its music
