@@ -1,4 +1,4 @@
-> built 2026-10-27 17:17 UTC from ec5097e (main) · muvid 0.0.134. Details: build_info.json
+> built 2026-10-27 17:23 UTC from ec5097e (main) · muvid 0.0.134. Details: build_info.json
 
 # index.html.md
 
@@ -19199,7 +19199,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 17:17 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/ec5097efcd1aa69d751682bf350bf190b96e968f"><code>ec5097e</code></a> on branch <code>main</code>, for **muvid 0.0.134** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 17:23 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/ec5097efcd1aa69d751682bf350bf190b96e968f"><code>ec5097e</code></a> on branch <code>main</code>, for **muvid 0.0.134** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19219,9 +19219,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40537041980">40537041980</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40542161822">40542161822</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>96deb1611629577fb8fbc046968544f53f54ea09</code> (in the history of the built commit) |
+| Event commit | <code>849724f0707f4630403882ad8cf17f34a37415c2</code> (in the history of the built commit) |
 
 ## Tools
 

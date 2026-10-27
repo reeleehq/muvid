@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-27T17:17:08Z",
+  "built_at": "2026-10-27T17:23:59Z",
   "package": {
     "name": "muvid",
     "version": "0.0.134",
@@ -23,12 +23,12 @@
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "96deb1611629577fb8fbc046968544f53f54ea09",
+    "sha": "849724f0707f4630403882ad8cf17f34a37415c2",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "40537041980",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40537041980",
+    "run_id": "40542161822",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40542161822",
     "server_url": "https://github.com"
   },
   "tools": {
