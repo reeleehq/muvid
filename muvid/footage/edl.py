@@ -3031,12 +3031,16 @@ def _validate_look_luts(i, look: str) -> None:
         opts, overflow = _link_options(args, _LUT3D_POSITIONAL)
         if overflow or set(opts) - _LUT3D_OPTIONS:
             extra = sorted(set(opts) - _LUT3D_OPTIONS) + [v for v, _ in overflow]
-            refuse(f"sets {extra}, which muvid does not offer (only {sorted(_LUT3D_OPTIONS)})")
+            refuse(
+                f"sets {extra}, which muvid does not offer (only {sorted(_LUT3D_OPTIONS)})"
+            )
         text = opts.get("file")
         if text is None:
             continue  # no file: lut3d is the identity, and loads nothing
         if not _LUT_PATH_TEXT.fullmatch(text) or not text.lower().endswith(".cube"):
-            refuse(f"file {text!r} is not an absolute .cube path written without escapes")
+            refuse(
+                f"file {text!r} is not an absolute .cube path written without escapes"
+            )
         root, path = lut_dir().resolve(), Path(text).resolve()
         if not path.is_relative_to(root) or not path.is_file():
             refuse("file is not a .cube in muvid's LUT folder")
