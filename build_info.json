@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
-  "built_at": "2026-10-27T11:51:33Z",
+  "built_at": "2026-10-27T11:53:54Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.124",
+    "version": "0.0.125",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "e87cf83e91825027cb4c85afb495a5fd07d1adcd",
-    "short_commit": "e87cf83",
+    "commit": "1c5a54b94d6d468c7acf598ab39e0e0a8aba96ad",
+    "short_commit": "1c5a54b",
     "branch": "main",
     "tags": [
-      "0.0.124"
+      "0.0.125"
     ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/e87cf83e91825027cb4c85afb495a5fd07d1adcd",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/1c5a54b94d6d468c7acf598ab39e0e0a8aba96ad",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "d83606c9a1a094fdba9d5b7b3e377b56c6c0b44c",
+    "sha": "465838c3fd86a614669cbac676396d6fc4924ac6",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "40498320343",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40498320343",
+    "run_id": "40498388759",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/40498388759",
     "server_url": "https://github.com"
   },
   "tools": {
@@ -62,14 +62,16 @@
   },
   "pypi": {
     "checked": true,
-    "latest": "0.0.124",
-    "relation": "same",
+    "latest": "0.0.123",
+    "relation": "ahead",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout e87cf83e91825027cb4c85afb495a5fd07d1adcd\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 1c5a54b94d6d468c7acf598ab39e0e0a8aba96ad\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
-    "aligned": true,
-    "notes": []
+    "aligned": false,
+    "notes": [
+      "The documented version (0.0.125) is ahead of the latest release on PyPI (0.0.123): these docs describe unreleased code."
+    ]
   }
 }
