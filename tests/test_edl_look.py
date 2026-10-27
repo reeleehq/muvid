@@ -176,13 +176,15 @@ def test_a_gap_may_not_carry_a_look():
 #: the template has to be a deliberate two-place change rather than a silent
 #: reshaping of every render muvid has ever produced. Changed once, deliberately:
 #: the ``scale`` converts to the delivery colour (muvid#195).
-_HISTORICAL = (
+#: The delivery tag, last in every part's chain — after the look (muvid#195).
+_TAG = ",setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709"
+_NORMALISED = (
     "scale=1920:1080:force_original_aspect_ratio=decrease"
     ":out_color_matrix=bt709:out_range=tv,"
-    "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
     "pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,"
     "tpad=stop=-1:stop_mode=clone"
 )
+_HISTORICAL = _NORMALISED + _TAG
 
 
 def test_no_look_emits_exactly_the_chain_it_always_did():
@@ -202,7 +204,7 @@ def test_the_look_lands_after_the_normalisation_and_before_the_tail():
     # instead of a per-clip probe. Before the tail: xfade needs both its sides in
     # one pixel format, which is the tail's whole job.
     got = _part_filter(_cut(look=_GREY), w=1920, h=1080, fps=30, tail=",format=yuv420p")
-    assert got == _HISTORICAL + f",{_GREY},format=yuv420p"
+    assert got == _NORMALISED + f",{_GREY}" + _TAG + ",format=yuv420p"
 
 
 def test_the_look_composes_with_a_crop_rather_than_replacing_it():
@@ -210,7 +212,7 @@ def test_the_look_composes_with_a_crop_rather_than_replacing_it():
         _cut(crop=CropWindow(0.0, 0.25, 1.0, 0.5), look=_GREY), w=640, h=360, fps=25
     )
     assert got.startswith("crop="), "the source-relative framing still comes first"
-    assert got.endswith(f",{_GREY}")
+    assert got.endswith(f",{_GREY}{_TAG}")
 
 
 def _record_ffmpeg(monkeypatch):
@@ -274,14 +276,14 @@ def test_both_render_sites_place_each_cut_s_OWN_look(monkeypatch, tmp_path):
     )
     norm = "tpad=stop=-1:stop_mode=clone,"
     # The solo parts, in plan order: A's look on A, B's look on B.
-    assert solos[0].endswith(norm + _GREY), solos[0]
-    assert solos[1].endswith(norm + _WARM), solos[1]
+    assert solos[0].endswith(norm + _GREY + _TAG), solos[0]
+    assert solos[1].endswith(norm + _WARM + _TAG), solos[1]
     # ...and PER BRANCH of the blend. `[0:v]` is the OUTGOING cut (A), `[1:v]` the
     # incoming (B); a look read from a fixed side lands the same fragment twice.
     a_branch, rest = blends[0].split("[a];", 1)
     b_branch = rest.split("[b];", 1)[0]
-    assert a_branch.endswith(norm + _GREY + ",format=yuv420p"), a_branch
-    assert b_branch.endswith(norm + _WARM + ",format=yuv420p"), b_branch
+    assert a_branch.endswith(norm + _GREY + _TAG + ",format=yuv420p"), a_branch
+    assert b_branch.endswith(norm + _WARM + _TAG + ",format=yuv420p"), b_branch
     # ...and the blend really is two decoders, still. The seam must not have
     # moved the invariant muvid#21/#24 bought.
     for c in calls:
@@ -604,8 +606,8 @@ _HISTORICAL_ARGV = (
         "-vf",
         "scale=640:360:force_original_aspect_ratio=decrease"
         ":out_color_matrix=bt709:out_range=tv,"
-        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
-        "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone",
+        "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709",
         "-frames:v",
         "95",
         "-an",
@@ -644,13 +646,13 @@ _HISTORICAL_ARGV = (
         "-filter_complex",
         "[0:v]scale=640:360:force_original_aspect_ratio=decrease"
         ":out_color_matrix=bt709:out_range=tv,"
-        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "format=yuv420p[a];"
         "[1:v]scale=640:360:force_original_aspect_ratio=decrease"
         ":out_color_matrix=bt709:out_range=tv,"
-        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
         "format=yuv420p[b];"
         "[a][b]xfade=transition=fade:duration=0.400000:offset=0[v]",
         "-map",
@@ -687,8 +689,8 @@ _HISTORICAL_ARGV = (
         "-vf",
         "scale=640:360:force_original_aspect_ratio=decrease"
         ":out_color_matrix=bt709:out_range=tv,"
-        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
-        "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone",
+        "pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=25,tpad=stop=-1:stop_mode=clone,"
+        "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709",
         "-frames:v",
         "145",
         "-an",

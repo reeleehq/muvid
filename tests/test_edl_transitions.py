@@ -674,9 +674,9 @@ def test_the_blend_is_a_monotone_ramp_from_the_outgoing_clip_to_the_incoming(tmp
                 "-vf",
                 "scale=320:180:force_original_aspect_ratio=decrease"
                 ":out_color_matrix=bt709:out_range=tv,"
-                "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,"
                 "pad=320:180:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30,"
-                "tpad=stop=-1:stop_mode=clone,format=yuv420p",
+                "tpad=stop=-1:stop_mode=clone,"
+                "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709,format=yuv420p",
                 "-frames:v",
                 str(x.n_frames),
                 "-an",

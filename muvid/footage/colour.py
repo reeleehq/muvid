@@ -40,8 +40,8 @@ DELIVERY_COLOR_SPACE = "bt709"
 #: The delivery range: limited ("tv"), the range H.264 delivery is read in.
 DELIVERY_COLOR_RANGE = "tv"
 
-#: The frame-level tag the assembler places right after its converting ``scale``
-#: (and on a gap's black). On the FRAME, not only on the encoder: ffmpeg 8.0.1 takes
+#: The frame-level tag the assembler places last in each part's chain, after the
+#: look (and on a gap's black). On the FRAME, not only on the encoder: ffmpeg 8.0.1 takes
 #: the stream's colour description from the frames and ignores ``-color_primaries``
 #: / ``-color_trc`` (measured: both came out ``unknown`` with the options alone).
 DELIVERY_TAG = (

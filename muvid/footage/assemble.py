@@ -435,7 +435,7 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale, setparams, pad, setsar, fps, tpad [, look] [, tail]``
+    ``[retime,] [crop,] scale, pad, setsar, fps, tpad [, look], setparams [, tail]``
 
     ``retime`` is a cut's speed (``setpts=(PTS-STARTPTS)/rate``) and it comes BEFORE
     ``fps``, so ``fps`` picks frames on the retimed clock. (Measured on ffmpeg 9.0: the
@@ -467,7 +467,10 @@ def _part_filter(
     muvid#195) — from ``cut.source_matrix`` when the source's own tag cannot be
     trusted —
     and ``setparams`` (:data:`~muvid.footage.colour.DELIVERY_TAG`) says so on the
-    frame, so the look sees a frame whose colour is known as well as its size.
+    frame the ENCODER gets: after the look, because a look can drop the frame's
+    colour tags (ffmpeg 6.1's ``zoompan`` — a punch-in — left a part untagged that
+    its look-less twin was not; ``looks``' own steps convert with explicit
+    matrices, so they do not depend on the tag).
 
     The conversion is this ``scale``, not the encoder options, although on ffmpeg
     8.0.1 the options alone do the same (that build negotiates ``-colorspace`` /
@@ -489,10 +492,10 @@ def _part_filter(
         f"scale={w}:{h}:force_original_aspect_ratio=decrease"
         f"{f':in_color_matrix={in_matrix}' if in_matrix else ''}"
         f":out_color_matrix={DELIVERY_COLOR_SPACE}:out_range={DELIVERY_COLOR_RANGE},"
-        f"{DELIVERY_TAG},"
         f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps={fps},"
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
+        f",{DELIVERY_TAG}"
         f"{tail}"
     )
 
