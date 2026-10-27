@@ -240,7 +240,7 @@ Pipeline: `align → score → select → EDL → assemble`.
   `allow_unreliable=True` (render the bad clip) or hand-writing an EDL (the thing the
   auto path exists to prevent). So `reliable` is now read the way `overlaps` already was:
   every built-in runs its `pick` over `strategy._prefer_vouched(covering)` and `weighted`
-  charges `select_score.UNVOUCHED_REWARD_PENALTY` (2.0 reward-seconds per second, chosen
+  charges `select_score.UNVOUCHED_REWARD_PENALTY` (3.0 reward-seconds per second, chosen
   to exceed the composite's whole `[0,1]` range — a tensor column would have been
   *commensurate* with sharpness and therefore outbiddable, which is why it is not one).
   A strategy still never drops a source: where nothing else covers a span it proposes the
