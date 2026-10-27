@@ -495,6 +495,10 @@ def composite_lane(tensor, weights: Mapping[str, float], clip_id: str) -> np.nda
 #: and a config field would let the preference be tuned away silently by a caller
 #: passing ``config=`` to the MCP tool.
 UNVOUCHED_REWARD_PENALTY = 2.0
+#: The same charge, per second of a clip's UNVERIFIED stretch — footage its measured
+#: spans say does not match the song there (muvid#16 slice 2); for the same reason it
+#: exceeds the composite's whole range and is not a config field.
+UNVERIFIED_REWARD_PENALTY = UNVOUCHED_REWARD_PENALTY
 
 
 def _demote_unvouched(composite: np.ndarray, aligns) -> np.ndarray:
@@ -517,6 +521,21 @@ def _demote_unvouched(composite: np.ndarray, aligns) -> np.ndarray:
     return composite
 
 
+def _demote_unverified(composite: np.ndarray, aligns, tensor) -> np.ndarray:
+    """Charge :data:`UNVERIFIED_REWARD_PENALTY` on the grid frames of each clip's
+    unverified stretches (muvid#16 slice 2) — :func:`_demote_unvouched` at the
+    granularity of a stretch, the ``weighted`` form of
+    :func:`muvid.footage.strategy._prefer_confirmed`. Demotes, never prunes."""
+    from muvid.footage.edl import unverified_song_stretches
+
+    for ai, a in enumerate(aligns):
+        for start, end in unverified_song_stretches(a):
+            ki = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
+            kj = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
+            composite[ai, ki:kj] -= UNVERIFIED_REWARD_PENALTY
+    return composite
+
+
 def _prefix(g_row: np.ndarray) -> np.ndarray:
     """P[k] = Σ_{k'<k} g_row[k'] with a leading 0 (length n+1)."""
     p = np.empty(g_row.shape[0] + 1, dtype=np.float64)
@@ -536,10 +555,13 @@ def _seg_reward(prefix, ki: int, kj: int, length: float, *, hop: float, cfg) -> 
 def dp_composite(tensor, aligns, *, config) -> "tuple[np.ndarray, float]":
     """THE per-frame reward the ``weighted`` DP integrates, one row per alignment: the
     composite under ``config``'s weights (0 where nothing is measured) with the
-    unvouched-clip demotion (:data:`UNVOUCHED_REWARD_PENALTY`); and the total weight,
+    unvouched-clip demotion (:data:`UNVOUCHED_REWARD_PENALTY`) and the unverified-
+    stretch one (:data:`UNVERIFIED_REWARD_PENALTY`, muvid#16); and the total weight,
     ``0`` when no weighted metric is in the tensor (the DP then does not run)."""
     composite, total = _composite(tensor, config.weights, aligns)
-    return _demote_unvouched(composite, aligns), total
+    return _demote_unverified(
+        _demote_unvouched(composite, aligns), aligns, tensor
+    ), total
 
 
 def span_rewards(tensor, aligns, spans, *, config) -> "list[float | None]":

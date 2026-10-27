@@ -29,7 +29,7 @@ import importlib
 import inspect
 from typing import Callable, Sequence
 
-from muvid.footage.edl import EdlEntry, FootageAlignment
+from muvid.footage.edl import EdlEntry, FootageAlignment, unverified_song_stretches
 
 #: A strategy: alignments + song duration → an EDL (built-ins ignore song_duration but it
 #: is passed so a strategy MAY reason about the full timeline).
@@ -177,11 +177,15 @@ def select_edl(
 
 
 def _breakpoints(alignments: Sequence[FootageAlignment]) -> list[float]:
-    """Sorted unique coverage boundaries — the elementary-interval grid."""
+    """Sorted unique coverage boundaries — the elementary-interval grid — and the edges
+    of every clip's unverified stretches (muvid#16), so a preference can change there."""
     bs = set()
     for a in alignments:
         bs.add(round(a.coverage[0], 6))
         bs.add(round(a.coverage[1], 6))
+        for start, end in unverified_song_stretches(a):
+            bs.add(round(start, 6))
+            bs.add(round(end, 6))
     return sorted(bs)
 
 
@@ -216,6 +220,22 @@ def _prefer_vouched(covering: list[FootageAlignment]) -> list[FootageAlignment]:
     return vouched or covering
 
 
+def _prefer_confirmed(
+    covering: list[FootageAlignment], mid: float
+) -> list[FootageAlignment]:
+    """Rank a clip whose measured spans confirm this moment ahead of one whose spans
+    say it does not match the song here (muvid#16 slice 2) — the same per-interval
+    PREFERENCE as :func:`_prefer_vouched`, at the granularity of a stretch: where only
+    an unverified clip covers, it is still chosen. A clip with no spans measured counts
+    as confirmed (no measurement is not evidence against it)."""
+
+    def unverified(a: FootageAlignment) -> bool:
+        return any(s - 1e-6 <= mid < e + 1e-6 for s, e in unverified_song_stretches(a))
+
+    confirmed = [a for a in covering if not unverified(a)]
+    return confirmed or covering
+
+
 def _coalesce(spans: list[tuple[float, float, str]]) -> list[EdlEntry]:
     """Merge consecutive same-clip elementary spans into one EDL entry."""
     out: list[EdlEntry] = []
@@ -248,7 +268,7 @@ def _build(alignments, pick) -> list[EdlEntry]:
         # Trust first, then whatever the strategy optimizes (muvid#88). Here rather than
         # in each `pick` so every built-in — and `fewest_cuts`, which would otherwise sit
         # on an unvouched clip precisely because staying is free — carries it identically.
-        covering = _prefer_vouched(covering)
+        covering = _prefer_confirmed(_prefer_vouched(covering), (lo + hi) / 2)
         clip_id = pick(covering, prev_clip_id)
         spans.append((lo, hi, clip_id))
         prev_clip_id = clip_id

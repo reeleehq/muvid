@@ -786,6 +786,23 @@ def unverified_stretches(
     return out
 
 
+def unverified_song_stretches(
+    a: FootageAlignment, *, tolerance_s: float = SPAN_OFFSET_TOLERANCE_S
+) -> "list[tuple[float, float]]":
+    """:func:`unverified_stretches` on the SONG timeline (``song = clip + offset_s``):
+    where this clip's placement shows footage its measured spans do not confirm
+    (muvid#16 slice 2). ``[]`` when spans were not measured — no measurement is not
+    evidence against the placement.
+
+    >>> a = FootageAlignment("c", 10.0, 0.9, 78.0, (10.0, 88.0),
+    ...     spans=(MeasuredSpan(0.0, 60.0, 10.0, 0.8),))
+    >>> unverified_song_stretches(a)
+    [(70.0, 88.0)]
+    """
+    stretches = unverified_stretches(a, tolerance_s=tolerance_s) or []
+    return [(s + a.offset_s, e + a.offset_s) for s, e in stretches]
+
+
 @dataclass(frozen=True)
 class CropWindow:
     """A rectangle to take from the source frame, as fractions of its width/height.
