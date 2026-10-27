@@ -612,28 +612,21 @@ AFFECT_MIN_SPREAD = 0.25
 def _affect_mismatch(sources, analysis, energy_at, *, affect_of, envelope):
     """``mismatch(start, end, source_index)`` — ``|arousal - loudness|`` in [0, 1] for a
     picture shown over ``[start, end)`` (muvid#134), arousal being the picture's
-    ``affect_of`` value put on a PERCENTILE scale over the pool (:func:`_percentile_scale`) and the
-    loudness its section's — or ``None`` when there is nothing to match: no
-    ``affect_of``, fewer than two sections with a measured loudness, or affects that do
-    not differ by :data:`AFFECT_MIN_SPREAD`. A picture with no affect sits in the
-    middle.
-
-    Percentiles, not the pool's min and max (muvid#234): one very lively clip squashed
-    every other video towards 0, so in the loud sections they all read as misfits and
-    the outlier took every turn the gap allowed. Not ranks either: a rank puts an evenly
-    spread pool's middle level exactly on :data:`~muvid.montage.plan.AFFECT_SLACK`'s
-    boundary. The spread guard still reads the raw values, so noise between
-    near-identical clips is not scaled into a difference."""
+    ``affect_of`` value scaled over the pool (:func:`_affect_band`) and the loudness its
+    section's — or ``None`` when there is nothing to match: no ``affect_of``, fewer than
+    two sections with a measured loudness, or affects that do not differ by
+    :data:`AFFECT_MIN_SPREAD`. A picture with no affect (or a non-finite one) sits in
+    the middle."""
     measured = [s for s in analysis.sections if s.energy_db is not None]
     if affect_of is None or len(measured) < 2:
         return None
     raw = {i: affect_of(s, envelope(s)) for i, s in enumerate(sources)}
-    known = [v for v in raw.values() if v is not None]
-    lo, hi = (min(known), max(known)) if known else (0.0, 0.0)
-    if hi - lo <= AFFECT_MIN_SPREAD * max(abs(hi), abs(lo), 1e-12):
+    known = {i: float(v) for i, v in raw.items() if v is not None and math.isfinite(v)}
+    band = _affect_band(list(known.values()))
+    if band is None:
         return None
-    scaled = _percentile_scale({i: v for i, v in raw.items() if v is not None})
-    arousal = {i: scaled.get(i, 0.5) for i in raw}
+    lo, hi = band
+    arousal = {i: min(1.0, max(0.0, (v - lo) / (hi - lo))) for i, v in known.items()}
 
     def mismatch(start: float, end: float, index: int) -> float:
         loud = (energy_at((start + end) / 2.0) + 1.0) / 2.0
@@ -642,28 +635,45 @@ def _affect_mismatch(sources, analysis, energy_at, *, affect_of, envelope):
     return mismatch
 
 
-#: The percentiles of the pool's affects that map to 0 and 1 (muvid#234): a value
-#: outside them is clipped to the end, so one outlier cannot squash the rest.
-AFFECT_SCALE_PERCENTILES = (10.0, 90.0)
+#: The share of the pool trimmed off EACH end before the affects are scaled
+#: (muvid#234), at least one clip once the pool has more than :data:`AFFECT_TRIM_MIN_POOL`
+#: — a count, not a percentile, so one wild clip is trimmed from a pool of five as from a
+#: pool of fifty.
+AFFECT_TRIM_SHARE = 0.1
+#: The smallest pool trimmed at all: in three clips the extremes ARE the pool.
+AFFECT_TRIM_MIN_POOL = 4
 
 
-def _percentile_scale(values: Mapping[int, float]) -> dict[int, float]:
-    """Each value placed linearly between the pool's :data:`AFFECT_SCALE_PERCENTILES`
-    and clipped to ``[0, 1]`` — the min-max scale for a pool without outliers, but one
-    wild value no longer squashes every other towards 0. Where those percentiles meet
-    (most of the pool alike) it falls back to the pool's own min and max.
+def _spread_enough(lo: float, hi: float) -> bool:
+    return hi - lo > AFFECT_MIN_SPREAD * max(abs(hi), abs(lo), 1e-12)
 
-    >>> s = _percentile_scale({i: v for i, v in enumerate([.05] * 6 + [.6] * 6 + [10.])})
-    >>> s[0], s[6], s[12]
-    (0.0, 1.0, 1.0)
-    >>> round(_percentile_scale({0: 0.05, 1: 0.5, 2: 1.0})[1], 3)  # spread: min-max
-    0.474
+
+def _affect_band(values: Sequence[float]) -> "Optional[tuple[float, float]]":
+    """The ``(lo, hi)`` the pool's affects are scaled between (values outside clip to
+    the end), or ``None`` when they do not differ enough to match on (muvid#234).
+
+    The TRIMMED band first — :data:`AFFECT_TRIM_SHARE` of the pool off each end — so one
+    wild clip no longer squashes the lively ones into misfits in every loud section, as
+    the pool's min and max did. The spread guard reads that same band, so noise between
+    near-identical clips is never stretched to the full scale. Where the trimmed band is
+    flat (all but a few clips alike) the full range is the honest scale: the few ARE the
+    lively ones.
+
+    >>> _affect_band([.05] * 4 + [.6] * 3 + [10.])  # one wild clip in eight: trimmed off
+    (0.05, 0.6)
+    >>> _affect_band([.49, .5, .5, .51, 10.])        # noise + one outlier: the full range
+    (0.49, 10.0)
+    >>> _affect_band([.49, .5, .51]) is None         # noise alone: no affect
+    True
     """
-    vs = np.asarray(list(values.values()), dtype=float)
-    lo, hi = (float(x) for x in np.percentile(vs, AFFECT_SCALE_PERCENTILES))
-    if hi <= lo:
-        lo, hi = float(vs.min()), float(vs.max())
-    return {i: min(1.0, max(0.0, (v - lo) / (hi - lo))) for i, v in values.items()}
+    vs = sorted(values)
+    if not vs:
+        return None
+    k = max(1, math.ceil(AFFECT_TRIM_SHARE * len(vs))) if len(vs) >= AFFECT_TRIM_MIN_POOL else 0
+    for lo, hi in ((vs[k], vs[-1 - k]), (vs[0], vs[-1])):
+        if _spread_enough(lo, hi):
+            return lo, hi
+    return None
 
 
 def _cut_affect_fit(entries, sources, mismatch) -> Optional[float]:
@@ -1035,12 +1045,13 @@ def fill_spans(
         "order_note": order_note,
         # whether the pictures' feel was matched to the sections' loudness (muvid#134)
         "affect": bool(plan.reuse.get("affect")),
-        # which pictures that matching kept out of which sections (muvid#234):
-        # {section label: [clip ids]}, empty when it kept nothing out
-        "affect_withheld": {
-            label: sorted(sources[m].clip_id for m in ms)
-            for label, ms in sorted(plan.reuse.get("affect_withheld", {}).items())
-        },
+        # which pictures that matching kept out of which stretch of the song (muvid#234):
+        # one entry per section occurrence, pictures never shown there because of it
+        "affect_withheld": [
+            {**{k: w[k] for k in ("section", "start", "end")},
+             "clips": [sources[m].clip_id for m in w["media"]]}
+            for w in plan.reuse.get("affect_withheld", [])
+        ],
         # how well the pictures' feel fits the sections', over cut time: 1 a perfect
         # match, 0 the opposite; None when affect did not apply (muvid#135 ranks on it)
         "affect_fit": _cut_affect_fit(entries, sources, mismatch),
