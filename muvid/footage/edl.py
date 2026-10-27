@@ -129,6 +129,17 @@ _LOOK_FILTER_COSTS: "dict[str, tuple[str, float]]" = {
 _LOOK_CONVERSION_FRAMES = 3.0
 #: The family the frame a look is handed is in: the assembler's normalised YUV.
 _LOOK_INPUT_FAMILY = "yuv"
+#: How much more every allocation costs once the chain has been through an RGB link:
+#: ffmpeg then stays in a three-byte format (``gbrp``, and ``yuv444p`` for a YUV link
+#: after it) where the table's unit is 4:2:0's one and a half — measured, ``bilateral``
+#: after ``colorchannelmixer`` holds twice its 4:2:0 working set (the #229 review:
+#: priced as one, two such links measured 904 MB, 1.6 GB under libx264).
+_LOOK_WIDE_FACTOR = 2.0
+#: Filters whose working set is many frames AND depends on the format and planes it
+#: is handed, so a flat price cannot bound them: at most one in a look, and at the
+#: canvas size (the counts of muvid#199, kept for this one filter).
+_LOOK_HEAVY_FILTERS = frozenset({"bilateral"})
+MAX_LOOK_HEAVY_LINKS = 1
 
 #: The memory a look may cost, in canvas-sized YUV frames (:func:`_look_cost`) — ONE
 #: budget in place of the three counts of muvid#196/#199 (resizes, links holding a large
@@ -144,8 +155,13 @@ _LOOK_INPUT_FAMILY = "yuv"
 #: ``scale,pad`` to 16x + 7x (colorchannelmixer, eq) (muvid#199)       ~819   2527 MB
 #: =================================================================  ======  ========
 #:
-#: 150 keeps the first with room and refuses the others; the worst look found UNDER it
-#: is measured in CI under a ceiling (``test_the_worst_look_the_budget_keeps_...``).
+#: 150 keeps the first with room and refuses the others. Encoding (libx264, the
+#: assembler's shape), the worst of 230 looks a search found under it measured 1084 MB,
+#: against 1034 for the worst look the three caps kept and 640 with no look: the budget
+#: holds memory where the caps did. That look is measured in CI under a ceiling
+#: (``test_the_worst_look_the_budget_keeps_...``). ``bilateral`` keeps its count
+#: (:data:`MAX_LOOK_HEAVY_LINKS`): its working set follows the format, which no flat
+#: price bounds.
 MAX_LOOK_COST = float(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_COST", "150"))
 
 #: The canvas :func:`validate_edl` bounds a look against when its caller names
@@ -2582,9 +2598,33 @@ def _look_frames(look: str, canvas) -> "list[tuple[str, str, tuple, tuple]]":
             for _opt, axis, _text, px in sizes:
                 v = float("inf") if px is None else px
                 w, h = (v, h) if axis == "width" else (w, v)
+            if name == "crop":  # a literal crop size shrinks the frame (#229 review)
+                w, h = _crop_literal_size(args, (w, h))
             frame = (w, h)
         out.append((name, args, before, frame))
     return out
+
+
+def _crop_literal_size(args: str, frame) -> tuple:
+    """``crop``'s output when its ``w`` / ``h`` are plain pixel counts (each no larger
+    than ``frame``); an expression keeps that axis at ``frame``'s, an upper bound.
+
+    >>> _crop_literal_size("1920:1080:10:0", (2880, 1620))
+    (1920, 1080)
+    >>> _crop_literal_size("w='iw*0.9':h=1080", (1920, 1200))
+    (1920, 1080)
+    """
+    opts, _overflow = _link_options(args, _LOOK_GEOMETRY_FILTERS["crop"].positional)
+    w, h = frame
+
+    def literal(*keys):
+        for k in keys:
+            if k in opts and _LOOK_PIXELS.match(opts[k].strip("'\"")):
+                return int(opts[k].strip("'\""))
+        return None
+
+    cw, ch = literal("w", "out_w"), literal("h", "out_h")
+    return (min(w, cw) if cw else w, min(h, ch) if ch else h)
 
 
 def _allowed_options(filt: str) -> "set[str]":
@@ -2661,25 +2701,28 @@ def _look_cost(look: str, canvas) -> "tuple[float, list[tuple[str, float]]]":
     canvas-sized YUV frames, and each link's share.
 
     A link costs its own allocation (:data:`_LOOK_FILTER_COSTS`) at its OUTPUT frame's
-    area, plus a conversion (:data:`_LOOK_CONVERSION_FRAMES`) at its INPUT frame's area
-    when it works in another pixel family than the frame it is handed — the conversion
-    ffmpeg inserts, which is not a link and is where a large frame's memory mostly goes.
-    Areas are relative to the canvas, read off :func:`_look_frames`.
+    area — :data:`_LOOK_WIDE_FACTOR` times that once an RGB link has run — plus a
+    conversion (:data:`_LOOK_CONVERSION_FRAMES`) at its INPUT frame's area when it works
+    in another pixel family than the frame it is handed: the conversion ffmpeg inserts,
+    which is not a link and is where a large frame's memory mostly goes. Areas are
+    relative to the canvas, read off :func:`_look_frames`.
 
     >>> _look_cost("eq=gamma=1", (1920, 1080))[0]
     1.0
     >>> round(_look_cost("scale=7680:4320,colorchannelmixer=rr=1,scale=1920:1080",
     ...                  (1920, 1080))[0], 1)
-    116.4
+    117.6
     """
     canvas_area = float(canvas[0] * canvas[1])
-    family, total, shares = _LOOK_INPUT_FAMILY, 0.0, []
+    family, wide, total, shares = _LOOK_INPUT_FAMILY, False, 0.0, []
     for name, _args, before, after in _look_frames(look, canvas):
         link_family, frames = _LOOK_FILTER_COSTS.get(name, ("any", 1.0))
-        cost = frames * (after[0] * after[1]) / canvas_area
+        factor = _LOOK_WIDE_FACTOR if wide else 1.0
+        cost = factor * frames * (after[0] * after[1]) / canvas_area
         if link_family != "any" and link_family != family:
             cost += _LOOK_CONVERSION_FRAMES * (before[0] * before[1]) / canvas_area
             family = link_family
+        wide = wide or link_family == "rgb"
         total += cost
         shares.append((name, cost))
     return total, shares
@@ -2705,6 +2748,18 @@ def _validate_look_links(i, look: str, canvas) -> None:
             "adds about 47 MB, and the cap exists so a look cannot reach 3 GB "
             "one accepted link at a time. muvid's own looks use at most seven "
             "(a three-step grade, each step wrapped in a colour conversion)."
+        )
+    frames = _look_frames(look, canvas)
+    heavy = [f for f in frames if f[0] in _LOOK_HEAVY_FILTERS]
+    canvas_area = canvas[0] * canvas[1]
+    if len(heavy) > MAX_LOOK_HEAVY_LINKS or any(
+        f[2][0] * f[2][1] > canvas_area for f in heavy
+    ):
+        raise ValueError(
+            f"EDL entry {i}: look runs {len(heavy)} {heavy[0][0]} link(s) — muvid "
+            f"allows {MAX_LOOK_HEAVY_LINKS}, at the canvas size: its working set is "
+            "many frames and grows with the format it is handed, so no flat price "
+            "bounds it (one at 16x the canvas measured 940 MB)."
         )
     total, shares = _look_cost(look, canvas)
     if total > MAX_LOOK_COST:

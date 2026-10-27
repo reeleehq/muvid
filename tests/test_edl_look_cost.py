@@ -114,7 +114,10 @@ def _check(table: dict, measured: dict) -> "list[str]":
     wrong = []
     for name, m in measured.items():
         family, frames = table[name]
-        if family != m["family"]:
+        # one-sided: a table that charges a conversion the binary does not make is
+        # stricter, not wrong (ffmpeg 6.0 negotiates `scale` as either family, the
+        # #229 review); one that charges none where the binary makes one under-reads
+        if m["family"] != "any" and family != m["family"]:
             wrong.append(f"{name}: family {family!r}, measured {m['family']!r}")
         if frames < m["frames"] - _TOLERANCE_FRAMES:
             wrong.append(f"{name}: {frames} frames, measured {m['frames']}")
@@ -140,3 +143,26 @@ def test_the_table_never_reads_cheaper_than_the_recorded_census():
 def test_the_table_never_reads_cheaper_than_this_binary():
     """The census re-measured on the runner's own ffmpeg (6.x in CI)."""
     assert _check(_LOOK_FILTER_COSTS, _measure()) == []
+
+
+def test_after_an_rgb_link_allocations_cost_double():
+    """The #229 review: ffmpeg stays in a three-byte format (gbrp, then yuv444p) after
+    an RGB link, so a link's frames there are twice the 4:2:0 unit."""
+    from muvid.footage.edl import _LOOK_WIDE_FACTOR, _look_cost
+
+    canvas = (1920, 1080)
+    plain = _look_cost("gblur=sigma=5", canvas)[1][-1][1]
+    after_rgb = _look_cost("colorchannelmixer=rr=1,gblur=sigma=5", canvas)[1][-1][1]
+    assert after_rgb == pytest.approx(_LOOK_WIDE_FACTOR * plain)
+
+
+def test_a_literal_crop_returns_the_frame_to_its_size():
+    """Links after `crop=1920:1080` are priced at the canvas, not the larger frame."""
+    from muvid.footage.edl import _look_cost
+
+    canvas = (1920, 1080)
+    upsized = "scale=3840:2160,crop=1920:1080,gblur=sigma=5"
+    expression = "scale=3840:2160,crop=w='iw/2':h='ih/2',gblur=sigma=5"
+    assert (
+        _look_cost(upsized, canvas)[1][-1][1] < _look_cost(expression, canvas)[1][-1][1]
+    )

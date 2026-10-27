@@ -927,10 +927,13 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         b = "bilateral=sigmaS=1"
         up, down = "scale=7680:4320", "scale=1920:1080"
         with pytest.raises(ValueError, match="bilateral"):
-            self._look(0, ",".join([up, b, down]))  # 940 MB measured: ~284
-        # Changed deliberately (muvid#229): two at canvas size (~31 frames, about
-        # 100 MB) were refused by a heavy-filter count
-        self._look(0, ",".join([b, b]))
+            self._look(0, ",".join([up, b, down]))  # 940 MB measured
+        # the count is kept for this one filter (the #229 review): after an RGB link
+        # two measured 904 MB at a price of 144 — no flat price bounds it
+        with pytest.raises(ValueError, match="bilateral"):
+            self._look(0, ",".join([b, b]))
+        with pytest.raises(ValueError, match="bilateral"):
+            self._look(0, ",".join(["colorchannelmixer=rr=1"] + [b] * 8))
         with pytest.raises(ValueError, match="bilateral"):
             self._look(0, ",".join(["colorchannelmixer=rr=1", up, b, down] + [b] * 12))
         self._look(0, ",".join([up, "hue=s=1", down, b]))
@@ -963,34 +966,35 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         self._look(0, compiled)
 
 
-#: The ceiling the worst look the gate keeps must stay under, in MB of peak RSS for one
-#: ffmpeg at a 1920x1080 canvas. Measured 649 MB on ffmpeg 8.0.1 (608 MB on 7.0.2); the
-#: fragment muvid#199 was filed for reached 2527 MB and the review's `bilateral` one
-#: 2976 MB, so this has room for a build or a thread count that spends more, and none
-#: for either defect.
-_WORST_KEPT_LOOK_MB = 1024
+#: The ceiling the worst look the budget keeps must stay under, in MB of peak RSS for
+#: one ffmpeg ENCODING it (libx264 veryfast, 1920x1080 — the assembler's own
+#: shape at 0.5 s; the #229 review: a `-f null` probe misses the encoder). On ffmpeg
+#: 8.0.1: 1084 MB for that look, 1034 for the worst look the three old caps kept, 640
+#: with no look at all — so the budget holds memory where the caps did. Room for a build
+#: or a thread count that spends more; none for the 2.5-3.7 GB defects.
+_WORST_KEPT_LOOK_MB = 1536
 
 
 @needs_ffmpeg
 @pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
 def test_the_worst_look_the_budget_keeps_is_measured_under_its_ceiling():
-    """The worst case the cost budget states, MEASURED (muvid#229): the costliest
-    allocators at the 4x size cap — vignette, gblur, boxblur — back to canvas size, then
-    a bilateral, at 149 of the 150 frames (about 560 MB measured on ffmpeg 8.0.1;
-    every other look found near the budget measured 345-542 MB). Run in a fresh
-    interpreter so the reading is that ffmpeg alone."""
+    """The worst case the cost budget keeps, MEASURED (muvid#229): an RGB link, then
+    zoompan to the 4x size cap with three allocating links there (all twice their 4:2:0
+    price after the RGB link), back to canvas size — the worst of 230 accepted looks
+    the search measured. Run in a fresh interpreter so the reading is ffmpeg alone."""
     from muvid.footage.edl import EdlEntry, _validate_look
 
     worst = (
-        "scale=7680:4320,vignette,gblur=sigma=5,boxblur,scale=1920:1080,"
-        "bilateral=sigmaS=1"
+        "colorchannelmixer=rr=1,zoompan=d=1:s=7680x4320,unsharp,boxblur,eq=gamma=1,"
+        "scale=1920:1080"
     )
-    assert 140 < _look_cost(worst, (1920, 1080))[0] <= MAX_LOOK_COST
+    assert 135 < _look_cost(worst, (1920, 1080))[0] <= MAX_LOOK_COST
     _validate_look(0, EdlEntry(0.0, 1.0, "A", look=worst), (1920, 1080))  # kept
     probe = (
         "import resource, subprocess, sys\n"
         "subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',\n"
-        "    'testsrc2=size=1920x1080:rate=30:duration=0.3', '-vf', sys.argv[1],\n"
+        "    'testsrc2=size=1920x1080:rate=30:duration=0.5', '-vf', sys.argv[1],\n"
+        "    '-c:v', 'libx264', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',\n"
         "    '-f', 'null', '-'], check=True)\n"
         "rss = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss\n"
         "print(rss // (1024 * 1024) if sys.platform == 'darwin' else rss // 1024)\n"
