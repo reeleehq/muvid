@@ -272,7 +272,8 @@ def scored_proj(proj, tmp_path, monkeypatch):
             run,
             needs_frames=False,
             gated=False,
-            inputs=(R.BEATS,),  # it reads the beat grid, so a grid change stales it
+            # it reads the beat grid, so a grid change stales it
+            inputs={"beats_seen": (R.BEATS,)},
         )
     )
     yield proj, seen, estimate
@@ -372,7 +373,14 @@ def test_a_grid_change_stales_only_the_beat_metrics_and_rescoring_redoes_only_th
     R._SCORERS.clear()
     R.register_scorer(R.Scorer("q", ("q_m",), q, needs_frames=False, gated=False))
     R.register_scorer(
-        R.Scorer("b", ("b_m",), b, needs_frames=False, gated=False, inputs=(R.BEATS,))
+        R.Scorer(
+            "b",
+            ("b_m",),
+            b,
+            needs_frames=False,
+            gated=False,
+            inputs={"b_m": (R.BEATS,)},
+        )
     )
     service.run_scoring(proj)
     before = load_tensor(proj.root)
@@ -397,3 +405,125 @@ def test_a_grid_change_stales_only_the_beat_metrics_and_rescoring_redoes_only_th
     )
     declared = len(service.declared_beat_grid(proj)["beat_times"])
     assert float(after.raw[0, 0, bi]) == declared  # measured on the declared grid
+
+
+def _two_scorers(calls, *, b_available=True):
+    """`q` reads no beat grid, `b` does; both count their runs."""
+    import numpy as np
+
+    from muvid.footage.scoring import registry as R
+    from muvid.footage.scoring.grid import ScoreTrack
+
+    def track(ctx, metric, value):
+        raw = np.full(ctx.grid.n, value, dtype="float32")
+        return ScoreTrack(
+            ctx.clip_id, metric, ctx.grid.t0, ctx.grid.hop_s, raw, np.isfinite(raw)
+        )
+
+    def q(ctx):
+        calls["q"] += 1
+        return [track(ctx, "q_m", 0.7)]
+
+    def b(ctx):
+        calls["b"] += 1
+        return [track(ctx, "b_m", 1.0)]
+
+    R._SCORERS.clear()
+    R.register_scorer(R.Scorer("q", ("q_m",), q, needs_frames=False, gated=False))
+    R.register_scorer(
+        R.Scorer(
+            "b",
+            ("b_m",),
+            b,
+            needs_frames=False,
+            gated=False,
+            inputs={"b_m": (R.BEATS,)},
+            available=None if b_available else (lambda: (False, "no weights")),
+        )
+    )
+
+
+def test_kept_tracks_read_under_another_offset_are_never_kept(scored_proj):
+    """The #206 review's race: tracks read for keeping, then an offset moved before the
+    job took the scoring lock. The run must score in full, not save old-offset tracks
+    under the new alignment."""
+    from dataclasses import replace
+
+    from muvid.footage.scoring.orchestrator import score_project
+
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+    _two_scorers(calls)
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    keep = service._kept_scores(proj, hop_s=service.DEFAULT_SCORE_HOP_S)
+    assert keep is not None and keep.recompute == ("b_m",)
+    calls.update(q=0, b=0)
+    out = score_project(
+        proj,
+        beat_source=service._master_beats,
+        keep=replace(keep, align_fingerprint="old"),
+    )
+    assert calls == {"q": 1, "b": 1} and set(out["metrics"]) == {"q_m", "b_m"}
+
+
+def test_a_clip_with_no_kept_tracks_is_scored_in_full(
+    scored_proj, tmp_path, monkeypatch
+):
+    """The #206 review: a clip skipped last run has no tracks to keep, so a partial
+    re-score would give it only the stale metrics — it is scored in full instead."""
+    from dataclasses import replace
+
+    import muvid.footage.scoring.grid as G
+
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+    _two_scorers(calls)
+    clip = tmp_path / "B.mp4"
+    clip.write_bytes(b"clip-b")
+    service.add_clip(proj, path=str(clip), clip_id="B", duration_s=SONG_DURATION)
+    service.set_offset(proj, clip_id="B", offset_s=0.0)
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    assert service._kept_scores(proj, hop_s=service.DEFAULT_SCORE_HOP_S) is not None
+    tensor = G.load_tensor(proj.root)
+    only_a = replace(
+        tensor, clip_ids=["A"], S=tensor.S[:1], M=tensor.M[:1], raw=tensor.raw[:1]
+    )
+    monkeypatch.setattr(G, "load_tensor", lambda root: only_a)  # B skipped last time
+    assert service._kept_scores(proj, hop_s=service.DEFAULT_SCORE_HOP_S) is None
+
+
+def test_an_implicit_partial_re_score_skips_an_unavailable_scorer(scored_proj):
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+    _two_scorers(calls)
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    _two_scorers(calls, b_available=False)
+    out = service.run_scoring(proj)  # not refused: nobody named b_m
+    assert out["skipped_scorers"] == {"b": "no weights"}
+
+
+def test_the_weighted_cut_says_which_stale_metrics_it_left_out(scored_proj):
+    from muvid.footage.select_score import selection_notice
+
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+    _two_scorers(calls)
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    ctx = service._selection_context(proj, "weighted", None, None, None)
+    assert tuple(ctx.stale_metrics) == ("b_m",)
+    notice = selection_notice(ctx)
+    assert notice["stale_metrics"] == ["b_m"] and "b_m" in notice["message"]
+
+
+def test_the_motion_beat_scorer_declares_only_its_beat_metric():
+    from muvid.footage.scoring import registry as R
+
+    assert R._SCORERS["motion_beat"].reads(R.BEATS) == ["motion_beat_bas"]
+    with pytest.raises(ValueError, match="unknown input"):
+        R.Scorer("x", ("x_m",), lambda c: [], inputs={"x_m": ("tempo",)})
+    with pytest.raises(ValueError, match="does not produce"):
+        R.Scorer("x", ("x_m",), lambda c: [], inputs={"y_m": (R.BEATS,)})

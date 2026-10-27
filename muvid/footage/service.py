@@ -1539,17 +1539,8 @@ def run_scoring(
     was declared or cleared, muvid#206), only those are recomputed and the current ones
     are kept; the reply's ``rescored`` lists them. Anything else re-scores in full."""
     from muvid.footage.scoring import score_project
-    from muvid.footage.scoring.grid import load_manifest, load_tensor, tracks_of
 
-    keep = None
-    manifest = load_manifest(fp.root) if metrics is None else None
-    stale = _stale_metrics(fp, manifest) if manifest else None
-    if stale and len(stale) < len(manifest.get("metrics") or []):
-        tensor = load_tensor(fp.root)
-        if tensor is not None and abs(tensor.hop_s - hop_s) < 1e-9:
-            current = [m for m in tensor.metrics if m not in set(stale)]
-            keep = tracks_of(tensor, current, manifest.get("directions", {}))
-            metrics = list(stale)
+    keep = _kept_scores(fp, hop_s=hop_s) if metrics is None else None
     out = score_project(
         fp,
         metrics=metrics,
@@ -1558,11 +1549,54 @@ def run_scoring(
         progress_cb=progress_cb,
         should_cancel=should_cancel,
         beat_source=_master_beats,
-        keep_tracks=keep,
+        keep=keep,
     )
-    if keep is not None and out.get("status") == "ok":
-        out["rescored"] = sorted(stale)
+    if keep is not None and out.get("status") == "ok" and _kept(fp, keep):
+        out["rescored"] = sorted(keep.recompute)
     return out
+
+
+def _kept_scores(fp, *, hop_s: float):
+    """The partial re-score worth doing, or ``None`` (score in full): the scores are
+    stale in SOME metrics only, on the same grid step, and every aligned clip has
+    tracks to keep (a clip skipped last time is scored in full, or it would get only
+    the stale metrics)."""
+    from muvid.footage.scoring.grid import (
+        align_fingerprint,
+        load_manifest,
+        load_tensor,
+        tracks_of,
+    )
+    from muvid.footage.scoring.orchestrator import KeptScores
+
+    manifest = load_manifest(fp.root)
+    stale = _stale_metrics(fp, manifest) if manifest else None
+    if not stale or len(stale) >= len(manifest.get("metrics") or []):
+        return None
+    tensor = load_tensor(fp.root)
+    if tensor is None or abs(tensor.hop_s - hop_s) > 1e-9:
+        return None
+    aligns = fp.load_alignments()
+    if {a.clip_id for a in aligns} - set(tensor.clip_ids):
+        return None
+    current = [m for m in tensor.metrics if m not in set(stale)]
+    return KeptScores(
+        tracks=tracks_of(tensor, current, manifest.get("directions", {})),
+        recompute=tuple(stale),
+        song_hash=fp.song_hash(),
+        align_fingerprint=align_fingerprint(aligns),
+    )
+
+
+def _kept(fp, keep) -> bool:
+    """Whether the run that just finished kept ``keep`` (it scores in full instead when
+    the song or an offset moved under it)."""
+    from muvid.footage.scoring.grid import align_fingerprint
+
+    return (keep.song_hash, keep.align_fingerprint) == (
+        fp.song_hash(),
+        align_fingerprint(fp.load_alignments()),
+    )
 
 
 def _master_beats(fp):
@@ -1622,18 +1656,13 @@ def _stale_metrics(fp, manifest: Optional[dict]) -> Optional[list]:
     )
 
 
-def _scores_current(fp, manifest: Optional[dict]) -> bool:
-    """Every persisted metric is current."""
-    return _stale_metrics(fp, manifest) == []
-
-
 def _usable_tensor(fp, manifest):
     """``(tensor, stale metrics)``: the persisted tensor with its stale metrics read as
     not measured, or ``(None, stale)`` when none is current (or there are no scores)."""
     from muvid.footage.scoring.grid import load_tensor, mask_metrics
 
     stale = _stale_metrics(fp, manifest)
-    if stale is None or len(stale) >= len(manifest.get("metrics") or []):
+    if stale is None or (stale and len(stale) >= len(manifest.get("metrics") or [])):
         return None, stale or []
     tensor = load_tensor(fp.root)
     if tensor is None:
@@ -2286,9 +2315,10 @@ def _trim_to_span(entries, span) -> list:
 def _selection_context(fp, strat, preset, weights, config):
     """A ``SelectionContext`` from persisted scores, for the ``weighted`` strategy only.
 
-    When scores are absent or stale the tensor is ``None`` and ``weighted_selection``
-    raises a clear "run scoring first" — no scores gives a helpful error, not a silent
-    bad edit.
+    When scores are absent, or stale in every metric, the tensor is ``None`` and
+    ``weighted_selection`` raises a clear "run scoring first". When only SOME metrics
+    are stale (a beat grid changed, muvid#206) the tensor reads them as not measured,
+    the cut runs on the rest, and ``stale_metrics`` makes the reply say so.
     """
     if strat != "weighted":
         return None
@@ -2299,7 +2329,7 @@ def _selection_context(fp, strat, preset, weights, config):
     beats = manifest.get("beats", {})
     # a stale metric reads as not measured (muvid#206): the composite renormalises over
     # the weight that IS available, so the current ones still cut
-    tensor = _usable_tensor(fp, manifest)[0] if manifest else None
+    tensor, stale = _usable_tensor(fp, manifest) if manifest else (None, [])
     beat_times, downbeat_times = (
         beats.get("beat_times", []),
         beats.get("downbeat_times", []),
@@ -2313,6 +2343,7 @@ def _selection_context(fp, strat, preset, weights, config):
         downbeat_times=downbeat_times,
         shot_boundaries=manifest.get("shot_boundaries"),
         config=resolve_config(preset=preset or None, weights=weights, config=config),
+        stale_metrics=tuple(stale) if tensor is not None else (),
     )
 
 

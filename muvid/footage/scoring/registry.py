@@ -51,6 +51,8 @@ if TYPE_CHECKING:  # pragma: no cover
 #: ``beat_times``. The onset envelope is the song's own measurement, so reading only it
 #: is not reading the grid.
 BEATS = "beats"
+#: Every master input a score is keyed on beyond the song and the placement.
+INPUTS = (BEATS,)
 
 #: The tiers. ``core`` runs by default; ``lipsync`` only when the opt-in is enabled.
 CORE_TIER = "core"
@@ -178,16 +180,33 @@ class Scorer:
     #: the shared master artifacts it reads (:func:`register_artifact`), by name. Each is
     #: built once per run, and only when a running scorer needs it.
     needs: tuple[str, ...] = ()
-    #: the master INPUTS its metrics are measured on beyond the song and the clip's
-    #: placement (which every metric reads): :data:`BEATS` for the beat grid. A change to
-    #: one stales only the metrics that declared it (muvid#206).
-    inputs: tuple[str, ...] = ()
+    #: the master INPUTS each metric is measured on beyond the song and the clip's
+    #: placement (which every metric reads), by metric: ``{"motion_beat_bas": (BEATS,)}``.
+    #: A change to one stales only the metrics that declared it (muvid#206).
+    inputs: Mapping[str, tuple[str, ...]] = field(default_factory=dict, compare=False)
 
     def __post_init__(self) -> None:
         if not self.metrics:
             raise ValueError(f"scorer {self.name!r} declares no metrics")
         if self.tier not in TIERS:
             raise ValueError(f"scorer tier must be one of {TIERS}, not {self.tier!r}")
+        for metric, names in self.inputs.items():
+            if metric not in self.metrics:
+                raise ValueError(
+                    f"scorer {self.name!r} declares inputs for {metric!r}, which it "
+                    f"does not produce ({list(self.metrics)})"
+                )
+            unknown = sorted(set(names) - set(INPUTS))
+            if unknown:
+                raise ValueError(
+                    f"scorer {self.name!r}: unknown input(s) {unknown}; muvid keys "
+                    f"scores on {sorted(INPUTS)} (an input it does not know would never "
+                    "make a metric stale)"
+                )
+
+    def reads(self, input_name: str) -> list[str]:
+        """The metrics of this scorer measured on ``input_name``."""
+        return [m for m in self.metrics if input_name in self.inputs.get(m, ())]
 
 
 _SCORERS: dict[str, Scorer] = {}
@@ -317,7 +336,8 @@ register_scorer(
         "motion_beat",
         ("motion_beat_bas", "motion_onset_xcorr"),
         _run_motion_beat,
-        inputs=(BEATS,),
+        # the onset envelope is the song's measurement, not the grid's
+        inputs={"motion_beat_bas": (BEATS,)},
     )
 )
 register_scorer(

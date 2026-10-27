@@ -524,9 +524,14 @@ def manifest_is_current(
     beat_fingerprint: str,
 ) -> bool:
     """Whether EVERY persisted metric matches the current song, alignments and beat grid
-    (:func:`stale_metrics` says which do not)."""
-    return (
-        _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint) == "none"
+    (:func:`stale_metrics` says which do not) — the same answer the readers act on: a
+    grid change with no metric measured on the grid leaves the scores current."""
+    verdict = _staleness(manifest, song_hash, align_fingerprint, beat_fingerprint)
+    kw = dict(song_hash=song_hash, align_fingerprint=align_fingerprint)
+    return verdict == "none" or (
+        verdict == "beats"
+        and "beat_metrics" in manifest  # a manifest predating it stales every metric
+        and not stale_metrics(manifest, beat_fingerprint=beat_fingerprint, **kw)
     )
 
 

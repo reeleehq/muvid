@@ -175,6 +175,9 @@ class SelectionContext:
     #: ``SelectionStrategy`` changing its ``list[EdlEntry]`` return type. The context is
     #: frozen; the dict is not, and it is excluded from equality (muvid#19).
     report: dict = field(default_factory=dict, compare=False, repr=False)
+    #: Metrics the persisted scores hold but that are STALE (muvid#206): ``tensor``
+    #: reads them as not measured, so the cut ignores them, and the caller is told.
+    stale_metrics: Sequence[str] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -215,21 +218,35 @@ def selection_notice(context) -> dict | None:
     select from (``empty``: a project with no placed footage is cut to the music).
     """
     report = getattr(context, "report", None) or {}
+    stale = list(getattr(context, "stale_metrics", ()) or ())
     if report.get("fallback") and report["fallback"] != "empty":
-        return {
+        notice = {
             "fallback": report["fallback"],
             "cause": report.get("cause"),
             "message": f"the weighted strategy could not optimise this edit "
             f"({report.get('cause')}) and used {report['fallback']} instead — "
             "the cuts are not score-driven",
         }
-    if report.get("cause") == "dwell_relaxed":
-        return {
+    elif report.get("cause") == "dwell_relaxed":
+        notice = {
             "cause": "dwell_relaxed",
             "message": "no edit satisfied the minimum shot length; it was dropped "
             "(l_min_s=0) to find one",
         }
-    return None
+    elif stale:
+        notice = {"message": ""}
+    else:
+        return None
+    if stale:  # the cut ran without these (muvid#206): never silently
+        said = (
+            f"the scores of {', '.join(stale)} are stale (the beat grid changed) and "
+            "were left out of the cut — re-run score_footage"
+        )
+        notice["stale_metrics"] = stale
+        notice["message"] = (
+            f"{notice['message']}; {said}" if notice["message"] else said
+        )
+    return notice
 
 
 def run_weighted(
