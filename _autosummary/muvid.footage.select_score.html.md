@@ -45,13 +45,15 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](muvid
 
 ### Functions
 
-| [`composite_lane`](#muvid.footage.select_score.composite_lane)(tensor, weights, clip_id)          | One clip's weighted composite, frame by frame on the song grid — what the `weighted` strategy ranks it by — with `NaN` where no weighted metric was measured (muvid#184).   |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`resolve_config`](#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                                                       |
-| [`run_weighted`](#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                                               |
-| [`selection_margin`](#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                                                             |
-| [`selection_notice`](#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                                                         |
-| [`weighted_selection`](#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP).                               |
+| [`composite_lane`](#muvid.footage.select_score.composite_lane)(tensor, weights, clip_id)          | One clip's weighted composite, frame by frame on the song grid — what the `weighted` strategy ranks it by — with `NaN` where no weighted metric was measured (muvid#184).                                                                                                                                                                                   |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`dp_composite`](#muvid.footage.select_score.dp_composite)(tensor, aligns, \*, config)          | THE per-frame reward the `weighted` DP integrates, one row per alignment: the composite under `config`'s weights (0 where nothing is measured) with the unvouched-clip demotion ([`UNVOUCHED_REWARD_PENALTY`](#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)); and the total weight, `0` when no weighted metric is in the tensor (the DP then does not run). |
+| [`resolve_config`](#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                                                                                                                                                                                                                                       |
+| [`run_weighted`](#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                                                                                                                                                                                                                               |
+| [`selection_margin`](#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                                                                                                                                                                                                                                             |
+| [`selection_notice`](#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                                                                                                                                                                                                                                         |
+| [`span_rewards`](#muvid.footage.select_score.span_rewards)(tensor, aligns, spans, \*, config)   | What the `weighted` DP would earn for each `(clip_id, start, end)` span (muvid#207), by its own arithmetic ([`dp_composite()`](#muvid.footage.select_score.dp_composite), `_seg_reward()`; the switch cost `lambda_switch` belongs to a cut between segments, not to one).                                                                               |
+| [`weighted_selection`](#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP).                                                                                                                                                                                                               |
 
 ### Classes
 
@@ -160,6 +162,16 @@ not in the tensor or no metric carries weight.
 * **Return type:**
   `ndarray`
 
+### muvid.footage.select_score.dp_composite(tensor, aligns, , config)
+
+THE per-frame reward the `weighted` DP integrates, one row per alignment: the
+composite under `config`’s weights (0 where nothing is measured) with the
+unvouched-clip demotion ([`UNVOUCHED_REWARD_PENALTY`](#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)); and the total weight,
+`0` when no weighted metric is in the tensor (the DP then does not run).
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[`ndarray`, [`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
 ### muvid.footage.select_score.resolve_config(, preset=None, weights=None, config=None)
 
 Build a [`WeightedSelectionConfig`](#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.
@@ -199,6 +211,20 @@ select from (`empty`: a project with no placed footage is cut to the music).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.select_score.span_rewards(tensor, aligns, spans, , config)
+
+What the `weighted` DP would earn for each `(clip_id, start, end)` span
+(muvid#207), by its own arithmetic ([`dp_composite()`](#muvid.footage.select_score.dp_composite), `_seg_reward()`; the
+switch cost `lambda_switch` belongs to a cut between segments, not to one). The
+rewards are built once per call, so many spans cost one composite.
+
+`None` where the DP could never choose the span: the clip’s placement does not
+cover all of it (the DP refuses a segment its clip does not contain), it holds no
+grid frame, or no weighted metric is in the scores.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)]
 
 ### muvid.footage.select_score.weighted_selection(alignments, song_duration, , context=None)
 

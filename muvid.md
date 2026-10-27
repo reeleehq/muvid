@@ -1,4 +1,4 @@
-> built 2026-10-27 05:43 UTC from 5633471 (main) · muvid 0.0.112. Details: build_info.json
+> built 2026-10-27 06:03 UTC from 85d34f1 (main) · muvid 0.0.113. Details: build_info.json
 
 # index.html.md
 
@@ -7348,13 +7348,15 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](_auto
 
 ### Functions
 
-| [`composite_lane`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.composite_lane)(tensor, weights, clip_id)          | One clip's weighted composite, frame by frame on the song grid — what the `weighted` strategy ranks it by — with `NaN` where no weighted metric was measured (muvid#184).   |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`resolve_config`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                                                       |
-| [`run_weighted`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                                               |
-| [`selection_margin`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                                                             |
-| [`selection_notice`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                                                         |
-| [`weighted_selection`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP).                               |
+| [`composite_lane`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.composite_lane)(tensor, weights, clip_id)          | One clip's weighted composite, frame by frame on the song grid — what the `weighted` strategy ranks it by — with `NaN` where no weighted metric was measured (muvid#184).                                                                                                                                                                                   |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`dp_composite`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.dp_composite)(tensor, aligns, \*, config)          | THE per-frame reward the `weighted` DP integrates, one row per alignment: the composite under `config`'s weights (0 where nothing is measured) with the unvouched-clip demotion ([`UNVOUCHED_REWARD_PENALTY`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)); and the total weight, `0` when no weighted metric is in the tensor (the DP then does not run). |
+| [`resolve_config`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.resolve_config)(\*[, preset, weights, config])     | Build a [`WeightedSelectionConfig`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.                                                                                                                                                                                                                                       |
+| [`run_weighted`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.run_weighted)(alignments, song_duration, context)  | Run the DP and return `(edl, meta)`; `meta` carries any fallback + its cause.                                                                                                                                                                                                                                                                               |
+| [`selection_margin`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_margin)(alignments, tensor, \*[, ...])   | Per-frame `best_composite − 2nd_best_composite` over clips COVERING that frame.                                                                                                                                                                                                                                                                             |
+| [`selection_notice`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.selection_notice)(context)                         | What the `weighted` DP did that the caller must be told, or `None`.                                                                                                                                                                                                                                                                                         |
+| [`span_rewards`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.span_rewards)(tensor, aligns, spans, \*, config)   | What the `weighted` DP would earn for each `(clip_id, start, end)` span (muvid#207), by its own arithmetic ([`dp_composite()`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.dp_composite), `_seg_reward()`; the switch cost `lambda_switch` belongs to a cut between segments, not to one).                                                                               |
+| [`weighted_selection`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.weighted_selection)(alignments, song_duration, \*) | The `weighted` [`SelectionStrategy`](_autosummary/muvid.footage.strategy.html.md#muvid.footage.strategy.SelectionStrategy) (score-driven DP).                                                                                                                                                                                                               |
 
 ### Classes
 
@@ -7463,6 +7465,16 @@ not in the tensor or no metric carries weight.
 * **Return type:**
   `ndarray`
 
+### muvid.footage.select_score.dp_composite(tensor, aligns, , config)
+
+THE per-frame reward the `weighted` DP integrates, one row per alignment: the
+composite under `config`’s weights (0 where nothing is measured) with the
+unvouched-clip demotion ([`UNVOUCHED_REWARD_PENALTY`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)); and the total weight,
+`0` when no weighted metric is in the tensor (the DP then does not run).
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[`ndarray`, [`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
 ### muvid.footage.select_score.resolve_config(, preset=None, weights=None, config=None)
 
 Build a [`WeightedSelectionConfig`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.WeightedSelectionConfig) from an optional preset + overrides.
@@ -7502,6 +7514,20 @@ select from (`empty`: a project with no placed footage is cut to the music).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.select_score.span_rewards(tensor, aligns, spans, , config)
+
+What the `weighted` DP would earn for each `(clip_id, start, end)` span
+(muvid#207), by its own arithmetic ([`dp_composite()`](_autosummary/muvid.footage.select_score.html.md#muvid.footage.select_score.dp_composite), `_seg_reward()`; the
+switch cost `lambda_switch` belongs to a cut between segments, not to one). The
+rewards are built once per call, so many spans cost one composite.
+
+`None` where the DP could never choose the span: the clip’s placement does not
+cover all of it (the DP refuses a segment its clip does not contain), it holds no
+grid frame, or no weighted metric is in the scores.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)]
 
 ### muvid.footage.select_score.weighted_selection(alignments, song_duration, , context=None)
 
@@ -8285,8 +8311,17 @@ blend of the scores over the frames where a weighted metric was measured, `null`
 when none was — `measured` (the fraction of the span’s frames that were), and
 `metrics`, each metric’s mean normalised score over its measured frames (`null`
 where it was never measured). Nothing measured is not a low score, so read
-`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
-counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+`composite` with `measured`.
+
+`reward` is what the `weighted` strategy itself would earn for the span (its own
+arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
+demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+as the selector does; it is `null` where the selector could never choose the span
+(the clip does not cover all of it, the span holds no grid frame, or no weighted
+metric is in the scores). `reliable` says whether the clip’s alignment is vouched
+for and `coverage` how much of the span its placement covers; both are `null`
+for a video with no place on the song (one cut to the music). The selector’s
+`config=` overrides are not taken here; `weights` / `preset` are.
 
 `weights` / `preset` as for `scores`; the reply’s `weights` says which
 applied. Needs current scores (`score` first). A span off the song, or a video the
@@ -13245,8 +13280,17 @@ blend of the scores over the frames where a weighted metric was measured, `null`
 when none was — `measured` (the fraction of the span’s frames that were), and
 `metrics`, each metric’s mean normalised score over its measured frames (`null`
 where it was never measured). Nothing measured is not a low score, so read
-`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
-counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+`composite` with `measured`.
+
+`reward` is what the `weighted` strategy itself would earn for the span (its own
+arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
+demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+as the selector does; it is `null` where the selector could never choose the span
+(the clip does not cover all of it, the span holds no grid frame, or no weighted
+metric is in the scores). `reliable` says whether the clip’s alignment is vouched
+for and `coverage` how much of the span its placement covers; both are `null`
+for a video with no place on the song (one cut to the music). The selector’s
+`config=` overrides are not taken here; `weights` / `preset` are.
 
 `weights` / `preset` as for `footage_scores`; the reply’s `weights` says which
 applied. Needs current scores (`score_footage` first). A span off the song, or a video the
@@ -18453,20 +18497,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 05:43 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5633471d538b15b0be7700eea8d25507bb97f536"><code>5633471</code></a> on branch <code>main</code>, for **muvid 0.0.112** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 06:03 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/85d34f1efd0b562ad7b2a954d16cfd117e7eed61"><code>85d34f1</code></a> on branch <code>main</code>, for **muvid 0.0.113** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.112) is ahead of the latest release on PyPI (0.0.111): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5633471d538b15b0be7700eea8d25507bb97f536"><code>5633471d538b15b0be7700eea8d25507bb97f536</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/85d34f1efd0b562ad7b2a954d16cfd117e7eed61"><code>85d34f1efd0b562ad7b2a954d16cfd117e7eed61</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | none                                                                                                                                                  |
+| Tags at this commit | <code>0.0.113</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -18475,9 +18517,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40456090308">40456090308</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40457854767">40457854767</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>e5a6d16bb0c8bef0d0b6e59f8db723eebe9426d6</code> (in the history of the built commit) |
+| Event commit | <code>d6af065cff6fc0d096598ffb5b46655228b0f6a6</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -18502,13 +18544,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.111/">0.0.111</a>, older than the documented version (0.0.112).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.113/">0.0.113</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 5633471d538b15b0be7700eea8d25507bb97f536
+git checkout 85d34f1efd0b562ad7b2a954d16cfd117e7eed61
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

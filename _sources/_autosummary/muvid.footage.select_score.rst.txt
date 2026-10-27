@@ -17,10 +17,12 @@ muvid.footage.select\_score
    .. autosummary::
    
       composite_lane
+      dp_composite
       resolve_config
       run_weighted
       selection_margin
       selection_notice
+      span_rewards
       weighted_selection
    
    .. rubric:: Classes

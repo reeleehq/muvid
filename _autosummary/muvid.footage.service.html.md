@@ -767,8 +767,17 @@ blend of the scores over the frames where a weighted metric was measured, `null`
 when none was — `measured` (the fraction of the span’s frames that were), and
 `metrics`, each metric’s mean normalised score over its measured frames (`null`
 where it was never measured). Nothing measured is not a low score, so read
-`composite` with `measured`: it is NOT the `weighted` strategy’s reward, which
-counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.
+`composite` with `measured`.
+
+`reward` is what the `weighted` strategy itself would earn for the span (its own
+arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
+demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+as the selector does; it is `null` where the selector could never choose the span
+(the clip does not cover all of it, the span holds no grid frame, or no weighted
+metric is in the scores). `reliable` says whether the clip’s alignment is vouched
+for and `coverage` how much of the span its placement covers; both are `null`
+for a video with no place on the song (one cut to the music). The selector’s
+`config=` overrides are not taken here; `weights` / `preset` are.
 
 `weights` / `preset` as for `scores`; the reply’s `weights` says which
 applied. Needs current scores (`score` first). A span off the song, or a video the

@@ -1117,8 +1117,16 @@ blend of the scores over the frames where a weighted metric was measured, <code 
 when none was — <code class="docutils literal notranslate"><span class="pre">measured</span></code> (the fraction of the span’s frames that were), and
 <code class="docutils literal notranslate"><span class="pre">metrics</span></code>, each metric’s mean normalised score over its measured frames (<code class="docutils literal notranslate"><span class="pre">null</span></code>
 where it was never measured). Nothing measured is not a low score, so read
-<code class="docutils literal notranslate"><span class="pre">composite</span></code> with <code class="docutils literal notranslate"><span class="pre">measured</span></code>: it is NOT the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy’s reward, which
-counts an unmeasured frame as 0 and demotes a clip no alignment vouches for.</p>
+<code class="docutils literal notranslate"><span class="pre">composite</span></code> with <code class="docutils literal notranslate"><span class="pre">measured</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">reward</span></code> is what the <code class="docutils literal notranslate"><span class="pre">weighted</span></code> strategy itself would earn for the span (its own
+arithmetic — an unmeasured frame counts 0, a clip no alignment vouches for is
+demoted, a span past the longest shot is penalised), so ranking by it ranks takes
+as the selector does; it is <code class="docutils literal notranslate"><span class="pre">null</span></code> where the selector could never choose the span
+(the clip does not cover all of it, the span holds no grid frame, or no weighted
+metric is in the scores). <code class="docutils literal notranslate"><span class="pre">reliable</span></code> says whether the clip’s alignment is vouched
+for and <code class="docutils literal notranslate"><span class="pre">coverage</span></code> how much of the span its placement covers; both are <code class="docutils literal notranslate"><span class="pre">null</span></code>
+for a video with no place on the song (one cut to the music). The selector’s
+<code class="docutils literal notranslate"><span class="pre">config=</span></code> overrides are not taken here; <code class="docutils literal notranslate"><span class="pre">weights</span></code> / <code class="docutils literal notranslate"><span class="pre">preset</span></code> are.</p>
 <p><code class="docutils literal notranslate"><span class="pre">weights</span></code> / <code class="docutils literal notranslate"><span class="pre">preset</span></code> as for <code class="docutils literal notranslate"><span class="pre">scores</span></code>; the reply’s <code class="docutils literal notranslate"><span class="pre">weights</span></code> says which
 applied. Needs current scores (<code class="docutils literal notranslate"><span class="pre">score</span></code> first). A span off the song, or a video the
 scores do not hold, is refused.</p>
@@ -1422,7 +1430,7 @@ is; <code class="docutils literal notranslate"><span class="pre">redo_edit</span
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=5762635e"></script>
+<script src="../_static/documentation_options.js?v=f31ae747"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
