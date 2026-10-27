@@ -87,7 +87,7 @@ sequential pipeline injects cascading error.
   in `lyrics.md`. This is what `muvid align` does now.
 - **Local fallback** (WhisperX): would let muvid work offline with
   no API budget, at the cost of torch + model downloads.
-  Re-using `an.audio.WhisperLipSync`'s already-installed
+  Re-using `cutan.audio.whisper_lipsync.WhisperLipSync`'s already-installed
   `faster-whisper` is a smaller step than going to WhisperX
   proper, but loses the CTC refinement.
 - **Singing-grade** (STARS or similar): only worth pulling in if
