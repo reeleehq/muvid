@@ -114,7 +114,7 @@ class ToneMap:
 
     Checked on construction, because every field lands in a filter string:
 
-    >>> ToneMap(curve="gamma").param is None, ToneMap().param
+    >>> ToneMap(curve="gamma").effective_param is None, ToneMap().effective_param
     (True, 0.85)
     >>> ToneMap(curve="mobius:desat=9")
     Traceback (most recent call last):
@@ -131,12 +131,12 @@ class ToneMap:
             raise ValueError(
                 f"unknown tone curve {self.curve!r}; one of {sorted(TONEMAP_CURVES)}"
             )
+        # `None` is kept as given and resolved per curve in `effective_param`, so
+        # `replace(DEFAULT_TONE_MAP, curve=...)` gets the NEW curve's default
         param = self.param
-        if param is None:
-            param = _MEASURED_PARAMS.get(self.curve)
-        elif self.curve in _CURVES_WITHOUT_PARAM:
+        if param is not None and self.curve in _CURVES_WITHOUT_PARAM:
             raise ValueError(f"the {self.curve!r} tone curve takes no param")
-        else:
+        if param is not None:
             param = _real("param", param, low=0.0, high=_PARAM_MAX.get(self.curve))
         nits = _real(
             "reference_white_nits",
@@ -149,6 +149,14 @@ class ToneMap:
         # a caller type's own `__format__`
         object.__setattr__(self, "param", param)
         object.__setattr__(self, "reference_white_nits", nits)
+
+    @property
+    def effective_param(self) -> Optional[float]:
+        """The ``param`` the filter gets: the given one, else the curve's default
+        (muvid's measured one, or ``None`` for ffmpeg's own)."""
+        return (
+            self.param if self.param is not None else _MEASURED_PARAMS.get(self.curve)
+        )
 
 
 def _real(name, v, *, low, high=None, low_inclusive=False) -> float:
@@ -189,7 +197,7 @@ def tonemap_chain(
         (f"setparams={tags}," if tags else "")
         + f"zscale=t=linear:npl={t.reference_white_nits:g},format=gbrpf32le,"
         f"zscale=p={d},tonemap={t.curve}"
-        + (f":param={t.param:g}" if t.param is not None else "")
+        + (f":param={t.effective_param:g}" if t.effective_param is not None else "")
         + ":desat=0,"
         f"zscale=t={d}:m={d}:r={DELIVERY_COLOR_RANGE},format=yuv420p"
     )

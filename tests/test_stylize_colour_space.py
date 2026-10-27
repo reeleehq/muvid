@@ -395,8 +395,14 @@ def test_a_tone_curve_takes_its_own_default_param_and_numbers_become_floats():
 
     from muvid.footage.colour import tonemap_chain
 
-    assert ToneMap().param == 0.85 and ToneMap(curve="mobius").param == 0.85
-    assert ToneMap(curve="gamma").param is None
+    from dataclasses import replace
+
+    assert ToneMap().effective_param == 0.85
+    assert ToneMap(curve="mobius").effective_param == 0.85
+    assert ToneMap(curve="gamma").effective_param is None
+    # the default with another curve gets THAT curve's default (#215 review 2)
+    assert replace(DEFAULT_TONE_MAP, curve="reinhard").effective_param is None
+    assert replace(DEFAULT_TONE_MAP, curve="hable").curve == "hable"
     assert "tonemap=gamma:desat=0" in tonemap_chain(tone_map=ToneMap(curve="gamma"))
     assert type(ToneMap(param=np.float32(0.5)).param) is float
     assert (
