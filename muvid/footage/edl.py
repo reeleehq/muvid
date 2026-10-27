@@ -2741,6 +2741,74 @@ def blend_trail(t: "Transition") -> float:
     return t.duration_s * (1 - TRANSITION_SPLIT)
 
 
+def blend_reads(
+    transition: "Transition | None",
+    next_transition: "Transition | None",
+    *,
+    rate: float = 1.0,
+) -> "tuple[float, float]":
+    """``(lead, trail)``: clip seconds a cut's blends read before its in-point (its own
+    ``transition``) and past its end (the FOLLOWING cut's), at the cut's ``rate`` — as
+    :func:`_validate_transition` scales them.
+
+    >>> blend_reads(Transition(duration_s=1.0, curve="fade"), None, rate=2.0)
+    (1.0, 0.0)
+    """
+    lead = blend_lead(transition) * rate if transition is not None else 0.0
+    trail = blend_trail(next_transition) * rate if next_transition is not None else 0.0
+    return lead, trail
+
+
+def in_point_bounds(
+    cut: "EdlEntry",
+    *,
+    clip_duration_s: float,
+    next_transition: "Transition | None" = None,
+    edge_s: float = 0.0,
+) -> "tuple[float, float] | None":
+    """The legal ``source_in`` values ``(lo, hi)`` for free cut ``cut`` in a clip of
+    ``clip_duration_s`` seconds — THE owner of that arithmetic (muvid#192), so every
+    writer that picks an in-point asks the question :func:`_validate_transition` and
+    the containment check enforce.
+
+    Read from ``cut``: its span, which reads ``span * rate`` of the clip; its own
+    ``transition``, which reads :func:`blend_lead` before the in-point; its ``slip_s``,
+    which the gate adds to ``source_in`` (:func:`clip_in_of`). ``next_transition`` is
+    the FOLLOWING cut's blend, which reads :func:`blend_trail` past this cut's end in
+    this clip. Both blends scale by this cut's rate, as the gate scales them.
+
+    ``edge_s`` keeps a margin from each end of the clip (a thumb on the button,
+    :data:`EDGE_S`) when there is room for it, and gives it up symmetrically when there
+    is not: the margin is a preference, the gate's bounds are not. ``None`` when the
+    clip cannot hold the span and both blends at all.
+
+    >>> t = Transition(duration_s=1.0, curve="fade")
+    >>> cut = EdlEntry(10.0, 12.0, "c", transition=t)
+    >>> in_point_bounds(cut, clip_duration_s=10.0, next_transition=t)
+    (0.5, 7.5)
+    >>> in_point_bounds(cut, clip_duration_s=10.0, edge_s=0.25)
+    (0.75, 7.75)
+    >>> in_point_bounds(cut, clip_duration_s=3.25, next_transition=t, edge_s=0.25)
+    (0.625, 0.625)
+    >>> in_point_bounds(replace(cut, slip_s=-0.25), clip_duration_s=10.0, next_transition=t)
+    (0.75, 7.75)
+    >>> in_point_bounds(cut, clip_duration_s=2.9, next_transition=t) is None
+    True
+    """
+    rate = getattr(cut, "rate", 1.0)
+    lead, trail = blend_reads(cut.transition, next_transition, rate=rate)
+    slip = getattr(cut, "slip_s", 0.0)
+    span = (cut.song_end - cut.song_start) * rate
+    # the gate's room for clip_in = source_in + slip, moved into source_in, which is a
+    # time in the clip and so never negative (`_as_entry` refuses it)
+    lo = max(0.0, lead - slip)
+    hi = clip_duration_s - span - trail - slip
+    if hi < lo - _EPS:
+        return None
+    edge = min(edge_s, max(0.0, hi - lo) / 2)
+    return lo + edge, max(lo + edge, hi - edge)
+
+
 def _validate_transition(i, e, prev, by_id) -> None:
     """The four things a transition has to satisfy. Raises ``ValueError``.
 

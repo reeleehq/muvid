@@ -197,7 +197,7 @@ def explain(
 def _explain_cut(
     i, e, *, prev, grid, bar_s, section_starts, clips, alignments, envelope_of, shown
 ):
-    from muvid.footage.edl import TRANSITION_SPLIT
+    from muvid.footage.edl import blend_lead
 
     start, end = float(e.song_start), float(e.song_end)
     length = end - start
@@ -219,10 +219,9 @@ def _explain_cut(
     # 1. where, and on what — and 2. how the picture changes
     beat, off = grid.nearest(start)
     synced = kind == "video" and getattr(e, "source_in", None) is None
-    fade = (
-        e.transition.duration_s if getattr(e, "transition", None) is not None else 0.0
-    )
-    lead = fade * TRANSITION_SPLIT
+    t_in = getattr(e, "transition", None)
+    fade = t_in.duration_s if t_in is not None else 0.0
+    lead = blend_lead(t_in) if t_in is not None else 0.0
     fade_start = start - lead
     section = section_starts.get(round(start, 2))
     where = f" — where the song's {section} starts" if section else ""
