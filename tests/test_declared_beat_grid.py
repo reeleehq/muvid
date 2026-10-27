@@ -513,7 +513,8 @@ def test_the_weighted_cut_says_which_stale_metrics_it_left_out(scored_proj):
     _two_scorers(calls)
     service.run_scoring(proj)
     service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
-    ctx = service._selection_context(proj, "weighted", None, None, None)
+    weights = {"q_m": 1.0, "b_m": 1.0}  # the cut would have used b_m
+    ctx = service._selection_context(proj, "weighted", None, weights, None)
     assert tuple(ctx.stale_metrics) == ("b_m",)
     notice = selection_notice(ctx)
     assert notice["stale_metrics"] == ["b_m"] and "b_m" in notice["message"]
@@ -527,3 +528,38 @@ def test_the_motion_beat_scorer_declares_only_its_beat_metric():
         R.Scorer("x", ("x_m",), lambda c: [], inputs={"x_m": ("tempo",)})
     with pytest.raises(ValueError, match="does not produce"):
         R.Scorer("x", ("x_m",), lambda c: [], inputs={"y_m": (R.BEATS,)})
+
+
+def test_kept_scores_name_what_their_tracks_were_measured_under(scored_proj):
+    """The #206 re-review: the key comes from the MANIFEST the kept tracks were loaded
+    with, so an offset moving after they were read is seen under the scoring lock."""
+    from muvid.footage.scoring.orchestrator import score_project
+
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+    _two_scorers(calls)
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    keep = service._kept_scores(proj, hop_s=service.DEFAULT_SCORE_HOP_S)
+    service.set_offset(proj, clip_id="A", offset_s=2.0)  # moves after the read
+    calls.update(q=0, b=0)
+    out = score_project(proj, beat_source=service._master_beats, keep=keep)
+    assert calls == {"q": 1, "b": 1} and "rescored" not in out
+
+
+def test_a_stale_metric_nobody_weighs_is_not_warned_about(scored_proj):
+    proj, _seen, _ = scored_proj
+    calls = {"q": 0, "b": 0}
+    _two_scorers(calls)
+    service.run_scoring(proj)
+    service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
+    weighed = service._selection_context(proj, "weighted", None, {"b_m": 1.0}, None)
+    unweighed = service._selection_context(proj, "weighted", None, {"q_m": 1.0}, None)
+    assert tuple(weighed.stale_metrics) == ("b_m",) and unweighed.stale_metrics == ()
+
+
+def test_the_old_tuple_shape_of_inputs_is_refused_plainly():
+    from muvid.footage.scoring import registry as R
+
+    with pytest.raises(TypeError, match="maps each metric"):
+        R.Scorer("x", ("x_m",), lambda c: [], inputs=(R.BEATS,))

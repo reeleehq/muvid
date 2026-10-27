@@ -433,6 +433,8 @@ def _score(
         "beats": int(len(bg.beat_times)),
         "lipsync_enabled": want_lipsync,
         **({"skipped_scorers": skipped_scorers} if skipped_scorers else {}),
+        # a partial re-score that kept the current metrics names what it measured again
+        **({"rescored": sorted(keep.recompute)} if keep is not None else {}),
     }
 
 

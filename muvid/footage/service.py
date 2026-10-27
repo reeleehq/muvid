@@ -1551,8 +1551,6 @@ def run_scoring(
         beat_source=_master_beats,
         keep=keep,
     )
-    if keep is not None and out.get("status") == "ok" and _kept(fp, keep):
-        out["rescored"] = sorted(keep.recompute)
     return out
 
 
@@ -1561,12 +1559,7 @@ def _kept_scores(fp, *, hop_s: float):
     stale in SOME metrics only, on the same grid step, and every aligned clip has
     tracks to keep (a clip skipped last time is scored in full, or it would get only
     the stale metrics)."""
-    from muvid.footage.scoring.grid import (
-        align_fingerprint,
-        load_manifest,
-        load_tensor,
-        tracks_of,
-    )
+    from muvid.footage.scoring.grid import load_manifest, load_tensor, tracks_of
     from muvid.footage.scoring.orchestrator import KeptScores
 
     manifest = load_manifest(fp.root)
@@ -1583,19 +1576,10 @@ def _kept_scores(fp, *, hop_s: float):
     return KeptScores(
         tracks=tracks_of(tensor, current, manifest.get("directions", {})),
         recompute=tuple(stale),
-        song_hash=fp.song_hash(),
-        align_fingerprint=align_fingerprint(aligns),
-    )
-
-
-def _kept(fp, keep) -> bool:
-    """Whether the run that just finished kept ``keep`` (it scores in full instead when
-    the song or an offset moved under it)."""
-    from muvid.footage.scoring.grid import align_fingerprint
-
-    return (keep.song_hash, keep.align_fingerprint) == (
-        fp.song_hash(),
-        align_fingerprint(fp.load_alignments()),
+        # what the kept tracks were MEASURED under, from the manifest itself — never a
+        # second read of the project, which an offset could move in between
+        song_hash=manifest.get("song_hash", ""),
+        align_fingerprint=manifest.get("align_fingerprint", ""),
     )
 
 
@@ -1662,8 +1646,10 @@ def _usable_tensor(fp, manifest):
     from muvid.footage.scoring.grid import load_tensor, mask_metrics
 
     stale = _stale_metrics(fp, manifest)
-    if stale is None or (stale and len(stale) >= len(manifest.get("metrics") or [])):
-        return None, stale or []
+    if stale is None:  # no scores, or none current and nothing measured to name
+        return None, None
+    if stale and len(stale) >= len(manifest.get("metrics") or []):
+        return None, stale
     tensor = load_tensor(fp.root)
     if tensor is None:
         return None, stale
@@ -1689,7 +1675,11 @@ def _scores_stale(fp) -> bool:
     again (it recomputes only those)."""
     from muvid.footage.scoring.grid import load_manifest
 
-    return bool(_stale_metrics(fp, load_manifest(fp.root)))
+    manifest = load_manifest(fp.root)
+    if manifest is None:
+        return False
+    stale = _stale_metrics(fp, manifest)
+    return stale is None or bool(stale)
 
 
 def score(
@@ -1766,7 +1756,7 @@ def _current_scores(fp):
     if manifest is None:
         raise FootageError("no scores yet — call score_footage first")
     tensor, stale = _usable_tensor(fp, manifest)
-    if tensor is None and stale:
+    if tensor is None and (stale is None or stale):
         raise FootageError(
             "scores are stale (the song, an alignment or the beat grid changed) — "
             "re-run score_footage"
@@ -2330,6 +2320,7 @@ def _selection_context(fp, strat, preset, weights, config):
     # a stale metric reads as not measured (muvid#206): the composite renormalises over
     # the weight that IS available, so the current ones still cut
     tensor, stale = _usable_tensor(fp, manifest) if manifest else (None, [])
+    cfg = resolve_config(preset=preset or None, weights=weights, config=config)
     beat_times, downbeat_times = (
         beats.get("beat_times", []),
         beats.get("downbeat_times", []),
@@ -2342,8 +2333,11 @@ def _selection_context(fp, strat, preset, weights, config):
         beat_times=beat_times,
         downbeat_times=downbeat_times,
         shot_boundaries=manifest.get("shot_boundaries"),
-        config=resolve_config(preset=preset or None, weights=weights, config=config),
-        stale_metrics=tuple(stale) if tensor is not None else (),
+        config=cfg,
+        # only what the cut WOULD have used: a stale metric weighing 0 changes nothing
+        stale_metrics=tuple(m for m in stale or () if cfg.weights.get(m, 0) > 0)
+        if tensor is not None
+        else (),
     )
 
 

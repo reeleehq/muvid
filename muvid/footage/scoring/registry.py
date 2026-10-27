@@ -190,6 +190,11 @@ class Scorer:
             raise ValueError(f"scorer {self.name!r} declares no metrics")
         if self.tier not in TIERS:
             raise ValueError(f"scorer tier must be one of {TIERS}, not {self.tier!r}")
+        if not isinstance(self.inputs, Mapping):
+            raise TypeError(
+                f"scorer {self.name!r}: inputs maps each metric to the inputs it reads, "
+                f"e.g. {{{self.metrics[0]!r}: (BEATS,)}}, not {self.inputs!r}"
+            )
         for metric, names in self.inputs.items():
             if metric not in self.metrics:
                 raise ValueError(

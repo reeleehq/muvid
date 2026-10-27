@@ -496,7 +496,7 @@ def stale_metrics(
         return None
     every = list(manifest.get("metrics") or [])
     if verdict == "all":
-        return every
+        return every or None  # nothing measured to name: as good as no scores
     if verdict == "beats":
         return [m for m in every if m in set(manifest.get("beat_metrics", every))]
     return []
