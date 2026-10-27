@@ -130,6 +130,18 @@ manifest naming a missing file.
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
+#### alignments_lock()
+
+Serialise a read-modify-write of `alignments.json` (see [`file_lock()`](#muvid.footage.workspace.file_lock)).
+
+Taken by EVERY writer — `align`, `set_offset`, `clear_offset`,
+`measure_spans`, [`remove_clip()`](#muvid.footage.workspace.MusicVideoFootageProject.remove_clip), [`set_song()`](#muvid.footage.workspace.MusicVideoFootageProject.set_song) — and never across a
+measurement: a writer measures first, then re-reads and merges under the lock
+(muvid#236). Not re-entrant (`flock` on a second descriptor waits on the first),
+so nothing holding it may call another writer. The lock file lives in its own
+`locks/` folder, as the edits lock lives in `edits/`: a dotfile in the project
+root is what a torn atomic write leaves behind, and must stay readable as that.
+
 #### cover_info()
 
 `{file, artifact_id, taken_from}` of the cover frame, or `None`.

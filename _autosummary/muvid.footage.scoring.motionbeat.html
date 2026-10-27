@@ -155,15 +155,74 @@ vs the master onset envelope at the best lag within a bounded A/V-latency window
 refines per-clip capture latency). Content-agnostic (covers no-person clips). Held over the
 clip’s coverage.</p></li>
 </ul>
+<p>The BAS formula is also a PURE function over event and beat times (muvid#238),
+<a class="reference internal" href="#muvid.footage.scoring.motionbeat.beat_alignment_score" title="muvid.footage.scoring.motionbeat.beat_alignment_score"><code class="xref py py-func docutils literal notranslate"><span class="pre">beat_alignment_score()</span></code></a>, so a caller with its own motion signal (pose landmarks, say)
+gets the number the <code class="docutils literal notranslate"><span class="pre">motion_beat_bas</span></code> track is built from; the track calls the same core.
+(The onset lag is NOT exposed: the track’s search shifts circularly over its window, which
+is harmless for the <code class="docutils literal notranslate"><span class="pre">|r|</span></code> it keeps and wrong for a lag a caller would read — a correct
+public one belongs beside mixing’s overlap-normalised cross-correlation.)</p>
 <p>Commercial-clean (librosa beats via <code class="docutils literal notranslate"><span class="pre">mixing[beats]</span></code>, numpy motion). See the design §3b.</p>
+<p class="rubric">Module Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_SIGMA_S" title="muvid.footage.scoring.motionbeat.BAS_SIGMA_S"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BAS_SIGMA_S</span></code></a></p></td>
+<td><p>Gaussian width (s) for beat↔motion-peak proximity in the BAS.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS" title="muvid.footage.scoring.motionbeat.BAS_DIRECTIONS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BAS_DIRECTIONS</span></code></a></p></td>
+<td><p>AIST++'s (each MOTION beat scored by its nearest music beat) and Bailando's (each MUSIC beat scored by its nearest motion beat).</p></td>
+</tr>
+</tbody>
+</table>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks" title="muvid.footage.scoring.motionbeat.motionbeat_tracks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">motionbeat_tracks</span></code></a>(frame_pass, *, clip_id, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.beat_alignment_score" title="muvid.footage.scoring.motionbeat.beat_alignment_score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">beat_alignment_score</span></code></a>(event_times, beat_times, *)</p></td>
+<td><p>The Beat Alignment Score of motion <code class="docutils literal notranslate"><span class="pre">event_times</span></code> (kinematic beats, seconds) against music <code class="docutils literal notranslate"><span class="pre">beat_times</span></code>: the mean of <code class="docutils literal notranslate"><span class="pre">exp(-(d/σ)²/2)</span></code>, <code class="docutils literal notranslate"><span class="pre">d</span></code> the distance to the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks" title="muvid.footage.scoring.motionbeat.motionbeat_tracks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">motionbeat_tracks</span></code></a>(frame_pass, *, clip_id, ...)</p></td>
 <td><p>The two motion-to-beat tracks for one clip.</p></td>
 </tr>
 </tbody>
 </table>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.scoring.motionbeat.BAS_DIRECTIONS">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.motionbeat.</span></span><span class="sig-name descname"><span class="pre">BAS_DIRECTIONS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">('motion_to_music',</span> <span class="pre">'music_to_motion')</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS'">¶</a></dt>
+<dd><p>AIST++’s (each MOTION beat scored by its
+nearest music beat) and Bailando’s (each MUSIC beat scored by its nearest motion beat).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The two directions papers measure the BAS in</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.scoring.motionbeat.BAS_SIGMA_S">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.motionbeat.</span></span><span class="sig-name descname"><span class="pre">BAS_SIGMA_S</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.12</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.motionbeat.BAS_SIGMA_S" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.motionbeat.BAS_SIGMA_S'">¶</a></dt>
+<dd><p>Gaussian width (s) for beat↔motion-peak proximity in the BAS.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.scoring.motionbeat.beat_alignment_score">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.motionbeat.</span></span><span class="sig-name descname"><span class="pre">beat_alignment_score</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beat_times</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.12</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'motion_to_music'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/motionbeat.html#beat_alignment_score"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.motionbeat.beat_alignment_score" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.motionbeat.beat_alignment_score'">¶</a></dt>
+<dd><p>The Beat Alignment Score of motion <code class="docutils literal notranslate"><span class="pre">event_times</span></code> (kinematic beats, seconds)
+against music <code class="docutils literal notranslate"><span class="pre">beat_times</span></code>: the mean of <code class="docutils literal notranslate"><span class="pre">exp(-(d/σ)²/2)</span></code>, <code class="docutils literal notranslate"><span class="pre">d</span></code> the distance to
+the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).</p>
+<p><code class="docutils literal notranslate"><span class="pre">direction</span></code> is <a class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS" title="muvid.footage.scoring.motionbeat.BAS_DIRECTIONS"><code class="xref py py-data docutils literal notranslate"><span class="pre">BAS_DIRECTIONS</span></code></a>: <code class="docutils literal notranslate"><span class="pre">motion_to_music</span></code> (AIST++) averages over
+the motion events, <code class="docutils literal notranslate"><span class="pre">music_to_motion</span></code> (Bailando) over the music beats — the per-beat
+form the <code class="docutils literal notranslate"><span class="pre">motion_beat_bas</span></code> track holds over each beat’s interval. <code class="docutils literal notranslate"><span class="pre">nan</span></code> when
+either list is empty: no evidence is not a score of 0. A non-finite time or a
+<code class="docutils literal notranslate"><span class="pre">sigma_s</span></code> that is not positive is refused rather than read as <code class="docutils literal notranslate"><span class="pre">nan</span></code>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">beat_alignment_score</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.62</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">]),</span> <span class="mi">3</span><span class="p">)</span>  <span class="c1"># one 0.12 s late</span>
+</span><span id="line-2"><span class="go">0.869</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="nb">round</span><span class="p">(</span><span class="n">beat_alignment_score</span><span class="p">([</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="n">direction</span><span class="o">=</span><span class="s2">"music_to_motion"</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">0.5</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.scoring.motionbeat.motionbeat_tracks">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.motionbeat.</span></span><span class="sig-name descname"><span class="pre">motionbeat_tracks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame_pass</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beat_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_hop_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hop_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/motionbeat.html#motionbeat_tracks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.motionbeat.motionbeat_tracks'">¶</a></dt>
@@ -178,6 +237,9 @@ clip’s coverage.</p></li>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS'" class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS"><code class="docutils literal notranslate"><span class="pre">BAS_DIRECTIONS</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.BAS_SIGMA_S'" class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_SIGMA_S"><code class="docutils literal notranslate"><span class="pre">BAS_SIGMA_S</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.beat_alignment_score'" class="reference internal" href="#muvid.footage.scoring.motionbeat.beat_alignment_score"><code class="docutils literal notranslate"><span class="pre">beat_alignment_score()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.motionbeat_tracks'" class="reference internal" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks"><code class="docutils literal notranslate"><span class="pre">motionbeat_tracks()</span></code></a></li>
 </ul>
 </div>
@@ -192,7 +254,7 @@ clip’s coverage.</p></li>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0d7dcda5"></script>
+<script src="../_static/documentation_options.js?v=9efdc3d6"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

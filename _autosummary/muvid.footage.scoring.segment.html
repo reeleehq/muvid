@@ -141,28 +141,49 @@
 <div id="content" role="main">
 <section id="module-muvid.footage.scoring.segment">
 <span id="muvid-footage-scoring-segment"></span><h1>muvid.footage.scoring.segment<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#module-muvid.footage.scoring.segment">¶</a></h1>
-<p>Shot boundaries (PySceneDetect) + the per-clip coverage mask.</p>
+<p>Shot boundaries (via <code class="docutils literal notranslate"><span class="pre">mixing.video.shots</span></code>) + the per-clip coverage mask.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">coverage_mask</span></code> is dependency-free: the boolean of song-grid frames a clip actually
 covers (from its offset + duration). It is the base mask every metric ANDs with, and the
 authority for “does this clip exist at song time t”.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">shot_boundaries</span></code> returns song-times of within-clip scene cuts (PySceneDetect, BSD-3).
-Consumed by the selector ONLY when <code class="docutils literal notranslate"><span class="pre">boundary_mode="beats+shots"</span></code> (they become <em>inter-clip</em>
-cut candidates at shot-boundary times — a within-clip jump cut is unrepresentable in the
-single-offset EDL model). Optional dep: absent → <code class="docutils literal notranslate"><span class="pre">[]</span></code> and the mode silently degrades to
-beats-only.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">shot_boundaries</span></code> returns song-times of within-clip scene cuts, detected by
+<code class="docutils literal notranslate"><span class="pre">mixing.video.shots</span></code> (muvid#220 — the detector lives in mixing, muvid maps it onto the
+song). Consumed by the selector ONLY when <code class="docutils literal notranslate"><span class="pre">boundary_mode="beats+shots"</span></code> (they become
+<em>inter-clip</em> cut candidates at shot-boundary times — a within-clip jump cut is
+unrepresentable in the single-offset EDL model). The default strategy is PySceneDetect
+(BSD-3, the <code class="docutils literal notranslate"><span class="pre">scoring-shots</span></code> extra); absent → <code class="docutils literal notranslate"><span class="pre">[]</span></code> and the mode degrades to beats-only.</p></li>
 </ul>
+<p class="rubric">Module Attributes</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY" title="muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DEFAULT_SHOT_STRATEGY</span></code></a></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">mixing.video.shots</span></code> strategy <a class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries" title="muvid.footage.scoring.segment.shot_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">shot_boundaries()</span></code></a> uses by default, and the package it needs (the <code class="docutils literal notranslate"><span class="pre">scoring-shots</span></code> extra).</p></td>
+</tr>
+</tbody>
+</table>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.segment.coverage_mask" title="muvid.footage.scoring.segment.coverage_mask"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coverage_mask</span></code></a>(*, offset_s, duration_s, ...)</p></td>
 <td><p>Grid frames (bool[n]) the clip covers — using its clamped <code class="docutils literal notranslate"><span class="pre">coverage</span></code> span.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries" title="muvid.footage.scoring.segment.shot_boundaries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shot_boundaries</span></code></a>(clip_path, *, offset_s)</p></td>
-<td><p>Song-times of within-clip scene cuts (PySceneDetect ContentDetector), or <code class="docutils literal notranslate"><span class="pre">[]</span></code>.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries" title="muvid.footage.scoring.segment.shot_boundaries"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shot_boundaries</span></code></a>(clip_path, *, offset_s[, ...])</p></td>
+<td><p>Song-times of within-clip scene cuts, or <code class="docutils literal notranslate"><span class="pre">[]</span></code> when <code class="docutils literal notranslate"><span class="pre">strategy</span></code>'s package is not installed (so <code class="docutils literal notranslate"><span class="pre">beats+shots</span></code> degrades to beats-only).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.segment.shots_available" title="muvid.footage.scoring.segment.shots_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shots_available</span></code></a>([strategy])</p></td>
+<td><p>Whether <a class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries" title="muvid.footage.scoring.segment.shot_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">shot_boundaries()</span></code></a> can detect anything with <code class="docutils literal notranslate"><span class="pre">strategy</span></code> here.</p></td>
 </tr>
 </tbody>
 </table>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.segment.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_SHOT_STRATEGY</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'pyscenedetect'</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY'">¶</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">mixing.video.shots</span></code> strategy <a class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries" title="muvid.footage.scoring.segment.shot_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">shot_boundaries()</span></code></a> uses by default, and the
+package it needs (the <code class="docutils literal notranslate"><span class="pre">scoring-shots</span></code> extra). NOT mixing’s own default <code class="docutils literal notranslate"><span class="pre">"diff"</span></code> as a
+fallback when that package is absent: every install without it pays no shot decode
+today, and a fallback would add one per clip to every scoring run — paid even when the
+selector’s default <code class="docutils literal notranslate"><span class="pre">boundary_mode="beats"</span></code> never reads a shot.</p>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.scoring.segment.coverage_mask">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.segment.</span></span><span class="sig-name descname"><span class="pre">coverage_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coverage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hop_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/segment.html#coverage_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.segment.coverage_mask" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.segment.coverage_mask'">¶</a></dt>
@@ -175,13 +196,27 @@ beats-only.</p></li>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.scoring.segment.shot_boundaries">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.segment.</span></span><span class="sig-name descname"><span class="pre">shot_boundaries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clip_path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/segment.html#shot_boundaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.segment.shot_boundaries" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.segment.shot_boundaries'">¶</a></dt>
-<dd><p>Song-times of within-clip scene cuts (PySceneDetect ContentDetector), or <code class="docutils literal notranslate"><span class="pre">[]</span></code>.</p>
-<p>Returns <code class="docutils literal notranslate"><span class="pre">[]</span></code> (never raises) if PySceneDetect is not installed, so the selector’s
-<code class="docutils literal notranslate"><span class="pre">beats+shots</span></code> mode degrades cleanly to beats-only.</p>
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.segment.</span></span><span class="sig-name descname"><span class="pre">shot_boundaries</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clip_path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pyscenedetect'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/segment.html#shot_boundaries"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.segment.shot_boundaries" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.segment.shot_boundaries'">¶</a></dt>
+<dd><p>Song-times of within-clip scene cuts, or <code class="docutils literal notranslate"><span class="pre">[]</span></code> when <code class="docutils literal notranslate"><span class="pre">strategy</span></code>’s package is
+not installed (so <code class="docutils literal notranslate"><span class="pre">beats+shots</span></code> degrades to beats-only).</p>
+<p>The detection is <code class="docutils literal notranslate"><span class="pre">mixing.video.shots(clip_path,</span> <span class="pre">strategy=strategy)</span></code>: its spans tile
+the clip, so the cuts are the span starts after the first, moved onto the song by
+<code class="docutils literal notranslate"><span class="pre">offset_s</span></code>. A failure INSIDE the detector raises (the house rule for <code class="docutils literal notranslate"><span class="pre">mixing</span></code>
+calls: a swallowed error is a quietly empty result) — the scoring orchestrator
+records it per clip; only a missing optional package is a degrade here.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.scoring.segment.shots_available">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.segment.</span></span><span class="sig-name descname"><span class="pre">shots_available</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">strategy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'pyscenedetect'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/segment.html#shots_available"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.segment.shots_available" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.segment.shots_available'">¶</a></dt>
+<dd><p>Whether <a class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries" title="muvid.footage.scoring.segment.shot_boundaries"><code class="xref py py-func docutils literal notranslate"><span class="pre">shot_boundaries()</span></code></a> can detect anything with <code class="docutils literal notranslate"><span class="pre">strategy</span></code> here.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
 </dd>
 </dl>
 </dd></dl>
@@ -189,8 +224,10 @@ beats-only.</p></li>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY'" class="reference internal" href="#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY"><code class="docutils literal notranslate"><span class="pre">DEFAULT_SHOT_STRATEGY</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.segment.coverage_mask'" class="reference internal" href="#muvid.footage.scoring.segment.coverage_mask"><code class="docutils literal notranslate"><span class="pre">coverage_mask()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.segment.shot_boundaries'" class="reference internal" href="#muvid.footage.scoring.segment.shot_boundaries"><code class="docutils literal notranslate"><span class="pre">shot_boundaries()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.segment.shots_available'" class="reference internal" href="#muvid.footage.scoring.segment.shots_available"><code class="docutils literal notranslate"><span class="pre">shots_available()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -204,7 +241,7 @@ beats-only.</p></li>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0d7dcda5"></script>
+<script src="../_static/documentation_options.js?v=9efdc3d6"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

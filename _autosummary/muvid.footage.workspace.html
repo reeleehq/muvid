@@ -304,6 +304,18 @@ manifest naming a missing file.</p>
 </dl>
 </dd></dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="muvid.footage.workspace.MusicVideoFootageProject.alignments_lock">
+<span class="sig-name descname"><span class="pre">alignments_lock</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#MusicVideoFootageProject.alignments_lock"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.MusicVideoFootageProject.alignments_lock" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.MusicVideoFootageProject.alignments_lock'">¶</a></dt>
+<dd><p>Serialise a read-modify-write of <code class="docutils literal notranslate"><span class="pre">alignments.json</span></code> (see <a class="reference internal" href="#muvid.footage.workspace.file_lock" title="muvid.footage.workspace.file_lock"><code class="xref py py-func docutils literal notranslate"><span class="pre">file_lock()</span></code></a>).</p>
+<p>Taken by EVERY writer — <code class="docutils literal notranslate"><span class="pre">align</span></code>, <code class="docutils literal notranslate"><span class="pre">set_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">clear_offset</span></code>,
+<code class="docutils literal notranslate"><span class="pre">measure_spans</span></code>, <a class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.remove_clip" title="muvid.footage.workspace.MusicVideoFootageProject.remove_clip"><code class="xref py py-meth docutils literal notranslate"><span class="pre">remove_clip()</span></code></a>, <a class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.set_song" title="muvid.footage.workspace.MusicVideoFootageProject.set_song"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_song()</span></code></a> — and never across a
+measurement: a writer measures first, then re-reads and merges under the lock
+(muvid#236). Not re-entrant (<code class="docutils literal notranslate"><span class="pre">flock</span></code> on a second descriptor waits on the first),
+so nothing holding it may call another writer. The lock file lives in its own
+<code class="docutils literal notranslate"><span class="pre">locks/</span></code> folder, as the edits lock lives in <code class="docutils literal notranslate"><span class="pre">edits/</span></code>: a dotfile in the project
+root is what a torn atomic write leaves behind, and must stay readable as that.</p>
+</dd></dl>
+<dl class="py method">
 <dt class="sig sig-object py" id="muvid.footage.workspace.MusicVideoFootageProject.cover_info">
 <span class="sig-name descname"><span class="pre">cover_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#MusicVideoFootageProject.cover_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.MusicVideoFootageProject.cover_info" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.MusicVideoFootageProject.cover_info'">¶</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">{file,</span> <span class="pre">artifact_id,</span> <span class="pre">taken_from}</span></code> of the cover frame, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
@@ -716,6 +728,7 @@ silently change the bytes behind an id that names the old ones. A rename gives
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject</span></code></a><ul>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.add_clip'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.add_clip"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.add_clip()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.add_song_candidate'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.add_song_candidate"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.add_song_candidate()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.alignments_lock'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.alignments_lock"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.alignments_lock()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.cover_info'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.cover_info"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.cover_info()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.defaults'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.defaults"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.defaults</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.delete_edit'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.delete_edit"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.delete_edit()</span></code></a></li>
@@ -762,7 +775,7 @@ silently change the bytes behind an id that names the old ones. A rename gives
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0d7dcda5"></script>
+<script src="../_static/documentation_options.js?v=9efdc3d6"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

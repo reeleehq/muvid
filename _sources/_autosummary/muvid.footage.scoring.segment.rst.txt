@@ -4,10 +4,17 @@ muvid.footage.scoring.segment
 .. automodule:: muvid.footage.scoring.segment
 
    
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      DEFAULT_SHOT_STRATEGY
+   
    .. rubric:: Functions
 
    .. autosummary::
    
       coverage_mask
       shot_boundaries
+      shots_available
    

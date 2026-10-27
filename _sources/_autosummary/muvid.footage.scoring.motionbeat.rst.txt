@@ -4,9 +4,17 @@ muvid.footage.scoring.motionbeat
 .. automodule:: muvid.footage.scoring.motionbeat
 
    
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      BAS_SIGMA_S
+      BAS_DIRECTIONS
+   
    .. rubric:: Functions
 
    .. autosummary::
    
+      beat_alignment_score
       motionbeat_tracks
    

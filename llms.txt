@@ -48,7 +48,7 @@
 - [muvid.footage.scoring.orchestrator](_autosummary/muvid.footage.scoring.orchestrator.html.md): The scoring orchestrator: a project (song + aligned clips) → the persisted score tensor.
 - [muvid.footage.scoring.quality](_autosummary/muvid.footage.scoring.quality.html.md): Quality tier: sharpness / exposure / stability_shake / face_framing → song-grid tracks.
 - [muvid.footage.scoring.registry](_autosummary/muvid.footage.scoring.registry.html.md): The scorer registry: what a metric IS, so adding one touches no orchestrator code (muvid#19).
-- [muvid.footage.scoring.segment](_autosummary/muvid.footage.scoring.segment.html.md): Shot boundaries (PySceneDetect) + the per-clip coverage mask.
+- [muvid.footage.scoring.segment](_autosummary/muvid.footage.scoring.segment.html.md): Shot boundaries (via &#96;mixing.video.shots&#96;) + the per-clip coverage mask.
 - [muvid.footage.select_score](_autosummary/muvid.footage.select_score.html.md): The score-driven &#96;weighted&#96; selection strategy: a beat-snapped semi-Markov Viterbi DP.
 - [muvid.footage.service](_autosummary/muvid.footage.service.html.md): The footage operations — one function per thing you can do to a music-video project.
 - [muvid.footage.strategy](_autosummary/muvid.footage.strategy.html.md): The pluggable &#96;SelectionStrategy&#96; registry — alignments → an EDL.
@@ -103,7 +103,7 @@
 - [muvid.visualize.video](_autosummary/muvid.visualize.video.html.md): Render an audio file into a video: pick a visual, mux, normalize, encode.
 - [muvid.visualize.visuals](_autosummary/muvid.visualize.visuals.html.md): Visual strategies: how the &#42;picture&#42; of an audio-driven video is produced.
 - [For AI agents](ai-agents.html.md): &#96;muvid&#96; ships artifacts for coding agents alongside its code. This page lists
-- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-10-27 15:55 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
+- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-10-27 17:08 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
 
 ## Optional
 

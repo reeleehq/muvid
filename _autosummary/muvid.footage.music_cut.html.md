@@ -124,7 +124,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>)
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>, max_cuts=None)
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -142,7 +142,11 @@ number, higher livelier, or `None` — and the planner then puts lively pictures
 the loud sections and calm ones in the quiet sections (default `liveliness()`;
 `None` turns it off). It reorders pictures, so it acts in the `planner` order
 only; `taken` keeps the order they were taken in. The report’s `affect` says
-whether it applied.
+whether it applied. `max_cuts` (default [`MAX_EDL_ENTRIES`](muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES))
+is the most cuts the plan may make: past it, consecutive slots of a section are held
+as one picture (`_hold_slots()`) until it fits, and the report’s `held` and
+`cap_note` say so (muvid#228) — so the planner never proposes an edit the gate is
+certain to refuse.
 
 Returns [`MusicCut`](#muvid.footage.music_cut.MusicCut) whose `entries` are validated-shape
 [`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) free cuts, contiguous over each span, in song

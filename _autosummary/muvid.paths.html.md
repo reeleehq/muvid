@@ -40,14 +40,16 @@ and not this module’s business — the rule is about where a *tool* writes by 
 
 ### Module Attributes
 
-| [`DATA_HOME_ENV_VAR`](#muvid.paths.DATA_HOME_ENV_VAR)   | Env var overriding the muvid data root.                                            |
-|----------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| [`PROJECTS_KIND`](#muvid.paths.PROJECTS_KIND)       | The `{kind}` subfolder local (single-user, non-connector) project folders live in. |
+| [`DATA_HOME_ENV_VAR`](#muvid.paths.DATA_HOME_ENV_VAR)   | Env var overriding the muvid data root.                                                                                                                             |
+|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`PROJECTS_KIND`](#muvid.paths.PROJECTS_KIND)       | The `{kind}` subfolder local (single-user, non-connector) project folders live in.                                                                                  |
+| [`LUTS_KIND`](#muvid.paths.LUTS_KIND)           | The `{kind}` subfolder holding the `.cube` files a look's `lut3d` may load — the only files a look may name (muvid#244, `muvid.footage.edl._validate_look_luts()`). |
 
 ### Functions
 
 | [`data_home`](#muvid.paths.data_home)()                      | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.             |
 |-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| [`lut_dir`](#muvid.paths.lut_dir)()                        | Where the LUTs a look may load live: `{data_home}/luts` (muvid#244).           |
 | [`project_root`](#muvid.paths.project_root)(name, \*[, kind])   | Where a local muvid project named `name` belongs: `{data_home}/{kind}/{name}`. |
 | [`safe_component`](#muvid.paths.safe_component)(value, \*, label) | A single, traversal-safe path component (no `/`, `\`, `..`, or empties).       |
 
@@ -55,6 +57,11 @@ and not this module’s business — the rule is about where a *tool* writes by 
 
 Env var overriding the muvid data root. ONE knob for the root, never one per kind —
 N env vars where one belongs is the anti-pattern the app-data-lifecycle rule names.
+
+### muvid.paths.LUTS_KIND *= 'luts'*
+
+The `{kind}` subfolder holding the `.cube` files a look’s `lut3d` may load — the
+only files a look may name (muvid#244, `muvid.footage.edl._validate_look_luts()`).
 
 ### muvid.paths.PROJECTS_KIND *= 'projects'*
 
@@ -85,6 +92,16 @@ different places. Without the second, a relative override roots the whole data s
 at the cwd — which, run from an app directory, is the very failure this module exists
 to prevent, reached through its own knob. A misconfigured root is refused loudly
 rather than read as something plausible.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.paths.lut_dir()
+
+Where the LUTs a look may load live: `{data_home}/luts` (muvid#244).
+
+Not created here, for [`project_root()`](#muvid.paths.project_root)’s reason; an absent folder simply holds
+no LUT a look can name.
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)

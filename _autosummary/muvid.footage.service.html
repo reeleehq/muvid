@@ -531,7 +531,9 @@ the first place to look — and muvid#91 is where that trade-off is being decide
 <p>A clip whose offset a person DECLARED (<code class="docutils literal notranslate"><span class="pre">set_offset</span></code>) is ALWAYS left alone — a
 person placed it, usually because the aligner got it wrong (muvid#59) — and is named
 in <code class="docutils literal notranslate"><span class="pre">kept_declared</span></code>. To have one measured again, <code class="docutils literal notranslate"><span class="pre">clear_offset</span></code> it first. Every
-measured record says <code class="docutils literal notranslate"><span class="pre">source:</span> <span class="pre">"measured"</span></code>.</p>
+measured record says <code class="docutils literal notranslate"><span class="pre">source:</span> <span class="pre">"measured"</span></code>. <code class="docutils literal notranslate"><span class="pre">cleared_meanwhile</span></code> names clips whose
+declared offset was forgotten (<code class="docutils literal notranslate"><span class="pre">clear_offset</span></code>) while this ran: they were skipped
+as declared and now have no place on the song — run align again to measure them.</p>
 <p>Run this after adding/removing clips and before cutting.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -1550,7 +1552,7 @@ a candidate.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0d7dcda5"></script>
+<script src="../_static/documentation_options.js?v=9efdc3d6"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -185,71 +185,82 @@
 
     <div id="content" role="main">
       <h1>Source code for muvid.footage.scoring.segment</h1><div class="highlight"><pre>
-<span></span><code><span id="line-1"><span class="sd">"""Shot boundaries (PySceneDetect) + the per-clip coverage mask.</span>
+<span></span><code><span id="line-1"><span class="sd">"""Shot boundaries (via ``mixing.video.shots``) + the per-clip coverage mask.</span>
 </span><span id="line-2">
 </span><span id="line-3"><span class="sd">- ``coverage_mask`` is dependency-free: the boolean of song-grid frames a clip actually</span>
 </span><span id="line-4"><span class="sd">  covers (from its offset + duration). It is the base mask every metric ANDs with, and the</span>
 </span><span id="line-5"><span class="sd">  authority for "does this clip exist at song time t".</span>
-</span><span id="line-6"><span class="sd">- ``shot_boundaries`` returns song-times of within-clip scene cuts (PySceneDetect, BSD-3).</span>
-</span><span id="line-7"><span class="sd">  Consumed by the selector ONLY when ``boundary_mode="beats+shots"`` (they become *inter-clip*</span>
-</span><span id="line-8"><span class="sd">  cut candidates at shot-boundary times — a within-clip jump cut is unrepresentable in the</span>
-</span><span id="line-9"><span class="sd">  single-offset EDL model). Optional dep: absent → ``[]`` and the mode silently degrades to</span>
-</span><span id="line-10"><span class="sd">  beats-only.</span>
-</span><span id="line-11"><span class="sd">"""</span>
-</span><span id="line-12">
-</span><span id="line-13"><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
-</span><span id="line-14">
-</span><span id="line-15"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-16">
-</span><span id="line-17"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">_EPS</span>
-</span><span id="line-18">
+</span><span id="line-6"><span class="sd">- ``shot_boundaries`` returns song-times of within-clip scene cuts, detected by</span>
+</span><span id="line-7"><span class="sd">  ``mixing.video.shots`` (muvid#220 — the detector lives in mixing, muvid maps it onto the</span>
+</span><span id="line-8"><span class="sd">  song). Consumed by the selector ONLY when ``boundary_mode="beats+shots"`` (they become</span>
+</span><span id="line-9"><span class="sd">  *inter-clip* cut candidates at shot-boundary times — a within-clip jump cut is</span>
+</span><span id="line-10"><span class="sd">  unrepresentable in the single-offset EDL model). The default strategy is PySceneDetect</span>
+</span><span id="line-11"><span class="sd">  (BSD-3, the ``scoring-shots`` extra); absent → ``[]`` and the mode degrades to beats-only.</span>
+</span><span id="line-12"><span class="sd">"""</span>
+</span><span id="line-13">
+</span><span id="line-14"><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+</span><span id="line-15">
+</span><span id="line-16"><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-17">
+</span><span id="line-18"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">_EPS</span>
 </span><span id="line-19">
+</span><span id="line-20">
 <div class="viewcode-block" id="coverage_mask">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.coverage_mask">[docs]</a>
-</span><span id="line-20"><span class="k">def</span><span class="w"> </span><span class="nf">coverage_mask</span><span class="p">(</span>
-</span><span id="line-21">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-22">    <span class="n">offset_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-23">    <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-24">    <span class="n">coverage</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
-</span><span id="line-25">    <span class="n">t0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-26">    <span class="n">hop_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-</span><span id="line-27">    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-</span><span id="line-28"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-</span><span id="line-29"><span class="w">    </span><span class="sd">"""Grid frames (bool[n]) the clip covers — using its clamped ``coverage`` span."""</span>
-</span><span id="line-30">    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">coverage</span>
-</span><span id="line-31">    <span class="n">times</span> <span class="o">=</span> <span class="n">t0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="n">hop_s</span>
-</span><span id="line-32">    <span class="k">return</span> <span class="p">(</span><span class="n">times</span> <span class="o">&gt;=</span> <span class="n">lo</span> <span class="o">-</span> <span class="n">_EPS</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">times</span> <span class="o">&lt;</span> <span class="n">hi</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">)</span></div>
+</span><span id="line-21"><span class="k">def</span><span class="w"> </span><span class="nf">coverage_mask</span><span class="p">(</span>
+</span><span id="line-22">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-23">    <span class="n">offset_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-24">    <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-25">    <span class="n">coverage</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">,</span>
+</span><span id="line-26">    <span class="n">t0</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-27">    <span class="n">hop_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+</span><span id="line-28">    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="line-29"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+</span><span id="line-30"><span class="w">    </span><span class="sd">"""Grid frames (bool[n]) the clip covers — using its clamped ``coverage`` span."""</span>
+</span><span id="line-31">    <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span> <span class="o">=</span> <span class="n">coverage</span>
+</span><span id="line-32">    <span class="n">times</span> <span class="o">=</span> <span class="n">t0</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">)</span> <span class="o">*</span> <span class="n">hop_s</span>
+</span><span id="line-33">    <span class="k">return</span> <span class="p">(</span><span class="n">times</span> <span class="o">&gt;=</span> <span class="n">lo</span> <span class="o">-</span> <span class="n">_EPS</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">times</span> <span class="o">&lt;</span> <span class="n">hi</span> <span class="o">+</span> <span class="n">_EPS</span><span class="p">)</span></div>
 
-</span><span id="line-33">
 </span><span id="line-34">
+</span><span id="line-35">
+</span><span id="line-36"><span class="c1">#: The ``mixing.video.shots`` strategy :func:`shot_boundaries` uses by default, and the</span>
+</span><span id="line-37"><span class="c1">#: package it needs (the ``scoring-shots`` extra). NOT mixing's own default ``"diff"`` as a</span>
+</span><span id="line-38"><span class="c1">#: fallback when that package is absent: every install without it pays no shot decode</span>
+</span><span id="line-39"><span class="c1">#: today, and a fallback would add one per clip to every scoring run — paid even when the</span>
+</span><span id="line-40"><span class="c1">#: selector's default ``boundary_mode="beats"`` never reads a shot.</span>
+</span><span id="line-41"><span class="n">DEFAULT_SHOT_STRATEGY</span> <span class="o">=</span> <span class="s2">"pyscenedetect"</span>
+</span><span id="line-42"><span class="n">_DEFAULT_PACKAGE</span> <span class="o">=</span> <span class="s2">"scenedetect"</span>
+</span><span id="line-43">
+</span><span id="line-44">
+<div class="viewcode-block" id="shots_available">
+<a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.shots_available">[docs]</a>
+</span><span id="line-45"><span class="k">def</span><span class="w"> </span><span class="nf">shots_available</span><span class="p">(</span><span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_SHOT_STRATEGY</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-46"><span class="w">    </span><span class="sd">"""Whether :func:`shot_boundaries` can detect anything with ``strategy`` here."""</span>
+</span><span id="line-47">    <span class="kn">from</span><span class="w"> </span><span class="nn">importlib.util</span><span class="w"> </span><span class="kn">import</span> <span class="n">find_spec</span>
+</span><span id="line-48">
+</span><span id="line-49">    <span class="k">return</span> <span class="n">strategy</span> <span class="o">!=</span> <span class="n">DEFAULT_SHOT_STRATEGY</span> <span class="ow">or</span> <span class="n">find_spec</span><span class="p">(</span><span class="n">_DEFAULT_PACKAGE</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+</span><span id="line-50">
+</span><span id="line-51">
 <div class="viewcode-block" id="shot_boundaries">
 <a class="viewcode-back" href="../../../../_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.shot_boundaries">[docs]</a>
-</span><span id="line-35"><span class="k">def</span><span class="w"> </span><span class="nf">shot_boundaries</span><span class="p">(</span><span class="n">clip_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">offset_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
-</span><span id="line-36"><span class="w">    </span><span class="sd">"""Song-times of within-clip scene cuts (PySceneDetect ContentDetector), or ``[]``.</span>
-</span><span id="line-37">
-</span><span id="line-38"><span class="sd">    Returns ``[]`` (never raises) if PySceneDetect is not installed, so the selector's</span>
-</span><span id="line-39"><span class="sd">    ``beats+shots`` mode degrades cleanly to beats-only.</span>
-</span><span id="line-40"><span class="sd">    """</span>
-</span><span id="line-41">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-42">        <span class="kn">from</span><span class="w"> </span><span class="nn">scenedetect</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContentDetector</span><span class="p">,</span> <span class="n">SceneManager</span><span class="p">,</span> <span class="n">open_video</span>  <span class="c1"># lazy</span>
-</span><span id="line-43">    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-</span><span id="line-44">        <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-45">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-46">        <span class="n">video</span> <span class="o">=</span> <span class="n">open_video</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">clip_path</span><span class="p">))</span>
-</span><span id="line-47">        <span class="n">sm</span> <span class="o">=</span> <span class="n">SceneManager</span><span class="p">()</span>
-</span><span id="line-48">        <span class="n">sm</span><span class="o">.</span><span class="n">add_detector</span><span class="p">(</span><span class="n">ContentDetector</span><span class="p">())</span>
-</span><span id="line-49">        <span class="n">sm</span><span class="o">.</span><span class="n">detect_scenes</span><span class="p">(</span><span class="n">video</span><span class="p">)</span>
-</span><span id="line-50">        <span class="n">scenes</span> <span class="o">=</span> <span class="n">sm</span><span class="o">.</span><span class="n">get_scene_list</span><span class="p">()</span>
-</span><span id="line-51">    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
-</span><span id="line-52">        <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-53">    <span class="c1"># Each scene is (start, end) timecodes in CLIP time → song time via the offset. The cut</span>
-</span><span id="line-54">    <span class="c1"># points are the scene starts (drop the very first, which is the clip start).</span>
-</span><span id="line-55">    <span class="n">cuts</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-56">    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">_end</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">scenes</span><span class="p">):</span>
-</span><span id="line-57">        <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-58">            <span class="k">continue</span>
-</span><span id="line-59">        <span class="n">cuts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">start</span><span class="o">.</span><span class="n">get_seconds</span><span class="p">())</span> <span class="o">+</span> <span class="n">offset_s</span><span class="p">)</span>
-</span><span id="line-60">    <span class="k">return</span> <span class="n">cuts</span></div>
+</span><span id="line-52"><span class="k">def</span><span class="w"> </span><span class="nf">shot_boundaries</span><span class="p">(</span>
+</span><span id="line-53">    <span class="n">clip_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">offset_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_SHOT_STRATEGY</span>
+</span><span id="line-54"><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+</span><span id="line-55"><span class="w">    </span><span class="sd">"""Song-times of within-clip scene cuts, or ``[]`` when ``strategy``'s package is</span>
+</span><span id="line-56"><span class="sd">    not installed (so ``beats+shots`` degrades to beats-only).</span>
+</span><span id="line-57">
+</span><span id="line-58"><span class="sd">    The detection is ``mixing.video.shots(clip_path, strategy=strategy)``: its spans tile</span>
+</span><span id="line-59"><span class="sd">    the clip, so the cuts are the span starts after the first, moved onto the song by</span>
+</span><span id="line-60"><span class="sd">    ``offset_s``. A failure INSIDE the detector raises (the house rule for ``mixing``</span>
+</span><span id="line-61"><span class="sd">    calls: a swallowed error is a quietly empty result) — the scoring orchestrator</span>
+</span><span id="line-62"><span class="sd">    records it per clip; only a missing optional package is a degrade here.</span>
+</span><span id="line-63"><span class="sd">    """</span>
+</span><span id="line-64">    <span class="k">if</span> <span class="ow">not</span> <span class="n">shots_available</span><span class="p">(</span><span class="n">strategy</span><span class="p">):</span>
+</span><span id="line-65">        <span class="k">return</span> <span class="p">[]</span>
+</span><span id="line-66">    <span class="kn">from</span><span class="w"> </span><span class="nn">mixing.video</span><span class="w"> </span><span class="kn">import</span> <span class="n">shots</span>  <span class="c1"># lazy: mixing.video is not free to import</span>
+</span><span id="line-67">
+</span><span id="line-68">    <span class="k">return</span> <span class="p">[</span><span class="n">start</span> <span class="o">+</span> <span class="n">offset_s</span> <span class="k">for</span> <span class="n">start</span><span class="p">,</span> <span class="n">_end</span> <span class="ow">in</span> <span class="n">shots</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">clip_path</span><span class="p">),</span> <span class="n">strategy</span><span class="o">=</span><span class="n">strategy</span><span class="p">)[</span><span class="mi">1</span><span class="p">:]]</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -264,7 +275,7 @@
 </footer>
     </div>
     
-    <script src="../../../../_static/documentation_options.js?v=0d7dcda5"></script>
+    <script src="../../../../_static/documentation_options.js?v=9efdc3d6"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/clipboard.min.js?v=a7894cd8"></script>

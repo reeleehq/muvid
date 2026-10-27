@@ -251,7 +251,9 @@ whole-clip measurement), and its coverage of the song, plus these lists:
 A clip whose offset a person DECLARED (`set_offset`) is ALWAYS left alone — a
 person placed it, usually because the aligner got it wrong (muvid#59) — and is named
 in `kept_declared`. To have one measured again, `clear_offset` it first. Every
-measured record says `source: "measured"`.
+measured record says `source: "measured"`. `cleared_meanwhile` names clips whose
+declared offset was forgotten (`clear_offset`) while this ran: they were skipped
+as declared and now have no place on the song — run align again to measure them.
 
 Run this after adding/removing clips and before cutting.
 

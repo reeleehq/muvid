@@ -10,12 +10,14 @@ muvid.paths
    
       DATA_HOME_ENV_VAR
       PROJECTS_KIND
+      LUTS_KIND
    
    .. rubric:: Functions
 
    .. autosummary::
    
       data_home
+      lut_dir
       project_root
       safe_component
    

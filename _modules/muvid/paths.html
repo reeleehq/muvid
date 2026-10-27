@@ -250,70 +250,87 @@
 </span><span id="line-63"><span class="n">PROJECTS_KIND</span> <span class="o">=</span> <span class="s2">"projects"</span>
 </span><span id="line-64">
 </span><span id="line-65">
+</span><span id="line-66"><span class="c1">#: The ``{kind}`` subfolder holding the ``.cube`` files a look's ``lut3d`` may load — the</span>
+</span><span id="line-67"><span class="c1">#: only files a look may name (muvid#244, :func:`muvid.footage.edl._validate_look_luts`).</span>
+</span><span id="line-68"><span class="n">LUTS_KIND</span> <span class="o">=</span> <span class="s2">"luts"</span>
+</span><span id="line-69">
+</span><span id="line-70">
 <div class="viewcode-block" id="data_home">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.data_home">[docs]</a>
-</span><span id="line-66"><span class="k">def</span><span class="w"> </span><span class="nf">data_home</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-67"><span class="w">    </span><span class="sd">"""The muvid data root: ``$MUVID_DATA_HOME`` or ``~/.local/share/muvid``.</span>
-</span><span id="line-68">
-</span><span id="line-69"><span class="sd">    The override is ``expanduser``-ed and **required to be absolute**, because this path</span>
-</span><span id="line-70"><span class="sd">    is now printed by ``muvid project-root`` for a caller to interpolate. Without the</span>
-</span><span id="line-71"><span class="sd">    first, ``MUVID_DATA_HOME=~/store`` yields a *literal* ``~`` directory, so the printed</span>
-</span><span id="line-72"><span class="sd">    string and what :class:`muvid.project.MusicVideoProject` resolves it to are two</span>
-</span><span id="line-73"><span class="sd">    different places. Without the second, a relative override roots the whole data store</span>
-</span><span id="line-74"><span class="sd">    at the cwd — which, run from an app directory, is the very failure this module exists</span>
-</span><span id="line-75"><span class="sd">    to prevent, reached through its own knob. A misconfigured root is refused loudly</span>
-</span><span id="line-76"><span class="sd">    rather than read as something plausible.</span>
-</span><span id="line-77"><span class="sd">    """</span>
-</span><span id="line-78">    <span class="n">override</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">DATA_HOME_ENV_VAR</span><span class="p">)</span>
-</span><span id="line-79">    <span class="k">if</span> <span class="ow">not</span> <span class="n">override</span><span class="p">:</span>
-</span><span id="line-80">        <span class="k">return</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">".local"</span> <span class="o">/</span> <span class="s2">"share"</span> <span class="o">/</span> <span class="s2">"muvid"</span>
-</span><span id="line-81">    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">override</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
-</span><span id="line-82">    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
-</span><span id="line-83">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-84">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_HOME_ENV_VAR</span><span class="si">}</span><span class="s2"> must be an absolute path, got </span><span class="si">{</span><span class="n">override</span><span class="si">!r}</span><span class="s2">. "</span>
-</span><span id="line-85">            <span class="s2">"A relative data root resolves against the current directory, so it would "</span>
-</span><span id="line-86">            <span class="s2">"follow the process around and can land inside an app directory."</span>
-</span><span id="line-87">        <span class="p">)</span>
-</span><span id="line-88">    <span class="k">return</span> <span class="n">path</span></div>
+</span><span id="line-71"><span class="k">def</span><span class="w"> </span><span class="nf">data_home</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-72"><span class="w">    </span><span class="sd">"""The muvid data root: ``$MUVID_DATA_HOME`` or ``~/.local/share/muvid``.</span>
+</span><span id="line-73">
+</span><span id="line-74"><span class="sd">    The override is ``expanduser``-ed and **required to be absolute**, because this path</span>
+</span><span id="line-75"><span class="sd">    is now printed by ``muvid project-root`` for a caller to interpolate. Without the</span>
+</span><span id="line-76"><span class="sd">    first, ``MUVID_DATA_HOME=~/store`` yields a *literal* ``~`` directory, so the printed</span>
+</span><span id="line-77"><span class="sd">    string and what :class:`muvid.project.MusicVideoProject` resolves it to are two</span>
+</span><span id="line-78"><span class="sd">    different places. Without the second, a relative override roots the whole data store</span>
+</span><span id="line-79"><span class="sd">    at the cwd — which, run from an app directory, is the very failure this module exists</span>
+</span><span id="line-80"><span class="sd">    to prevent, reached through its own knob. A misconfigured root is refused loudly</span>
+</span><span id="line-81"><span class="sd">    rather than read as something plausible.</span>
+</span><span id="line-82"><span class="sd">    """</span>
+</span><span id="line-83">    <span class="n">override</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">DATA_HOME_ENV_VAR</span><span class="p">)</span>
+</span><span id="line-84">    <span class="k">if</span> <span class="ow">not</span> <span class="n">override</span><span class="p">:</span>
+</span><span id="line-85">        <span class="k">return</span> <span class="n">Path</span><span class="o">.</span><span class="n">home</span><span class="p">()</span> <span class="o">/</span> <span class="s2">".local"</span> <span class="o">/</span> <span class="s2">"share"</span> <span class="o">/</span> <span class="s2">"muvid"</span>
+</span><span id="line-86">    <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">override</span><span class="p">)</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span>
+</span><span id="line-87">    <span class="k">if</span> <span class="ow">not</span> <span class="n">path</span><span class="o">.</span><span class="n">is_absolute</span><span class="p">():</span>
+</span><span id="line-88">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-89">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_HOME_ENV_VAR</span><span class="si">}</span><span class="s2"> must be an absolute path, got </span><span class="si">{</span><span class="n">override</span><span class="si">!r}</span><span class="s2">. "</span>
+</span><span id="line-90">            <span class="s2">"A relative data root resolves against the current directory, so it would "</span>
+</span><span id="line-91">            <span class="s2">"follow the process around and can land inside an app directory."</span>
+</span><span id="line-92">        <span class="p">)</span>
+</span><span id="line-93">    <span class="k">return</span> <span class="n">path</span></div>
 
-</span><span id="line-89">
-</span><span id="line-90">
+</span><span id="line-94">
+</span><span id="line-95">
 <div class="viewcode-block" id="safe_component">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.safe_component">[docs]</a>
-</span><span id="line-91"><span class="k">def</span><span class="w"> </span><span class="nf">safe_component</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-92"><span class="w">    </span><span class="sd">"""A single, traversal-safe path component (no ``/``, ``\\``, ``..``, or empties).</span>
-</span><span id="line-93">
-</span><span id="line-94"><span class="sd">    Every caller-supplied name reaching the data root goes through this. On the footage</span>
-</span><span id="line-95"><span class="sd">    MCP surface the names arrive from a remote OAuth caller, so there it is a trust</span>
-</span><span id="line-96"><span class="sd">    boundary rather than a tidiness check; :func:`project_root` is CLI-only and not on</span>
-</span><span id="line-97"><span class="sd">    that surface. Behaviour is unchanged from the two copies this replaced — notably</span>
-</span><span id="line-98"><span class="sd">    there is no length cap and no unicode normalisation, both pre-existing.</span>
-</span><span id="line-99"><span class="sd">    """</span>
-</span><span id="line-100">    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-101">    <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span> <span class="ow">or</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">".."</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"/"</span> <span class="ow">in</span> <span class="n">v</span> <span class="ow">or</span> <span class="s2">"</span><span class="se">\\</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">v</span> <span class="ow">or</span> <span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
-</span><span id="line-102">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-103">    <span class="k">return</span> <span class="n">v</span></div>
+</span><span id="line-96"><span class="k">def</span><span class="w"> </span><span class="nf">safe_component</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-97"><span class="w">    </span><span class="sd">"""A single, traversal-safe path component (no ``/``, ``\\``, ``..``, or empties).</span>
+</span><span id="line-98">
+</span><span id="line-99"><span class="sd">    Every caller-supplied name reaching the data root goes through this. On the footage</span>
+</span><span id="line-100"><span class="sd">    MCP surface the names arrive from a remote OAuth caller, so there it is a trust</span>
+</span><span id="line-101"><span class="sd">    boundary rather than a tidiness check; :func:`project_root` is CLI-only and not on</span>
+</span><span id="line-102"><span class="sd">    that surface. Behaviour is unchanged from the two copies this replaced — notably</span>
+</span><span id="line-103"><span class="sd">    there is no length cap and no unicode normalisation, both pre-existing.</span>
+</span><span id="line-104"><span class="sd">    """</span>
+</span><span id="line-105">    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-106">    <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span> <span class="ow">or</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">".."</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"/"</span> <span class="ow">in</span> <span class="n">v</span> <span class="ow">or</span> <span class="s2">"</span><span class="se">\\</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">v</span> <span class="ow">or</span> <span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
+</span><span id="line-107">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-108">    <span class="k">return</span> <span class="n">v</span></div>
 
-</span><span id="line-104">
-</span><span id="line-105">
+</span><span id="line-109">
+</span><span id="line-110">
 <div class="viewcode-block" id="project_root">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.project_root">[docs]</a>
-</span><span id="line-106"><span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">PROJECTS_KIND</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-107"><span class="w">    </span><span class="sd">"""Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.</span>
-</span><span id="line-108">
-</span><span id="line-109"><span class="sd">    Returns the path without creating it — ``muvid init`` (or a subgenre's own renderer)</span>
-</span><span id="line-110"><span class="sd">    owns creation, and a resolver that made directories could not be used to *ask* where</span>
-</span><span id="line-111"><span class="sd">    a project would go.</span>
-</span><span id="line-112">
-</span><span id="line-113"><span class="sd">    ``kind`` is the seam for a surface that wants its own subtree rather than sharing</span>
-</span><span id="line-114"><span class="sd">    ``projects/``; the connector-facing genres already use their own (``music_video/``,</span>
-</span><span id="line-115"><span class="sd">    ``visualizer/``) through the workspace classes that own those layouts.</span>
-</span><span id="line-116"><span class="sd">    """</span>
-</span><span id="line-117">    <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-118">        <span class="n">data_home</span><span class="p">()</span>
-</span><span id="line-119">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"kind"</span><span class="p">)</span>
-</span><span id="line-120">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project name"</span><span class="p">)</span>
-</span><span id="line-121">    <span class="p">)</span></div>
+</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">PROJECTS_KIND</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-112"><span class="w">    </span><span class="sd">"""Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.</span>
+</span><span id="line-113">
+</span><span id="line-114"><span class="sd">    Returns the path without creating it — ``muvid init`` (or a subgenre's own renderer)</span>
+</span><span id="line-115"><span class="sd">    owns creation, and a resolver that made directories could not be used to *ask* where</span>
+</span><span id="line-116"><span class="sd">    a project would go.</span>
+</span><span id="line-117">
+</span><span id="line-118"><span class="sd">    ``kind`` is the seam for a surface that wants its own subtree rather than sharing</span>
+</span><span id="line-119"><span class="sd">    ``projects/``; the connector-facing genres already use their own (``music_video/``,</span>
+</span><span id="line-120"><span class="sd">    ``visualizer/``) through the workspace classes that own those layouts.</span>
+</span><span id="line-121"><span class="sd">    """</span>
+</span><span id="line-122">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-123">        <span class="n">data_home</span><span class="p">()</span>
+</span><span id="line-124">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"kind"</span><span class="p">)</span>
+</span><span id="line-125">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project name"</span><span class="p">)</span>
+</span><span id="line-126">    <span class="p">)</span></div>
+
+</span><span id="line-127">
+</span><span id="line-128">
+<div class="viewcode-block" id="lut_dir">
+<a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.lut_dir">[docs]</a>
+</span><span id="line-129"><span class="k">def</span><span class="w"> </span><span class="nf">lut_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-130"><span class="w">    </span><span class="sd">"""Where the LUTs a look may load live: ``{data_home}/luts`` (muvid#244).</span>
+</span><span id="line-131">
+</span><span id="line-132"><span class="sd">    Not created here, for :func:`project_root`'s reason; an absent folder simply holds</span>
+</span><span id="line-133"><span class="sd">    no LUT a look can name.</span>
+</span><span id="line-134"><span class="sd">    """</span>
+</span><span id="line-135">    <span class="k">return</span> <span class="n">data_home</span><span class="p">()</span> <span class="o">/</span> <span class="n">LUTS_KIND</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -328,7 +345,7 @@
 </footer>
     </div>
     
-    <script src="../../_static/documentation_options.js?v=0d7dcda5"></script>
+    <script src="../../_static/documentation_options.js?v=9efdc3d6"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>

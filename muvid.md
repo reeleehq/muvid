@@ -1,4 +1,4 @@
-> built 2026-10-27 15:55 UTC from f894336 (main) · muvid 0.0.130. Details: build_info.json
+> built 2026-10-27 17:08 UTC from 6b36bd0 (main) · muvid 0.0.132. Details: build_info.json
 
 # index.html.md
 
@@ -3427,56 +3427,60 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 
 ### Module Attributes
 
-| [`COINCIDENT_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.COINCIDENT_S)              | Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.                                                                                                                                                                        |
-|----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES)           | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
-| [`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE)            | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
-| [`MAX_LOOK_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LINKS)            | How many filter links one look may carry.                                                                                                                                                                                                                       |
-| [`MAX_LOOK_COST`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_COST)             | The memory a look may cost, in canvas-sized YUV frames (`_look_cost()`) — ONE budget in place of the three counts of muvid#196/#199 (resizes, links holding a large frame, heavy filters), which each answered one version of this question (#229).             |
-| [`DFLT_LOOK_CANVAS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.DFLT_LOOK_CANVAS)          | The canvas [`validate_edl()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl) bounds a look against when its caller names none: the element-wise maximum of `workspace.CANVASES`, so the default is the LOOSEST bound that is still a bound — never an absent one. |
-| [`TRANSITION_SPLIT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.TRANSITION_SPLIT)          | the fraction taken from BEFORE the boundary.                                                                                                                                                                                                                    |
-| [`MIN_TRANSITION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_TRANSITION_S)          | Shortest transition that is not a lie.                                                                                                                                                                                                                          |
-| [`TRANSITION_CURVES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.TRANSITION_CURVES)         | The transition curves muvid offers.                                                                                                                                                                                                                             |
-| [`MIN_CONFIDENCE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_CONFIDENCE)            | Below this, a whole-clip correlation coefficient does not vouch for its offset (env `MUVID_FOOTAGE_MIN_CONFIDENCE`).                                                                                                                                            |
-| [`MIN_SUPPORT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_SUPPORT)               | Support must EXCEED this for an offset to be vouched for (env `MUVID_FOOTAGE_MIN_SUPPORT`).                                                                                                                                                                     |
-| [`MIN_MARGIN`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_MARGIN)                | Margin must EXCEED this for an offset to be vouched for (env `MUVID_FOOTAGE_MIN_MARGIN`).                                                                                                                                                                       |
-| [`MEASURED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MEASURED)                  | the aligner found the offset, or a person set it.                                                                                                                                                                                                               |
-| [`UNPLACED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNPLACED)                  | Two more `source` values, for records that are NEVER persisted.                                                                                                                                                                                                 |
-| [`STILL_DURATION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.STILL_DURATION_S)          | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
-| [`SPAN_OFFSET_TOLERANCE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S)   | How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — `mixing`'s own span tolerance (`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.                                          |
-| [`SPAN_EDGE_ACCURACY_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_EDGE_ACCURACY_S)      | How accurate a measured span's edges are, in seconds — `mixing`'s span window (`SPAN_WINDOW_S`), restated so this module stays import-light (a test pins it).                                                                                                   |
-| [`SLIP_MAX_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SLIP_MAX_S)                | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
-| [`RATE_MAX_DEV`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.RATE_MAX_DEV)              | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
-| [`EDGE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EDGE_S)                    | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
-| [`NO_VOUCHED_COVERAGE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.NO_VOUCHED_COVERAGE)       | nothing the aligner vouches for covers it at all.                                                                                                                                                                                                               |
-| [`UNVOUCHED_SELECTION`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_SELECTION)       | A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.                                                                                                                          |
-| [`EXCLUSION_REASONS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EXCLUSION_REASONS)         | Every reason [`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.                                                                                                                                 |
-| [`LOOK_FILTERS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.LOOK_FILTERS)              | The filters a `look` may name.                                                                                                                                                                                                                                  |
-| [`LOOKS_EFFECTS_NOT_OFFERED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED) | `looks` effects muvid's gate does not offer, each with why.                                                                                                                                                                                                     |
+| [`COINCIDENT_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.COINCIDENT_S)               | Spans shorter than this (seconds) are treated as coincident / zero — guards float noise.                                                                                                                                                                        |
+|-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES)            | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
+| [`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE)             | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
+| [`MAX_LUT_SIZE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LUT_SIZE)               | The largest `LUT_3D_SIZE` a look's `lut3d` may load (muvid#244).                                                                                                                                                                                                |
+| [`MAX_LOOK_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LINKS)             | How many filter links one look may carry.                                                                                                                                                                                                                       |
+| [`MAX_LOOK_COST`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_COST)              | The memory a look may cost, in canvas-sized YUV frames (`_look_cost()`) — ONE budget in place of the three counts of muvid#196/#199 (resizes, links holding a large frame, heavy filters), which each answered one version of this question (#229).             |
+| [`DFLT_LOOK_CANVAS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.DFLT_LOOK_CANVAS)           | The canvas [`validate_edl()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl) bounds a look against when its caller names none: the element-wise maximum of `workspace.CANVASES`, so the default is the LOOSEST bound that is still a bound — never an absent one. |
+| [`TRANSITION_SPLIT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.TRANSITION_SPLIT)           | the fraction taken from BEFORE the boundary.                                                                                                                                                                                                                    |
+| [`MIN_TRANSITION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_TRANSITION_S)           | Shortest transition that is not a lie.                                                                                                                                                                                                                          |
+| [`TRANSITION_CURVES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.TRANSITION_CURVES)          | The transition curves muvid offers.                                                                                                                                                                                                                             |
+| [`MIN_CONFIDENCE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_CONFIDENCE)             | Below this, a whole-clip correlation coefficient does not vouch for its offset (env `MUVID_FOOTAGE_MIN_CONFIDENCE`).                                                                                                                                            |
+| [`MIN_SUPPORT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_SUPPORT)                | Support must EXCEED this for an offset to be vouched for (env `MUVID_FOOTAGE_MIN_SUPPORT`).                                                                                                                                                                     |
+| [`MIN_MARGIN`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_MARGIN)                 | Margin must EXCEED this for an offset to be vouched for (env `MUVID_FOOTAGE_MIN_MARGIN`).                                                                                                                                                                       |
+| [`MEASURED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MEASURED)                   | the aligner found the offset, or a person set it.                                                                                                                                                                                                               |
+| [`UNPLACED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNPLACED)                   | Two more `source` values, for records that are NEVER persisted.                                                                                                                                                                                                 |
+| [`STILL_DURATION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.STILL_DURATION_S)           | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
+| [`SPAN_OFFSET_TOLERANCE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S)    | How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — `mixing`'s own span tolerance (`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.                                          |
+| [`SPAN_EDGE_ACCURACY_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_EDGE_ACCURACY_S)       | How accurate a measured span's edges are, in seconds — `mixing`'s span window (`SPAN_WINDOW_S`), restated so this module stays import-light (a test pins it).                                                                                                   |
+| [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) | half the span window.                                                                                                                                                                                                                                           |
+| [`SLIP_MAX_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SLIP_MAX_S)                 | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
+| [`RATE_MAX_DEV`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.RATE_MAX_DEV)               | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
+| [`EDGE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EDGE_S)                     | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
+| [`NO_VOUCHED_COVERAGE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.NO_VOUCHED_COVERAGE)        | nothing the aligner vouches for covers it at all.                                                                                                                                                                                                               |
+| [`UNVOUCHED_SELECTION`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_SELECTION)        | A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.                                                                                                                          |
+| [`EXCLUSION_REASONS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EXCLUSION_REASONS)          | Every reason [`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.                                                                                                                                 |
+| [`LOOK_FILTERS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.LOOK_FILTERS)               | The filters a `look` may name.                                                                                                                                                                                                                                  |
+| [`LOOKS_EFFECTS_NOT_OFFERED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED)  | `looks` effects muvid's gate does not offer, each with why.                                                                                                                                                                                                     |
 
 ### Functions
 
-| [`blend_lead`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                                                                                                                                                                                                                                                    |
-|---------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`blend_reads`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                                                                                                                                                              |
-| [`blend_trail`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                                                                                                                                                                     |
-| [`clip_in_of`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                                                                                                                                                                     |
-| [`clip_time_at`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                                                                                                                                                                         |
-| [`derive_cuts`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                                              |
-| [`exclude_unvouched`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                                                                                                                                                                  |
-| [`fill_gaps`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                                                                                                                                                              |
-| [`in_point_bounds`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce.                                                                                                                                               |
-| [`longest_span`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                          |
-| [`looks_effects_offered`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                                                                                                                                                                  |
-| [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                                            |
-| [`selection_unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2): those at least [`SPAN_EDGE_ACCURACY_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_EDGE_ACCURACY_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
-| [`still_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                |
-| [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                        |
-| [`unverified_song_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_song_stretches)(a, \*[, tolerance_s])  | [`unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches) on the SONG timeline (`song = clip + offset_s`): where this clip's placement shows footage its measured spans do not confirm (muvid#16 slice 2).                                                                                                                                                                                         |
-| [`unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches)(a, \*[, tolerance_s])       | The clip-time stretches of `a`'s placement on the song that no measured span confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single offset says is in sync and the window-by-window measurement could not verify there — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.                                                                                      |
-| [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                                                 |
-| [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                                                   |
-| [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                                                 |
+| [`blend_lead`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_lead)(t)                                    | Seconds a transition reads BEFORE its own cut's start (in that cut's source).                                                                                                                                                                                                                                                                                                                                                     |
+|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`blend_reads`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                                                                                                                                                                               |
+| [`blend_trail`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                                                                                                                                                                                      |
+| [`clip_in_of`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                                                                                                                                                                                      |
+| [`clip_time_at`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                                                                                                                                                                                          |
+| [`derive_cuts`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                                                               |
+| [`exclude_unvouched`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                                                                                                                                                                                   |
+| [`fill_gaps`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                                                                                                                                                                               |
+| [`in_point_bounds`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce.                                                                                                                                                                |
+| [`longest_span`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                                           |
+| [`look_may_resize`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.look_may_resize)(look)                            | Whether `look` can end at a frame size other than the one it is handed.                                                                                                                                                                                                                                                                                                                                                           |
+| [`looks_effects_offered`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                                                                                                                                                                                   |
+| [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                                                             |
+| [`selection_unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those at least [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
+| [`still_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                                 |
+| [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                                         |
+| [`unverified_in_cut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_in_cut)(e, a)                          | The song-time stretches of cut `e` that show its clip `a` where [`selection_unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches) says the clip does not match the song (muvid#241).                                                                                                                                                                                                                              |
+| [`unverified_song_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_song_stretches)(a, \*[, tolerance_s])  | [`unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches) on the SONG timeline (`song = clip + offset_s`): where this clip's placement shows footage its measured spans do not confirm (muvid#16 slice 2).                                                                                                                                                                                                          |
+| [`unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches)(a, \*[, tolerance_s])       | The clip-time stretches of `a`'s placement on the song that no measured span confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single offset says is in sync and the window-by-window measurement could not verify there — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.                                                                                                       |
+| [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                                                                  |
+| [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                                                                    |
+| [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                                                                  |
 
 ### Classes
 
@@ -3932,7 +3936,9 @@ Two groups, and the split is the maintenance rule:
 filter must declare no filesystem-path option at all. `lut3d`’s `file` is
 the single recorded exception (`_LOOK_FILE_OPTIONS`) — it *loads* a
 `.cube`, which is how `looks`’ flagship grade reaches its LUT, and it reads
-rather than writes. Nothing else may name a path, so adding a filter here is a
+rather than writes (a cube `looks.materialize` builds must land in
+[`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) — pass `into=` — to pass muvid#244’s rule). Nothing
+else may name a path, so adding a filter here is a
 two-place edit and the second place is a measurement of the real binary.
 
 **The frame size an allowlisted filter may ask for is bounded separately**
@@ -3944,11 +3950,10 @@ on the OPTIONS that set a size: `pad`’s `aspect` and `scale`’s
 dimension a bound can read, so the four filters that can change the output
 geometry are allowlisted per OPTION as well as by name.
 
-**What this still does NOT bound**, stated because a partial claim is worse
-than none: `lut3d=file=` will *attempt* to open any path the renderer can
-read. It cannot write, and a non-`.cube` file fails to parse. That is a
-failure inside the caller’s OWN render; writing to someone else’s disk is the
-class this closes.
+**\`\`lut3d=file=\`\` is confined separately** (muvid#244): before that it would
+*attempt* to open any path the renderer could read, and load a cube of any size.
+`_validate_look_luts()` now allows only a `.cube` inside
+[`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) with `LUT_3D_SIZE` at most [`MAX_LUT_SIZE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LUT_SIZE).
 
 ### muvid.footage.edl.MAX_EDL_ENTRIES *= 500*
 
@@ -4015,6 +4020,12 @@ How many times the delivery canvas a `look` may ask for, PER DIMENSION
 Bigger than the canvas is never useful — the delivered frame IS the canvas, so
 anything past it is resampled straight back down — which is why a *small*
 multiple is the whole of the legitimate range.
+
+### muvid.footage.edl.MAX_LUT_SIZE *= 65*
+
+The largest `LUT_3D_SIZE` a look’s `lut3d` may load (muvid#244). `lut3d`’s memory
+is its cube’s, not the frame’s: 12 bytes x size^3 — 3.3 MB at 65 (the usual grading
+size), 201 MB at 256 — so the frame-cost budget cannot see it and this bounds it.
 
 ### muvid.footage.edl.MEASURED *= 'measured'*
 
@@ -4158,6 +4169,18 @@ effect, a different tool.
 
 * **Type:**
   How far a cut’s speed may move from 1, either way
+
+### muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S *= 10.0*
+
+half the span
+window. A whole window (the first threshold) dropped stretches the measurement does
+see — #16’s own example, the 18 s end of a 78 s take that stopped matching, no longer
+steered — while the 0.6 s flash it was raised against is far below this. It equals
+mixing’s span HOP, so the shortest inner dropout it reports (two failed windows, one
+hop) sits exactly on it: compared with a `_EPS` tolerance, so it counts.
+
+* **Type:**
+  The shortest unverified stretch SELECTION steers away from (muvid#241)
 
 ### muvid.footage.edl.SLIP_MAX_S *= 0.5*
 
@@ -4484,6 +4507,28 @@ reads, not how much it can read, and no planner sets it.
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
+### muvid.footage.edl.look_may_resize(look)
+
+Whether `look` can end at a frame size other than the one it is handed.
+
+`crop` and `zoompan` always may (an expression crop, `zoompan`’s hd720
+default); `scale` / `pad` only when they declare a size — a colour-matrix
+`scale` (`looks`’ RGB wrapper) or a bare `pad` keeps the frame. The assembler
+conforms such a look’s output back to the canvas (muvid#244), so this errs towards
+True: a conform on a frame already at canvas size passes it through unchanged.
+
+```pycon
+>>> look_may_resize("eq=gamma=1.1,scale=in_color_matrix=bt709:out_color_matrix=bt709")
+False
+>>> look_may_resize("scale=7680:4320")
+True
+>>> look_may_resize("crop=w='iw*0.9':h=ih")
+True
+```
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
 ### muvid.footage.edl.looks_effects_offered()
 
 The `looks` effects a look can reach through this gate, sorted.
@@ -4516,11 +4561,19 @@ nothing to refuse.
 
 ### muvid.footage.edl.selection_unverified_stretches(a)
 
-The unverified stretches SELECTION acts on (muvid#16 slice 2): those at least
-[`SPAN_EDGE_ACCURACY_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_EDGE_ACCURACY_S) long — a shorter one is below what the measurement
-resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and
-none on a DECLARED offset, which a person vouched for, usually because the windows
-land on an alias there (muvid#59). The report (`measure_spans`) still lists them.
+The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those
+at least [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the
+measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed
+take — and none on a DECLARED offset, which a person vouched for, usually because the
+windows land on an alias there (muvid#59). The report (`measure_spans`) still lists
+every stretch.
+
+```pycon
+>>> a = FootageAlignment("c", 0.0, 0.9, 78.0, (0.0, 78.0),
+...     spans=(MeasuredSpan(0.0, 60.0, 0.0, 0.8),))
+>>> selection_unverified_stretches(a)  # the 18 s end that stopped matching
+[(60.0, 78.0)]
+```
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]]
@@ -4554,6 +4607,26 @@ aligner could not place), never overlapping, never persisted.
 
 * **Return type:**
   [`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)
+
+### muvid.footage.edl.unverified_in_cut(e, a)
+
+The song-time stretches of cut `e` that show its clip `a` where
+[`selection_unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches) says the clip does not match the song
+(muvid#241). Read in the clip’s own time through [`clip_in_of()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_in_of), so a slipped or
+retimed cut is judged by what it shows; `[]` for a gap and for a free cut (cut to
+the music, it claims no sync for the stretch to contradict).
+
+```pycon
+>>> a = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0),
+...     spans=(MeasuredSpan(0.0, 15.0, 0.0, 0.8),))
+>>> unverified_in_cut(EdlEntry(0.0, 40.0, "A"), a)
+[(15.0, 40.0)]
+>>> unverified_in_cut(EdlEntry(0.0, 10.0, "A", slip_s=10.0), a)  # shows clip 10-20
+[(5.0, 10.0)]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]]
 
 ### muvid.footage.edl.unverified_song_stretches(a, , tolerance_s=0.25)
 
@@ -6494,7 +6567,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>)
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>, max_cuts=None)
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -6512,7 +6585,11 @@ number, higher livelier, or `None` — and the planner then puts lively pictures
 the loud sections and calm ones in the quiet sections (default `liveliness()`;
 `None` turns it off). It reorders pictures, so it acts in the `planner` order
 only; `taken` keeps the order they were taken in. The report’s `affect` says
-whether it applied.
+whether it applied. `max_cuts` (default [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES))
+is the most cuts the plan may make: past it, consecutive slots of a section are held
+as one picture (`_hold_slots()`) until it fits, and the report’s `held` and
+`cap_note` say so (muvid#228) — so the planner never proposes an edit the gate is
+certain to refuse.
 
 Returns [`MusicCut`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.MusicCut) whose `entries` are validated-shape
 [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) free cuts, contiguous over each span, in song
@@ -7021,7 +7098,7 @@ OOM risk on the memory-fragile prod box).
 | [`orchestrator`](_autosummary/muvid.footage.scoring.orchestrator.html.md#module-muvid.footage.scoring.orchestrator) | The scoring orchestrator: a project (song + aligned clips) → the persisted score tensor.                                                   |
 | [`quality`](_autosummary/muvid.footage.scoring.quality.html.md#module-muvid.footage.scoring.quality)           | Quality tier: sharpness / exposure / stability_shake / face_framing → song-grid tracks.                                                    |
 | [`registry`](_autosummary/muvid.footage.scoring.registry.html.md#module-muvid.footage.scoring.registry)         | The scorer registry: what a metric IS, so adding one touches no orchestrator code (muvid#19).                                              |
-| [`segment`](_autosummary/muvid.footage.scoring.segment.html.md#module-muvid.footage.scoring.segment)           | Shot boundaries (PySceneDetect) + the per-clip coverage mask.                                                                              |
+| [`segment`](_autosummary/muvid.footage.scoring.segment.html.md#module-muvid.footage.scoring.segment)           | Shot boundaries (via `mixing.video.shots`) + the per-clip coverage mask.                                                                   |
 
 
 # _autosummary/muvid.footage.scoring.lipsync.html.md
@@ -7109,12 +7186,60 @@ per-clip beat/onset recomputation — everything maps to song time via the clip�
   refines per-clip capture latency). Content-agnostic (covers no-person clips). Held over the
   clip’s coverage.
 
+The BAS formula is also a PURE function over event and beat times (muvid#238),
+[`beat_alignment_score()`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.beat_alignment_score), so a caller with its own motion signal (pose landmarks, say)
+gets the number the `motion_beat_bas` track is built from; the track calls the same core.
+(The onset lag is NOT exposed: the track’s search shifts circularly over its window, which
+is harmless for the `|r|` it keeps and wrong for a lag a caller would read — a correct
+public one belongs beside mixing’s overlap-normalised cross-correlation.)
+
 Commercial-clean (librosa beats via `mixing[beats]`, numpy motion). See the design §3b.
+
+### Module Attributes
+
+| [`BAS_SIGMA_S`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.BAS_SIGMA_S)    | Gaussian width (s) for beat↔motion-peak proximity in the BAS.                                                                    |
+|-----------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| [`BAS_DIRECTIONS`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS) | AIST++'s (each MOTION beat scored by its nearest music beat) and Bailando's (each MUSIC beat scored by its nearest motion beat). |
 
 ### Functions
 
-| [`motionbeat_tracks`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.motionbeat_tracks)(frame_pass, \*, clip_id, ...)   | The two motion-to-beat tracks for one clip.   |
-|----------------------------------------------------------------------------------------------------|-----------------------------------------------|
+| [`beat_alignment_score`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.beat_alignment_score)(event_times, beat_times, \*)   | The Beat Alignment Score of motion `event_times` (kinematic beats, seconds) against music `beat_times`: the mean of `exp(-(d/σ)²/2)`, `d` the distance to the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).   |
+|------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`motionbeat_tracks`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.motionbeat_tracks)(frame_pass, \*, clip_id, ...)     | The two motion-to-beat tracks for one clip.                                                                                                                                                                                          |
+
+### muvid.footage.scoring.motionbeat.BAS_DIRECTIONS *= ('motion_to_music', 'music_to_motion')*
+
+AIST++’s (each MOTION beat scored by its
+nearest music beat) and Bailando’s (each MUSIC beat scored by its nearest motion beat).
+
+* **Type:**
+  The two directions papers measure the BAS in
+
+### muvid.footage.scoring.motionbeat.BAS_SIGMA_S *= 0.12*
+
+Gaussian width (s) for beat↔motion-peak proximity in the BAS.
+
+### muvid.footage.scoring.motionbeat.beat_alignment_score(event_times, beat_times, , sigma_s=0.12, direction='motion_to_music')
+
+The Beat Alignment Score of motion `event_times` (kinematic beats, seconds)
+against music `beat_times`: the mean of `exp(-(d/σ)²/2)`, `d` the distance to
+the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).
+
+`direction` is [`BAS_DIRECTIONS`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS): `motion_to_music` (AIST++) averages over
+the motion events, `music_to_motion` (Bailando) over the music beats — the per-beat
+form the `motion_beat_bas` track holds over each beat’s interval. `nan` when
+either list is empty: no evidence is not a score of 0. A non-finite time or a
+`sigma_s` that is not positive is refused rather than read as `nan`.
+
+```pycon
+>>> round(beat_alignment_score([0.5, 1.0, 1.62], [0.5, 1.0, 1.5]), 3)  # one 0.12 s late
+0.869
+>>> round(beat_alignment_score([0.5], [0.5, 1.0], direction="music_to_motion"), 3)
+0.5
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
 
 ### muvid.footage.scoring.motionbeat.motionbeat_tracks(frame_pass, , clip_id, offset_s, beat_times, onset_env, onset_hop_s, t0, hop_s, n)
 
@@ -7550,22 +7675,37 @@ Remove a scorer (tests, plugin teardown). Unknown names raise `KeyError`.
 
 # muvid.footage.scoring.segment
 
-Shot boundaries (PySceneDetect) + the per-clip coverage mask.
+Shot boundaries (via `mixing.video.shots`) + the per-clip coverage mask.
 
 - `coverage_mask` is dependency-free: the boolean of song-grid frames a clip actually
   covers (from its offset + duration). It is the base mask every metric ANDs with, and the
   authority for “does this clip exist at song time t”.
-- `shot_boundaries` returns song-times of within-clip scene cuts (PySceneDetect, BSD-3).
-  Consumed by the selector ONLY when `boundary_mode="beats+shots"` (they become *inter-clip*
-  cut candidates at shot-boundary times — a within-clip jump cut is unrepresentable in the
-  single-offset EDL model). Optional dep: absent → `[]` and the mode silently degrades to
-  beats-only.
+- `shot_boundaries` returns song-times of within-clip scene cuts, detected by
+  `mixing.video.shots` (muvid#220 — the detector lives in mixing, muvid maps it onto the
+  song). Consumed by the selector ONLY when `boundary_mode="beats+shots"` (they become
+  *inter-clip* cut candidates at shot-boundary times — a within-clip jump cut is
+  unrepresentable in the single-offset EDL model). The default strategy is PySceneDetect
+  (BSD-3, the `scoring-shots` extra); absent → `[]` and the mode degrades to beats-only.
+
+### Module Attributes
+
+| [`DEFAULT_SHOT_STRATEGY`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY)   | The `mixing.video.shots` strategy [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) uses by default, and the package it needs (the `scoring-shots` extra).   |
+|--------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 
 ### Functions
 
-| [`coverage_mask`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.coverage_mask)(\*, offset_s, duration_s, ...)   | Grid frames (bool[n]) the clip covers — using its clamped `coverage` span.     |
-|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| [`shot_boundaries`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries)(clip_path, \*, offset_s)       | Song-times of within-clip scene cuts (PySceneDetect ContentDetector), or `[]`. |
+| [`coverage_mask`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.coverage_mask)(\*, offset_s, duration_s, ...)    | Grid frames (bool[n]) the clip covers — using its clamped `coverage` span.                                                          |
+|--------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| [`shot_boundaries`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries)(clip_path, \*, offset_s[, ...]) | Song-times of within-clip scene cuts, or `[]` when `strategy`'s package is not installed (so `beats+shots` degrades to beats-only). |
+| [`shots_available`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_available)([strategy])                     | Whether [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) can detect anything with `strategy` here.                |
+
+### muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY *= 'pyscenedetect'*
+
+The `mixing.video.shots` strategy [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) uses by default, and the
+package it needs (the `scoring-shots` extra). NOT mixing’s own default `"diff"` as a
+fallback when that package is absent: every install without it pays no shot decode
+today, and a fallback would add one per clip to every scoring run — paid even when the
+selector’s default `boundary_mode="beats"` never reads a shot.
 
 ### muvid.footage.scoring.segment.coverage_mask(, offset_s, duration_s, coverage, t0, hop_s, n)
 
@@ -7574,15 +7714,26 @@ Grid frames (bool[n]) the clip covers — using its clamped `coverage` span.
 * **Return type:**
   `ndarray`
 
-### muvid.footage.scoring.segment.shot_boundaries(clip_path, , offset_s)
+### muvid.footage.scoring.segment.shot_boundaries(clip_path, , offset_s, strategy='pyscenedetect')
 
-Song-times of within-clip scene cuts (PySceneDetect ContentDetector), or `[]`.
+Song-times of within-clip scene cuts, or `[]` when `strategy`’s package is
+not installed (so `beats+shots` degrades to beats-only).
 
-Returns `[]` (never raises) if PySceneDetect is not installed, so the selector’s
-`beats+shots` mode degrades cleanly to beats-only.
+The detection is `mixing.video.shots(clip_path, strategy=strategy)`: its spans tile
+the clip, so the cuts are the span starts after the first, moved onto the song by
+`offset_s`. A failure INSIDE the detector raises (the house rule for `mixing`
+calls: a swallowed error is a quietly empty result) — the scoring orchestrator
+records it per clip; only a missing optional package is a degrade here.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
+### muvid.footage.scoring.segment.shots_available(strategy='pyscenedetect')
+
+Whether [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) can detect anything with `strategy` here.
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 
 
 # _autosummary/muvid.footage.select_score.html.md
@@ -8111,7 +8262,9 @@ whole-clip measurement), and its coverage of the song, plus these lists:
 A clip whose offset a person DECLARED (`set_offset`) is ALWAYS left alone — a
 person placed it, usually because the aligner got it wrong (muvid#59) — and is named
 in `kept_declared`. To have one measured again, `clear_offset` it first. Every
-measured record says `source: "measured"`.
+measured record says `source: "measured"`. `cleared_meanwhile` names clips whose
+declared offset was forgotten (`clear_offset`) while this ran: they were skipped
+as declared and now have no place on the song — run align again to measure them.
 
 Run this after adding/removing clips and before cutting.
 
@@ -9203,6 +9356,18 @@ manifest naming a missing file.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
+#### alignments_lock()
+
+Serialise a read-modify-write of `alignments.json` (see [`file_lock()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.file_lock)).
+
+Taken by EVERY writer — `align`, `set_offset`, `clear_offset`,
+`measure_spans`, [`remove_clip()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.MusicVideoFootageProject.remove_clip), [`set_song()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.MusicVideoFootageProject.set_song) — and never across a
+measurement: a writer measures first, then re-reads and merges under the lock
+(muvid#236). Not re-entrant (`flock` on a second descriptor waits on the first),
+so nothing holding it may call another writer. The lock file lives in its own
+`locks/` folder, as the edits lock lives in `edits/`: a dotfile in the project
+root is what a torn atomic write leaves behind, and must stay readable as that.
 
 #### cover_info()
 
@@ -15755,14 +15920,16 @@ and not this module’s business — the rule is about where a *tool* writes by 
 
 ### Module Attributes
 
-| [`DATA_HOME_ENV_VAR`](_autosummary/muvid.paths.html.md#muvid.paths.DATA_HOME_ENV_VAR)   | Env var overriding the muvid data root.                                            |
-|----------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| [`PROJECTS_KIND`](_autosummary/muvid.paths.html.md#muvid.paths.PROJECTS_KIND)       | The `{kind}` subfolder local (single-user, non-connector) project folders live in. |
+| [`DATA_HOME_ENV_VAR`](_autosummary/muvid.paths.html.md#muvid.paths.DATA_HOME_ENV_VAR)   | Env var overriding the muvid data root.                                                                                                                             |
+|----------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`PROJECTS_KIND`](_autosummary/muvid.paths.html.md#muvid.paths.PROJECTS_KIND)       | The `{kind}` subfolder local (single-user, non-connector) project folders live in.                                                                                  |
+| [`LUTS_KIND`](_autosummary/muvid.paths.html.md#muvid.paths.LUTS_KIND)           | The `{kind}` subfolder holding the `.cube` files a look's `lut3d` may load — the only files a look may name (muvid#244, `muvid.footage.edl._validate_look_luts()`). |
 
 ### Functions
 
 | [`data_home`](_autosummary/muvid.paths.html.md#muvid.paths.data_home)()                      | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.             |
 |-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| [`lut_dir`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir)()                        | Where the LUTs a look may load live: `{data_home}/luts` (muvid#244).           |
 | [`project_root`](_autosummary/muvid.paths.html.md#muvid.paths.project_root)(name, \*[, kind])   | Where a local muvid project named `name` belongs: `{data_home}/{kind}/{name}`. |
 | [`safe_component`](_autosummary/muvid.paths.html.md#muvid.paths.safe_component)(value, \*, label) | A single, traversal-safe path component (no `/`, `\`, `..`, or empties).       |
 
@@ -15770,6 +15937,11 @@ and not this module’s business — the rule is about where a *tool* writes by 
 
 Env var overriding the muvid data root. ONE knob for the root, never one per kind —
 N env vars where one belongs is the anti-pattern the app-data-lifecycle rule names.
+
+### muvid.paths.LUTS_KIND *= 'luts'*
+
+The `{kind}` subfolder holding the `.cube` files a look’s `lut3d` may load — the
+only files a look may name (muvid#244, `muvid.footage.edl._validate_look_luts()`).
 
 ### muvid.paths.PROJECTS_KIND *= 'projects'*
 
@@ -15800,6 +15972,16 @@ different places. Without the second, a relative override roots the whole data s
 at the cwd — which, run from an app directory, is the very failure this module exists
 to prevent, reached through its own knob. A misconfigured root is refused loudly
 rather than read as something plausible.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.paths.lut_dir()
+
+Where the LUTs a look may load live: `{data_home}/luts` (muvid#244).
+
+Not created here, for [`project_root()`](_autosummary/muvid.paths.html.md#muvid.paths.project_root)’s reason; an absent folder simply holds
+no LUT a look can name.
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
@@ -19017,7 +19199,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 15:55 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f894336b637e08a0dda9da45649820dd3cd8d05f"><code>f894336</code></a> on branch <code>main</code>, for **muvid 0.0.130** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-27 17:08 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/6b36bd08674414691b84f710c9f552fe33b0ab87"><code>6b36bd0</code></a> on branch <code>main</code>, for **muvid 0.0.132** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19026,9 +19208,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f894336b637e08a0dda9da45649820dd3cd8d05f"><code>f894336b637e08a0dda9da45649820dd3cd8d05f</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/6b36bd08674414691b84f710c9f552fe33b0ab87"><code>6b36bd08674414691b84f710c9f552fe33b0ab87</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.130</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.132</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19037,9 +19219,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40525092723">40525092723</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40526406769">40526406769</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>bc5fdb70a31dda2bb2909f763f6a7c7a4fed8086</code> (in the history of the built commit) |
+| Event commit | <code>afba5f6c90b2c58f913e9b9923ae4f3b66ed182b</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19064,13 +19246,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.130/">0.0.130</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.132/">0.0.132</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f894336b637e08a0dda9da45649820dd3cd8d05f
+git checkout 6b36bd08674414691b84f710c9f552fe33b0ab87
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
