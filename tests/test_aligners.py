@@ -122,58 +122,110 @@ def test_whisperx_lite_falls_back_to_transcript_when_no_audio_path():
     assert result.lines[0].start_s == pytest.approx(0.5)
 
 
-def _late_transcript():
-    """muvid#101's shape: nothing transcribed for most of the song, then the singing.
-    100 lyric words over a 30 s song; the transcript starts at 25 s."""
-    md = "[verse]\n" + "\n".join(["la la la la la la la la la la"] * 10) + "\n"
-    words = [
-        {
-            "text": "la",
-            "start": 25.0 + 0.04 * i,
-            "end": 25.03 + 0.04 * i,
-            "type": "word",
-        }
-        for i in range(120)
-    ]
-    return parse_lyrics_md(md), {"words": words}
+# --- muvid#101: matches the song has no time for are dropped -------------------
 
 
-def test_a_match_too_late_for_the_lyric_left_is_refused_muvid_101():
-    """A greedy match at 25 s for the FIRST line leaves 99 words for 5 s — 20 a
-    second, which no singer does — so it is refused and the line is left unmeasured,
-    rather than measured wrong with every later line inheriting the offset."""
-    from muvid.align import MAX_SUNG_WORDS_PER_S
-
-    lyrics, transcript = _late_transcript()
-    result = align_lyrics(lyrics, transcript, duration_s=30.0)
-    lines = result.lines
-    assert not lines[0].word_alignments  # refused, not matched at 25 s
-    matched = [w for la in lines for w in la.word_alignments]
-    assert matched  # the end of the lyric does fit the end of the song
-    flat = [w for la in lines for w in la.word_alignments]
-    total = 100
-    for w in flat:  # every kept match leaves a singable rest
-        after = total - (w.line_index * 10 + w.token_index) - 1
-        assert after / (30.0 - w.start_s) <= MAX_SUNG_WORDS_PER_S
+def _la_song(n_words, *, per_line=10):
+    md = "[verse]\n" + "\n".join(
+        " ".join(["la"] * per_line) for _ in range(n_words // per_line)
+    )
+    return parse_lyrics_md(md + "\n")
 
 
-def test_the_bound_is_off_without_a_duration_or_when_asked():
-    lyrics, transcript = _late_transcript()
-    unbounded = align_lyrics(lyrics, transcript, duration_s=0.0)
-    assert unbounded.lines[0].start_s == pytest.approx(25.0)
-    off = align_lyrics(lyrics, transcript, duration_s=30.0, max_words_per_s=None)
-    assert off.lines[0].start_s == pytest.approx(25.0)
+def _transcript(times):
+    return {
+        "words": [
+            {"text": "la", "start": t, "end": t + 0.05, "type": "word"} for t in times
+        ]
+    }
+
+
+def _measured(result):
+    return [w for la in result.lines for w in la.word_alignments]
+
+
+def test_the_issues_failure_comes_back_unmeasured_not_wrong():
+    """muvid#101's shape: 100 repeated words sung from the start of a 30 s song, the
+    transcript garbage (nothing) until 25 s. The walk pins line 0 at 25 s and every
+    later line after it — all wrong, all reading as measured. No word it matched
+    leaves a singable rest (99 words in 5 s), so none is kept: everything reads as
+    not measured, the honest answer."""
+    lyrics = _la_song(100)
+    late = _transcript([25.0 + 0.2 * i for i in range(25)])
+    assert _measured(align_lyrics(lyrics, late, duration_s=30.0, max_words_per_s=None))
+    assert _measured(align_lyrics(lyrics, late, duration_s=30.0)) == []
+
+
+def test_an_ordinary_song_is_untouched():
+    lyrics = _la_song(60)
+    sung = _transcript([1.0 + i / 3 for i in range(60)])  # 3 words a second
+    bounded = align_lyrics(lyrics, sung, duration_s=25.0)
+    assert bounded == align_lyrics(lyrics, sung, duration_s=25.0, max_words_per_s=None)
+    assert len(_measured(bounded)) == 60
+
+
+def test_an_excerpt_loses_late_anchors_but_no_anchor_moves():
+    """The #101 review: refusing inside the walk re-matched later tokens onto early
+    words (34 newly wrong on an excerpt). Dropped after the walk, a match is only ever
+    removed: what is kept is exactly what the unbounded walk found."""
+    lyrics = _la_song(100)
+    first_20s = _transcript([i / 3 for i in range(60)])  # the audio holds 60 words
+    free = _measured(
+        align_lyrics(lyrics, first_20s, duration_s=20.0, max_words_per_s=None)
+    )
+    kept = _measured(align_lyrics(lyrics, first_20s, duration_s=20.0))
+    assert kept and len(kept) < len(free)
+    assert all(k in free for k in kept)
+
+
+def test_the_bound_is_inclusive_and_the_last_word_always_fits():
+    from muvid.align import WordAlignment, drop_infeasible_matches
+
+    def at(t, tok=0):
+        return WordAlignment(
+            line_index=0, token_index=tok, text="la", start_s=t, end_s=t
+        )
+
+    kw = dict(duration_s=10.0, max_words_per_s=8.0)
+    # 40 words after, 5 s left: exactly 8 a second — kept
+    assert drop_infeasible_matches({0: [at(5.0)]}, words_after={(0, 0): 40}, **kw)
+    assert not drop_infeasible_matches({0: [at(5.01)]}, words_after={(0, 0): 40}, **kw)
+    # at or past the end with words left: dropped; the LAST word: kept
+    assert not drop_infeasible_matches({0: [at(10.0)]}, words_after={(0, 0): 1}, **kw)
+    assert drop_infeasible_matches({0: [at(10.5)]}, words_after={(0, 0): 0}, **kw)
+    with pytest.raises(ValueError, match="positive"):
+        drop_infeasible_matches({}, words_after={}, duration_s=1.0, max_words_per_s=0)
+
+
+def test_words_after_counts_the_lyric_after_each_token():
+    from muvid.align import _words_after
+
+    assert _words_after([(0, 0, "a"), (0, 1, ""), (0, 2, "b"), (1, 0, "c")]) == {
+        (0, 0): 2,
+        (0, 2): 1,
+        (1, 0): 0,
+    }
+
+
+@pytest.mark.parametrize("raw", ["-1", "0", "nan", "inf", "abc"])
+def test_a_bad_rate_in_the_env_is_refused(raw, monkeypatch):
+    from muvid.align import _words_per_s_from_env
+
+    monkeypatch.setenv("X_RATE", raw)
+    with pytest.raises(ValueError, match="X_RATE"):
+        _words_per_s_from_env("X_RATE", 8.0)
+    monkeypatch.setenv("X_RATE", "12")
+    assert _words_per_s_from_env("X_RATE", 8.0) == 12.0
+    monkeypatch.delenv("X_RATE")
+    assert _words_per_s_from_env("X_RATE", 8.0) == 8.0
 
 
 def test_whisperx_lite_forwards_the_bound():
     from muvid.align import align_whisperx_lite
 
-    lyrics, transcript = _late_transcript()
-    assert (
-        not align_whisperx_lite(lyrics, transcript, duration_s=30.0)
-        .lines[0]
-        .word_alignments
+    lyrics = _la_song(100)
+    late = _transcript([25.0 + 0.2 * i for i in range(25)])
+    assert _measured(align_whisperx_lite(lyrics, late, duration_s=30.0)) == []
+    assert _measured(
+        align_whisperx_lite(lyrics, late, duration_s=30.0, max_words_per_s=None)
     )
-    assert align_whisperx_lite(
-        lyrics, transcript, duration_s=30.0, max_words_per_s=None
-    ).lines[0].start_s == pytest.approx(25.0)
