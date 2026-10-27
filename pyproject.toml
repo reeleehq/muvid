@@ -127,8 +127,9 @@ mcp = [
     # 0.0.76: `nw.register_genre_limits` (nw#122), which the music_video genre publishes
     # its cut bounds through (reelee#692); 0.0.65 added nw.media_catalog (nw#92).
     # 0.0.81: `nw.Project.genre_status` / `nw.genre_status_of` (nw#133), the host's one
-    # status door muvid.Project answers (muvid#232).
-    "nw>=0.0.81",
+    # status door muvid.Project answers (muvid#232). 0.0.92: `GenreOp.invalidates`
+    # (nw#161), which the beat-grid writers declare (reelee#750).
+    "nw>=0.0.92",
 ]
 # The footage SCORING layer's TORCH-FREE core tier (thorwhalen/muvid#13): quality gates +
 # motion-to-beat + the Viterbi selector + editor score-tracks. This is what the prod
