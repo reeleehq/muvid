@@ -9,6 +9,7 @@ frame-cost budget cannot see.
 from __future__ import annotations
 
 import os
+import sys
 
 import pytest
 
@@ -17,6 +18,8 @@ from muvid.footage.edl import FootageAlignment
 from tests.ffmpeg_support import needs_ffmpeg
 
 _A = FootageAlignment("A", 0.0, 0.9, 10.0, (0.0, 10.0))
+#: lut3d paths are POSIX-only (a drive colon cannot be written without escapes)
+posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX lut3d paths")
 
 
 @pytest.fixture
@@ -38,13 +41,26 @@ def _cube(path, size=2):
     return path
 
 
+def _dotdot(luts):
+    """A ``..`` path to a cube that EXISTS outside the folder, so traversal is what is
+    refused rather than a missing file."""
+    _cube(luts.parent / "esc.cube")
+    return f"lut3d=file={luts}/../esc.cube"
+
+
 def _validate(look):
     return validate_edl([EdlEntry(0.0, 4.0, "A", look=look)], [_A], 4.0)
 
 
+@posix_only
 def test_a_cube_in_the_lut_folder_is_accepted(luts):
     cube = _cube(luts / "warm.cube")
-    for look in (f"lut3d={cube}", f"lut3d=file={cube}:interp=trilinear", "lut3d"):
+    for look in (
+        f"lut3d={cube}",
+        f"lut3d=file={cube}:interp=trilinear",
+        f"lut3d=file={cube}:enable='between(t,0,1)'",
+        "lut3d",
+    ):
         [e] = _validate(look)
         assert e.look == look
 
@@ -54,7 +70,8 @@ def test_a_cube_in_the_lut_folder_is_accepted(luts):
     [
         (lambda d, t: "lut3d=file=/etc/passwd", "absolute .cube path"),
         (lambda d, t: f"lut3d=file={_cube(t / 'outside.cube')}", "LUT folder"),
-        (lambda d, t: f"lut3d=file={d}/../escape.cube", "LUT folder"),
+        (lambda d, t: f"lut3d=file={_cube(d.parent / 'escape.cube')}", "LUT folder"),
+        (lambda d, t: _dotdot(d), "LUT folder"),
         (lambda d, t: f"lut3d=file={d}/missing.cube", "LUT folder"),
         (lambda d, t: "lut3d=file=warm.cube", "absolute"),
         (lambda d, t: rf"lut3d=file={d}/a\[b\].cube", "without escapes"),
@@ -68,6 +85,7 @@ def test_anything_else_is_refused(luts, tmp_path, make, match):
         _validate(make(luts, tmp_path))
 
 
+@posix_only
 def test_a_symlink_out_of_the_folder_is_refused(luts, tmp_path):
     target = _cube(tmp_path / "elsewhere.cube")
     os.symlink(target, luts / "link.cube")
@@ -75,11 +93,17 @@ def test_a_symlink_out_of_the_folder_is_refused(luts, tmp_path):
         _validate(f"lut3d=file={luts}/link.cube")
 
 
+@posix_only
 def test_a_cube_larger_than_the_cap_or_without_a_size_is_refused(luts):
     big = luts / "big.cube"
     big.write_text(f"LUT_3D_SIZE {MAX_LUT_SIZE + 1}\n0 0 0\n")
     with pytest.raises(ValueError, match=f"{MAX_LUT_SIZE + 1}-point cube"):
         _validate(f"lut3d=file={big}")
+    # ffmpeg reads the FIRST declaration; a later smaller one must not vouch for it
+    two = luts / "two.cube"
+    two.write_text(f"LUT_3D_SIZE {MAX_LUT_SIZE + 1} # big\nLUT_3D_SIZE 2\n0 0 0\n")
+    with pytest.raises(ValueError, match="no LUT_3D_SIZE"):
+        _validate(f"lut3d=file={two}")
     bare = luts / "bare.cube"
     bare.write_text("0 0 0\n")
     with pytest.raises(ValueError, match="no LUT_3D_SIZE"):
@@ -92,6 +116,20 @@ def test_the_refusal_does_not_print_the_folder(luts):
     assert str(luts) not in str(exc.value)
 
 
+@posix_only
+def test_an_unreadable_cube_is_a_refusal_not_a_traceback(luts, monkeypatch):
+    cube = _cube(luts / "locked.cube")
+    import muvid.footage.edl as E
+
+    def denied(_path):
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(E, "_lut_cube_size", denied)
+    with pytest.raises(ValueError, match="cannot be read"):
+        _validate(f"lut3d=file={cube}")
+
+
+@posix_only
 @needs_ffmpeg
 def test_an_accepted_lut_renders(luts, tmp_path):
     """The accepted spelling is one ffmpeg loads — not a rule that refuses everything."""

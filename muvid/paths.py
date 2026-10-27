@@ -67,6 +67,7 @@ PROJECTS_KIND = "projects"
 #: only files a look may name (muvid#244, :func:`muvid.footage.edl._validate_look_luts`).
 LUTS_KIND = "luts"
 
+
 def data_home() -> Path:
     """The muvid data root: ``$MUVID_DATA_HOME`` or ``~/.local/share/muvid``.
 
