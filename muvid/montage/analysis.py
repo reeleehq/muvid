@@ -220,7 +220,11 @@ class Analysis:
             "beat_source": self.beat_source,
             "section_source": self.section_source,
             "bar_energy_db": [round(e, 2) for e in self.bar_energy_db],
-            **({"cut_rank": [round(r, 3) for r in self.cut_rank]} if self.cut_rank else {}),
+            **(
+                {"cut_rank": [round(r, 3) for r in self.cut_rank]}
+                if self.cut_rank
+                else {}
+            ),
             "notes": list(self.notes),
         }
 
@@ -440,7 +444,10 @@ def beat_grid(
             "",
         )
         if with_downbeats:
-            return (*out, tuple(float(t) for t in keep(np.asarray(bg.downbeat_times, float))))
+            return (
+                *out,
+                tuple(float(t) for t in keep(np.asarray(bg.downbeat_times, float))),
+            )
         return out
 
     result = _beat_grid_measured(audio, source, duration)
@@ -731,7 +738,9 @@ def structural_sections(
     by_label: dict[str, list] = {}
     for sec in found:
         by_label.setdefault(sec.label, []).append(sec)
-    db = {k: sum(mean_db(x.start, x.end) for x in v) / len(v) for k, v in by_label.items()}
+    db = {
+        k: sum(mean_db(x.start, x.end) for x in v) / len(v) for k, v in by_label.items()
+    }
     repeating = [k for k, v in by_label.items() if len(v) > 1]
     chorus = max(repeating, key=db.get) if repeating else None
     out = []
@@ -747,7 +756,12 @@ def structural_sections(
         else:
             label = "bridge"
         out.append(
-            Section(label=label, start=sec.start, end=sec.end, energy_db=mean_db(sec.start, sec.end))
+            Section(
+                label=label,
+                start=sec.start,
+                end=sec.end,
+                energy_db=mean_db(sec.start, sec.end),
+            )
         )
     return tuple(out)
 
