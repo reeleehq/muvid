@@ -1493,11 +1493,14 @@ def check_timing_overrides(
     Returns ``{line index: how}``. Refuses (``ValueError``) a key that is not
     an integer line index (a bool or a fractional number included), one out of
     range, two spellings of one line that disagree, and a value outside
-    :data:`TIMING_OVERRIDES`. Cheap, so a caller can run it BEFORE the
-    expensive alignment it is about to correct.
+    :data:`TIMING_OVERRIDES` (given bare, or as ``{"how": ..., "reason": ...}``
+    so the judgement's reason is recorded beside it). Cheap, so a caller can
+    run it BEFORE the expensive alignment it is about to correct.
     """
     chosen: dict[int, str] = {}
     for key, how in (overrides or {}).items():
+        if isinstance(how, Mapping):  # {"how": "fine", "reason": "..."}: reason is a note
+            how = how.get("how")
         if isinstance(key, bool) or (isinstance(key, float) and not key.is_integer()):
             li = None
         else:
