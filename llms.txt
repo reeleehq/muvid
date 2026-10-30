@@ -67,6 +67,7 @@
 - [muvid.lyricvid.scene](_autosummary/muvid.lyricvid.scene.html.md): The renderer-neutral scene — every number computed, no renderer opinions.
 - [muvid.lyricvid.shape](_autosummary/muvid.lyricvid.shape.html.md): Packing words INSIDE a shape — the shape-word-cloud construction.
 - [muvid.lyricvid.spec](_autosummary/muvid.lyricvid.spec.html.md): The treatment spec — what a director (human or model) decides, as data.
+- [muvid.lyricvid.stages](_autosummary/muvid.lyricvid.stages.html.md): The lyric-video production as named stages, and the settings section muvid owns.
 - [muvid.lyricvid.timed_text](_autosummary/muvid.lyricvid.timed_text.html.md): The timed text tree — song → sections → lines → words, with measured times.
 - [muvid.lyricvid.tools](_autosummary/muvid.lyricvid.tools.html.md): The SSOT verbs for the lyric-video subgenre.
 - [muvid.mcp](_autosummary/muvid.mcp.html.md): muvid MCP server — the &#96;music_visualizer&#96; tool surface for a remote connector.
@@ -103,7 +104,7 @@
 - [muvid.visualize.video](_autosummary/muvid.visualize.video.html.md): Render an audio file into a video: pick a visual, mux, normalize, encode.
 - [muvid.visualize.visuals](_autosummary/muvid.visualize.visuals.html.md): Visual strategies: how the &#42;picture&#42; of an audio-driven video is produced.
 - [For AI agents](ai-agents.html.md): &#96;muvid&#96; ships artifacts for coding agents alongside its code. This page lists
-- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-10-27 20:55 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
+- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-10-30 13:47 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
 
 ## Optional
 

@@ -21,5 +21,6 @@ muvid.lyricvid
    scene
    shape
    spec
+   stages
    timed_text
    tools

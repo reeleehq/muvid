@@ -548,8 +548,9 @@ the timing and one record per word whose timing changed (same keys as
 <p>Returns <code class="docutils literal notranslate"><span class="pre">{line</span> <span class="pre">index:</span> <span class="pre">how}</span></code>. Refuses (<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>) a key that is not
 an integer line index (a bool or a fractional number included), one out of
 range, two spellings of one line that disagree, and a value outside
-<a class="reference internal" href="#muvid.lyricvid.glyph_align.TIMING_OVERRIDES" title="muvid.lyricvid.glyph_align.TIMING_OVERRIDES"><code class="xref py py-data docutils literal notranslate"><span class="pre">TIMING_OVERRIDES</span></code></a>. Cheap, so a caller can run it BEFORE the
-expensive alignment it is about to correct.</p>
+<a class="reference internal" href="#muvid.lyricvid.glyph_align.TIMING_OVERRIDES" title="muvid.lyricvid.glyph_align.TIMING_OVERRIDES"><code class="xref py py-data docutils literal notranslate"><span class="pre">TIMING_OVERRIDES</span></code></a> (given bare, or as <code class="docutils literal notranslate"><span class="pre">{"how":</span> <span class="pre">...,</span> <span class="pre">"reason":</span> <span class="pre">...}</span></code>
+so the judgement’s reason is recorded beside it). Cheap, so a caller can
+run it BEFORE the expensive alignment it is about to correct.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
@@ -1044,7 +1045,7 @@ of words that disagree by more than <code class="docutils literal notranslate"><
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=4c1b7e21"></script>
+<script src="../_static/documentation_options.js?v=7be3f44b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

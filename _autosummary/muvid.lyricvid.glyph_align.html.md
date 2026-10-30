@@ -281,8 +281,9 @@ Validate recorded timing overrides against a transcript of `n_lines`.
 Returns `{line index: how}`. Refuses (`ValueError`) a key that is not
 an integer line index (a bool or a fractional number included), one out of
 range, two spellings of one line that disagree, and a value outside
-[`TIMING_OVERRIDES`](#muvid.lyricvid.glyph_align.TIMING_OVERRIDES). Cheap, so a caller can run it BEFORE the
-expensive alignment it is about to correct.
+[`TIMING_OVERRIDES`](#muvid.lyricvid.glyph_align.TIMING_OVERRIDES) (given bare, or as `{"how": ..., "reason": ...}`
+so the judgement’s reason is recorded beside it). Cheap, so a caller can
+run it BEFORE the expensive alignment it is about to correct.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]

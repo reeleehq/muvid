@@ -1,4 +1,4 @@
-> built 2026-10-27 20:55 UTC from 0766370 (main) · muvid 0.0.141. Details: build_info.json
+> built 2026-10-30 13:47 UTC from b3bfb80 (main) · muvid 0.0.142. Details: build_info.json
 
 # index.html.md
 
@@ -11101,8 +11101,9 @@ Validate recorded timing overrides against a transcript of `n_lines`.
 Returns `{line index: how}`. Refuses (`ValueError`) a key that is not
 an integer line index (a bool or a fractional number included), one out of
 range, two spellings of one line that disagree, and a value outside
-[`TIMING_OVERRIDES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.TIMING_OVERRIDES). Cheap, so a caller can run it BEFORE the
-expensive alignment it is about to correct.
+[`TIMING_OVERRIDES`](_autosummary/muvid.lyricvid.glyph_align.html.md#muvid.lyricvid.glyph_align.TIMING_OVERRIDES) (given bare, or as `{"how": ..., "reason": ...}`
+so the judgement’s reason is recorded beside it). Cheap, so a caller can
+run it BEFORE the expensive alignment it is about to correct.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
@@ -11682,6 +11683,7 @@ render before paying for it.
 | [`scene`](_autosummary/muvid.lyricvid.scene.html.md#module-muvid.lyricvid.scene)             | The renderer-neutral scene — every number computed, no renderer opinions.                                                                                                                |
 | [`shape`](_autosummary/muvid.lyricvid.shape.html.md#module-muvid.lyricvid.shape)             | Packing words INSIDE a shape — the shape-word-cloud construction.                                                                                                                        |
 | [`spec`](_autosummary/muvid.lyricvid.spec.html.md#module-muvid.lyricvid.spec)               | The treatment spec — what a director (human or model) decides, as data.                                                                                                                  |
+| [`stages`](_autosummary/muvid.lyricvid.stages.html.md#module-muvid.lyricvid.stages)           | The lyric-video production as named stages, and the settings section muvid owns.                                                                                                         |
 | [`timed_text`](_autosummary/muvid.lyricvid.timed_text.html.md#module-muvid.lyricvid.timed_text)   | The timed text tree — song → sections → lines → words, with measured times.                                                                                                              |
 | [`tools`](_autosummary/muvid.lyricvid.tools.html.md#module-muvid.lyricvid.tools)             | The SSOT verbs for the lyric-video subgenre.                                                                                                                                             |
 
@@ -12988,6 +12990,170 @@ Every closed vocabulary, for prompts and UI. One copy, several readers.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
+
+
+# _autosummary/muvid.lyricvid.stages.html.md
+
+# muvid.lyricvid.stages
+
+The lyric-video production as named stages, and the settings section muvid owns.
+
+A runner (a separate package: it composes muvid, arioso, mixing, illustration,
+tituli and yb, none of which muvid imports; muvid#158) needs two things from muvid
+and nothing else:
+
+* **Stages** — [`lyric_stages()`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.lyric_stages) returns the steps muvid owns as a `{name: Stage}`
+  mapping: `stem`, `glyphs`, `render`, `pictures` and `captions`. A
+  [`Stage`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.Stage) is a *manifest* (name, what it reads, what it writes, whether it
+  > costs money or memory) whose `run` is a `"module:function"` string imported
+  > lazily, the same shape as [`muvid.subgenres.Subgenre`](_autosummary/muvid.subgenres.html.md#muvid.subgenres.Subgenre): listing the stages
+  > imports no rendering code. Each function takes paths and primitives and returns a
+  > report `dict` (or the output path); they are the functions the CLI calls, with
+  > no new behaviour. Third parties and the runner find them through the entry-point
+  > group [`ENTRY_POINT_GROUP`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.ENTRY_POINT_GROUP) (`muvid.lyric_stages.v1`), muvid’s own included.
+* **Settings** — [`LyricProductionSettings`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.LyricProductionSettings) is the part of a song spec muvid
+  reads, with `LYRIC_PRODUCTION_SCHEMA` its JSON Schema. A runner mounts it as
+  the `muvid` section of its `spec.json` and hands it to muvid through one
+  `settings` argument. Timing overrides accept the bare `"fine"` and the
+  recorded form `{"how": "fine", "reason": "..."}`.
+
+This module is stdlib-only at import time.
+
+### Module Attributes
+
+| [`ENTRY_POINT_GROUP`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.ENTRY_POINT_GROUP)   | Entry-point group a stage manifest is registered under (muvid's own included).      |
+|----------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [`MEMORY_CLASSES`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.MEMORY_CLASSES)      | How much memory a stage needs, so a runner can run the heavy one alone under a cap. |
+
+### Functions
+
+| [`lyric_stages`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.lyric_stages)(\*[, include_plugins])               | The stages available, `{name: Stage}`, muvid's own first and in order.                                |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| [`run_glyphs`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.run_glyphs)(audio, timing, output, \*[, ...])      | Refine word TIMING (TimedText JSON) to per-glyph times; write OUTPUT JSON.                            |
+| [`run_pictures`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.run_pictures)(video, timing, pictures, output, \*) | Composite PICTURES (`[{"word", "path", "credit"?}]`) onto VIDEO at OUTPUT.                            |
+| [`settings_schema`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.settings_schema)()                                 | The JSON Schema of [`LyricProductionSettings`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.LyricProductionSettings) (a copy). |
+
+### Classes
+
+| [`LyricProductionSettings`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.LyricProductionSettings)([take, keep_unsung, ...])   | What muvid reads from a song spec (the `muvid` section of a runner's spec).   |
+|------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| [`Stage`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.Stage)(name, summary, run[, inputs, outputs, ...])   | One named step of a lyric-video production: a manifest, not a function.       |
+
+### muvid.lyricvid.stages.ENTRY_POINT_GROUP *= 'muvid.lyric_stages.v1'*
+
+Entry-point group a stage manifest is registered under (muvid’s own included).
+
+### *class* muvid.lyricvid.stages.LyricProductionSettings(take=None, keep_unsung=False, repair_spills=False, timing_overrides=dict(), treatment=None, emphasis=(), captions=dict())
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+What muvid reads from a song spec (the `muvid` section of a runner’s spec).
+
+#### captions *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Any](https://docs.python.org/3/library/typing.html#typing.Any)]*
+
+`{language tag: transform name | {line text: caption}}`.
+
+#### emphasis *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]* *= ()*
+
+Words to emphasise, in the treatment’s vocabulary.
+
+#### *classmethod* from_mapping(data)
+
+Build from a spec section, refusing unknown keys (a typo must not be silent).
+
+* **Return type:**
+  [`LyricProductionSettings`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.LyricProductionSettings)
+
+#### take *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= None*
+
+Which take of the song (a runner’s judgement point); `None` until chosen.
+
+#### timing_override_reasons()
+
+The recorded reason per overridden line (only those that gave one).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+#### timing_override_values()
+
+`timing_overrides` with each `{"how", "reason"}` collapsed to its `how`.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
+#### timing_overrides *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Any](https://docs.python.org/3/library/typing.html#typing.Any)]*
+
+`{"<line index>": "fine" | {"how": "fine", "reason": "..."}}`.
+
+#### treatment *: [Optional](https://docs.python.org/3/library/typing.html#typing.Optional)[[Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Any](https://docs.python.org/3/library/typing.html#typing.Any)]]* *= None*
+
+A treatment (archetype choice and parameters), as `validate_treatment` takes.
+
+### muvid.lyricvid.stages.MEMORY_CLASSES *= ('light', 'heavy')*
+
+How much memory a stage needs, so a runner can run the heavy one alone under a cap.
+
+### *class* muvid.lyricvid.stages.Stage(name, summary, run, inputs=(), outputs=(), memory='light', costed=False, api_version=1)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One named step of a lyric-video production: a manifest, not a function.
+
+#### costed *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+True when the stage spends money or fetches licensed weights.
+
+#### memory *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)* *= 'light'*
+
+`"light"` or `"heavy"` (the aligner and the separator are heavy).
+
+#### resolve()
+
+Import and return the stage’s function.
+
+* **Return type:**
+  [`Callable`](https://docs.python.org/3/library/typing.html#typing.Callable)[[`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
+### muvid.lyricvid.stages.lyric_stages(, include_plugins=True)
+
+The stages available, `{name: Stage}`, muvid’s own first and in order.
+
+Plugins registered under [`ENTRY_POINT_GROUP`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.ENTRY_POINT_GROUP) are added after them; a plugin
+naming an existing stage is skipped (muvid’s own wins). A plugin that fails to
+load is skipped rather than taking the catalogue down.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Stage`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.Stage)]
+
+### muvid.lyricvid.stages.run_glyphs(audio, timing, output, , vocals='', workdir='', allow_download=False, no_reconcile=False, keep_unsung=False, silent_glyph='', overrides=None, repair_spills=False, spans=False)
+
+Refine word TIMING (TimedText JSON) to per-glyph times; write OUTPUT JSON.
+
+Returns the report (onsets, agreement, reconciled, and the opt-in `repaired` and
+`spans`). `overrides` (`None`: not asked for) is the already-parsed `{"<line index>": "fine"}`
+mapping; see [`LyricProductionSettings.timing_override_values()`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.LyricProductionSettings.timing_override_values).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
+### muvid.lyricvid.stages.run_pictures(video, timing, pictures, output, , block=(0, 0, 0, 0), bounce=True, border=None)
+
+Composite PICTURES (`[{"word", "path", "credit"?}]`) onto VIDEO at OUTPUT.
+
+Each picture appears when its word is first sung and pops on each later one.
+`block` is the text block’s `(x, y, w, h)` the mosaic keeps clear of. Words
+never sung are listed under `unsung` and left out.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
+
+### muvid.lyricvid.stages.settings_schema()
+
+The JSON Schema of [`LyricProductionSettings`](_autosummary/muvid.lyricvid.stages.html.md#muvid.lyricvid.stages.LyricProductionSettings) (a copy).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]
 
 
 # _autosummary/muvid.lyricvid.timed_text.html.md
@@ -19217,20 +19383,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-27 20:55 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/07663709c02da0bf605caa6eeed03bbadc1d76c9"><code>0766370</code></a> on branch <code>main</code>, for **muvid 0.0.141** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-30 13:47 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/b3bfb80690a9ae596ddb31a89fc7af0e07da675b"><code>b3bfb80</code></a> on branch <code>main</code>, for **muvid 0.0.142** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.141) is ahead of the latest release on PyPI (0.0.140): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/07663709c02da0bf605caa6eeed03bbadc1d76c9"><code>07663709c02da0bf605caa6eeed03bbadc1d76c9</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/b3bfb80690a9ae596ddb31a89fc7af0e07da675b"><code>b3bfb80690a9ae596ddb31a89fc7af0e07da675b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.141</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.142</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19239,9 +19403,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/40578534496">40578534496</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41064817442">41064817442</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>c5959ec60d6a4854c58826d430276a96076bf836</code> (in the history of the built commit) |
+| Event commit | <code>d90cfd08bd1b3945874e7357f9f08ddbe5e6ca43</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19266,13 +19430,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.140/">0.0.140</a>, older than the documented version (0.0.141).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.142/">0.0.142</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 07663709c02da0bf605caa6eeed03bbadc1d76c9
+git checkout b3bfb80690a9ae596ddb31a89fc7af0e07da675b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

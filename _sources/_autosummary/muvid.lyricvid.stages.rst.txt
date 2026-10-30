@@ -1,0 +1,29 @@
+muvid.lyricvid.stages
+=====================
+
+.. automodule:: muvid.lyricvid.stages
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      ENTRY_POINT_GROUP
+      MEMORY_CLASSES
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      lyric_stages
+      run_glyphs
+      run_pictures
+      settings_schema
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      LyricProductionSettings
+      Stage
+   
