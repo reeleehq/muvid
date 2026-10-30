@@ -1,4 +1,4 @@
-> built 2026-10-30 13:47 UTC from b3bfb80 (main) · muvid 0.0.142. Details: build_info.json
+> built 2026-10-30 17:54 UTC from 80ee86e (main) · muvid 0.0.143. Details: build_info.json
 
 # index.html.md
 
@@ -14844,7 +14844,7 @@ Module scope is stdlib-only; numpy and ffmpeg are reached inside functions.
 
 | [`analyze`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.analyze)(audio, \*[, beats, beats_per_bar, ...])    | Measure `audio`: duration, beat grid, downbeats, bar energy, sections.    |
 |-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| [`beat_grid`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.beat_grid)(audio, \*[, source, duration])           | `(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)`.          |
+| [`beat_grid`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.beat_grid)(audio, \*[, source, duration, ...])      | `(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)`.          |
 | [`derive_sections`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.derive_sections)(bar_energy_db, bars, duration, \*) | Coarse sections from per-bar energy.                                      |
 | [`downbeats_from_beats`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.downbeats_from_beats)(beats, onset_at_beats, ...)   | Downbeats as the beat phase carrying the most onset energy.               |
 | [`probe_media`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.probe_media)(paths, \*, kind[, start_index])        | Measure each file: dimensions, duration (clips) and strength.             |
@@ -14857,7 +14857,7 @@ Module scope is stdlib-only; numpy and ffmpeg are reached inside functions.
 | [`Media`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.Media)(\*, index, path, kind, width, height[, ...]) | One pool item, measured.                    |
 | [`Section`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.Section)(\*, label, start, end[, energy_db])        | A labelled stretch of the song, in seconds. |
 
-### *class* muvid.montage.analysis.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=tuple())
+### *class* muvid.montage.analysis.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), cut_rank=(), notes=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -14866,6 +14866,13 @@ What the planner knows about the song.
 #### *property* beat_s *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds per beat at the estimated tempo.
+
+#### cut_rank *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[float](https://docs.python.org/3/builtins/functions.html#float), ...]*
+
+how worth cutting on (onset strength rank; `()` if unmeasured).
+
+* **Type:**
+  Per beat, 0..1
 
 #### *classmethod* from_dict(d)
 
@@ -14880,6 +14887,20 @@ True
 
 * **Return type:**
   [`Analysis`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
+
+#### ranked_beats(keep=0.5)
+
+The `keep` fraction of beats most worth cutting on, in time order.
+
+```pycon
+>>> a = Analysis(duration=2.0, tempo_bpm=120.0, beats=(0.0, 0.5, 1.0, 1.5),
+...              downbeats=(0.0,), cut_rank=(0.2, 1.0, 0.1, 0.7))
+>>> a.ranked_beats(0.5)
+(0.5, 1.5)
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
 
 ### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0, taken_at=None)
 
@@ -14905,16 +14926,25 @@ A labelled stretch of the song, in seconds.
 
 Mean bar energy in dB (relative), when measured.
 
-### muvid.montage.analysis.analyze(audio, , beats='auto', beats_per_bar=4, sections=None)
+### muvid.montage.analysis.analyze(audio, , beats='auto', beats_per_bar=4, sections=None, section_source='energy')
 
 Measure `audio`: duration, beat grid, downbeats, bar energy, sections.
+
+`section_source` picks how sections are derived when none are supplied:
+`"energy"` (loud bars are the chorus) or `"structure"` (what repeats; one
+song read as a single 230 s “chorus” by the energy rule gets real sections).
+`beats="beat_this"` measures downbeats instead of voting for them.
 
 * **Return type:**
   [`Analysis`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
 
-### muvid.montage.analysis.beat_grid(audio, , source='auto', duration=None)
+### muvid.montage.analysis.beat_grid(audio, , source='auto', duration=None, with_downbeats=False)
 
 `(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)`.
+
+`source="beat_this"` (Beat This!, MIT; needs the `beat_this` package) also
+measures downbeats: `with_downbeats=True` appends them (`()` for a source
+with none) as a seventh item.
 
 `source="auto"` tries `mixing.audio.beat_grid` and falls back to the
 numpy estimator only on [`ImportError`](https://docs.python.org/3/builtins/exceptions.html#ImportError) (librosa absent). Naming a
@@ -15026,7 +15056,7 @@ Four seams, each with a default that genuinely works:
 This module is a PEP 562 lazy facade, like `muvid/__init__.py`: importing it
 pulls nothing heavy, and each attribute is resolved on first use.
 
-### *class* muvid.montage.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=tuple())
+### *class* muvid.montage.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), cut_rank=(), notes=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -15035,6 +15065,13 @@ What the planner knows about the song.
 #### *property* beat_s *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds per beat at the estimated tempo.
+
+#### cut_rank *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[float](https://docs.python.org/3/builtins/functions.html#float), ...]*
+
+how worth cutting on (onset strength rank; `()` if unmeasured).
+
+* **Type:**
+  Per beat, 0..1
 
 #### *classmethod* from_dict(d)
 
@@ -15049,6 +15086,20 @@ True
 
 * **Return type:**
   [`Analysis`](_autosummary/muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
+
+#### ranked_beats(keep=0.5)
+
+The `keep` fraction of beats most worth cutting on, in time order.
+
+```pycon
+>>> a = Analysis(duration=2.0, tempo_bpm=120.0, beats=(0.0, 0.5, 1.0, 1.5),
+...              downbeats=(0.0,), cut_rank=(0.2, 1.0, 0.1, 0.7))
+>>> a.ranked_beats(0.5)
+(0.5, 1.5)
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
 
 ### *class* muvid.montage.Canvas(, width=1920, height=1080, fps=30)
 
@@ -19383,7 +19434,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-30 13:47 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/b3bfb80690a9ae596ddb31a89fc7af0e07da675b"><code>b3bfb80</code></a> on branch <code>main</code>, for **muvid 0.0.142** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-10-30 17:54 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/80ee86e927dde9c95ffeb9dc5276a4259f6359da"><code>80ee86e</code></a> on branch <code>main</code>, for **muvid 0.0.143** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19392,9 +19443,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/b3bfb80690a9ae596ddb31a89fc7af0e07da675b"><code>b3bfb80690a9ae596ddb31a89fc7af0e07da675b</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/80ee86e927dde9c95ffeb9dc5276a4259f6359da"><code>80ee86e927dde9c95ffeb9dc5276a4259f6359da</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.142</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.143</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19403,9 +19454,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41064817442">41064817442</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41100983981">41100983981</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>d90cfd08bd1b3945874e7357f9f08ddbe5e6ca43</code> (in the history of the built commit) |
+| Event commit | <code>31bf3ae4062df6a86763f02a5bae4402af5380a6</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19430,13 +19481,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.142/">0.0.142</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.143/">0.0.143</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout b3bfb80690a9ae596ddb31a89fc7af0e07da675b
+git checkout 80ee86e927dde9c95ffeb9dc5276a4259f6359da
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

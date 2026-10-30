@@ -34,7 +34,7 @@ Module scope is stdlib-only; numpy and ffmpeg are reached inside functions.
 
 | [`analyze`](#muvid.montage.analysis.analyze)(audio, \*[, beats, beats_per_bar, ...])    | Measure `audio`: duration, beat grid, downbeats, bar energy, sections.    |
 |-----------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|
-| [`beat_grid`](#muvid.montage.analysis.beat_grid)(audio, \*[, source, duration])           | `(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)`.          |
+| [`beat_grid`](#muvid.montage.analysis.beat_grid)(audio, \*[, source, duration, ...])      | `(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)`.          |
 | [`derive_sections`](#muvid.montage.analysis.derive_sections)(bar_energy_db, bars, duration, \*) | Coarse sections from per-bar energy.                                      |
 | [`downbeats_from_beats`](#muvid.montage.analysis.downbeats_from_beats)(beats, onset_at_beats, ...)   | Downbeats as the beat phase carrying the most onset energy.               |
 | [`probe_media`](#muvid.montage.analysis.probe_media)(paths, \*, kind[, start_index])        | Measure each file: dimensions, duration (clips) and strength.             |
@@ -47,7 +47,7 @@ Module scope is stdlib-only; numpy and ffmpeg are reached inside functions.
 | [`Media`](#muvid.montage.analysis.Media)(\*, index, path, kind, width, height[, ...]) | One pool item, measured.                    |
 | [`Section`](#muvid.montage.analysis.Section)(\*, label, start, end[, energy_db])        | A labelled stretch of the song, in seconds. |
 
-### *class* muvid.montage.analysis.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=tuple())
+### *class* muvid.montage.analysis.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), cut_rank=(), notes=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -56,6 +56,13 @@ What the planner knows about the song.
 #### *property* beat_s *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds per beat at the estimated tempo.
+
+#### cut_rank *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[float](https://docs.python.org/3/builtins/functions.html#float), ...]*
+
+how worth cutting on (onset strength rank; `()` if unmeasured).
+
+* **Type:**
+  Per beat, 0..1
 
 #### *classmethod* from_dict(d)
 
@@ -70,6 +77,20 @@ True
 
 * **Return type:**
   [`Analysis`](#muvid.montage.analysis.Analysis)
+
+#### ranked_beats(keep=0.5)
+
+The `keep` fraction of beats most worth cutting on, in time order.
+
+```pycon
+>>> a = Analysis(duration=2.0, tempo_bpm=120.0, beats=(0.0, 0.5, 1.0, 1.5),
+...              downbeats=(0.0,), cut_rank=(0.2, 1.0, 0.1, 0.7))
+>>> a.ranked_beats(0.5)
+(0.5, 1.5)
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
 
 ### *class* muvid.montage.analysis.Media(, index, path, kind, width, height, duration=None, strength=0.0, taken_at=None)
 
@@ -95,16 +116,25 @@ A labelled stretch of the song, in seconds.
 
 Mean bar energy in dB (relative), when measured.
 
-### muvid.montage.analysis.analyze(audio, , beats='auto', beats_per_bar=4, sections=None)
+### muvid.montage.analysis.analyze(audio, , beats='auto', beats_per_bar=4, sections=None, section_source='energy')
 
 Measure `audio`: duration, beat grid, downbeats, bar energy, sections.
+
+`section_source` picks how sections are derived when none are supplied:
+`"energy"` (loud bars are the chorus) or `"structure"` (what repeats; one
+song read as a single 230 s “chorus” by the energy rule gets real sections).
+`beats="beat_this"` measures downbeats instead of voting for them.
 
 * **Return type:**
   [`Analysis`](#muvid.montage.analysis.Analysis)
 
-### muvid.montage.analysis.beat_grid(audio, , source='auto', duration=None)
+### muvid.montage.analysis.beat_grid(audio, , source='auto', duration=None, with_downbeats=False)
 
 `(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)`.
+
+`source="beat_this"` (Beat This!, MIT; needs the `beat_this` package) also
+measures downbeats: `with_downbeats=True` appends them (`()` for a source
+with none) as a seventh item.
 
 `source="auto"` tries `mixing.audio.beat_grid` and falls back to the
 numpy estimator only on [`ImportError`](https://docs.python.org/3/builtins/exceptions.html#ImportError) (librosa absent). Naming a

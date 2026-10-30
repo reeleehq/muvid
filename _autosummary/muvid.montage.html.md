@@ -38,7 +38,7 @@ Four seams, each with a default that genuinely works:
 This module is a PEP 562 lazy facade, like `muvid/__init__.py`: importing it
 pulls nothing heavy, and each attribute is resolved on first use.
 
-### *class* muvid.montage.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), notes=tuple())
+### *class* muvid.montage.Analysis(, duration, tempo_bpm, beats, downbeats, beats_per_bar=4, sections=(), beat_source='', section_source='', bar_energy_db=(), cut_rank=(), notes=tuple())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -47,6 +47,13 @@ What the planner knows about the song.
 #### *property* beat_s *: [float](https://docs.python.org/3/builtins/functions.html#float)*
 
 Seconds per beat at the estimated tempo.
+
+#### cut_rank *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[float](https://docs.python.org/3/builtins/functions.html#float), ...]*
+
+how worth cutting on (onset strength rank; `()` if unmeasured).
+
+* **Type:**
+  Per beat, 0..1
 
 #### *classmethod* from_dict(d)
 
@@ -61,6 +68,20 @@ True
 
 * **Return type:**
   [`Analysis`](muvid.montage.analysis.html.md#muvid.montage.analysis.Analysis)
+
+#### ranked_beats(keep=0.5)
+
+The `keep` fraction of beats most worth cutting on, in time order.
+
+```pycon
+>>> a = Analysis(duration=2.0, tempo_bpm=120.0, beats=(0.0, 0.5, 1.0, 1.5),
+...              downbeats=(0.0,), cut_rank=(0.2, 1.0, 0.1, 0.7))
+>>> a.ranked_beats(0.5)
+(0.5, 1.5)
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
 
 ### *class* muvid.montage.Canvas(, width=1920, height=1080, fps=30)
 
