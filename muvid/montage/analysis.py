@@ -142,7 +142,25 @@ class Analysis:
     beat_source: str = ""
     section_source: str = ""
     bar_energy_db: tuple[float, ...] = ()
+    #: Per beat, 0..1: how worth cutting on (onset strength rank; ``()`` if unmeasured).
+    cut_rank: tuple[float, ...] = ()
     notes: tuple[str, ...] = field(default_factory=tuple)
+
+    def ranked_beats(self, keep: float = 0.5) -> tuple[float, ...]:
+        """The ``keep`` fraction of beats most worth cutting on, in time order.
+
+        >>> a = Analysis(duration=2.0, tempo_bpm=120.0, beats=(0.0, 0.5, 1.0, 1.5),
+        ...              downbeats=(0.0,), cut_rank=(0.2, 1.0, 0.1, 0.7))
+        >>> a.ranked_beats(0.5)
+        (0.5, 1.5)
+        """
+        if not 0 < keep <= 1:
+            raise ValueError(f"keep must be in (0, 1], got {keep}")
+        if len(self.cut_rank) != len(self.beats):
+            return self.beats  # unmeasured: every beat is a candidate
+        n = max(1, round(keep * len(self.beats)))
+        top = sorted(range(len(self.beats)), key=lambda i: -self.cut_rank[i])[:n]
+        return tuple(self.beats[i] for i in sorted(top))
 
     @property
     def beat_s(self) -> float:
@@ -178,6 +196,7 @@ class Analysis:
             beat_source=str(d.get("beat_source", "")),
             section_source=str(d.get("section_source", "")),
             bar_energy_db=tuple(float(e) for e in d.get("bar_energy_db", ())),
+            cut_rank=tuple(float(r) for r in d.get("cut_rank", ())),
             notes=tuple(str(n) for n in d.get("notes", ())),
         )
 
@@ -201,6 +220,7 @@ class Analysis:
             "beat_source": self.beat_source,
             "section_source": self.section_source,
             "bar_energy_db": [round(e, 2) for e in self.bar_energy_db],
+            **({"cut_rank": [round(r, 3) for r in self.cut_rank]} if self.cut_rank else {}),
             "notes": list(self.notes),
         }
 
@@ -225,7 +245,11 @@ def _pcm(audio: Path, sr: int):
 # beat grid
 # --------------------------------------------------------------------------
 
-BEAT_SOURCES = ("auto", "mixing", "numpy")
+BEAT_SOURCES = ("auto", "mixing", "numpy", "beat_this")
+#: Where ``analyze`` gets sections when the caller supplies none: ``"energy"`` (bar
+#: loudness, the default, no extra dependency) or ``"structure"`` (what repeats, via
+#: ``mixing.audio.structural_sections``; muvid#133).
+SECTION_SOURCES = ("energy", "structure")
 
 
 def _onset_strength(x, sr: int, *, hop: int = ONSET_HOP, win: int = ONSET_WIN):
@@ -375,9 +399,17 @@ def _numpy_beats(x, sr: int, duration: float):
 
 
 def beat_grid(
-    audio: Path | str, *, source: str = "auto", duration: float | None = None
+    audio: Path | str,
+    *,
+    source: str = "auto",
+    duration: float | None = None,
+    with_downbeats: bool = False,
 ):
     """``(beats, tempo_bpm, onset_env, onset_hop_s, source_name, note)``.
+
+    ``source="beat_this"`` (Beat This!, MIT; needs the ``beat_this`` package) also
+    measures downbeats: ``with_downbeats=True`` appends them (``()`` for a source
+    with none) as a seventh item.
 
     ``source="auto"`` tries ``mixing.audio.beat_grid`` and falls back to the
     numpy estimator only on :class:`ImportError` (librosa absent). Naming a
@@ -392,6 +424,32 @@ def beat_grid(
         from muvid.visualize.ffmpeg import media_duration
 
         duration = media_duration(audio)
+
+    if source == "beat_this":
+        import numpy as np
+        from mixing.audio import beat_grid as _mixing_beat_grid
+
+        bg = _mixing_beat_grid(str(audio), backend="beat_this")
+        keep = lambda a: a[(a >= 0) & (a < duration)]  # noqa: E731
+        out = (
+            keep(np.asarray(bg.beat_times, dtype=float)),
+            float(bg.tempo_bpm),
+            np.asarray(bg.onset_env, dtype=float),
+            float(bg.onset_hop_s),
+            "mixing.audio.beat_grid (beat_this)",
+            "",
+        )
+        if with_downbeats:
+            return (*out, tuple(float(t) for t in keep(np.asarray(bg.downbeat_times, float))))
+        return out
+
+    result = _beat_grid_measured(audio, source, duration)
+    return (*result, ()) if with_downbeats else result
+
+
+def _beat_grid_measured(audio: Path, source: str, duration: float):
+    """The librosa / numpy half of :func:`beat_grid` (``source`` already validated)."""
+    import numpy as np
 
     if source in {"auto", "mixing"}:
         try:
@@ -619,6 +677,81 @@ def derive_sections(
     return tuple(sections)
 
 
+DOWNBEAT_RANK_BONUS = 0.15
+
+
+def cut_rank(
+    beats: Sequence[float], onset_at_beats: Sequence[float], downbeats: Sequence[float]
+) -> tuple[float, ...]:
+    """Each beat's cut-worthiness, 0..1: its onset strength as a percentile among the
+    song's beats, plus a small bonus on a downbeat. Pure Python (no librosa).
+
+    >>> cut_rank([0, .5, 1, 1.5], [1, 3, 2, 0.5], [])
+    (0.333, 1.0, 0.667, 0.0)
+    """
+    n = len(beats)
+    if n == 0 or len(onset_at_beats) < n:
+        return ()
+    order = sorted(range(n), key=lambda i: onset_at_beats[i])
+    rank = [0.0] * n
+    for r, i in enumerate(order):
+        rank[i] = r / max(n - 1, 1)
+    down = set(round(float(d), 3) for d in downbeats)
+    return tuple(
+        round(min(1.0, rank[i] + DOWNBEAT_RANK_BONUS), 3)
+        if round(float(beats[i]), 3) in down
+        else round(rank[i], 3)
+        for i in range(n)
+    )
+
+
+def structural_sections(
+    audio: Path,
+    downbeats: Sequence[float],
+    bars: Sequence[tuple[float, float]],
+    energy: Sequence[float],
+    duration: float,
+) -> tuple[Section, ...]:
+    """Sections from what repeats (``mixing.audio.structural_sections``), named by energy.
+
+    The detector labels sections ``A``, ``B``...; here the cluster that is loudest
+    **and** comes back is the ``chorus``, other repeating clusters are ``verse``, a
+    quiet first/last one-off is ``intro``/``outro`` and any other one-off is ``bridge``.
+    """
+    from mixing.audio import structural_sections as _detect
+
+    found = _detect(str(audio), downbeats=list(downbeats))
+    if not found:
+        return derive_sections(energy, bars, duration)
+
+    def mean_db(a: float, b: float) -> float:
+        vals = [e for (s, t), e in zip(bars, energy) if s < b and t > a]
+        return sum(vals) / len(vals) if vals else 0.0
+
+    by_label: dict[str, list] = {}
+    for sec in found:
+        by_label.setdefault(sec.label, []).append(sec)
+    db = {k: sum(mean_db(x.start, x.end) for x in v) / len(v) for k, v in by_label.items()}
+    repeating = [k for k, v in by_label.items() if len(v) > 1]
+    chorus = max(repeating, key=db.get) if repeating else None
+    out = []
+    for i, sec in enumerate(found):
+        if sec.label == chorus:
+            label = "chorus"
+        elif sec.label in repeating:
+            label = "verse"
+        elif i == 0 and len(found) > 1:
+            label = "intro"
+        elif i == len(found) - 1 and len(found) > 1:
+            label = "outro"
+        else:
+            label = "bridge"
+        out.append(
+            Section(label=label, start=sec.start, end=sec.end, energy_db=mean_db(sec.start, sec.end))
+        )
+    return tuple(out)
+
+
 def sections_from_labels(
     raw: Sequence[Mapping[str, Any]], duration: float
 ) -> tuple[Section, ...]:
@@ -663,18 +796,29 @@ def analyze(
     beats: str = "auto",
     beats_per_bar: int = DEFAULT_BEATS_PER_BAR,
     sections: Sequence[Mapping[str, Any]] | None = None,
+    section_source: str = "energy",
 ) -> Analysis:
-    """Measure ``audio``: duration, beat grid, downbeats, bar energy, sections."""
+    """Measure ``audio``: duration, beat grid, downbeats, bar energy, sections.
+
+    ``section_source`` picks how sections are derived when none are supplied:
+    ``"energy"`` (loud bars are the chorus) or ``"structure"`` (what repeats; one
+    song read as a single 230 s "chorus" by the energy rule gets real sections).
+    ``beats="beat_this"`` measures downbeats instead of voting for them.
+    """
     import numpy as np
 
     from muvid.visualize.ffmpeg import media_duration
 
+    if section_source not in SECTION_SOURCES:
+        raise ValueError(
+            f"section_source must be one of {SECTION_SOURCES}, got {section_source!r}"
+        )
     audio = Path(audio)
     if not audio.exists():
         raise FileNotFoundError(f"audio not found: {audio}")
     duration = media_duration(audio)
-    beat_times, tempo, onset_env, hop_s, source_name, note = beat_grid(
-        audio, source=beats, duration=duration
+    beat_times, tempo, onset_env, hop_s, source_name, note, measured_down = beat_grid(
+        audio, source=beats, duration=duration, with_downbeats=True
     )
     notes = [note] if note else []
     beat_list = [float(t) for t in beat_times]
@@ -697,7 +841,9 @@ def analyze(
         max(0, len(onset_env) - 1),
     )
     onset_at_beats = onset_env[idx].tolist() if len(onset_env) and beat_list else []
-    downbeats = downbeats_from_beats(beat_list, onset_at_beats, beats_per_bar)
+    downbeats = measured_down or downbeats_from_beats(
+        beat_list, onset_at_beats, beats_per_bar
+    )
     if beat_list and duration > 0:
         covered = (beat_list[-1] - beat_list[0]) / duration
         if covered < 0.5:
@@ -713,10 +859,13 @@ def analyze(
     energy = _bar_energy_db(x, ANALYSIS_SR, bars)
     if sections:
         secs = sections_from_labels(sections, duration)
-        section_source = "supplied"
+        section_label = "supplied"
+    elif section_source == "structure":
+        secs = structural_sections(audio, downbeats, bars, energy, duration)
+        section_label = "structure"
     else:
         secs = derive_sections(energy, bars, duration)
-        section_source = "energy"
+        section_label = "energy"
     return Analysis(
         duration=duration,
         tempo_bpm=float(tempo),
@@ -725,8 +874,9 @@ def analyze(
         beats_per_bar=int(beats_per_bar),
         sections=secs,
         beat_source=source_name,
-        section_source=section_source,
+        section_source=section_label,
         bar_energy_db=tuple(energy),
+        cut_rank=cut_rank(beat_list, onset_at_beats, downbeats),
         notes=tuple(notes),
     )
 
