@@ -58,7 +58,9 @@ class Stage:
 
     def __post_init__(self):
         if self.memory not in MEMORY_CLASSES:
-            raise ValueError(f"memory must be one of {MEMORY_CLASSES}, got {self.memory!r}")
+            raise ValueError(
+                f"memory must be one of {MEMORY_CLASSES}, got {self.memory!r}"
+            )
         if ":" not in self.run:
             raise ValueError(f"run must be 'module:function', got {self.run!r}")
 
@@ -277,7 +279,9 @@ class LyricProductionSettings:
     captions: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_mapping(cls, data: Optional[Mapping[str, Any]]) -> "LyricProductionSettings":
+    def from_mapping(
+        cls, data: Optional[Mapping[str, Any]]
+    ) -> "LyricProductionSettings":
         """Build from a spec section, refusing unknown keys (a typo must not be silent)."""
         data = dict(data or {})
         known = set(cls.__dataclass_fields__)

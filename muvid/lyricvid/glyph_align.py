@@ -1499,7 +1499,9 @@ def check_timing_overrides(
     """
     chosen: dict[int, str] = {}
     for key, how in (overrides or {}).items():
-        if isinstance(how, Mapping):  # {"how": "fine", "reason": "..."}: reason is a note
+        if isinstance(
+            how, Mapping
+        ):  # {"how": "fine", "reason": "..."}: reason is a note
             how = how.get("how")
         if isinstance(key, bool) or (isinstance(key, float) and not key.is_integer()):
             li = None
