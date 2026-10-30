@@ -96,6 +96,15 @@ lyric-video = "muvid.lyricvid.manifest:LYRIC_VIDEO"
 choreo = "muvid.choreo.manifest:CHOREO"
 montage = "muvid.montage.manifest:MONTAGE"
 
+# The stages muvid owns in a lyric-video production, for a runner that composes
+# them with other packages' (muvid#158). The value is a manifest, as above.
+[project.entry-points."muvid.lyric_stages.v1"]
+stem = "muvid.lyricvid.stages:STEM"
+glyphs = "muvid.lyricvid.stages:GLYPHS"
+render = "muvid.lyricvid.stages:RENDER"
+pictures = "muvid.lyricvid.stages:PICTURES"
+captions = "muvid.lyricvid.stages:CAPTIONS"
+
 [project.optional-dependencies]
 # The AI narrative pipeline (muvid.facade / muvid.renderers): image/video
 # generation, lyric alignment, character/environment assets.

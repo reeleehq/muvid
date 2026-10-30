@@ -234,10 +234,10 @@ def glyphs(
     nominal token end), cut from the vocal stem at silences and dips; the
     report then counts the cuts under ``spans``.
     """
-    import tempfile
     from pathlib import Path
 
     from muvid.lyricvid import glyph_align as ga
+    from muvid.lyricvid.stages import run_glyphs
     from muvid.lyricvid.timed_text import from_dict
 
     coarse = from_dict(_json.loads(Path(timing).read_text(encoding="utf-8")))
@@ -262,51 +262,22 @@ def glyphs(
     ga._mms_weights(
         allow_download=allow_download
     )  # refuse BEFORE separating, not after
-    stem = (
-        Path(vocals)
-        if vocals
-        else ga.vocal_stem(
+    _emit(
+        run_glyphs(
             audio,
-            out_dir=workdir or tempfile.mkdtemp(prefix="muvid-glyphs-"),
+            timing,
+            output,
+            vocals=vocals,
+            workdir=workdir,
             allow_download=allow_download,
+            no_reconcile=no_reconcile,
+            keep_unsung=keep_unsung,
+            silent_glyph=silent_glyph,
+            overrides=overrides if timing_overrides else None,
+            repair_spills=repair_spills,
+            spans=spans,
         )
     )
-    fine = ga.refine_glyphs(coarse, stem, allow_download=allow_download)
-    agreement = ga.word_agreement(fine, coarse)
-    replaced: list = []
-    repaired: list = []
-    if not no_reconcile:
-        detectors = ga.stem_detectors(
-            stem,
-            drop_unsung=not keep_unsung,
-            silent_glyph_remedy=silent_glyph or None,
-        )
-        refined = fine
-        fine, replaced = ga.reconcile(refined, coarse, detectors=detectors)
-        fine, repaired = ga.apply_timing_overrides(
-            fine, refined, replaced, overrides=overrides
-        )
-    if repair_spills:
-        fine, spilled = ga.repair_spills(fine, ga.stem_onsets(stem))
-        repaired = [*repaired, *spilled]
-    if spans:
-        fine = ga.with_spans(fine, vocals=stem)
-    Path(output).write_text(
-        _json.dumps(fine.to_dict(), ensure_ascii=False, indent=1), encoding="utf-8"
-    )
-    report = {
-        "output": output,
-        "vocals": str(stem),
-        "onsets": ga.onset_report(fine, stem),
-        "agreement": agreement,
-        "reconciled": replaced,
-    }
-    if timing_overrides or repair_spills:  # opt-in only: the default is unchanged
-        report["repaired"] = repaired
-    if spans:  # how many boundaries each cut decided (opt-in, as above)
-        cuts = [g.span.cut for w in fine.words() for g in w.glyphs if g.span]
-        report["spans"] = {c: cuts.count(c) for c in sorted(set(cuts))}
-    _emit(report)
 
 
 def _timing_overrides_arg(value: str) -> dict:
@@ -350,6 +321,7 @@ def _timing_overrides_arg(value: str) -> dict:
     looks_like_overrides = (
         any(str(k).strip().isdigit() for k in obj)
         or any(isinstance(v, str) and v in TIMING_OVERRIDES for v in obj.values())
+        or any(isinstance(v, dict) and "how" in v for v in obj.values())
         or (  # every entry shaped like "<something with a digit>": "<string>"
             bool(obj)
             and all(
