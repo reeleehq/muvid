@@ -2563,7 +2563,11 @@ def _link_options(
         raise ValueError(
             f"look options {raw!r} are not closed once ffmpeg resolves the "
             "filtergraph level: they end "
-            + ("inside a single-quoted run" if exc.char == "'" else "on a dangling backslash")
+            + (
+                "inside a single-quoted run"
+                if exc.char == "'"
+                else "on a dangling backslash"
+            )
             + ". ffmpeg unescapes an option value twice (the graph, then the option), "
             "so an escaped quote or backslash must be escaped for both."
         ) from None

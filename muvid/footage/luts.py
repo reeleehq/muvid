@@ -246,5 +246,7 @@ def list_luts() -> dict:
         try:
             rows.append({"name": name, "size": _checked(name)[1], "usable": True})
         except LutError as e:
-            rows.append({"name": name, "size": None, "usable": False, "problem": str(e)})
+            rows.append(
+                {"name": name, "size": None, "usable": False, "problem": str(e)}
+            )
     return {"luts": rows, "total": len(names)}
