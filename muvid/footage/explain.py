@@ -10,7 +10,9 @@ Each cut gets a few sentences in a fixed order — *where and on what* → *how 
 changes* → *what picture and why that stretch* → *what is worth a look* — plus the
 facts behind them (song times, the beat it lands on, the fade's real start) and
 ``flags`` for the ones worth a look: ``straddles_the_beat``, ``off_the_beat``,
-``long_hold``, ``repeated_stretch``. Every clock time in a sentence is also listed in
+``long_hold``, ``repeated_stretch``, ``only_weak_footage`` (a synced video whose sync
+nobody can vouch for, shown because no other video covers that stretch in trustworthy
+sync — the TRUST half of muvid#20's clause b; :func:`muvid.footage.edl.only_weak_footage`). Every clock time in a sentence is also listed in
 ``times`` with its second, so a screen can turn it into a link that seeks the player.
 
 Plain nouns only (beat, bar, fade, picture, photo, clip); clock times, never floats.
@@ -44,6 +46,7 @@ FLAG_WORDS = {
     "off_the_beat": "not on a beat",
     "long_hold": "long hold",
     "repeated_stretch": "shown before",
+    "only_weak_footage": "only weak footage here",
 }
 
 _ORDINAL = {1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth"}
@@ -302,6 +305,21 @@ def _explain_cut(
         shown.setdefault(e.clip_id, []).append((from_s, to_s, start))
 
     # 4. what is worth a look
+    if synced and e.clip_id in alignments:
+        weak = _only_weak_footage(e, clips=clips, alignments=alignments)
+        if weak:
+            flags.append("only_weak_footage")
+            where = " and ".join(
+                "this part of the song"
+                if _is_whole(w, start, end)
+                else f"the song from {t(w.song_start)} to {t(w.song_end)}"
+                for w in weak
+            )
+            why = " and ".join(dict.fromkeys(_weak_words(w) for w in weak))
+            said.append(
+                f"No other video covers {where} in sync muvid trusts, so this one is "
+                f"shown there, though {why}."
+            )
     long_limit = max(LONG_HOLD_S, (bar_s or 0.0) * LONG_HOLD_BARS)
     if kind != "black" and length > long_limit:
         flags.append("long_hold")
@@ -336,6 +354,45 @@ def _explain_cut(
         "text": " ".join(said),
         "times": times,
     }
+
+
+def _only_weak_footage(e, *, clips, alignments):
+    """:func:`muvid.footage.edl.only_weak_footage` against every other SYNCED clip."""
+    from muvid.footage.edl import only_weak_footage
+
+    others = [
+        b
+        for cid, b in alignments.items()
+        if cid in clips and (clips[cid].get("role") or "synced") == "synced"
+    ]
+    return only_weak_footage(e, alignments[e.clip_id], others)
+
+
+def _is_whole(w, start: float, end: float) -> bool:
+    return abs(w.song_start - start) < 1e-3 and abs(w.song_end - end) < 1e-3
+
+
+#: How a failed trust measure reads.
+_MEASURE_WORDS = {
+    "support": "support {v:.2f}: too little of it agreed on where it goes",
+    "margin": "margin {v:.2f}: another place in the song fits it about as well",
+    "confidence": "confidence {v:.2f}: the match is faint",
+}
+
+
+def _weak_words(w) -> str:
+    """Why one weak stretch is weak, in plain words."""
+    from muvid.footage.edl import UNVOUCHED_STRETCH
+
+    if w.why != UNVOUCHED_STRETCH:
+        return "its sound could not be heard matching the song there"
+    failed = [(k, v) for k, v in w.measure.items() if k != "threshold"]
+    detail = (
+        f" ({_MEASURE_WORDS[failed[0][0]].format(v=failed[0][1])})"
+        if failed and failed[0][1] is not None
+        else ""
+    )
+    return f"muvid couldn't tell where this video belongs in the song{detail}"
 
 
 def _why_stretch(e, grid, envelope_of, from_s: float) -> str:
@@ -388,6 +445,15 @@ def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
         said.append(f"{off} change{'s are' if off > 1 else ' is'} not on a beat.")
     elif not straddle and any(c.get("free") for c in cuts):
         said.append("Every change to the music starts on a beat.")
+    weak = [c for c in cuts if "only_weak_footage" in c["flags"]]
+    if weak:
+        at = ", ".join(t(c["start_s"]) for c in weak)
+        said.append(
+            f"{len(weak)} shot{'s' if len(weak) > 1 else ''} (at {at}) "
+            f"{'show' if len(weak) > 1 else 'shows'} footage muvid can't vouch is in sync, "
+            "because no other video covers that part of the song — check "
+            f"{'those' if len(weak) > 1 else 'it'} first."
+        )
     fallback = selection.get("fallback")
     if fallback and selection.get("strategy") == "weighted":
         # what `select_score.selection_notice` recorded: the score-driven cut could not
