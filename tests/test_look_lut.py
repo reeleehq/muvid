@@ -315,3 +315,26 @@ def test_the_service_refuses_a_missing_lut_before_spending_a_render(tmp_path, mo
         service.render(fp, edit_id="e")
     assert service.renders(fp)["renders"] == []
     assert fp.next_render_ref() == 1  # the refusal spent no reference number
+
+
+@pytest.mark.parametrize(
+    "look",
+    [
+        "pad=w=64:h=48:color=black\\\\",
+        "pad=w=64:h=48:color=\\'",
+        "scale=w=64:h=48:flags=\\'bicubic",
+        "lut3d=file=red.cube:interp=\\'x",
+    ],
+)
+def test_a_look_open_at_the_option_level_is_refused_with_a_reason(look):
+    """Closed at the graph level, open at the next: refused (ffmpeg refuses too), with
+    a message that says why rather than the bare character (#252 re-review)."""
+    with pytest.raises(ValueError, match="not closed once ffmpeg resolves") as exc:
+        validate_edl([EdlEntry(0.0, 4.0, "A", look=look)], [_A], 4.0, canvas=(64, 48))
+    assert len(str(exc.value)) > 40
+
+
+def test_bind_refuses_an_option_the_gate_would_have(luts):
+    _cube(luts / "red.cube")
+    with pytest.raises(L.LutError, match="does not offer"):
+        L.bind_look_luts(r"lut3d=file=red.cube:in\\:terp=x")

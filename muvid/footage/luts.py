@@ -197,7 +197,12 @@ def bind_look_luts(look: "str | None") -> "str | None":
             text = text.replace(char, "\\" + char)
         return text
 
+    from muvid.footage.edl import _LUT3D_OPTIONS
+
     def rebuilt(head: str, opts: dict) -> str:
+        unknown = sorted(set(opts) - _LUT3D_OPTIONS)
+        if unknown:  # the gate refuses these; a caller that skipped it does not
+            raise LutError(f"lut3d sets {unknown}, which muvid does not offer")
         args = [
             f"file={escape_filter_value(resolve_lut(_value(v)).as_posix())}"
             if k == "file"

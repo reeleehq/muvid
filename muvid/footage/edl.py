@@ -2555,11 +2555,20 @@ def _link_options(
     """
     out: "dict[str, str]" = {}
     overflow: "list[tuple[str, bool]]" = []
-    args = _unquote(args)  # the graph level: what the option parser is handed
-    if not args:
-        return out, overflow
+    raw = args
+    try:
+        args = _unquote(args)  # the graph level: what the option parser is handed
+        parts = _split_significant(args, ":") if args else []
+    except _LookSyntaxError as exc:  # closed at one level, open at the next
+        raise ValueError(
+            f"look options {raw!r} are not closed once ffmpeg resolves the "
+            "filtergraph level: they end "
+            + ("inside a single-quoted run" if exc.char == "'" else "on a dangling backslash")
+            + ". ffmpeg unescapes an option value twice (the graph, then the option), "
+            "so an escaped quote or backslash must be escaped for both."
+        ) from None
     slot, named_seen = 0, False
-    for arg in _split_significant(args, ":"):
+    for arg in parts:
         eq = next((j for j, c in _significant(arg) if c == "="), None)
         if eq is None:
             if named_seen or slot >= len(positional):
@@ -2720,8 +2729,9 @@ def _crop_literal_size(args: str, frame) -> tuple:
 
     def literal(*keys):
         for k in keys:
-            if k in opts and _LOOK_PIXELS.match(opts[k].strip("'\"")):
-                return int(opts[k].strip("'\""))
+            text = _unquote(_strip_unescaped(opts[k])) if k in opts else ""
+            if _LOOK_PIXELS.match(text):  # read as _link_output_sizes reads it
+                return int(text)
         return None
 
     cw, ch = literal("w", "out_w"), literal("h", "out_h")
