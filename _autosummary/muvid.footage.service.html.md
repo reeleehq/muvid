@@ -98,7 +98,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`declared_alignment`](#muvid.footage.service.declared_alignment)(clip_id, offset_s, \*, ...)   | The alignment record of a DECLARED offset — coverage computed, nothing measured.                                                                                                                                                                                                                                                                                                                             |
 | [`edl_from_annotations`](#muvid.footage.service.edl_from_annotations)(fp, \*, annotations)        | The editor's DECISION-tier annotations turned back into a cut list (`edl`), ready for `save_edit` / `replace_edit` — a faithful read, not a re-selection.                                                                                                                                                                                                                                                    |
 | [`edl_json`](#muvid.footage.service.edl_json)(e)                                      | One EDL entry as JSON — full precision (it must feed back verbatim), gaps as null.                                                                                                                                                                                                                                                                                                                           |
-| [`coverage_report`](#muvid.footage.service.coverage_report)(entries, aligns, song_dur, \*)   | What the song's timeline looks like under `entries` — covered, weak, MISSING.                                                                                                                                                                                                                                                                                                                                |
+| [`coverage_report`](#muvid.footage.service.coverage_report)(entries, aligns, song_dur, ...)  | What the song's timeline looks like under `entries` — covered, weak, MISSING.                                                                                                                                                                                                                                                                                                                                |
 | [`exclusion_note`](#muvid.footage.service.exclusion_note)(x)                                | One `warnings` line per span the auto path set aside (muvid#88).                                                                                                                                                                                                                                                                                                                                             |
 | [`assemble_refusal`](#muvid.footage.service.assemble_refusal)(entries, aligns, song_dur, ...) | `None` if rendering this edit would go ahead; the refusal if it would not — put to the GATE rather than re-implemented here.                                                                                                                                                                                                                                                                                 |
 | [`resolve_canvas`](#muvid.footage.service.resolve_canvas)(fp, canvas)                       | The render canvas: an explicit per-render override, else the project's.                                                                                                                                                                                                                                                                                                                                      |
@@ -366,7 +366,7 @@ offset are dropped.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.coverage_report(entries, aligns, song_dur, , excluded=(), span=None)
+### muvid.footage.service.coverage_report(entries, aligns, song_dur, , roles, excluded=(), span=None)
 
 What the song’s timeline looks like under `entries` — covered, weak, MISSING.
 
@@ -375,6 +375,13 @@ audio is named with explicit start/end times; a span whose only footage is weakl
 aligned is listed with the numbers that make it weak; `excluded` (muvid#88) names
 spans the auto path gave up because only an unvouched clip covered them.
 `span` (a trimmed edit’s `(start, end)`) bounds what counts as uncovered.
+`weak_segments` is trust alone: every synced cut whose clip the aligner does not
+vouch for, whether or not another clip could have covered it. `only_weak_footage`
+(muvid#20 clause b) is the narrower list that DOES check: the stretches a synced
+cut shows footage whose sync nobody can vouch for there (unvouched, or not confirmed
+by its spans) because no other synced clip — `roles` is `footage_roles()`,
+required so no caller forgets which clips are cut to the music — covers them in
+trustworthy sync; with why, and the number that failed.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -467,7 +474,9 @@ how the picture changes (a hard cut, or a fade and where that fade really
 starts), what picture it shows and why that stretch (its picture changes on the
 beats inside the cut; a photo’s camera move; a video synced where it was
 filmed), and `flags` for the ones worth a look (`straddles_the_beat`,
-`off_the_beat`, `long_hold`, `repeated_stretch`). Plus a `summary` of the
+`off_the_beat`, `long_hold`, `repeated_stretch`, `only_weak_footage` — a
+video whose sync muvid can’t vouch for, shown because no other video covers that
+stretch, with what makes it weak and when). Plus a `summary` of the
 whole edit (fades vs cuts, the song’s pace and shape, the longest shot).
 
 Every clock time in a sentence is listed in `times` (`{label, s}`) so a screen

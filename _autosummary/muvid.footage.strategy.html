@@ -35,7 +35,7 @@
 <link href="../_static/epythet.css?v=f9f95642" rel="stylesheet" type="text/css"/>
 <link href="../search.html" rel="search" title="Search"/>
 <link href="../genindex.html" rel="index" title="Index"/>
-<link href="muvid.footage.workspace.html" rel="next" title="muvid.footage.workspace"/>
+<link href="muvid.footage.trust.html" rel="next" title="muvid.footage.trust"/>
 <link href="muvid.footage.service.html" rel="prev" title="muvid.footage.service"/>
 </head>
 <body :class="{ 'overflow-hidden': showSidebar }" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
@@ -150,7 +150,7 @@ cut. Every strategy’s output still passes <a class="reference internal" href="
 any cutting, so a strategy that leaves a gap fails loudly with the exact uncovered span.</p>
 <p>**A strategy sees <code class="docutils literal notranslate"><span class="pre">reliable</span></code> the way it already sees <code class="docutils literal notranslate"><span class="pre">overlaps</span></code>: as a preference**
 (muvid#88). Every built-in ranks a vouched clip above an unvouched one for the same span
-via <code class="xref py py-func docutils literal notranslate"><span class="pre">_prefer_vouched()</span></code>, and falls back to an unvouched clip only where nothing else
+via <a class="reference internal" href="muvid.footage.trust.html#muvid.footage.trust.prefer_trusted" title="muvid.footage.trust.prefer_trusted"><code class="xref py py-func docutils literal notranslate"><span class="pre">muvid.footage.trust.prefer_trusted()</span></code></a>, and falls back to an unvouched clip only where nothing else
 covers the span — so one badly-aligned clip in a shoot costs the spans only it covered,
 not the whole edit. The strategies still decide nothing about trust: they never drop a
 source, and the verdict they read (<code class="docutils literal notranslate"><span class="pre">FootageAlignment.reliable</span></code>) is
@@ -357,7 +357,7 @@ the alignment-only built-ins ignore it. See <a class="reference internal" href="
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=b06a6486"></script>
+<script src="../_static/documentation_options.js?v=8792eeec"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

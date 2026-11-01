@@ -53,6 +53,7 @@
 - [muvid.footage.select_score](_autosummary/muvid.footage.select_score.html.md): The score-driven &#96;weighted&#96; selection strategy: a beat-snapped semi-Markov Viterbi DP.
 - [muvid.footage.service](_autosummary/muvid.footage.service.html.md): The footage operations — one function per thing you can do to a music-video project.
 - [muvid.footage.strategy](_autosummary/muvid.footage.strategy.html.md): The pluggable &#96;SelectionStrategy&#96; registry — alignments → an EDL.
+- [muvid.footage.trust](_autosummary/muvid.footage.trust.html.md): The trust tiers selection ranks footage by — one ordered table (muvid#255).
 - [muvid.footage.workspace](_autosummary/muvid.footage.workspace.html.md): Per-user, STATEFUL project for the footage-aligned &#96;music_video&#96; genre.
 - [muvid.importing](_autosummary/muvid.importing.html.md): Bring a finished production into a host’s projects dir as a &#96;muvid.Project&#96;.
 - [muvid.lyrics](_autosummary/muvid.lyrics.html.md): Lyrics — transcription and markdown round-trip.
@@ -105,7 +106,7 @@
 - [muvid.visualize.video](_autosummary/muvid.visualize.video.html.md): Render an audio file into a video: pick a visual, mux, normalize, encode.
 - [muvid.visualize.visuals](_autosummary/muvid.visualize.visuals.html.md): Visual strategies: how the &#42;picture&#42; of an audio-driven video is produced.
 - [For AI agents](ai-agents.html.md): &#96;muvid&#96; ships artifacts for coding agents alongside its code. This page lists
-- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-11-01 18:46 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
+- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-11-01 19:29 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
 
 ## Optional
 

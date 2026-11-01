@@ -51,6 +51,8 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`SPAN_OFFSET_TOLERANCE_S`](#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S)    | How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — `mixing`'s own span tolerance (`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.                                          |
 | [`SPAN_EDGE_ACCURACY_S`](#muvid.footage.edl.SPAN_EDGE_ACCURACY_S)       | How accurate a measured span's edges are, in seconds — `mixing`'s span window (`SPAN_WINDOW_S`), restated so this module stays import-light (a test pins it).                                                                                                   |
 | [`SELECTION_MIN_UNVERIFIED_S`](#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) | half the span window.                                                                                                                                                                                                                                           |
+| [`UNVOUCHED_STRETCH`](#muvid.footage.edl.UNVOUCHED_STRETCH)          | Why a stretch of a cut is weak footage ([`weak_stretches()`](#muvid.footage.edl.weak_stretches)).                                                                                                                                                     |
+| [`UNVERIFIED_STRETCH`](#muvid.footage.edl.UNVERIFIED_STRETCH)         | Why a stretch of a cut is weak footage ([`weak_stretches()`](#muvid.footage.edl.weak_stretches)).                                                                                                                                                     |
 | [`SLIP_MAX_S`](#muvid.footage.edl.SLIP_MAX_S)                 | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](#muvid.footage.edl.RATE_MAX_DEV)               | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
 | [`EDGE_S`](#muvid.footage.edl.EDGE_S)                     | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
@@ -75,27 +77,31 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`longest_span`](#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                                           |
 | [`look_may_resize`](#muvid.footage.edl.look_may_resize)(look)                            | Whether `look` can end at a frame size other than the one it is handed.                                                                                                                                                                                                                                                                                                                                                           |
 | [`looks_effects_offered`](#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                                                                                                                                                                                   |
+| [`only_weak_footage`](#muvid.footage.edl.only_weak_footage)(e, a, alternatives)            | The [`weak_stretches()`](#muvid.footage.edl.weak_stretches) of cut `e` that no OTHER clip among `alternatives` could have shown in trustworthy sync ([`trusted_cover()`](#muvid.footage.edl.trusted_cover), unioned — two cameras can cover one stretch between them): the cut is there only because nothing better covers that part of the song (muvid#20 clause b).                                        |
 | [`placed_as`](#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                                                             |
 | [`selection_unverified_stretches`](#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those at least [`SELECTION_MIN_UNVERIFIED_S`](#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
 | [`still_in_point`](#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                                 |
+| [`trusted_cover`](#muvid.footage.edl.trusted_cover)(a)                                 | The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement minus its unverified stretches, and nothing at all when the aligner does not vouch for it or it does not overlap the song.                                                                                                                                                                                                                         |
 | [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                                         |
 | [`unverified_in_cut`](#muvid.footage.edl.unverified_in_cut)(e, a)                          | The song-time stretches of cut `e` that show its clip `a` where [`selection_unverified_stretches()`](#muvid.footage.edl.selection_unverified_stretches) says the clip does not match the song (muvid#241).                                                                                                                                                                                                                              |
 | [`unverified_song_stretches`](#muvid.footage.edl.unverified_song_stretches)(a, \*[, tolerance_s])  | [`unverified_stretches()`](#muvid.footage.edl.unverified_stretches) on the SONG timeline (`song = clip + offset_s`): where this clip's placement shows footage its measured spans do not confirm (muvid#16 slice 2).                                                                                                                                                                                                          |
 | [`unverified_stretches`](#muvid.footage.edl.unverified_stretches)(a, \*[, tolerance_s])       | The clip-time stretches of `a`'s placement on the song that no measured span confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single offset says is in sync and the window-by-window measurement could not verify there — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.                                                                                                       |
 | [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                                                                  |
 | [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                                                                    |
+| [`weak_stretches`](#muvid.footage.edl.weak_stretches)(e, a)                             | Where synced cut `e` shows its clip `a` with sync nobody can vouch for: the whole cut when `a` is not [`reliable`](#muvid.footage.edl.FootageAlignment.reliable), else its unverified stretches ([`unverified_in_cut()`](#muvid.footage.edl.unverified_in_cut)) longer than `_weak_floor()`.                                                                                                                                |
 | [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                                                                  |
 
 ### Classes
 
-| [`AssemblyCut`](#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.                                          |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| [`CropWindow`](#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.                                               |
-| [`EdlEntry`](#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                                                       |
-| [`ExcludedSpan`](#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88).                                    |
-| [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).                                               |
-| [`MeasuredSpan`](#muvid.footage.edl.MeasuredSpan)(clip_start_s, clip_end_s, ...)       | One stretch of a clip that aligns to the song, measured window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1). |
-| [`Transition`](#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                                                             |
+| [`AssemblyCut`](#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.                                                                                                                                                                                                                                                                                                                                              |
+|----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`CropWindow`](#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.                                                                                                                                                                                                                                                                                                                                                   |
+| [`EdlEntry`](#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                                                                                                                                                                                                                                                                                                                                                           |
+| [`ExcludedSpan`](#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88).                                                                                                                                                                                                                                                                                                                                        |
+| [`FootageAlignment`](#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).                                                                                                                                                                                                                                                                                                                                                   |
+| [`MeasuredSpan`](#muvid.footage.edl.MeasuredSpan)(clip_start_s, clip_end_s, ...)       | One stretch of a clip that aligns to the song, measured window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1).                                                                                                                                                                                                                                                                                                     |
+| [`Transition`](#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                                                                                                                                                                                                                                                                                                                                                                 |
+| [`WeakStretch`](#muvid.footage.edl.WeakStretch)(song_start, song_end, why[, measure]) | A stretch of a synced cut showing footage whose sync is not trustworthy there (muvid#20 clause b): `why` is [`UNVOUCHED_STRETCH`](#muvid.footage.edl.UNVOUCHED_STRETCH) (the aligner does not vouch for the clip's offset — `measure` names the number that failed, with its threshold) or [`UNVERIFIED_STRETCH`](#muvid.footage.edl.UNVERIFIED_STRETCH) (the measured spans do not confirm the placement there). |
 
 ### Exceptions
 
@@ -866,6 +872,10 @@ free cut ([`EdlEntry.source_in`](#muvid.footage.edl.EdlEntry.source_in)) can sti
 same table every other cut uses. `FREE` is what [`placed_as()`](#muvid.footage.edl.placed_as) derives for one
 free cut: the placement the cut itself implies.
 
+### muvid.footage.edl.UNVERIFIED_STRETCH *= 'unverified'*
+
+Why a stretch of a cut is weak footage ([`weak_stretches()`](#muvid.footage.edl.weak_stretches)).
+
 ### muvid.footage.edl.UNVOUCHED_SELECTION *= 'unvouched_selection'*
 
 A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway —
@@ -873,6 +883,10 @@ so the loss is the SELECTOR’s, not the footage’s. The two are separate value
 they were measured to be separate events and they have different remedies: this one
 says try another strategy or another selection config. `weighted` produces it
 structurally — see `_absorb_neighbour()`, which repairs the repairable half.
+
+### muvid.footage.edl.UNVOUCHED_STRETCH *= 'unvouched'*
+
+Why a stretch of a cut is weak footage ([`weak_stretches()`](#muvid.footage.edl.weak_stretches)).
 
 ### *exception* muvid.footage.edl.UnreliableAlignmentError(unvouched)
 
@@ -910,6 +924,16 @@ right to be cut to without the caller saying so.
 #### alignments
 
 The offending clips, in EDL order — so a caller can re-align exactly these.
+
+### *class* muvid.footage.edl.WeakStretch(song_start, song_end, why, measure=dict())
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A stretch of a synced cut showing footage whose sync is not trustworthy there
+(muvid#20 clause b): `why` is [`UNVOUCHED_STRETCH`](#muvid.footage.edl.UNVOUCHED_STRETCH) (the aligner does not
+vouch for the clip’s offset — `measure` names the number that failed, with its
+threshold) or [`UNVERIFIED_STRETCH`](#muvid.footage.edl.UNVERIFIED_STRETCH) (the measured spans do not confirm the
+placement there). Song-time seconds.
 
 ### muvid.footage.edl.blend_lead(t)
 
@@ -1136,6 +1160,28 @@ The `looks` effects a look can reach through this gate, sorted.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
+### muvid.footage.edl.only_weak_footage(e, a, alternatives)
+
+The [`weak_stretches()`](#muvid.footage.edl.weak_stretches) of cut `e` that no OTHER clip among
+`alternatives` could have shown in trustworthy sync ([`trusted_cover()`](#muvid.footage.edl.trusted_cover),
+unioned — two cameras can cover one stretch between them): the cut is there only
+because nothing better covers that part of the song (muvid#20 clause b). Pass the
+synced clips as `alternatives`; a clip cut to the music claims no sync to offer.
+
+```pycon
+>>> weak = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0), support=0.3, margin=0.1,
+...                         reliable=False)
+>>> b = FootageAlignment("B", 0.0, 0.9, 20.0, (0.0, 20.0), support=0.9, margin=0.5)
+>>> c = FootageAlignment("C", 20.0, 0.9, 20.0, (20.0, 40.0), support=0.9, margin=0.5)
+>>> only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b, c])  # B and C cover it
+[]
+>>> [(w.song_start, w.song_end) for w in only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b])]
+[(20.0, 40.0)]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WeakStretch`](#muvid.footage.edl.WeakStretch)]
+
 ### muvid.footage.edl.placed_as(e, a)
 
 The placement cut `e` reads its clip `a` through — THE free-cut rule.
@@ -1191,6 +1237,15 @@ does not need (it has no thumb on the button). muvid#203.
 
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.trusted_cover(a)
+
+The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement
+minus its unverified stretches, and nothing at all when the aligner does not vouch
+for it or it does not overlap the song.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]]
 
 ### muvid.footage.edl.unplaced(clip_id, duration_s)
 
@@ -1398,6 +1453,23 @@ of a shoot that it started as.
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 * **Returns:**
   True when the offset may be cut to without the caller opting in.
+
+### muvid.footage.edl.weak_stretches(e, a)
+
+Where synced cut `e` shows its clip `a` with sync nobody can vouch for: the
+whole cut when `a` is not [`reliable`](#muvid.footage.edl.FootageAlignment.reliable), else its unverified
+stretches ([`unverified_in_cut()`](#muvid.footage.edl.unverified_in_cut)) longer than `_weak_floor()`. `[]` for a
+gap and a free cut (cut to the music, it claims no sync).
+
+```pycon
+>>> a = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0), support=0.8, margin=-0.1,
+...                      reliable=False)
+>>> [(w.why, w.measure) for w in weak_stretches(EdlEntry(0.0, 40.0, "A"), a)]
+[('unvouched', {'margin': -0.1, 'threshold': 0.0})]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WeakStretch`](#muvid.footage.edl.WeakStretch)]
 
 ### muvid.footage.edl.with_start(e, start, , bounded=True)
 

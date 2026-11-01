@@ -64,4 +64,5 @@ muvid.footage
    select_score
    service
    strategy
+   trust
    workspace

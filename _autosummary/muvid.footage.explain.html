@@ -150,7 +150,9 @@ explained as changed), and the screen, the assistant and a reader all get one re
 changes* → <em>what picture and why that stretch</em> → <em>what is worth a look</em> — plus the
 facts behind them (song times, the beat it lands on, the fade’s real start) and
 <code class="docutils literal notranslate"><span class="pre">flags</span></code> for the ones worth a look: <code class="docutils literal notranslate"><span class="pre">straddles_the_beat</span></code>, <code class="docutils literal notranslate"><span class="pre">off_the_beat</span></code>,
-<code class="docutils literal notranslate"><span class="pre">long_hold</span></code>, <code class="docutils literal notranslate"><span class="pre">repeated_stretch</span></code>. Every clock time in a sentence is also listed in
+<code class="docutils literal notranslate"><span class="pre">long_hold</span></code>, <code class="docutils literal notranslate"><span class="pre">repeated_stretch</span></code>, <code class="docutils literal notranslate"><span class="pre">only_weak_footage</span></code> (a synced video whose sync
+nobody can vouch for, shown because no other video covers that stretch in trustworthy
+sync — the TRUST half of muvid#20’s clause b; <a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.only_weak_footage" title="muvid.footage.edl.only_weak_footage"><code class="xref py py-func docutils literal notranslate"><span class="pre">muvid.footage.edl.only_weak_footage()</span></code></a>). Every clock time in a sentence is also listed in
 <code class="docutils literal notranslate"><span class="pre">times</span></code> with its second, so a screen can turn it into a link that seeks the player.</p>
 <p>Plain nouns only (beat, bar, fade, picture, photo, clip); clock times, never floats.
 The explanation says what the system did by default when that is the reason — the
@@ -178,7 +180,7 @@ them (<code class="docutils literal notranslate"><span class="pre">service.expla
 </table>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.explain.FLAG_WORDS">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.explain.</span></span><span class="sig-name descname"><span class="pre">FLAG_WORDS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'long_hold':</span> <span class="pre">'long</span> <span class="pre">hold',</span> <span class="pre">'off_the_beat':</span> <span class="pre">'not</span> <span class="pre">on</span> <span class="pre">a</span> <span class="pre">beat',</span> <span class="pre">'repeated_stretch':</span> <span class="pre">'shown</span> <span class="pre">before',</span> <span class="pre">'straddles_the_beat':</span> <span class="pre">'starts</span> <span class="pre">before</span> <span class="pre">the</span> <span class="pre">beat'}</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.explain.FLAG_WORDS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.explain.FLAG_WORDS'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.explain.</span></span><span class="sig-name descname"><span class="pre">FLAG_WORDS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'long_hold':</span> <span class="pre">'long</span> <span class="pre">hold',</span> <span class="pre">'off_the_beat':</span> <span class="pre">'not</span> <span class="pre">on</span> <span class="pre">a</span> <span class="pre">beat',</span> <span class="pre">'only_weak_footage':</span> <span class="pre">'only</span> <span class="pre">weak</span> <span class="pre">footage</span> <span class="pre">here',</span> <span class="pre">'repeated_stretch':</span> <span class="pre">'shown</span> <span class="pre">before',</span> <span class="pre">'straddles_the_beat':</span> <span class="pre">'starts</span> <span class="pre">before</span> <span class="pre">the</span> <span class="pre">beat'}</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.explain.FLAG_WORDS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.explain.FLAG_WORDS'">¶</a></dt>
 <dd><p>What each flag says, for a chip.</p>
 </dd></dl>
 <dl class="py function">
@@ -235,7 +237,7 @@ black outside it is not counted as shots.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=b06a6486"></script>
+<script src="../_static/documentation_options.js?v=8792eeec"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

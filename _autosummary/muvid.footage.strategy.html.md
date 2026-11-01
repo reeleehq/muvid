@@ -12,7 +12,7 @@ any cutting, so a strategy that leaves a gap fails loudly with the exact uncover
 
 \*\*A strategy sees `reliable` the way it already sees `overlaps`: as a preference\*\*
 (muvid#88). Every built-in ranks a vouched clip above an unvouched one for the same span
-via `_prefer_vouched()`, and falls back to an unvouched clip only where nothing else
+via [`muvid.footage.trust.prefer_trusted()`](muvid.footage.trust.html.md#muvid.footage.trust.prefer_trusted), and falls back to an unvouched clip only where nothing else
 covers the span — so one badly-aligned clip in a shoot costs the spans only it covered,
 not the whole edit. The strategies still decide nothing about trust: they never drop a
 source, and the verdict they read (`FootageAlignment.reliable`) is

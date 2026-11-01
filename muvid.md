@@ -1,4 +1,4 @@
-> built 2026-11-01 18:46 UTC from 36503b2 (main) · muvid 0.0.145. Details: build_info.json
+> built 2026-11-01 19:29 UTC from 4e0e3dd (main) · muvid 0.0.146. Details: build_info.json
 
 # index.html.md
 
@@ -3446,6 +3446,8 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`SPAN_OFFSET_TOLERANCE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_OFFSET_TOLERANCE_S)    | How far a measured span's offset may sit from its clip's offset and still be read as THAT placement (seconds) — `mixing`'s own span tolerance (`SPAN_OFFSET_TOLERANCE_S`), restated so this module stays import-light.                                          |
 | [`SPAN_EDGE_ACCURACY_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SPAN_EDGE_ACCURACY_S)       | How accurate a measured span's edges are, in seconds — `mixing`'s span window (`SPAN_WINDOW_S`), restated so this module stays import-light (a test pins it).                                                                                                   |
 | [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) | half the span window.                                                                                                                                                                                                                                           |
+| [`UNVOUCHED_STRETCH`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_STRETCH)          | Why a stretch of a cut is weak footage ([`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches)).                                                                                                                                                     |
+| [`UNVERIFIED_STRETCH`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVERIFIED_STRETCH)         | Why a stretch of a cut is weak footage ([`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches)).                                                                                                                                                     |
 | [`SLIP_MAX_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SLIP_MAX_S)                 | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.RATE_MAX_DEV)               | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
 | [`EDGE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EDGE_S)                     | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
@@ -3470,27 +3472,31 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`longest_span`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                                           |
 | [`look_may_resize`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.look_may_resize)(look)                            | Whether `look` can end at a frame size other than the one it is handed.                                                                                                                                                                                                                                                                                                                                                           |
 | [`looks_effects_offered`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                                                                                                                                                                                   |
+| [`only_weak_footage`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.only_weak_footage)(e, a, alternatives)            | The [`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches) of cut `e` that no OTHER clip among `alternatives` could have shown in trustworthy sync ([`trusted_cover()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.trusted_cover), unioned — two cameras can cover one stretch between them): the cut is there only because nothing better covers that part of the song (muvid#20 clause b).                                        |
 | [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                                                             |
 | [`selection_unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those at least [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
 | [`still_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                                 |
+| [`trusted_cover`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.trusted_cover)(a)                                 | The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement minus its unverified stretches, and nothing at all when the aligner does not vouch for it or it does not overlap the song.                                                                                                                                                                                                                         |
 | [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                                         |
 | [`unverified_in_cut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_in_cut)(e, a)                          | The song-time stretches of cut `e` that show its clip `a` where [`selection_unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches) says the clip does not match the song (muvid#241).                                                                                                                                                                                                                              |
 | [`unverified_song_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_song_stretches)(a, \*[, tolerance_s])  | [`unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches) on the SONG timeline (`song = clip + offset_s`): where this clip's placement shows footage its measured spans do not confirm (muvid#16 slice 2).                                                                                                                                                                                                          |
 | [`unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_stretches)(a, \*[, tolerance_s])       | The clip-time stretches of `a`'s placement on the song that no measured span confirms AT `a.offset_s` (muvid#16 slice 1): the part of the clip the single offset says is in sync and the window-by-window measurement could not verify there — the last 18 s of a 78 s clip that stopped matching, a dropout, another take.                                                                                                       |
 | [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                                                                  |
 | [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                                                                    |
+| [`weak_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches)(e, a)                             | Where synced cut `e` shows its clip `a` with sync nobody can vouch for: the whole cut when `a` is not [`reliable`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment.reliable), else its unverified stretches ([`unverified_in_cut()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_in_cut)) longer than `_weak_floor()`.                                                                                                                                |
 | [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                                                                  |
 
 ### Classes
 
-| [`AssemblyCut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.                                          |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| [`CropWindow`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.                                               |
-| [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                                                       |
-| [`ExcludedSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88).                                    |
-| [`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).                                               |
-| [`MeasuredSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan)(clip_start_s, clip_end_s, ...)       | One stretch of a clip that aligns to the song, measured window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1). |
-| [`Transition`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                                                             |
+| [`AssemblyCut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.AssemblyCut)(song_start, song_end, clip_id, ...)   | A validated cut ready to render: the EDL span + the derived in-point + clip path.                                                                                                                                                                                                                                                                                                                                              |
+|----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`CropWindow`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.CropWindow)(x, y, w, h)                            | A rectangle to take from the source frame, as fractions of its width/height.                                                                                                                                                                                                                                                                                                                                                   |
+| [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)(song_start, song_end, clip_id[, ...])    | One cut: show `clip_id` over the song span `[song_start, song_end]`.                                                                                                                                                                                                                                                                                                                                                           |
+| [`ExcludedSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.ExcludedSpan)(clip_id, song_start, song_end)       | One span an AUTO-selected edit gave up rather than cut to unvouched footage (muvid#88).                                                                                                                                                                                                                                                                                                                                        |
+| [`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)(clip_id, offset_s, ...[, ...])   | Where one uploaded clip sits on the song timeline (muvid's per-clip record).                                                                                                                                                                                                                                                                                                                                                   |
+| [`MeasuredSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan)(clip_start_s, clip_end_s, ...)       | One stretch of a clip that aligns to the song, measured window by window (`mixing.audio.aligned_spans`; muvid#16 slice 1).                                                                                                                                                                                                                                                                                                     |
+| [`Transition`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition)(duration_s[, curve])                   | How this entry blends IN from its predecessor.                                                                                                                                                                                                                                                                                                                                                                                 |
+| [`WeakStretch`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.WeakStretch)(song_start, song_end, why[, measure]) | A stretch of a synced cut showing footage whose sync is not trustworthy there (muvid#20 clause b): `why` is [`UNVOUCHED_STRETCH`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_STRETCH) (the aligner does not vouch for the clip's offset — `measure` names the number that failed, with its threshold) or [`UNVERIFIED_STRETCH`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVERIFIED_STRETCH) (the measured spans do not confirm the placement there). |
 
 ### Exceptions
 
@@ -4261,6 +4267,10 @@ free cut ([`EdlEntry.source_in`](_autosummary/muvid.footage.edl.html.md#muvid.fo
 same table every other cut uses. `FREE` is what [`placed_as()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as) derives for one
 free cut: the placement the cut itself implies.
 
+### muvid.footage.edl.UNVERIFIED_STRETCH *= 'unverified'*
+
+Why a stretch of a cut is weak footage ([`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches)).
+
 ### muvid.footage.edl.UNVOUCHED_SELECTION *= 'unvouched_selection'*
 
 A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway —
@@ -4268,6 +4278,10 @@ so the loss is the SELECTOR’s, not the footage’s. The two are separate value
 they were measured to be separate events and they have different remedies: this one
 says try another strategy or another selection config. `weighted` produces it
 structurally — see `_absorb_neighbour()`, which repairs the repairable half.
+
+### muvid.footage.edl.UNVOUCHED_STRETCH *= 'unvouched'*
+
+Why a stretch of a cut is weak footage ([`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches)).
 
 ### *exception* muvid.footage.edl.UnreliableAlignmentError(unvouched)
 
@@ -4305,6 +4319,16 @@ right to be cut to without the caller saying so.
 #### alignments
 
 The offending clips, in EDL order — so a caller can re-align exactly these.
+
+### *class* muvid.footage.edl.WeakStretch(song_start, song_end, why, measure=dict())
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A stretch of a synced cut showing footage whose sync is not trustworthy there
+(muvid#20 clause b): `why` is [`UNVOUCHED_STRETCH`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_STRETCH) (the aligner does not
+vouch for the clip’s offset — `measure` names the number that failed, with its
+threshold) or [`UNVERIFIED_STRETCH`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVERIFIED_STRETCH) (the measured spans do not confirm the
+placement there). Song-time seconds.
 
 ### muvid.footage.edl.blend_lead(t)
 
@@ -4531,6 +4555,28 @@ The `looks` effects a look can reach through this gate, sorted.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
+### muvid.footage.edl.only_weak_footage(e, a, alternatives)
+
+The [`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches) of cut `e` that no OTHER clip among
+`alternatives` could have shown in trustworthy sync ([`trusted_cover()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.trusted_cover),
+unioned — two cameras can cover one stretch between them): the cut is there only
+because nothing better covers that part of the song (muvid#20 clause b). Pass the
+synced clips as `alternatives`; a clip cut to the music claims no sync to offer.
+
+```pycon
+>>> weak = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0), support=0.3, margin=0.1,
+...                         reliable=False)
+>>> b = FootageAlignment("B", 0.0, 0.9, 20.0, (0.0, 20.0), support=0.9, margin=0.5)
+>>> c = FootageAlignment("C", 20.0, 0.9, 20.0, (20.0, 40.0), support=0.9, margin=0.5)
+>>> only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b, c])  # B and C cover it
+[]
+>>> [(w.song_start, w.song_end) for w in only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b])]
+[(20.0, 40.0)]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WeakStretch`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.WeakStretch)]
+
 ### muvid.footage.edl.placed_as(e, a)
 
 The placement cut `e` reads its clip `a` through — THE free-cut rule.
@@ -4586,6 +4632,15 @@ does not need (it has no thumb on the button). muvid#203.
 
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.trusted_cover(a)
+
+The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement
+minus its unverified stretches, and nothing at all when the aligner does not vouch
+for it or it does not overlap the song.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]]
 
 ### muvid.footage.edl.unplaced(clip_id, duration_s)
 
@@ -4794,6 +4849,23 @@ of a shoot that it started as.
 * **Returns:**
   True when the offset may be cut to without the caller opting in.
 
+### muvid.footage.edl.weak_stretches(e, a)
+
+Where synced cut `e` shows its clip `a` with sync nobody can vouch for: the
+whole cut when `a` is not [`reliable`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment.reliable), else its unverified
+stretches ([`unverified_in_cut()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_in_cut)) longer than `_weak_floor()`. `[]` for a
+gap and a free cut (cut to the music, it claims no sync).
+
+```pycon
+>>> a = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0), support=0.8, margin=-0.1,
+...                      reliable=False)
+>>> [(w.why, w.measure) for w in weak_stretches(EdlEntry(0.0, 40.0, "A"), a)]
+[('unvouched', {'margin': -0.1, 'threshold': 0.0})]
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WeakStretch`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.WeakStretch)]
+
 ### muvid.footage.edl.with_start(e, start, , bounded=True)
 
 `e` starting at song time `start` and showing, at every moment it still
@@ -4866,7 +4938,9 @@ Each cut gets a few sentences in a fixed order — *where and on what* → \*how
 changes\* → *what picture and why that stretch* → *what is worth a look* — plus the
 facts behind them (song times, the beat it lands on, the fade’s real start) and
 `flags` for the ones worth a look: `straddles_the_beat`, `off_the_beat`,
-`long_hold`, `repeated_stretch`. Every clock time in a sentence is also listed in
+`long_hold`, `repeated_stretch`, `only_weak_footage` (a synced video whose sync
+nobody can vouch for, shown because no other video covers that stretch in trustworthy
+sync — the TRUST half of muvid#20’s clause b; [`muvid.footage.edl.only_weak_footage()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.only_weak_footage)). Every clock time in a sentence is also listed in
 `times` with its second, so a screen can turn it into a link that seeks the player.
 
 Plain nouns only (beat, bar, fade, picture, photo, clip); clock times, never floats.
@@ -4887,7 +4961,7 @@ them (`service.explain_edit`).
 |-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
 | [`clock`](_autosummary/muvid.footage.explain.html.md#muvid.footage.explain.clock)(t)                                             | `72.41` -> `"1:12.4"` — how a time is said.                    |
 
-### muvid.footage.explain.FLAG_WORDS *= {'long_hold': 'long hold', 'off_the_beat': 'not on a beat', 'repeated_stretch': 'shown before', 'straddles_the_beat': 'starts before the beat'}*
+### muvid.footage.explain.FLAG_WORDS *= {'long_hold': 'long hold', 'off_the_beat': 'not on a beat', 'only_weak_footage': 'only weak footage here', 'repeated_stretch': 'shown before', 'straddles_the_beat': 'starts before the beat'}*
 
 What each flag says, for a chip.
 
@@ -5761,6 +5835,7 @@ Returns the normalized list of [`EdlEntry`](_autosummary/muvid.footage.html.md#m
 | [`select_score`](_autosummary/muvid.footage.select_score.html.md#module-muvid.footage.select_score)   | The score-driven `weighted` selection strategy: a beat-snapped semi-Markov Viterbi DP.                                                                              |
 | [`service`](_autosummary/muvid.footage.service.html.md#module-muvid.footage.service)             | The footage operations — one function per thing you can do to a music-video project.                                                                                |
 | [`strategy`](_autosummary/muvid.footage.strategy.html.md#module-muvid.footage.strategy)           | The pluggable `SelectionStrategy` registry — alignments → an EDL.                                                                                                   |
+| [`trust`](_autosummary/muvid.footage.trust.html.md#module-muvid.footage.trust)                 | The trust tiers selection ranks footage by — one ordered table (muvid#255).                                                                                         |
 | [`workspace`](_autosummary/muvid.footage.workspace.html.md#module-muvid.footage.workspace)         | Per-user, STATEFUL project for the footage-aligned `music_video` genre.                                                                                             |
 
 
@@ -8275,7 +8350,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`declared_alignment`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.declared_alignment)(clip_id, offset_s, \*, ...)   | The alignment record of a DECLARED offset — coverage computed, nothing measured.                                                                                                                                                                                                                                                                                                                             |
 | [`edl_from_annotations`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.edl_from_annotations)(fp, \*, annotations)        | The editor's DECISION-tier annotations turned back into a cut list (`edl`), ready for `save_edit` / `replace_edit` — a faithful read, not a re-selection.                                                                                                                                                                                                                                                    |
 | [`edl_json`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.edl_json)(e)                                      | One EDL entry as JSON — full precision (it must feed back verbatim), gaps as null.                                                                                                                                                                                                                                                                                                                           |
-| [`coverage_report`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.coverage_report)(entries, aligns, song_dur, \*)   | What the song's timeline looks like under `entries` — covered, weak, MISSING.                                                                                                                                                                                                                                                                                                                                |
+| [`coverage_report`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.coverage_report)(entries, aligns, song_dur, ...)  | What the song's timeline looks like under `entries` — covered, weak, MISSING.                                                                                                                                                                                                                                                                                                                                |
 | [`exclusion_note`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.exclusion_note)(x)                                | One `warnings` line per span the auto path set aside (muvid#88).                                                                                                                                                                                                                                                                                                                                             |
 | [`assemble_refusal`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.assemble_refusal)(entries, aligns, song_dur, ...) | `None` if rendering this edit would go ahead; the refusal if it would not — put to the GATE rather than re-implemented here.                                                                                                                                                                                                                                                                                 |
 | [`resolve_canvas`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.resolve_canvas)(fp, canvas)                       | The render canvas: an explicit per-render override, else the project's.                                                                                                                                                                                                                                                                                                                                      |
@@ -8543,7 +8618,7 @@ offset are dropped.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.coverage_report(entries, aligns, song_dur, , excluded=(), span=None)
+### muvid.footage.service.coverage_report(entries, aligns, song_dur, , roles, excluded=(), span=None)
 
 What the song’s timeline looks like under `entries` — covered, weak, MISSING.
 
@@ -8552,6 +8627,13 @@ audio is named with explicit start/end times; a span whose only footage is weakl
 aligned is listed with the numbers that make it weak; `excluded` (muvid#88) names
 spans the auto path gave up because only an unvouched clip covered them.
 `span` (a trimmed edit’s `(start, end)`) bounds what counts as uncovered.
+`weak_segments` is trust alone: every synced cut whose clip the aligner does not
+vouch for, whether or not another clip could have covered it. `only_weak_footage`
+(muvid#20 clause b) is the narrower list that DOES check: the stretches a synced
+cut shows footage whose sync nobody can vouch for there (unvouched, or not confirmed
+by its spans) because no other synced clip — `roles` is `footage_roles()`,
+required so no caller forgets which clips are cut to the music — covers them in
+trustworthy sync; with why, and the number that failed.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -8644,7 +8726,9 @@ how the picture changes (a hard cut, or a fade and where that fade really
 starts), what picture it shows and why that stretch (its picture changes on the
 beats inside the cut; a photo’s camera move; a video synced where it was
 filmed), and `flags` for the ones worth a look (`straddles_the_beat`,
-`off_the_beat`, `long_hold`, `repeated_stretch`). Plus a `summary` of the
+`off_the_beat`, `long_hold`, `repeated_stretch`, `only_weak_footage` — a
+video whose sync muvid can’t vouch for, shown because no other video covers that
+stretch, with what makes it weak and when). Plus a `summary` of the
 whole edit (fades vs cuts, the song’s pace and shape, the longest shot).
 
 Every clock time in a sentence is listed in `times` (`{label, s}`) so a screen
@@ -9269,7 +9353,7 @@ any cutting, so a strategy that leaves a gap fails loudly with the exact uncover
 
 \*\*A strategy sees `reliable` the way it already sees `overlaps`: as a preference\*\*
 (muvid#88). Every built-in ranks a vouched clip above an unvouched one for the same span
-via `_prefer_vouched()`, and falls back to an unvouched clip only where nothing else
+via [`muvid.footage.trust.prefer_trusted()`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.prefer_trusted), and falls back to an unvouched clip only where nothing else
 covers the span — so one badly-aligned clip in a shoot costs the spans only it covered,
 not the whole edit. The strategies still decide nothing about trust: they never drop a
 source, and the verdict they read (`FootageAlignment.reliable`) is
@@ -9399,6 +9483,143 @@ the alignment-only built-ins ignore it. See [`SelectionStrategy`](_autosummary/m
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
+
+
+# _autosummary/muvid.footage.trust.html.md
+
+# muvid.footage.trust
+
+The trust tiers selection ranks footage by — one ordered table (muvid#255).
+
+Selection prefers trusted footage before it looks at any metric: a clip the aligner
+does not vouch for (muvid#88), then a stretch the measured spans do not confirm
+(muvid#16 slice 2). Each tier is a **preference, not a filter** — where only footage of
+a lower tier covers a moment it is still chosen, and what happens to it is decided
+downstream and out loud ([`muvid.footage.edl.exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched),
+[`muvid.footage.edl.validate_edl()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)).
+
+Both strategy families read this table, so a third tier STEERS selection with one row:
+
+- the alignment-only built-ins ([`muvid.footage.strategy`](_autosummary/muvid.footage.strategy.html.md#module-muvid.footage.strategy)) keep, per elementary
+  interval, the covering clips of the best tier membership ([`prefer_trusted()`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.prefer_trusted)) and
+  cut the interval grid at every tier edge ([`tier_edges()`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.tier_edges));
+- `weighted` ([`muvid.footage.select_score`](_autosummary/muvid.footage.select_score.html.md#module-muvid.footage.select_score)) charges each tier’s `penalty` per
+  second on the composite it integrates.
+
+Steering is not the whole of a tier, and the table does not pretend it is: what is
+REPORTED about distrusted footage — [`muvid.footage.edl.exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched), the
+coverage report’s `only_weak_footage`, the reply `warnings` — still reads
+`reliable` and [`selection_unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches) by name, so a
+new row must be taught there too, or it steers silently. And a tier is a PREFERENCE the
+DP can pay its way past: a person’s “never use this stretch” is a filter, not a row here.
+
+**The tiers are ORDERED and the penalties must keep them so**: each penalty exceeds the
+sum of the ones below it plus the composite’s whole `[0, 1]` range, so the DP never
+takes a lower tier over a higher one on any metric (the #16 slice-2 review measured the
+failure with equal penalties); a test pins it over the table. The penalties are not config fields, so a caller passing `config=` cannot
+tune the preference away.
+
+Stdlib only: the alignment-only strategies keep `import muvid.footage` numpy-free.
+
+### Module Attributes
+
+| [`EVERYWHERE`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.EVERYWHERE)      | a tier that holds for a clip everywhere.                                                                                                         |
+|------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`COMPOSITE_RANGE`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.COMPOSITE_RANGE) | The composite's range (`select_score._composite` normalises every metric to `[0, 1]` and weights sum to 1), which every penalty gap must exceed. |
+| [`UNVOUCHED`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.UNVOUCHED)       | the aligner does not vouch for the clip's offset at all (muvid#88).                                                                              |
+| [`UNVERIFIED`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.UNVERIFIED)      | its measured spans do not confirm the placement there (muvid#16 slice 2).                                                                        |
+| [`TRUST_TIERS`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.TRUST_TIERS)     | the order IS the preference.                                                                                                                     |
+
+### Functions
+
+| [`membership`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.membership)(a, mid[, tiers])            | Which tiers clip `a` is in at song time `mid`, highest first.                                                                                                                                     |
+|-----------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`prefer_trusted`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.prefer_trusted)(covering, mid[, tiers]) | Rank trust ahead of everything else, for ONE elementary interval: the covering clips of the best tier membership at `mid`, lexicographically — clear of the highest tier first, then of the next. |
+| [`tier_edges`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.tier_edges)(alignments[, tiers])        | Every finite edge of every tier interval, sorted — where a preference can change.                                                                                                                 |
+
+### Classes
+
+| [`TrustTier`](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.TrustTier)(name, intervals, penalty)   | One row: `intervals(a)` is where on the SONG timeline clip `a` is in this (distrusted) tier; `penalty` is the `weighted` charge per second there.   |
+|----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+
+### muvid.footage.trust.COMPOSITE_RANGE *= 1.0*
+
+The composite’s range (`select_score._composite` normalises every metric to
+`[0, 1]` and weights sum to 1), which every penalty gap must exceed.
+
+### muvid.footage.trust.EVERYWHERE *= (-inf, inf)*
+
+a tier that holds for a clip everywhere.
+
+* **Type:**
+  The whole song timeline
+
+### muvid.footage.trust.TRUST_TIERS *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[TrustTier](_autosummary/muvid.footage.trust.html.md#muvid.footage.trust.TrustTier), ...]* *= (TrustTier(name='unvouched', intervals=<function \_unvouched>, penalty=3.0), TrustTier(name='unverified', intervals=<function selection_unverified_stretches>, penalty=1.5))*
+
+the order IS the preference.
+
+* **Type:**
+  Highest tier first
+
+### *class* muvid.footage.trust.TrustTier(name, intervals, penalty)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One row: `intervals(a)` is where on the SONG timeline clip `a` is in this
+(distrusted) tier; `penalty` is the `weighted` charge per second there.
+
+### muvid.footage.trust.UNVERIFIED *= TrustTier(name='unverified', intervals=<function selection_unverified_stretches>, penalty=1.5)*
+
+its measured spans do not confirm the placement there (muvid#16 slice
+2). `unvouched` was raised from 2.0 to 3.0 to make room for it below.
+
+* **Type:**
+  `unverified`
+
+### muvid.footage.trust.UNVOUCHED *= TrustTier(name='unvouched', intervals=<function \_unvouched>, penalty=3.0)*
+
+the aligner does not vouch for the clip’s offset at all (muvid#88).
+
+* **Type:**
+  `unvouched`
+
+### muvid.footage.trust.membership(a, mid, tiers=(TrustTier(name='unvouched', intervals=<function \_unvouched>, penalty=3.0), TrustTier(name='unverified', intervals=<function selection_unverified_stretches>, penalty=1.5)))
+
+Which tiers clip `a` is in at song time `mid`, highest first.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`bool`](https://docs.python.org/3/builtins/functions.html#bool), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]
+
+### muvid.footage.trust.prefer_trusted(covering, mid, tiers=(TrustTier(name='unvouched', intervals=<function \_unvouched>, penalty=3.0), TrustTier(name='unverified', intervals=<function selection_unverified_stretches>, penalty=1.5)))
+
+Rank trust ahead of everything else, for ONE elementary interval: the covering
+clips of the best tier membership at `mid`, lexicographically — clear of the
+highest tier first, then of the next. A clip with no measurement is in no tier (no
+measurement is not evidence against it).
+
+Trust is a **preference, not a filter**, and the distinction is the whole point.
+Where a vouched clip covers the span, the unvouched ones are not considered — a
+clip nobody vouches for should never win a span some other clip could have had, on
+any metric. Where only distrusted footage covers, it is still returned, because a
+strategy PROPOSES: dropping the only footage for a span here would put a second
+trust check next to [`validate_edl()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl) and remove a source
+from the edit on the strength of a measurement — the two things `overlaps=False`
+is carefully written not to do. What happens to that forced span is decided
+downstream and out loud ([`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)).
+
+Applied per elementary interval rather than to the alignment set, so a clip that is
+the only cover for one span and one of several for the next is preferred away from
+the second without losing the first. Order is kept.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)]
+
+### muvid.footage.trust.tier_edges(alignments, tiers=(TrustTier(name='unvouched', intervals=<function \_unvouched>, penalty=3.0), TrustTier(name='unverified', intervals=<function selection_unverified_stretches>, penalty=1.5)))
+
+Every finite edge of every tier interval, sorted — where a preference can change.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
 
 # _autosummary/muvid.footage.workspace.html.md
@@ -14116,7 +14337,9 @@ how the picture changes (a hard cut, or a fade and where that fade really
 starts), what picture it shows and why that stretch (its picture changes on the
 beats inside the cut; a photo’s camera move; a video synced where it was
 filmed), and `flags` for the ones worth a look (`straddles_the_beat`,
-`off_the_beat`, `long_hold`, `repeated_stretch`). Plus a `summary` of the
+`off_the_beat`, `long_hold`, `repeated_stretch`, `only_weak_footage` — a
+video whose sync muvid can’t vouch for, shown because no other video covers that
+stretch, with what makes it weak and when). Plus a `summary` of the
 whole edit (fades vs cuts, the song’s pace and shape, the longest shot).
 
 Every clock time in a sentence is listed in `times` (`{label, s}`) so a screen
@@ -19671,7 +19894,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-01 18:46 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/36503b20b6c0c3f65474d129bf92504f4ee4c2ca"><code>36503b2</code></a> on branch <code>main</code>, for **muvid 0.0.145** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-01 19:29 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/4e0e3dd938b4602003b71bc06446d69f57a0c6f1"><code>4e0e3dd</code></a> on branch <code>main</code>, for **muvid 0.0.146** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19680,9 +19903,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/36503b20b6c0c3f65474d129bf92504f4ee4c2ca"><code>36503b20b6c0c3f65474d129bf92504f4ee4c2ca</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/4e0e3dd938b4602003b71bc06446d69f57a0c6f1"><code>4e0e3dd938b4602003b71bc06446d69f57a0c6f1</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.145</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.146</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19691,9 +19914,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41337325206">41337325206</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41339312103">41339312103</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>68fca558c819bfed54157f2ef86ec07acaa56a3c</code> (in the history of the built commit) |
+| Event commit | <code>95a702602c58350f8da7ffa5e139505a9e0c633c</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19718,13 +19941,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.145/">0.0.145</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.146/">0.0.146</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 36503b20b6c0c3f65474d129bf92504f4ee4c2ca
+git checkout 4e0e3dd938b4602003b71bc06446d69f57a0c6f1
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

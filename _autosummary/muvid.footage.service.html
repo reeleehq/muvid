@@ -335,7 +335,7 @@ trust refusal belongs where the encode does, in <a class="reference internal" hr
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.edl_json" title="muvid.footage.service.edl_json"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edl_json</span></code></a>(e)</p></td>
 <td><p>One EDL entry as JSON — full precision (it must feed back verbatim), gaps as null.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.coverage_report" title="muvid.footage.service.coverage_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coverage_report</span></code></a>(entries, aligns, song_dur, *)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.coverage_report" title="muvid.footage.service.coverage_report"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coverage_report</span></code></a>(entries, aligns, song_dur, ...)</p></td>
 <td><p>What the song's timeline looks like under <code class="docutils literal notranslate"><span class="pre">entries</span></code> — covered, weak, MISSING.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.exclusion_note" title="muvid.footage.service.exclusion_note"><code class="xref py py-obj docutils literal notranslate"><span class="pre">exclusion_note</span></code></a>(x)</p></td>
@@ -658,13 +658,20 @@ offset are dropped.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.service.coverage_report">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">coverage_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entries</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">song_dur</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">excluded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">span</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#coverage_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.coverage_report" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.coverage_report'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">coverage_report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">entries</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aligns</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">song_dur</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">roles</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">excluded</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">span</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#coverage_report"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.coverage_report" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.coverage_report'">¶</a></dt>
 <dd><p>What the song’s timeline looks like under <code class="docutils literal notranslate"><span class="pre">entries</span></code> — covered, weak, MISSING.</p>
 <p>Pass only FOOTAGE entries: a gap renders fill, and filled is not covered. Uncovered
 audio is named with explicit start/end times; a span whose only footage is weakly
 aligned is listed with the numbers that make it weak; <code class="docutils literal notranslate"><span class="pre">excluded</span></code> (muvid#88) names
 spans the auto path gave up because only an unvouched clip covered them.
-<code class="docutils literal notranslate"><span class="pre">span</span></code> (a trimmed edit’s <code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">end)</span></code>) bounds what counts as uncovered.</p>
+<code class="docutils literal notranslate"><span class="pre">span</span></code> (a trimmed edit’s <code class="docutils literal notranslate"><span class="pre">(start,</span> <span class="pre">end)</span></code>) bounds what counts as uncovered.
+<code class="docutils literal notranslate"><span class="pre">weak_segments</span></code> is trust alone: every synced cut whose clip the aligner does not
+vouch for, whether or not another clip could have covered it. <code class="docutils literal notranslate"><span class="pre">only_weak_footage</span></code>
+(muvid#20 clause b) is the narrower list that DOES check: the stretches a synced
+cut shows footage whose sync nobody can vouch for there (unvouched, or not confirmed
+by its spans) because no other synced clip — <code class="docutils literal notranslate"><span class="pre">roles</span></code> is <code class="xref py py-func docutils literal notranslate"><span class="pre">footage_roles()</span></code>,
+required so no caller forgets which clips are cut to the music — covers them in
+trustworthy sync; with why, and the number that failed.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -775,7 +782,9 @@ how the picture changes (a hard cut, or a fade and where that fade really
 starts), what picture it shows and why that stretch (its picture changes on the
 beats inside the cut; a photo’s camera move; a video synced where it was
 filmed), and <code class="docutils literal notranslate"><span class="pre">flags</span></code> for the ones worth a look (<code class="docutils literal notranslate"><span class="pre">straddles_the_beat</span></code>,
-<code class="docutils literal notranslate"><span class="pre">off_the_beat</span></code>, <code class="docutils literal notranslate"><span class="pre">long_hold</span></code>, <code class="docutils literal notranslate"><span class="pre">repeated_stretch</span></code>). Plus a <code class="docutils literal notranslate"><span class="pre">summary</span></code> of the
+<code class="docutils literal notranslate"><span class="pre">off_the_beat</span></code>, <code class="docutils literal notranslate"><span class="pre">long_hold</span></code>, <code class="docutils literal notranslate"><span class="pre">repeated_stretch</span></code>, <code class="docutils literal notranslate"><span class="pre">only_weak_footage</span></code> — a
+video whose sync muvid can’t vouch for, shown because no other video covers that
+stretch, with what makes it weak and when). Plus a <code class="docutils literal notranslate"><span class="pre">summary</span></code> of the
 whole edit (fades vs cuts, the song’s pace and shape, the longest shot).</p>
 <p>Every clock time in a sentence is listed in <code class="docutils literal notranslate"><span class="pre">times</span></code> (<code class="docutils literal notranslate"><span class="pre">{label,</span> <span class="pre">s}</span></code>) so a screen
 can link it to the player. <code class="docutils literal notranslate"><span class="pre">start_s</span></code>/<code class="docutils literal notranslate"><span class="pre">end_s</span></code> keep only the cuts overlapping
@@ -1570,7 +1579,7 @@ a candidate.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=b06a6486"></script>
+<script src="../_static/documentation_options.js?v=8792eeec"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

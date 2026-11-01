@@ -12,7 +12,9 @@ Each cut gets a few sentences in a fixed order — *where and on what* → \*how
 changes\* → *what picture and why that stretch* → *what is worth a look* — plus the
 facts behind them (song times, the beat it lands on, the fade’s real start) and
 `flags` for the ones worth a look: `straddles_the_beat`, `off_the_beat`,
-`long_hold`, `repeated_stretch`. Every clock time in a sentence is also listed in
+`long_hold`, `repeated_stretch`, `only_weak_footage` (a synced video whose sync
+nobody can vouch for, shown because no other video covers that stretch in trustworthy
+sync — the TRUST half of muvid#20’s clause b; [`muvid.footage.edl.only_weak_footage()`](muvid.footage.edl.html.md#muvid.footage.edl.only_weak_footage)). Every clock time in a sentence is also listed in
 `times` with its second, so a screen can turn it into a link that seeks the player.
 
 Plain nouns only (beat, bar, fade, picture, photo, clip); clock times, never floats.
@@ -33,7 +35,7 @@ them (`service.explain_edit`).
 |-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------|
 | [`clock`](#muvid.footage.explain.clock)(t)                                             | `72.41` -> `"1:12.4"` — how a time is said.                    |
 
-### muvid.footage.explain.FLAG_WORDS *= {'long_hold': 'long hold', 'off_the_beat': 'not on a beat', 'repeated_stretch': 'shown before', 'straddles_the_beat': 'starts before the beat'}*
+### muvid.footage.explain.FLAG_WORDS *= {'long_hold': 'long hold', 'off_the_beat': 'not on a beat', 'only_weak_footage': 'only weak footage here', 'repeated_stretch': 'shown before', 'straddles_the_beat': 'starts before the beat'}*
 
 What each flag says, for a chip.
 

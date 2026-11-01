@@ -1,0 +1,30 @@
+muvid.footage.trust
+===================
+
+.. automodule:: muvid.footage.trust
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      EVERYWHERE
+      COMPOSITE_RANGE
+      UNVOUCHED
+      UNVERIFIED
+      TRUST_TIERS
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      membership
+      prefer_trusted
+      tier_edges
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      TrustTier
+   

@@ -26,6 +26,8 @@ muvid.footage.edl
       SPAN_OFFSET_TOLERANCE_S
       SPAN_EDGE_ACCURACY_S
       SELECTION_MIN_UNVERIFIED_S
+      UNVOUCHED_STRETCH
+      UNVERIFIED_STRETCH
       SLIP_MAX_S
       RATE_MAX_DEV
       EDGE_S
@@ -51,15 +53,18 @@ muvid.footage.edl
       longest_span
       look_may_resize
       looks_effects_offered
+      only_weak_footage
       placed_as
       selection_unverified_stretches
       still_in_point
+      trusted_cover
       unplaced
       unverified_in_cut
       unverified_song_stretches
       unverified_stretches
       validate_edl
       vouches_for
+      weak_stretches
       with_start
    
    .. rubric:: Classes
@@ -73,6 +78,7 @@ muvid.footage.edl
       FootageAlignment
       MeasuredSpan
       Transition
+      WeakStretch
    
    .. rubric:: Exceptions
 
