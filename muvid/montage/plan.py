@@ -502,7 +502,9 @@ def cut_times(
         cuts = cuts[1:]
     if cuts and end - cuts[-1] < FOLD_FRACTION * interval_s:
         cuts = cuts[:-1]
-    bounds = _split_long([start] + [round(c, 6) for c in cuts] + [end], beats, MAX_HOLD_S)
+    bounds = _split_long(
+        [start] + [round(c, 6) for c in cuts] + [end], beats, MAX_HOLD_S
+    )
     if on == "accents" and beats_per_cut >= 1 and len(analysis.cut_rank) == len(beats):
         # after the split, so every cut (a split one too) is snapped and no snap can
         # make a hold the split would have to break again — the count is the grid's
@@ -592,7 +594,8 @@ def _undo_long_holds(grid, snapped, *, lo: float, hi: float) -> list[float]:
             prev = out[i - 1] if i else lo
             nxt = out[i + 1] if i + 1 < len(out) else hi
             too_long = any(
-                h[span] > max(MAX_HOLD_S, grid_holds[span]) + 1e-9 for span in (i, i + 1)
+                h[span] > max(MAX_HOLD_S, grid_holds[span]) + 1e-9
+                for span in (i, i + 1)
             )
             if too_long or not prev < out[i] < nxt:  # a hold to split, or out of order
                 out[i], changed = grid[i], True
@@ -757,7 +760,9 @@ def grid(
         beat_s=a.beat_s,
     )
     drafts = []
-    for k, (s, e) in enumerate(_spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))):
+    for k, (s, e) in enumerate(
+        _spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))
+    ):
         fresh = (
             tuple(range(GRID_REGIONS))
             if k == 0
