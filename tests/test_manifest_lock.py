@@ -101,8 +101,10 @@ def test_a_hash_measured_against_a_replaced_clip_is_not_recorded(fp, tmp_path):
     a.write_bytes(b"x")
     b.write_bytes(b"y")
     fp.add_clip("A", str(a), ext=".mp4")
+    old = fp.root / "clips" / "A.mp4"
+    measured = (old, W.file_identity(old))
     fp.add_clip("A", str(b), ext=".mov")  # now clips/A.mov
-    service._set_clip_field(fp, "A", "hash", "stale", file="A.mp4")
+    service._set_clip_field(fp, "A", "hash", "stale", measured=measured)
     assert "hash" not in fp.manifest()["clips"][0]
 
 
@@ -124,46 +126,62 @@ def test_file_lock_refuses_a_name_that_is_not_a_lock_file(tmp_path):
             pass
 
 
-def test_a_lazy_hash_never_overwrites_an_uploads_own(fp, tmp_path):
-    """The re-upload race of the #254 review: a lazy recorder hashed the OLD A.mp4,
-    the clip was re-uploaded as A.mp4 (same name) and recorded its own hash; the late
-    lazy write must not replace it — that hash keys filmstrips and beat signals."""
+@pytest.mark.parametrize("ext, kind", [(".mp4", ""), (".jpg", "still")])
+def test_a_measurement_of_the_old_file_never_lands_on_a_same_name_reupload(
+    fp, tmp_path, ext, kind
+):
+    """The #254 review's race: a recorder measured the OLD A.<ext>, the clip was
+    removed and re-added under the SAME name, and the late record must not land on
+    the new row. A photo records no hash of its own after an upload, so absence
+    alone would have let the old photo's hash stand for good."""
+    one, two = tmp_path / f"one{ext}", tmp_path / f"two{ext}"
+    one.write_bytes(b"one")
+    two.write_bytes(b"two!")
+    fp.add_clip("A", str(one), ext=ext, kind=kind)
+    path = fp.root / "clips" / f"A{ext}"
+    measured = (path, W.file_identity(path))  # taken before measuring
+    fp.remove_clip("A")
+    fp.add_clip("A", str(two), ext=ext, kind=kind)  # same name, new file
+    service._set_clip_field(fp, "A", "hash", "the old file's", measured=measured)
+    service._set_clip_field(fp, "A", "duration", 1.0, measured=measured)
+    row = fp.manifest()["clips"][0]
+    assert "hash" not in row and "duration" not in row
+
+
+def test_a_measurement_of_the_current_file_is_recorded(fp, tmp_path):
+    from muvid.catalog import hash_file
     from muvid.footage.media_views import _clip_hash
 
     a = tmp_path / "a.mp4"
     a.write_bytes(b"new")
     fp.add_clip("A", str(a), ext=".mp4")
-    service._set_clip_field(fp, "A", "hash", "upload's", file="A.mp4")  # add path
-    service._set_clip_field(fp, "A", "hash", "stale", file="A.mp4", only_if_absent=True)
-    assert fp.manifest()["clips"][0]["hash"] == "upload's"
-    assert _clip_hash(fp, "A", fp.root / "clips" / "A.mp4") == "upload's"
-    service._record_clip_duration(fp, "A", 9.0)
-    service._record_clip_duration(fp, "A", 1.0, lazy=True)
-    assert fp.manifest()["clips"][0]["duration"] == 9.0
+    path = fp.root / "clips" / "A.mp4"
+    assert _clip_hash(fp, "A", path) == hash_file(path)
+    assert fp.manifest()["clips"][0]["hash"] == hash_file(path)
 
 
-def test_a_lazy_song_hash_never_overwrites_set_songs(fp, tmp_path, monkeypatch):
-    song = tmp_path / "s.mp3"
-    song.write_bytes(b"one")
-    fp.set_song(str(song), ext=".mp3")
-    recorded = fp.manifest()["song_hash"]
-
-    def stale(_path):  # the old song, hashed while set_song recorded the new one
-        return "stale"
-
-    monkeypatch.setattr(W, "_hash_file", stale)
+def test_a_song_hash_of_a_replaced_song_is_not_recorded(fp, tmp_path, monkeypatch):
+    """song_hash() hashes outside the lock; a set_song landing meanwhile replaces
+    song/song.mp3 under the same name, and the old file's hash must not be recorded."""
+    one, two = tmp_path / "one.mp3", tmp_path / "two.mp3"
+    one.write_bytes(b"one")
+    two.write_bytes(b"two!")
+    fp.set_song(str(one), ext=".mp3")
     m = fp.manifest()
     m.pop("song_hash")
     fp._write_manifest(m)
-    real_update = type(fp).update_manifest
+    real_hash = W._hash_file
 
-    def racing(self, change):  # set_song lands between the hash and the record
-        real_update(self, lambda m: m.update(song_hash=recorded))
-        return real_update(self, change)
+    def hash_then_replace(path):
+        digest = real_hash(path)
+        monkeypatch.setattr(W, "_hash_file", real_hash)  # set_song hashes too
+        fp.set_song(str(two), ext=".mp3")  # lands while the old one was being hashed
+        return digest
 
-    monkeypatch.setattr(type(fp), "update_manifest", racing)
+    monkeypatch.setattr(W, "_hash_file", hash_then_replace)
     fp.song_hash()
-    assert fp.manifest()["song_hash"] == recorded
+    monkeypatch.setattr(W, "_hash_file", real_hash)
+    assert fp.manifest()["song_hash"] == real_hash(fp.song_path())
 
 
 def test_a_no_op_change_writes_nothing(fp):
@@ -177,20 +195,23 @@ def test_a_no_op_change_writes_nothing(fp):
     assert path.stat().st_mtime_ns == stamp
 
 
-def test_a_manifest_that_cannot_be_read_is_not_written_back_as_defaults(fp, monkeypatch):
-    fp._write_manifest({**fp.manifest(), "clips": [{"clip_id": "A", "file": "A.mp4"}]})
-    real = type(fp._manifest_path()).read_text
-
-    def flaky(self, *a, **k):
-        if self.name == "manifest.json":
-            raise OSError(24, "Too many open files")
-        return real(self, *a, **k)
-
-    monkeypatch.setattr(type(fp._manifest_path()), "read_text", flaky)
+def test_a_manifest_that_cannot_be_read_is_not_written_back_as_defaults(fp):
+    """``manifest()`` reads an unreadable manifest as the DEFAULTS; under the lock that
+    would be written back as "defaults plus this change", dropping every clip. A real
+    read failure (here: the path is a directory) must raise and write nothing."""
+    path = fp._manifest_path()
+    path.unlink()
+    path.mkdir()
     with pytest.raises(OSError):
         fp.update_manifest(lambda m: m.update(a=1))
-    monkeypatch.undo()
-    assert fp.manifest()["clips"] == [{"clip_id": "A", "file": "A.mp4"}]
+    assert path.is_dir()  # nothing was written over it
+
+
+def test_a_corrupt_manifest_is_a_clean_refusal(fp):
+    fp._manifest_path().write_text("{not json")
+    with pytest.raises(service.FootageError, match="not valid JSON"):
+        fp.update_manifest(lambda m: m.update(a=1))
+    assert fp._manifest_path().read_text() == "{not json"
 
 
 def test_an_unlockable_folder_warns(tmp_path, monkeypatch):

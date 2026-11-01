@@ -173,6 +173,18 @@ def fresh_output(dest):
         tmp.unlink(missing_ok=True)
 
 
+def file_identity(path) -> "tuple[int, int, int] | None":
+    """``(inode, size, mtime_ns)`` of ``path``, or ``None`` when it is absent — what a
+    measurement recorded after the fact checks the file still is (muvid#254). Every
+    project write replaces a file (a new inode, :func:`replace_file`), so a re-upload
+    under the same name never shares an identity with the file it replaced."""
+    try:
+        st = os.stat(path)
+    except FileNotFoundError:
+        return None
+    return st.st_ino, st.st_size, st.st_mtime_ns
+
+
 #: The suffix every muvid lock file carries — ``dol``'s sidecar for the file it protects.
 LOCK_SUFFIX = ".lock"
 
@@ -275,7 +287,16 @@ class MusicVideoFootageProject:
         """
         with self.manifest_lock():
             path = self._manifest_path()
-            m = json.loads(path.read_text()) if path.exists() else self.manifest()
+            try:
+                m = json.loads(path.read_text()) if path.exists() else self.manifest()
+            except ValueError as e:  # a manifest torn before writes were atomic
+                from muvid.footage.errors import FootageError
+
+                raise FootageError(
+                    "this project's manifest.json is not valid JSON, so nothing can be "
+                    "recorded in it without losing what it held; restore it from a "
+                    "backup"
+                ) from e
             before = json.dumps(m, sort_keys=True)
             out = change(m)
             if json.dumps(m, sort_keys=True) != before:
@@ -385,11 +406,12 @@ class MusicVideoFootageProject:
         h = self.manifest().get("song_hash")
         if not h:
             path = self.song_path()
+            identity = file_identity(path)
             h = _hash_file(path)  # outside the lock: a 100 MB song takes a while
 
             def record(m):
-                # lazy: a set_song while this hashed records its own hash, and wins
-                if not m.get("song_hash") and m.get("song") == path.name:
+                # only if it is still the very file that was hashed (#254)
+                if m.get("song") == path.name and file_identity(path) == identity:
                     m["song_hash"] = h
 
             self.update_manifest(record)

@@ -227,12 +227,12 @@ def _clip_hash(fp, clip_id: str, path: Path) -> str:
     for c in fp.manifest().get("clips", []):
         if c.get("clip_id") == clip_id and c.get("hash") and c.get("file") == path.name:
             return c["hash"]
-    digest = hash_file(path)  # outside the manifest lock: a clip can be 400 MB
-
     from muvid.footage.service import _set_clip_field
+    from muvid.footage.workspace import file_identity
 
-    # lazy: a re-upload under the same name while this hashed records its own (#254)
-    _set_clip_field(fp, clip_id, "hash", digest, file=path.name, only_if_absent=True)
+    measured = (path, file_identity(path))  # before hashing: the record checks it
+    digest = hash_file(path)  # outside the manifest lock: a clip can be 400 MB
+    _set_clip_field(fp, clip_id, "hash", digest, measured=measured)
     return digest
 
 

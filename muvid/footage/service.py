@@ -4741,8 +4741,12 @@ def _clip_duration(fp, clip_id: str) -> float:
             return STILL_DURATION_S  # a photo can be held for any span
         if c.get("clip_id") == clip_id and c.get("duration") is not None:
             return float(c["duration"])
-    dur = _probe_duration(Path(fp.clip_paths()[clip_id]))
-    _record_clip_duration(fp, clip_id, dur, lazy=True)
+    from muvid.footage.workspace import file_identity
+
+    path = Path(fp.clip_paths()[clip_id])
+    measured = (path, file_identity(path))  # before measuring (#254)
+    dur = _probe_duration(path)
+    _set_clip_field(fp, clip_id, "duration", dur, measured=measured)
     return dur
 
 
@@ -4751,8 +4755,11 @@ def _record_clip_hash(fp, clip_id: str) -> None:
     (``beats/``) never re-hash a 400 MB file per request (``_recorded_clip_hash``)."""
     from muvid.catalog import hash_file
 
+    from muvid.footage.workspace import file_identity
+
     path = Path(fp.clip_paths()[clip_id])
-    _set_clip_field(fp, clip_id, "hash", hash_file(path), file=path.name)
+    measured = (path, file_identity(path))
+    _set_clip_field(fp, clip_id, "hash", hash_file(path), measured=measured)
 
 
 def _warm_activity(fp, clip_id: str) -> None:
@@ -4766,30 +4773,30 @@ def _warm_activity(fp, clip_id: str) -> None:
     )
 
 
-def _record_clip_duration(
-    fp, clip_id: str, duration_s: float, *, lazy: bool = False
-) -> None:
-    _set_clip_field(fp, clip_id, "duration", duration_s, only_if_absent=lazy)
+def _record_clip_duration(fp, clip_id: str, duration_s: float) -> None:
+    _set_clip_field(fp, clip_id, "duration", duration_s)
 
 
-def _set_clip_field(
-    fp, clip_id: str, key: str, value, *, file: str = "", only_if_absent: bool = False
-) -> None:
-    """Record a measurement of clip ``clip_id`` in the manifest, under its lock — the
-    measuring is done before, outside it (muvid#254). With ``file``, only while the
-    clip is still that file.
+def _set_clip_field(fp, clip_id: str, key: str, value, *, measured=None) -> None:
+    """Record ``value`` as clip ``clip_id``'s ``key`` in the manifest, under its lock —
+    whatever produced it ran before, outside the lock (muvid#254).
 
-    ``only_if_absent`` is for a LAZY recorder (a read that fills a missing field): the
-    clip may have been re-uploaded under the same name while it measured, and the
-    upload's own recording — which writes unconditionally, after it — must win. So a
-    lazy write never replaces a value, and an upload's always does."""
+    ``measured`` is ``(path, file_identity(path))`` taken BEFORE measuring the file:
+    the value is then recorded only if the clip still is that very file. A name is
+    not enough — a re-upload under the same id lands under the same name (``A.mp4``,
+    ``A.jpg``) — and absence is not enough either: a re-added photo records no hash
+    of its own, so a late write of the OLD one's would stand forever (#254 review)."""
+    from muvid.footage.workspace import file_identity
 
     def record(m):
         for c in m.get("clips", []):
-            if c.get("clip_id") != clip_id or (file and c.get("file") != file):
+            if c.get("clip_id") != clip_id:
                 continue
-            if not (only_if_absent and c.get(key) is not None):
-                c[key] = value
+            if measured is not None:
+                path, identity = measured
+                if c.get("file") != path.name or file_identity(path) != identity:
+                    continue  # the clip changed while it was measured
+            c[key] = value
 
     fp.update_manifest(record)
 
