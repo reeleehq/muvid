@@ -762,7 +762,8 @@ def _measured_song_analysis(fp, *, path=None, key=None):
 def _with_declared_grid(fp, analysis):
     """``analysis`` with a person's declared beats and bars in place of the estimate's
     (never persisted: clearing the grid must bring the estimate back). The per-bar
-    energies belonged to the estimator's bars, so they are dropped."""
+    energies and the per-beat cut rank belonged to the estimator's bars and beats, so
+    they are dropped."""
     from dataclasses import replace
 
     declared = declared_beat_grid(fp)
@@ -781,6 +782,7 @@ def _with_declared_grid(fp, analysis):
         beats_per_bar=declared["beats_per_bar"],
         beat_source=DECLARED,
         bar_energy_db=(),
+        cut_rank=(),  # ranked the estimator's beats, not these (muvid#275 review)
     )
 
 

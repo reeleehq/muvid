@@ -439,7 +439,12 @@ def _beats_per_cut(
 
 
 def cut_times(
-    section: Section, analysis: Analysis, beats_per_cut: float
+    section: Section,
+    analysis: Analysis,
+    beats_per_cut: float,
+    *,
+    on: str = "grid",
+    bar_line: bool = False,
 ) -> list[float]:
     """Slot boundaries inside ``section``: ``[start, cut, cut, ..., end]``.
 
@@ -449,6 +454,11 @@ def cut_times(
     A leading or trailing slot shorter than half the cut interval is folded into
     its neighbour — a half-beat pickup is not a slot — and a cut within
     :data:`MIN_SLOT_S` of a boundary is dropped.
+
+    ``on="accents"`` (muvid#275) keeps the same NUMBER of cuts but nudges each onto
+    the most accented beat near it (:func:`_snap_to_accents`; ``bar_line`` keeps
+    every cut on a downbeat, for an archetype whose contract is the bar); at one beat
+    per cut or faster, and on a song with no per-beat rank, it is the grid.
 
     >>> from muvid.montage.analysis import Analysis, Section
     >>> a = Analysis(duration=8.0, tempo_bpm=120.0,
@@ -492,8 +502,102 @@ def cut_times(
         cuts = cuts[1:]
     if cuts and end - cuts[-1] < FOLD_FRACTION * interval_s:
         cuts = cuts[:-1]
-    bounds = [start] + [round(c, 6) for c in cuts] + [end]
-    return _split_long(bounds, beats, MAX_HOLD_S)
+    bounds = _split_long([start] + [round(c, 6) for c in cuts] + [end], beats, MAX_HOLD_S)
+    if on == "accents" and beats_per_cut >= 1 and len(analysis.cut_rank) == len(beats):
+        # after the split, so every cut (a split one too) is snapped and no snap can
+        # make a hold the split would have to break again — the count is the grid's
+        interior = _snap_to_accents(
+            bounds[1:-1], analysis, step, lo=start, hi=end, bar_line=bar_line
+        )
+        bounds = [start] + interior + [end]
+    return bounds
+
+
+def _snap_to_accents(
+    cuts: Sequence[float],
+    analysis: Analysis,
+    step: int,
+    *,
+    lo: float,
+    hi: float,
+    bar_line: bool = False,
+) -> list[float]:
+    """Each grid cut moved to the most accented beat near it (``analysis.cut_rank``):
+    from ``(step - 1) // 2`` beats before it to ``step // 2`` after, so neighbouring
+    cuts' windows never meet — the cut COUNT is the grid's and no hold grows by more
+    than ``step - 1`` beats, by construction (muvid#275 review: a global pick bunched
+    cuts and grew holds 1.7x). A cut of two bars or more — or any cut, with
+    ``bar_line`` — snaps only to downbeats. A snap that would make a hold longer than
+    :data:`MAX_HOLD_S` where the grid's was not is undone, so ``_split_long`` never adds
+    a cut the grid did not have (the count stays the grid's at slow tempos too). Ties
+    keep the grid beat; a beat nearer a section end than the fold rule (:data:`FOLD_FRACTION`)
+    allows is not a candidate. Deterministic.
+
+    >>> from muvid.montage.analysis import Analysis
+    >>> a = Analysis(duration=4.0, tempo_bpm=120.0, beats=tuple(i * 0.5 for i in range(8)),
+    ...              downbeats=(0.0, 2.0), cut_rank=(0.1, 0.2, 0.3, 0.9, 0.3, 0.1, 0.2, 0.1))
+    >>> _snap_to_accents([1.0, 2.5], a, 3, lo=0.0, hi=4.0)  # 1.0 -> 1.5, 2.5 -> 2.0
+    [1.5, 2.0]
+    """
+    beats = analysis.beats
+    before, after = (step - 1) // 2, step // 2  # neighbouring windows are disjoint
+    fold = FOLD_FRACTION * step * analysis.beat_s
+
+    def edge(room: float) -> float:
+        # no closer to a section edge than the fold rule keeps a cut, unless the grid
+        # cut already was — a snap must not make the short end slot folding removes
+        return max(MIN_SLOT_S, min(fold, room) - 1e-9)
+
+    bpb = max(1, analysis.beats_per_bar)
+    downbeats_only = bar_line or (step >= 2 * bpb and step % bpb == 0)
+    downbeats = set(analysis.downbeats)
+    from bisect import bisect_left
+
+    out = []
+    for c in cuts:
+        k = bisect_left(beats, c - 1e-6)
+        if k >= len(beats) or abs(beats[k] - c) > 1e-6:  # not on a beat: leave it
+            out.append(c)
+            continue
+        window = [
+            j
+            for j in range(max(0, k - before), min(len(beats), k + after + 1))
+            if lo + edge(c - lo) < beats[j] < hi - edge(hi - c)
+            and (not downbeats_only or beats[j] in downbeats)
+        ]
+        best = min(window, key=lambda j: (-analysis.cut_rank[j], abs(j - k)), default=k)
+        out.append(round(beats[best], 6) if best != k else c)
+    return _undo_long_holds(list(cuts), out, lo=lo, hi=hi)
+
+
+def _undo_long_holds(grid, snapped, *, lo: float, hi: float) -> list[float]:
+    """``snapped`` with a cut put back on its grid beat wherever a hold beside it is
+    longer than :data:`MAX_HOLD_S` and longer than the grid's hold there — repeated
+    until none is, so the snap never hands :func:`_split_long` a hold to split that the
+    grid did not (or a longer one)."""
+    out = list(snapped)
+
+    def holds(cs):
+        b = [lo, *cs, hi]
+        return [y - x for x, y in zip(b, b[1:])]
+
+    grid_holds = holds(grid)
+    changed = True
+    while changed:
+        changed = False
+        h = holds(out)
+        for i in range(len(out)):
+            if out[i] == grid[i]:
+                continue
+            prev = out[i - 1] if i else lo
+            nxt = out[i + 1] if i + 1 < len(out) else hi
+            too_long = any(
+                h[span] > max(MAX_HOLD_S, grid_holds[span]) + 1e-9 for span in (i, i + 1)
+            )
+            if too_long or not prev < out[i] < nxt:  # a hold to split, or out of order
+                out[i], changed = grid[i], True
+                break
+    return out
 
 
 #: A leading/trailing slot shorter than this fraction of the cut interval is
@@ -602,7 +706,9 @@ def ballad_dissolve(
             transition="fade" if fade_s > 0 else "cut",
             transition_s=fade_s,
         )
-        for s, e in _spans(cut_times(section, a, bpc))
+        for s, e in _spans(
+            cut_times(section, a, bpc, on=ctx.direction.cut_on, bar_line=True)
+        )
     ]
 
 
@@ -629,7 +735,7 @@ def beat_cut(
             motions=("punch",) if punch > 0 else ("none",),
             amplitude=punch,
         )
-        for s, e in _spans(cut_times(section, a, bpc))
+        for s, e in _spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))
     ]
 
 
@@ -651,7 +757,7 @@ def grid(
         beat_s=a.beat_s,
     )
     drafts = []
-    for k, (s, e) in enumerate(_spans(cut_times(section, a, bpc))):
+    for k, (s, e) in enumerate(_spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))):
         fresh = (
             tuple(range(GRID_REGIONS))
             if k == 0
@@ -693,7 +799,7 @@ def stop_motion(
             archetype="stop_motion",
             motions=("none",),
         )
-        for s, e in _spans(cut_times(section, a, bpc))
+        for s, e in _spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))
     ]
 
 
@@ -1107,6 +1213,13 @@ def plan_montage(
         drafts += fn(section, ctx, dict(scene.params))
     if uncovered:
         notes.append(f"sections with no scene fell back to the first: {uncovered}")
+    if treatment.direction.cut_on == "accents" and len(analysis.cut_rank) != len(
+        analysis.beats
+    ):
+        notes.append(
+            "cut_on 'accents' fell back to the grid: this song's analysis has no "
+            "per-beat accent rank (analyse it again to measure one)"
+        )
     drafts = _merge_tiny(drafts)
     if not drafts:
         raise ValueError("the plan has no slots — is the song empty?")

@@ -143,6 +143,15 @@ CUT_FEEL_FACTORS: dict[str, float] = {
     "frantic": 0.25,
 }
 
+#: WHICH beats the cuts land on, at the density the archetype and cut feel chose
+#: (muvid#275). ``accents`` moves each grid cut to the most accented beat near it
+#: (``Analysis.cut_rank``, onset strength per beat; a bar-level cut stays on a
+#: downbeat) and falls back to ``grid``, with a plan note, on a song without a rank.
+CUT_ONS: dict[str, str] = {
+    "grid": "Every n-th beat of the measured grid, anchored on the bar.",
+    "accents": "Each cut nudged onto the most accented beat near it; same count and pace.",
+}
+
 #: A colour grade applied to every frame. Closed because the grade is
 #: EXECUTABLE ffmpeg; the palette's accent parameterises it, never a filter string.
 GRADES: dict[str, str] = {
@@ -286,6 +295,7 @@ class Direction:
     mood: str = ""
     palette: Palette = field(default_factory=Palette)
     cut_feel: str = "steady"
+    cut_on: str = "grid"
     grade: str = "none"
     reuse: Reuse = field(default_factory=Reuse)
     rationale: str = ""
@@ -354,6 +364,7 @@ class TreatmentSpec:
             rationale=_text(direction.get("rationale")),
             palette=_build(Palette, _mapping(direction.get("palette"))),
             cut_feel=_text(direction.get("cut_feel"), "steady"),
+            cut_on=_text(direction.get("cut_on"), "grid"),
             grade=_text(direction.get("grade"), "none"),
             reuse=_build(Reuse, _mapping(direction.get("reuse"))),
         )
@@ -427,6 +438,8 @@ def validate(spec: TreatmentSpec) -> list[str]:
         errs.append(
             f"direction.cut_feel {d.cut_feel!r} is not one of {_enum(CUT_FEELS)}"
         )
+    if d.cut_on not in CUT_ONS:
+        errs.append(f"direction.cut_on {d.cut_on!r} is not one of {_enum(CUT_ONS)}")
     if d.grade not in GRADES:
         errs.append(f"direction.grade {d.grade!r} is not one of {_enum(GRADES)}")
     if d.reuse.min_gap < 0:
@@ -504,6 +517,7 @@ def repair(spec: TreatmentSpec) -> tuple[TreatmentSpec, list[str]]:
         d,
         palette=palette,
         cut_feel=pick(d.cut_feel, CUT_FEELS, "steady", "direction.cut_feel"),
+        cut_on=pick(d.cut_on, CUT_ONS, "grid", "direction.cut_on"),
         grade=pick(d.grade, GRADES, "none", "direction.grade"),
         reuse=reuse,
     )
@@ -626,6 +640,13 @@ def json_schema() -> dict[str, Any]:
                             f"{k}: {v}" for k, v in CUT_FEELS.items()
                         ),
                     },
+                    "cut_on": {
+                        "type": "string",
+                        "enum": _enum(CUT_ONS),
+                        "description": "; ".join(
+                            f"{k}: {v}" for k, v in CUT_ONS.items()
+                        ),
+                    },
                     "grade": {
                         "type": "string",
                         "enum": _enum(GRADES),
@@ -687,6 +708,7 @@ def vocabulary() -> dict[str, dict[str, Any]]:
         "archetypes": dict(ARCHETYPES),
         "archetype_params": {a: dict(t) for a, t in ARCHETYPE_PARAMS.items()},
         "cut_feels": dict(CUT_FEELS),
+        "cut_ons": dict(CUT_ONS),
         "grades": dict(GRADES),
         "motions": dict(MOTIONS),
         "transitions": dict(TRANSITIONS),

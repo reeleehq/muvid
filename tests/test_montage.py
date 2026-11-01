@@ -731,3 +731,105 @@ def test_the_cli_renders_and_plans(fixtures, tmp_path):
         capture_output=True, text=True, timeout=60,
     )
     assert proc.returncode == 0 and json.loads(proc.stdout)["valid"] is False
+
+
+# --------------------------------------------------------------------------
+# muvid#275: cut on the song's accents, at the same density
+# --------------------------------------------------------------------------
+
+
+from muvid.montage.plan import cut_times  # noqa: E402
+
+
+def _accented(duration: float = 32.0) -> Analysis:
+    """A verse whose strongest beats are the off-beat '3's of each bar, not the bar line."""
+    from dataclasses import replace
+
+    a = _analysis(duration)
+    rank = tuple(1.0 if i % 4 == 2 else 0.1 for i in range(len(a.beats)))
+    return replace(a, cut_rank=rank)
+
+
+def test_accents_keep_the_grids_number_of_cuts_but_move_them_onto_the_strong_beats():
+    a = _accented()
+    section = a.sections[0]
+    grid_cuts = cut_times(section, a, 3)  # beat-level: off-bar beats are candidates
+    accent_cuts = cut_times(section, a, 3, on="accents")
+    assert len(accent_cuts) == len(grid_cuts)
+    moved = [c for c, g in zip(accent_cuts, grid_cuts) if c != g]
+    assert moved and all(a.cut_rank[a.beats.index(c)] == 1.0 for c in moved)
+
+
+def test_accents_hold_the_grids_count_and_pace_on_any_rank():
+    """The review's property: over random (non-periodic) ranks, the cut count and the
+    longest hold are the grid's — a snap within half an interval cannot bunch cuts."""
+    import random
+    from dataclasses import replace
+
+    rng = random.Random(275)
+    for bpm, bpb in ((120.0, 4), (60.0, 4), (88.5, 3), (180.0, 6)):
+      beat = 60.0 / bpm
+      beats = tuple(round(i * beat, 6) for i in range(int(64 / beat)))
+      base = Analysis(duration=64.0, tempo_bpm=bpm, beats=beats, downbeats=beats[::bpb],
+                      beats_per_bar=bpb, sections=(), beat_source="t", section_source="t")
+      for step in (2, 3, 4, 6, 8, 12, 16):  # slow tempos x big steps reach _split_long
+        for _ in range(25):
+            a = replace(base, cut_rank=tuple(rng.random() for _ in base.beats))
+            sec = Section(label="verse", start=rng.uniform(0, 2), end=rng.uniform(30, 64))
+            g, c = cut_times(sec, a, step), cut_times(sec, a, step, on="accents")
+            assert len(c) == len(g), (bpm, step)
+            holds = lambda b: [y - x for x, y in zip(b, b[1:])]  # noqa: E731
+            assert max(holds(c)) <= max(holds(g)) + (step - 1) * a.beat_s + 1e-5  # bounds round to 1 us
+            assert all(y > x for x, y in zip(c, c[1:]))
+
+
+def test_ballad_dissolve_keeps_every_cut_on_a_downbeat():
+    import random
+    from dataclasses import replace
+
+    rng = random.Random(3)
+    a = _analysis(128.0)
+    a = replace(a, cut_rank=tuple(rng.random() for _ in a.beats))
+    for feel in ("driving", "frantic", "steady"):
+        plan = plan_montage(a, _pool(12), S.one_scene("ballad_dissolve", cut_on="accents", cut_feel=feel))
+        starts = [s.start for s in plan.slots][1:]
+        sec_starts = {x.start for x in a.sections}
+        assert all(t in a.downbeats or t in sec_starts for t in starts), feel
+
+
+def test_a_bar_level_cut_stays_on_the_bar_line():
+    a = _accented()
+    import random
+    from dataclasses import replace
+
+    rng = random.Random(8)
+    a = replace(a, cut_rank=tuple(rng.random() for _ in a.beats))
+    cuts = cut_times(a.sections[0], a, 8, on="accents")  # two bars per cut
+    assert all(c in a.downbeats for c in cuts[1:-1])
+
+
+def test_accents_fall_back_to_the_grid_without_a_rank_and_below_one_beat():
+    a = _analysis(32.0)  # no cut_rank measured
+    section = a.sections[0]
+    assert cut_times(section, a, 4, on="accents") == cut_times(section, a, 4)
+    b = _accented()
+    assert cut_times(b.sections[0], b, 0.5, on="accents") == cut_times(b.sections[0], b, 0.5)
+    plan = plan_montage(_analysis(128.0), _pool(12), S.one_scene("beat_cut", cut_on="accents"))
+    assert any("fell back to the grid" in n for n in plan.notes)  # said, not silent
+
+
+def test_cut_on_is_a_closed_vocabulary_the_plan_reads():
+    assert set(S.vocabulary()["cut_ons"]) == {"grid", "accents"}
+    spec, notes = S.coerce({"direction": {"cut_on": "loudest"}, "scenes": [{}]})
+    assert spec.direction.cut_on == "grid" and any("cut_on" in n for n in notes)
+    from dataclasses import replace
+    import random
+
+    rng = random.Random(1)
+    a = _analysis(128.0)
+    a = replace(a, cut_rank=tuple(rng.random() for _ in a.beats))
+    grid = plan_montage(a, _pool(12), S.one_scene("beat_cut", cut_feel="slow"))
+    accents = plan_montage(a, _pool(12), S.one_scene("beat_cut", cut_feel="slow", cut_on="accents"))
+    assert len(grid.slots) == len(accents.slots)
+    assert [s.start for s in grid.slots] != [s.start for s in accents.slots]
+    assert accents.treatment["direction"]["cut_on"] == "accents"
