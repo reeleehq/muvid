@@ -57,6 +57,7 @@ import re
 import shutil
 import tempfile
 import time
+import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -176,6 +177,7 @@ def fresh_output(dest):
 LOCK_SUFFIX = ".lock"
 
 
+@contextmanager
 def file_lock(path):
     """An exclusive advisory lock on the lock file ``path`` (which must end in
     :data:`LOCK_SUFFIX`) for a read-modify-write. Serialises concurrent edits of one
@@ -196,7 +198,14 @@ def file_lock(path):
     if not text.endswith(LOCK_SUFFIX):
         raise ValueError(f"a lock file's name ends in {LOCK_SUFFIX!r}, got {path.name!r}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    return _file_lock(text[: -len(LOCK_SUFFIX)], sidecar=LOCK_SUFFIX)
+    with _file_lock(text[: -len(LOCK_SUFFIX)], sidecar=LOCK_SUFFIX) as held:
+        if not held:
+            warnings.warn(
+                f"could not lock {path.name} (a read-only folder, or a filesystem "
+                "without lock support): this read-modify-write runs unserialised",
+                stacklevel=3,
+            )
+        yield held
 
 
 @dataclass(frozen=True)
@@ -256,12 +265,21 @@ class MusicVideoFootageProject:
 
     def update_manifest(self, change):
         """Re-read the manifest under :meth:`manifest_lock`, apply ``change(m)`` (which
-        mutates ``m`` in place and may raise to write nothing), write it; return what
-        ``change`` returned."""
+        mutates ``m`` in place and may raise to write nothing), and write it if it
+        changed; return what ``change`` returned.
+
+        The read is STRICT, unlike :meth:`manifest`'s: only an absent manifest reads as
+        the defaults. A transient read failure written back as "defaults plus this
+        change" would drop every clip. And a change that changes nothing writes
+        nothing, so a no-op neither creates a manifest nor moves its mtime.
+        """
         with self.manifest_lock():
-            m = self.manifest()
+            path = self._manifest_path()
+            m = json.loads(path.read_text()) if path.exists() else self.manifest()
+            before = json.dumps(m, sort_keys=True)
             out = change(m)
-            self._write_manifest(m)
+            if json.dumps(m, sort_keys=True) != before:
+                self._write_manifest(m)
             return out
 
     def canvas(self) -> tuple[int, int]:
@@ -370,7 +388,8 @@ class MusicVideoFootageProject:
             h = _hash_file(path)  # outside the lock: a 100 MB song takes a while
 
             def record(m):
-                if m.get("song") == path.name:  # still the song that was hashed
+                # lazy: a set_song while this hashed records its own hash, and wins
+                if not m.get("song_hash") and m.get("song") == path.name:
                     m["song_hash"] = h
 
             self.update_manifest(record)
@@ -455,9 +474,10 @@ class MusicVideoFootageProject:
         def drop(m) -> bool:
             rows = m.get("song_candidates", [])
             kept = [r for r in rows if r.get("candidate_id") != cid]
-            if len(kept) != len(rows):
+            found = len(kept) != len(rows)
+            if found:
                 m["song_candidates"] = kept
-            return len(kept) != len(rows)
+            return found
 
         # the manifest first: it never names a missing file
         if not self.update_manifest(drop):

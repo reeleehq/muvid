@@ -120,4 +120,89 @@ def test_the_lock_files_keep_their_names(fp):
 
 def test_file_lock_refuses_a_name_that_is_not_a_lock_file(tmp_path):
     with pytest.raises(ValueError, match=".lock"):
-        W.file_lock(tmp_path / "manifest.json")
+        with W.file_lock(tmp_path / "manifest.json"):
+            pass
+
+
+def test_a_lazy_hash_never_overwrites_an_uploads_own(fp, tmp_path):
+    """The re-upload race of the #254 review: a lazy recorder hashed the OLD A.mp4,
+    the clip was re-uploaded as A.mp4 (same name) and recorded its own hash; the late
+    lazy write must not replace it — that hash keys filmstrips and beat signals."""
+    from muvid.footage.media_views import _clip_hash
+
+    a = tmp_path / "a.mp4"
+    a.write_bytes(b"new")
+    fp.add_clip("A", str(a), ext=".mp4")
+    service._set_clip_field(fp, "A", "hash", "upload's", file="A.mp4")  # add path
+    service._set_clip_field(fp, "A", "hash", "stale", file="A.mp4", only_if_absent=True)
+    assert fp.manifest()["clips"][0]["hash"] == "upload's"
+    assert _clip_hash(fp, "A", fp.root / "clips" / "A.mp4") == "upload's"
+    service._record_clip_duration(fp, "A", 9.0)
+    service._record_clip_duration(fp, "A", 1.0, lazy=True)
+    assert fp.manifest()["clips"][0]["duration"] == 9.0
+
+
+def test_a_lazy_song_hash_never_overwrites_set_songs(fp, tmp_path, monkeypatch):
+    song = tmp_path / "s.mp3"
+    song.write_bytes(b"one")
+    fp.set_song(str(song), ext=".mp3")
+    recorded = fp.manifest()["song_hash"]
+
+    def stale(_path):  # the old song, hashed while set_song recorded the new one
+        return "stale"
+
+    monkeypatch.setattr(W, "_hash_file", stale)
+    m = fp.manifest()
+    m.pop("song_hash")
+    fp._write_manifest(m)
+    real_update = type(fp).update_manifest
+
+    def racing(self, change):  # set_song lands between the hash and the record
+        real_update(self, lambda m: m.update(song_hash=recorded))
+        return real_update(self, change)
+
+    monkeypatch.setattr(type(fp), "update_manifest", racing)
+    fp.song_hash()
+    assert fp.manifest()["song_hash"] == recorded
+
+
+def test_a_no_op_change_writes_nothing(fp):
+    path = fp._manifest_path()
+    path.unlink()  # a project nothing has written yet (a host-placed one)
+    assert fp.remove_song_candidate("nope") is False
+    assert not path.exists()  # a refused no-op creates no manifest
+    fp._write_manifest(fp.manifest())
+    stamp = path.stat().st_mtime_ns
+    fp.update_manifest(lambda m: None)
+    assert path.stat().st_mtime_ns == stamp
+
+
+def test_a_manifest_that_cannot_be_read_is_not_written_back_as_defaults(fp, monkeypatch):
+    fp._write_manifest({**fp.manifest(), "clips": [{"clip_id": "A", "file": "A.mp4"}]})
+    real = type(fp._manifest_path()).read_text
+
+    def flaky(self, *a, **k):
+        if self.name == "manifest.json":
+            raise OSError(24, "Too many open files")
+        return real(self, *a, **k)
+
+    monkeypatch.setattr(type(fp._manifest_path()), "read_text", flaky)
+    with pytest.raises(OSError):
+        fp.update_manifest(lambda m: m.update(a=1))
+    monkeypatch.undo()
+    assert fp.manifest()["clips"] == [{"clip_id": "A", "file": "A.mp4"}]
+
+
+def test_an_unlockable_folder_warns(tmp_path, monkeypatch):
+    import contextlib
+
+    import dol.atomic
+
+    @contextlib.contextmanager
+    def unheld(*a, **k):
+        yield False
+
+    monkeypatch.setattr(dol.atomic, "file_lock", unheld)
+    with pytest.warns(UserWarning, match="could not lock"):
+        with W.file_lock(tmp_path / "x.lock"):
+            pass

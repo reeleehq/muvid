@@ -4742,7 +4742,7 @@ def _clip_duration(fp, clip_id: str) -> float:
         if c.get("clip_id") == clip_id and c.get("duration") is not None:
             return float(c["duration"])
     dur = _probe_duration(Path(fp.clip_paths()[clip_id]))
-    _record_clip_duration(fp, clip_id, dur)
+    _record_clip_duration(fp, clip_id, dur, lazy=True)
     return dur
 
 
@@ -4766,18 +4766,29 @@ def _warm_activity(fp, clip_id: str) -> None:
     )
 
 
-def _record_clip_duration(fp, clip_id: str, duration_s: float) -> None:
-    _set_clip_field(fp, clip_id, "duration", duration_s)
+def _record_clip_duration(
+    fp, clip_id: str, duration_s: float, *, lazy: bool = False
+) -> None:
+    _set_clip_field(fp, clip_id, "duration", duration_s, only_if_absent=lazy)
 
 
-def _set_clip_field(fp, clip_id: str, key: str, value, *, file: str = "") -> None:
+def _set_clip_field(
+    fp, clip_id: str, key: str, value, *, file: str = "", only_if_absent: bool = False
+) -> None:
     """Record a measurement of clip ``clip_id`` in the manifest, under its lock — the
     measuring is done before, outside it (muvid#254). With ``file``, only while the
-    clip is still that file (a re-upload since must not inherit the old one's)."""
+    clip is still that file.
+
+    ``only_if_absent`` is for a LAZY recorder (a read that fills a missing field): the
+    clip may have been re-uploaded under the same name while it measured, and the
+    upload's own recording — which writes unconditionally, after it — must win. So a
+    lazy write never replaces a value, and an upload's always does."""
 
     def record(m):
         for c in m.get("clips", []):
-            if c.get("clip_id") == clip_id and (not file or c.get("file") == file):
+            if c.get("clip_id") != clip_id or (file and c.get("file") != file):
+                continue
+            if not (only_if_absent and c.get(key) is not None):
                 c[key] = value
 
     fp.update_manifest(record)
