@@ -318,6 +318,7 @@ class MusicVideoFootageProject:
         ext: str,
         name: str = "",
         duration_s: "float | None" = None,
+        notice: str = "",
     ) -> None:
         """Store (replacing) the project's one clean song from a local file.
 
@@ -340,6 +341,8 @@ class MusicVideoFootageProject:
 
         ``name`` is the display name (an uploaded file's original name); ``duration_s``
         is a duration the caller already probed, so a 100 MB song is not probed twice.
+        ``notice`` is a copyright notice that travels with a song taken from a page link
+        (muvid#274), recorded as ``song_notice`` only when given.
         With a host catalog the song is registered too, and its id recorded as
         ``song_artifact_id`` (it equals ``song_hash``: both are the SHA-256 of the bytes).
         """
@@ -398,6 +401,7 @@ class MusicVideoFootageProject:
                     m["song_hash"] = digest
                     _set_or_drop(m, "song_name", name or None)
                     _set_or_drop(m, "song_artifact_id", artifact_id)
+                    _set_or_drop(m, "song_notice", notice or None)
 
                 self.update_manifest(name_the_song)
         finally:
@@ -650,6 +654,7 @@ class MusicVideoFootageProject:
             "duration": m.get("song_duration"),
         }
         _set_or_drop(info, "artifact_id", m.get("song_artifact_id"))
+        _set_or_drop(info, "notice", m.get("song_notice"))
         return info
 
     # -- named edits ---------------------------------------------------------
