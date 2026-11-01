@@ -571,17 +571,20 @@ def set_has_song(fp, *, clip_id: str, has_song: Literal["auto", "yes", "no"]) ->
         raise FootageError(
             f"has_song must be one of {list(HAS_SONG_CHOICES)}, got {has_song!r}"
         )
-    m = fp.manifest()
-    row = next((c for c in m.get("clips", []) if c.get("clip_id") == cid), None)
-    if row is None:
-        raise FootageError(_unknown_clip_message(cid, fp.list_clips()))
-    if row.get("kind") == STILL_KIND and has_song != "auto":
-        raise FootageError("a photo has no sound — it is always cut to the music")
-    if has_song == "auto":
-        row.pop("has_song", None)
-    else:
-        row["has_song"] = has_song
-    fp._write_manifest(m)
+
+    def choose(m) -> dict:
+        row = next((c for c in m.get("clips", []) if c.get("clip_id") == cid), None)
+        if row is None:
+            raise FootageError(_unknown_clip_message(cid, fp.list_clips()))
+        if row.get("kind") == STILL_KIND and has_song != "auto":
+            raise FootageError("a photo has no sound — it is always cut to the music")
+        if has_song == "auto":
+            row.pop("has_song", None)
+        else:
+            row["has_song"] = has_song
+        return row
+
+    row = fp.update_manifest(choose)
     placements = {a.clip_id: a for a in fp.load_alignments()}
     return {
         "clip_id": cid,
@@ -4749,11 +4752,7 @@ def _record_clip_hash(fp, clip_id: str) -> None:
     from muvid.catalog import hash_file
 
     path = Path(fp.clip_paths()[clip_id])
-    m = fp.manifest()
-    for c in m.get("clips", []):
-        if c.get("clip_id") == clip_id:
-            c["hash"] = hash_file(path)
-    fp._write_manifest(m)
+    _set_clip_field(fp, clip_id, "hash", hash_file(path), file=path.name)
 
 
 def _warm_activity(fp, clip_id: str) -> None:
@@ -4768,11 +4767,20 @@ def _warm_activity(fp, clip_id: str) -> None:
 
 
 def _record_clip_duration(fp, clip_id: str, duration_s: float) -> None:
-    m = fp.manifest()
-    for c in m.get("clips", []):
-        if c.get("clip_id") == clip_id:
-            c["duration"] = duration_s
-    fp._write_manifest(m)
+    _set_clip_field(fp, clip_id, "duration", duration_s)
+
+
+def _set_clip_field(fp, clip_id: str, key: str, value, *, file: str = "") -> None:
+    """Record a measurement of clip ``clip_id`` in the manifest, under its lock — the
+    measuring is done before, outside it (muvid#254). With ``file``, only while the
+    clip is still that file (a re-upload since must not inherit the old one's)."""
+
+    def record(m):
+        for c in m.get("clips", []):
+            if c.get("clip_id") == clip_id and (not file or c.get("file") == file):
+                c[key] = value
+
+    fp.update_manifest(record)
 
 
 def _register_media(fp, path, *, kind: str, **meta) -> Optional[str]:

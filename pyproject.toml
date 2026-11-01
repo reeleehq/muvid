@@ -65,6 +65,10 @@ dependencies = [
     # needs both halves: normalise a pasted share link before fetching, then assert the
     # bytes are media rather than a sign-in page (muvid#23).
     "graze>=0.1.44",
+    # 0.3.100 is where `dol.atomic.file_lock` exists (dol#164), the lock every project
+    # read-modify-write takes (muvid#254): it polls on Windows instead of raising after
+    # ~10 s of contention. dol already arrived through graze; now it is declared.
+    "dol>=0.3.100",
     # The `looks` seam (muvid.footage.look): a compiled -vf fragment per cut, and the
     # in-shot punch-in of muvid#66. A CORE dependency rather than an extra because it
     # declares ZERO dependencies of its own and is stdlib-only, so it costs `import

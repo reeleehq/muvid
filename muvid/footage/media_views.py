@@ -224,15 +224,18 @@ def _clip_hash(fp, clip_id: str, path: Path) -> str:
     """The clip's content hash, recorded in the manifest the first time it is needed."""
     from muvid.catalog import hash_file
 
-    m = fp.manifest()
-    for c in m.get("clips", []):
-        if c.get("clip_id") == clip_id:
-            if c.get("hash") and c.get("file") == path.name:
-                return c["hash"]
-            c["hash"] = hash_file(path)
-            fp._write_manifest(m)
+    for c in fp.manifest().get("clips", []):
+        if c.get("clip_id") == clip_id and c.get("hash") and c.get("file") == path.name:
             return c["hash"]
-    return hash_file(path)
+    digest = hash_file(path)  # outside the manifest lock: a clip can be 400 MB
+
+    def record(m):
+        for c in m.get("clips", []):
+            if c.get("clip_id") == clip_id and c.get("file") == path.name:
+                c["hash"] = digest
+
+    fp.update_manifest(record)
+    return digest
 
 
 # -- peaks --------------------------------------------------------------------------
