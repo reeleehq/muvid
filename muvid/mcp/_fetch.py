@@ -226,7 +226,9 @@ def fetch_to_file_streaming(
     # Into a temp sibling, then one rename: a failed fetch never truncates or removes a
     # file already at ``dest`` (a persistent input folder keeps its last good song), and
     # a reader never sees half a download (muvid#23 review).
-    fd, part = tempfile.mkstemp(dir=str(dest.parent), prefix=f".{dest.name}.", suffix=".part")
+    fd, part = tempfile.mkstemp(
+        dir=str(dest.parent), prefix=f".{dest.name}.", suffix=".part"
+    )
     total = 0
     try:
         with os.fdopen(fd, "wb") as f, _open_following_redirects(uri, deadline) as resp:
