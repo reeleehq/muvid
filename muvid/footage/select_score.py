@@ -523,6 +523,7 @@ def _demote_distrusted(composite: np.ndarray, aligns, tensor) -> np.ndarray:
     inside :func:`_composite`, because that also feeds :func:`selection_margin`, a
     diagnostic about how close two clips are on SCORE: trust is not a score.
     """
+
     def frame(t: float) -> int:
         if math.isinf(t):
             return 0 if t < 0 else tensor.n
