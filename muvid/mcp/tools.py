@@ -141,7 +141,18 @@ def project_status(project_id: str) -> dict:
 #: private share link answers HTTP 200 with a sign-in page, which would otherwise reach
 #: ffmpeg as "Invalid data found". An input not named here (lyrics text, a subgenre's
 #: own file) is not kind-checked.
-_INPUT_KINDS = {"audio": "audio", "cover": "image"}
+_INPUT_KINDS = {
+    "audio": "audio",
+    "cover": "image",
+    "image": "image",
+    "reference_image": "image",
+    "photos": "image",
+    "images": "image",
+    "clip": "video",
+    "clips": "video",
+    "video": "video",
+    "videos": "video",
+}
 
 
 def _resolve_input(url: str, dest: Path, *, label: str) -> Path:

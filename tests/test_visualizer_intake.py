@@ -75,9 +75,57 @@ def test_a_folder_link_is_refused(serve, tmp_path):
         _resolve_input(DROPBOX_FOLDER, tmp_path / "audio", label="audio")
 
 
-def test_an_unnamed_input_is_not_kind_checked(serve, tmp_path):
+def test_only_named_media_inputs_are_kind_checked(serve, tmp_path):
+    """The same web page is refused as audio and accepted as lyrics — so the test can
+    tell a check from no check (#23 review: plain text sniffs as nothing)."""
+    from fastmcp.exceptions import ToolError
     from muvid.mcp.tools import _resolve_input
 
-    serve(b"Verse one\nVerse two\n")
-    out = _resolve_input("https://example.com/lyrics.md", tmp_path / "lyrics", label="lyrics")
-    assert out.read_text().startswith("Verse one")
+    serve(SIGNIN_PAGE)
+    with pytest.raises(ToolError, match="HTML page"):
+        _resolve_input("https://example.com/x", tmp_path / "a", label="audio")
+    out = _resolve_input("https://example.com/x", tmp_path / "lyrics", label="lyrics")
+    assert out.read_bytes() == SIGNIN_PAGE
+    for label in ("reference_image", "photos", "clips", "image", "video"):
+        with pytest.raises(ToolError, match="HTML page"):
+            _resolve_input("https://example.com/x", tmp_path / label, label=label)
+
+
+def test_a_failed_fetch_leaves_the_last_good_file_in_place(serve, tmp_path):
+    """lyric-video's input folder persists; a refused re-fetch must not delete its song."""
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.tools import _resolve_input
+
+    dest = tmp_path / "song"
+    serve(FAKE_MP3)
+    _resolve_input("https://example.com/a.mp3", dest, label="audio")
+    serve(SIGNIN_PAGE)
+    with pytest.raises(ToolError):
+        _resolve_input("https://example.com/a.mp3", dest, label="audio")
+    assert dest.read_bytes() == FAKE_MP3
+    assert [p.name for p in tmp_path.iterdir()] == ["song"]  # no .part litter
+
+
+def test_montage_pools_are_fetched_not_passed_through(tmp_path, monkeypatch):
+    """#23 review: montage's photos[]/clips[] were not file inputs, so a remote caller's
+    raw strings (a host path, a metadata URL) reached ffprobe/ffmpeg."""
+    import muvid.mcp.subgenre_tools as st
+    from muvid.montage.manifest import MONTAGE
+
+    for name in ("photos", "clips", "audio", "cover"):
+        assert st._is_file_input(name, MONTAGE.inputs), name
+    assert st._is_file_input("photos", {"properties": {}})  # the name backstop
+
+
+def test_a_server_path_input_is_refused_over_the_remote_transport(tmp_path, monkeypatch):
+    import muvid.mcp.subgenre_tools as st
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.identity import use_email
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setattr(st, "_resolve_input", lambda *a, **k: pytest.fail("fetched"))
+    with use_email("u@x.com"), pytest.raises(ToolError, match="folder on the server"):
+        st.render_subgenre(
+            "p1", subgenre="lyric-video",
+            inputs={"audio": "https://example.com/a.mp3", "project": "/home/other/proj"},
+        )

@@ -208,8 +208,9 @@ def fetch_to_file_streaming(
     """Stream a (large) ``uri`` straight to ``dest``, chunk by chunk (SSRF/size/time-bound).
 
     For video footage: the body is written to disk as it arrives and the running total is
-    checked against ``max_bytes`` — never buffered whole in RAM. A partial file is removed
-    on any failure. Returns ``dest``.
+    checked against ``max_bytes`` — never buffered whole in RAM. It lands in a temp
+    sibling and is renamed onto ``dest`` only when complete, so a failure leaves ``dest``
+    exactly as it was. Returns ``dest``.
 
     ``expect_kind`` (``'video'`` / ``'audio'`` / …) asserts the payload's magic bytes before
     a single byte reaches the file. Without it, a share link that answers ``HTTP 200`` with
@@ -217,18 +218,26 @@ def fetch_to_file_streaming(
     ffprobe fails with "Invalid data found when processing input" — technically loud,
     practically unhelpful. See :mod:`graze.content_kind`.
     """
+    import tempfile
+
     deadline = time.monotonic() + deadline_for(max_bytes)
+    dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
+    # Into a temp sibling, then one rename: a failed fetch never truncates or removes a
+    # file already at ``dest`` (a persistent input folder keeps its last good song), and
+    # a reader never sees half a download (muvid#23 review).
+    fd, part = tempfile.mkstemp(dir=str(dest.parent), prefix=f".{dest.name}.", suffix=".part")
     total = 0
     try:
-        with _open_following_redirects(uri, deadline) as resp, open(dest, "wb") as f:
+        with os.fdopen(fd, "wb") as f, _open_following_redirects(uri, deadline) as resp:
             for chunk in _kind_guarded(_iter_chunks(resp, deadline), expect_kind, uri):
                 total += len(chunk)
                 if total > max_bytes:
                     raise FetchError(f"resource exceeds the {max_bytes}-byte limit")
                 f.write(chunk)
+        os.replace(part, dest)
     except BaseException:
-        dest.unlink(missing_ok=True)
+        Path(part).unlink(missing_ok=True)
         raise
     return dest
 
