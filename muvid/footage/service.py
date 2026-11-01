@@ -3573,6 +3573,17 @@ def looks(fp=None) -> dict:
     return {"looks": named_look_catalogue()}
 
 
+def luts(fp=None) -> dict:
+    """The colour LUTs a look can load, each by the name a look gives it —
+    ``set_cut(look="lut3d=file=<name>")`` — with its size (``LUT_3D_SIZE``) and whether
+    it can be used (``usable``; ``problem`` says why not), and ``total`` (the list is
+    capped). Empty when none are installed. The LUT is found when the edit is rendered, so a name stays valid in a
+    saved edit wherever the files are kept."""
+    from muvid.footage.luts import list_luts
+
+    return list_luts()
+
+
 #: The confidence a fitted cut must reach to be applied (a z against the null of
 #: ``beat_fit``): 2.5 is about 1 in 160 by chance, per cut.
 FIT_MIN_Z = 2.5
@@ -4250,6 +4261,15 @@ def assemble(
         raise FootageError(f"could not build a valid edit: {e}") from e
 
     cuts = derive_cuts(entries, aligns, fp.clip_paths())
+    # The LUTs the looks name must exist here — refused before a render id or a
+    # reference number is spent; the assembler resolves them again to encode (#252).
+    from muvid.footage.luts import LutError, check_look_luts
+
+    try:
+        for c in cuts:
+            check_look_luts(c.look)
+    except LutError as e:
+        raise FootageError(f"cannot render this edit: {e}") from e
     render_id = uuid.uuid4().hex[:_RENDER_ID_HEX]
     # The reference a human can say, assigned at creation so it never renumbers.
     ref_n = fp.next_render_ref()
@@ -5011,6 +5031,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("set_span", "Choose which part of the song the video covers", "write"),
     OpSpec("rename_edit", "Rename an edit", "write"),
     OpSpec("looks", "List the looks", "read"),
+    OpSpec("luts", "List the colour LUTs", "read"),
     OpSpec("undo_edit", "Undo", "write"),
     OpSpec("redo_edit", "Redo", "write"),
     OpSpec("delete_edit", "Delete an edit", "destroy"),

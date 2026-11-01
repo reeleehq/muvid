@@ -79,11 +79,6 @@ MAX_EDL_ENTRIES = int(os.environ.get("MUVID_FOOTAGE_MAX_EDL_ENTRIES", "500"))
 #: multiple is the whole of the legitimate range.
 MAX_LOOK_SCALE = int(os.environ.get("MUVID_FOOTAGE_MAX_LOOK_SCALE", "4"))
 
-#: The largest ``LUT_3D_SIZE`` a look's ``lut3d`` may load (muvid#244). ``lut3d``'s memory
-#: is its cube's, not the frame's: 12 bytes x size^3 — 3.3 MB at 65 (the usual grading
-#: size), 201 MB at 256 — so the frame-cost budget cannot see it and this bounds it.
-MAX_LUT_SIZE = int(os.environ.get("MUVID_FOOTAGE_MAX_LUT_SIZE", "65"))
-
 #: How many filter links one look may carry. **Bounding the frame does not bound the
 #: memory** — that is the half :data:`MAX_LOOK_SCALE` misses: thirty-two links of
 #: ``scale=7680:4320`` on a 1920x1080 canvas measured 1648 MB, every one inside the
@@ -1980,7 +1975,8 @@ _LOOK_FORBIDDEN = "[];"
 #: the single recorded exception (:data:`_LOOK_FILE_OPTIONS`) — it *loads* a
 #: ``.cube``, which is how ``looks``' flagship grade reaches its LUT, and it reads
 #: rather than writes (a cube ``looks.materialize`` builds must land in
-#: :func:`muvid.paths.lut_dir` — pass ``into=`` — to pass muvid#244's rule). Nothing
+#: :func:`muvid.paths.lut_dir` — pass ``into=`` — and be named relative to it, to pass
+#: muvid#252's rule). Nothing
 #: else may name a path, so adding a filter here is a
 #: two-place edit and the second place is a measurement of the real binary.
 #:
@@ -1993,10 +1989,11 @@ _LOOK_FORBIDDEN = "[];"
 #: dimension a bound can read, so the four filters that can change the output
 #: geometry are allowlisted per OPTION as well as by name.
 #:
-#: **``lut3d=file=`` is confined separately** (muvid#244): before that it would
-#: *attempt* to open any path the renderer could read, and load a cube of any size.
-#: :func:`_validate_look_luts` now allows only a ``.cube`` inside
-#: :func:`muvid.paths.lut_dir` with ``LUT_3D_SIZE`` at most :data:`MAX_LUT_SIZE`.
+#: **``lut3d=file=`` is confined separately** (muvid#244, muvid#252): before that it
+#: would *attempt* to open any path the renderer could read, and load a cube of any
+#: size. :func:`_validate_look_luts` now allows only a LUT NAME — the cube's path
+#: relative to :func:`muvid.paths.lut_dir` — and the assembler resolves it there and
+#: checks ``LUT_3D_SIZE`` at most :data:`muvid.footage.luts.MAX_LUT_SIZE` (:mod:`muvid.footage.luts`).
 LOOK_FILTERS = frozenset(
     {
         # -- compiled: muvid.footage.look, via looks.compile_motion --
@@ -2477,7 +2474,21 @@ def _look_filter_names(look: str) -> "list[str]":
 def _link_options(
     args: str, positional: "Sequence[str]"
 ) -> "tuple[dict[str, str], list[tuple[str, bool]]]":
-    r"""One link's arguments as ``{option name: raw value}``, ffmpeg's way.
+    r"""One link's arguments as ``{option name: value}``, ffmpeg's way.
+
+    ``args`` is the link's text as it sits in the filtergraph, and ffmpeg reads it
+    at TWO levels: the graph parser (``av_get_token`` over the whole argument
+    string) resolves one level of escapes and quotes, and only THEN does the option
+    parser split on ``:`` and resolve a second level per value. So the graph level
+    is resolved here first, and each returned value is the OPTION-level text — what
+    ``av_get_token`` will unescape once more (callers that read a value
+    :func:`_unquote` it, which is that second level). Splitting the graph-level
+    text instead let a graph-escaped colon through as one value while ffmpeg read
+    it as a separator: ``lut3d=interp=nearest\:file=/elsewhere.cube`` passed the
+    gate as ``{interp: ...}`` and loaded a cube from outside the LUT folder, and
+    ``pad=w=1920:h=1080:color=black\:aspect=1/30`` reached ``pad``'s ``aspect``
+    past the geometry gate (both measured on ffmpeg 9.0.1 and 6.1.6; muvid#252
+    review).
 
     Two rules taken from libavfilter's ``process_options`` rather than from
     intuition, and both change the answer:
@@ -2535,9 +2546,16 @@ def _link_options(
     [('black', False)]
     >>> _link_options("w=100:8000", ("w", "h"))
     ({'w': '100'}, [('8000', True)])
+    >>> _link_options(r"interp=nearest\:file=/x.cube", ("file",))[0]
+    {'interp': 'nearest', 'file': '/x.cube'}
+    >>> _link_options("enable='between(t,0,1)'", ("file",))[0]
+    {'enable': 'between(t,0,1)'}
+    >>> _link_options(r"enable=between(t\,0\,1)", ("file",))[0]
+    {'enable': 'between(t,0,1)'}
     """
     out: "dict[str, str]" = {}
     overflow: "list[tuple[str, bool]]" = []
+    args = _unquote(args)  # the graph level: what the option parser is handed
     if not args:
         return out, overflow
     slot, named_seen = 0, False
@@ -2969,65 +2987,37 @@ def _validate_look_size(i, look: str, canvas) -> None:
             )
 
 
-#: ``lut3d``'s options a look may set, and its one positional slot. ``file`` is resolved
+#: ``lut3d``'s options a look may set, and its one positional slot. ``file`` is checked
 #: by :func:`_validate_look_luts`; ``interp`` and ``clut`` pick an interpolation and a
 #: frame policy and allocate nothing; ``enable`` is the timeline gate ``looks.gated``
 #: emits for a step with an ``at`` span.
 _LUT3D_OPTIONS = frozenset({"file", "interp", "clut", "enable"})
 _LUT3D_POSITIONAL = ("file",)
-#: A ``file`` value muvid reads as written: no ffmpeg escapes, no quotes, nothing that
-#: means something different after a level of unescaping. muvid's LUT folder needs none.
-_LUT_PATH_TEXT = re.compile(r"^/[A-Za-z0-9._/+@-]+$")
-#: How much of a cube is read looking for its ``LUT_3D_SIZE`` header.
-_LUT_HEADER_BYTES = 64 * 1024
-
-
-def _lut_cube_size(path) -> "int | None":
-    r"""The ``LUT_3D_SIZE`` a ``.cube`` declares in its header, or ``None``.
-
-    >>> import tempfile, pathlib
-    >>> with tempfile.TemporaryDirectory() as d:
-    ...     p = pathlib.Path(d, "a.cube")
-    ...     _ = p.write_text("TITLE t\nLUT_3D_SIZE 33\n0 0 0\n")
-    ...     _lut_cube_size(p)
-    33
-    """
-    with open(path, "rb") as f:
-        head = f.read(_LUT_HEADER_BYTES).decode("utf-8", "replace")
-    # ffmpeg decides on the FIRST line starting with the keyword, so this does too: a
-    # later, smaller declaration must not vouch for a larger first one (#244 review)
-    line = next((x for x in head.splitlines() if x.startswith("LUT_3D_SIZE")), None)
-    words = line.split() if line else []
-    return int(words[1]) if len(words) == 2 and words[1].isdigit() else None
 
 
 def _validate_look_luts(i, look: str) -> None:
-    """Confine what a look's ``lut3d`` may load, and how large. Raises ``ValueError``.
+    """Confine what a look's ``lut3d`` may name. Raises ``ValueError``. Reads no file.
 
     ``lut3d=file=`` is the one path a look may name (:data:`_LOOK_FILE_OPTIONS`), and
     before muvid#244 it would *attempt* to open any path the renderer could read — a
-    probe of the host's disk from a remote caller's EDL — and its memory is the cube's
-    (12 bytes x size^3), which :func:`_look_cost` cannot see. Now:
+    probe of the host's disk from a remote caller's EDL. Now:
 
     - only :data:`_LUT3D_OPTIONS` may be set, and no positional past ``file``;
-    - ``file`` is an absolute path, written without escapes, to an existing ``.cube``
-      inside :func:`muvid.paths.lut_dir` once symlinks are resolved;
-    - its header declares ``LUT_3D_SIZE`` at most :data:`MAX_LUT_SIZE`.
+    - ``file`` — the last one, as ffmpeg keeps the last — is a LUT NAME
+      (:func:`muvid.footage.luts.lut_name`) once both escape levels are resolved: the
+      cube's path relative to :func:`muvid.paths.lut_dir`.
 
-    The refusals never print the LUT folder's path: hosted replies carry
-    project-relative paths only. POSIX paths only: a Windows drive's colon cannot be
-    written without escapes, so no ``lut3d`` file is accepted there. The cube is read at validation, not at render: the
-    folder is muvid's, so a file swapped between the two is the operator's doing.
+    Whether that LUT exists, stays inside the folder and is small enough is checked by
+    the ASSEMBLER (:func:`muvid.footage.luts.bind_look_luts`), not here (muvid#252):
+    this gate runs on every named-edit change, and an edit is a plan — a deleted LUT
+    must refuse the render, not every later change to the edit.
     """
-    from pathlib import Path
-
-    from muvid.paths import lut_dir
+    from muvid.footage.luts import lut_name
 
     def refuse(why):
         raise ValueError(
-            f"EDL entry {i}: look's lut3d {why}. A look may load a .cube only from "
-            "muvid's LUT folder (muvid.paths.lut_dir()), by its absolute path written "
-            f"without escapes, with LUT_3D_SIZE at most {MAX_LUT_SIZE}."
+            f"EDL entry {i}: look's lut3d {why}. A look loads a .cube by its NAME in "
+            "muvid's LUT folder — lut3d=file=warm.cube (``luts`` lists them)."
         )
 
     for name, args in _look_links(look):
@@ -3039,26 +3029,9 @@ def _validate_look_luts(i, look: str) -> None:
             refuse(
                 f"sets {extra}, which muvid does not offer (only {sorted(_LUT3D_OPTIONS)})"
             )
-        text = opts.get("file")
-        if text is None:
-            continue  # no file: lut3d is the identity, and loads nothing
-        if not _LUT_PATH_TEXT.fullmatch(text) or not text.lower().endswith(".cube"):
-            refuse(
-                f"file {text!r} is not an absolute .cube path written without escapes"
-            )
-        root, path = lut_dir().resolve(), Path(text).resolve()
-        if not path.is_relative_to(root) or not path.is_file():
-            refuse("file is not a .cube in muvid's LUT folder")
-        try:
-            size = _lut_cube_size(path)
-        except OSError:
-            refuse("file cannot be read")
-        if size is None or size > MAX_LUT_SIZE:
-            refuse(
-                "file declares no LUT_3D_SIZE"
-                if size is None
-                else f"file is a {size}-point cube ({12 * size**3 / 1e6:.0f} MB to load)"
-            )
+        text = opts.get("file")  # the last one, as ffmpeg keeps; none: the identity
+        if text is not None and lut_name(_unquote(_strip_unescaped(text))) is None:
+            refuse(f"file {text[:80]!r} is not a LUT name")
 
 
 def _validate_look(i, e, canvas) -> None:

@@ -105,6 +105,7 @@ from muvid.footage.colour import (
     tonemap_chain,
 )
 from muvid.footage.edl import TRANSITION_SPLIT, AssemblyCut, look_may_resize
+from muvid.footage.luts import bind_look_luts
 
 #: Default output frame rate for the assembled video.
 DEFAULT_FPS = 30
@@ -914,6 +915,9 @@ def assemble_music_video(
         raise TypeError(f"tone_map must be a ToneMap, got {tone_map!r}")
     require_ffmpeg("ffmpeg")
     require_ffmpeg("ffprobe")
+    # A look names its LUT; the file is found and checked HERE, where the encode is,
+    # and before any part is on disk (muvid#252). Raises LutError (a ValueError).
+    cuts = [replace(c, look=bind_look_luts(c.look)) if c.look else c for c in cuts]
     w, h = _even(canvas[0]), _even(canvas[1])
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
