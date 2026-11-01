@@ -87,6 +87,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`set_span`](#muvid.footage.service.set_span)(fp, \*, edit_id, start_s, end_s)        | Choose which part of the song the video covers — where it starts and ends.                                                                                                                                                                                                                                                                                                                                   |
 | [`rename_edit`](#muvid.footage.service.rename_edit)(fp, \*, edit_id, name)               | Give an edit a new name — what the edit picker and the renders made from it show.                                                                                                                                                                                                                                                                                                                            |
 | [`looks`](#muvid.footage.service.looks)([fp])                                      | The looks a cut can take — camera moves (punch in, slow push, slow pull, pans) and grades (vivid, black and white, posterize, cartoon) — each with its `params_schema`.                                                                                                                                                                                                                                      |
+| [`luts`](#muvid.footage.service.luts)([fp])                                       | The colour LUTs a look can load, each by the name a look gives it — `set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether it can be used (`usable`; `problem` says why not), and `total` (the list is capped).                                                                                                                                                                     |
 | [`undo_edit`](#muvid.footage.service.undo_edit)(fp, \*, edit_id)                       | Undo the last change to a saved edit (a cut changed, split, joined, the span, a whole replacement — by a person or by the assistant).                                                                                                                                                                                                                                                                        |
 | [`redo_edit`](#muvid.footage.service.redo_edit)(fp, \*, edit_id)                       | Redo the change `undo_edit` last took back.                                                                                                                                                                                                                                                                                                                                                                  |
 | [`delete_edit`](#muvid.footage.service.delete_edit)(fp, \*, edit_id)                     | Delete a saved edit.                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -580,6 +581,17 @@ Idempotent: the same bytes under the same id change nothing.
 The looks a cut can take — camera moves (punch in, slow push, slow pull, pans)
 and grades (vivid, black and white, posterize, cartoon) — each with its
 `params_schema`. Give one to `set_cut` as `look={"name": ..., **params}`.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.service.luts(fp=None)
+
+The colour LUTs a look can load, each by the name a look gives it —
+`set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether
+it can be used (`usable`; `problem` says why not), and `total` (the list is
+capped). Empty when none are installed. The LUT is found when the edit is rendered, so a name stays valid in a
+saved edit wherever the files are kept.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

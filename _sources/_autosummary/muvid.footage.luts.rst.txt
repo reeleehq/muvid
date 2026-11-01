@@ -1,0 +1,33 @@
+muvid.footage.luts
+==================
+
+.. automodule:: muvid.footage.luts
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      MAX_LUT_SIZE
+      LUT_SUFFIX
+      MAX_LUT_NAME_LEN
+      MAX_LISTED_LUTS
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      bind_look_luts
+      check_look_luts
+      cube_size
+      list_luts
+      look_lut_names
+      lut_name
+      resolve_lut
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+   
+      LutError
+   

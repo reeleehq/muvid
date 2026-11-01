@@ -11,7 +11,6 @@ muvid.footage.edl
       COINCIDENT_S
       MAX_EDL_ENTRIES
       MAX_LOOK_SCALE
-      MAX_LUT_SIZE
       MAX_LOOK_LINKS
       MAX_LOOK_COST
       DFLT_LOOK_CANVAS

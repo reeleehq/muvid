@@ -1,4 +1,4 @@
-> built 2026-10-30 17:54 UTC from 80ee86e (main) · muvid 0.0.143. Details: build_info.json
+> built 2026-11-01 18:24 UTC from 2ca0708 (main) · muvid 0.0.144. Details: build_info.json
 
 # index.html.md
 
@@ -3431,7 +3431,6 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 |-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`MAX_EDL_ENTRIES`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_EDL_ENTRIES)            | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
 | [`MAX_LOOK_SCALE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_SCALE)             | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
-| [`MAX_LUT_SIZE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LUT_SIZE)               | The largest `LUT_3D_SIZE` a look's `lut3d` may load (muvid#244).                                                                                                                                                                                                |
 | [`MAX_LOOK_LINKS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_LINKS)             | How many filter links one look may carry.                                                                                                                                                                                                                       |
 | [`MAX_LOOK_COST`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LOOK_COST)              | The memory a look may cost, in canvas-sized YUV frames (`_look_cost()`) — ONE budget in place of the three counts of muvid#196/#199 (resizes, links holding a large frame, heavy filters), which each answered one version of this question (#229).             |
 | [`DFLT_LOOK_CANVAS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.DFLT_LOOK_CANVAS)           | The canvas [`validate_edl()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl) bounds a look against when its caller names none: the element-wise maximum of `workspace.CANVASES`, so the default is the LOOSEST bound that is still a bound — never an absent one. |
@@ -3937,7 +3936,8 @@ filter must declare no filesystem-path option at all. `lut3d`’s `file` is
 the single recorded exception (`_LOOK_FILE_OPTIONS`) — it *loads* a
 `.cube`, which is how `looks`’ flagship grade reaches its LUT, and it reads
 rather than writes (a cube `looks.materialize` builds must land in
-[`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) — pass `into=` — to pass muvid#244’s rule). Nothing
+[`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) — pass `into=` — and be named relative to it, to pass
+muvid#252’s rule). Nothing
 else may name a path, so adding a filter here is a
 two-place edit and the second place is a measurement of the real binary.
 
@@ -3950,10 +3950,11 @@ on the OPTIONS that set a size: `pad`’s `aspect` and `scale`’s
 dimension a bound can read, so the four filters that can change the output
 geometry are allowlisted per OPTION as well as by name.
 
-**\`\`lut3d=file=\`\` is confined separately** (muvid#244): before that it would
-*attempt* to open any path the renderer could read, and load a cube of any size.
-`_validate_look_luts()` now allows only a `.cube` inside
-[`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) with `LUT_3D_SIZE` at most [`MAX_LUT_SIZE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MAX_LUT_SIZE).
+**\`\`lut3d=file=\`\` is confined separately** (muvid#244, muvid#252): before that it
+would *attempt* to open any path the renderer could read, and load a cube of any
+size. `_validate_look_luts()` now allows only a LUT NAME — the cube’s path
+relative to [`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) — and the assembler resolves it there and
+checks `LUT_3D_SIZE` at most [`muvid.footage.luts.MAX_LUT_SIZE`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_SIZE) ([`muvid.footage.luts`](_autosummary/muvid.footage.luts.html.md#module-muvid.footage.luts)).
 
 ### muvid.footage.edl.MAX_EDL_ENTRIES *= 500*
 
@@ -4020,12 +4021,6 @@ How many times the delivery canvas a `look` may ask for, PER DIMENSION
 Bigger than the canvas is never useful — the delivered frame IS the canvas, so
 anything past it is resampled straight back down — which is why a *small*
 multiple is the whole of the legitimate range.
-
-### muvid.footage.edl.MAX_LUT_SIZE *= 65*
-
-The largest `LUT_3D_SIZE` a look’s `lut3d` may load (muvid#244). `lut3d`’s memory
-is its cube’s, not the frame’s: 12 bytes x size^3 — 3.3 MB at 65 (the usual grading
-size), 201 MB at 256 — so the frame-cost budget cannot see it and this bounds it.
 
 ### muvid.footage.edl.MEASURED *= 'measured'*
 
@@ -5758,6 +5753,7 @@ Returns the normalized list of [`EdlEntry`](_autosummary/muvid.footage.html.md#m
 | [`explain`](_autosummary/muvid.footage.explain.html.md#module-muvid.footage.explain)             | Why each cut is where it is — the post-mortem of an edit, in plain words.                                                                                           |
 | [`lacing_bridge`](_autosummary/muvid.footage.lacing_bridge.html.md#module-muvid.footage.lacing_bridge) | muvid project → lacing standoff records, and the DECISION tier back to an EDL.                                                                                      |
 | [`look`](_autosummary/muvid.footage.look.html.md#module-muvid.footage.look)                   | Compile a `looks` artifact into the fragment the assembler splices.                                                                                                 |
+| [`luts`](_autosummary/muvid.footage.luts.html.md#module-muvid.footage.luts)                   | The LUTs a look's `lut3d` may load: named in the EDL, found at render (muvid#252).                                                                                  |
 | [`media_views`](_autosummary/muvid.footage.media_views.html.md#module-muvid.footage.media_views)     | What an editor draws: per-camera filmstrips and the song's waveform peaks.                                                                                          |
 | [`music_cut`](_autosummary/muvid.footage.music_cut.html.md#module-muvid.footage.music_cut)         | Cut footage to the music — the montage half of a music video.                                                                                                       |
 | [`named_looks`](_autosummary/muvid.footage.named_looks.html.md#module-muvid.footage.named_looks)     | Named looks — the camera moves and grades a person can pick for a cut.                                                                                              |
@@ -6353,6 +6349,176 @@ a laptop and quietly raising the licence tier of a shipped product.
       or this clip. The message is `looks`’, which names the remedy.
 * **Return type:**
   [*LookFragment*](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookFragment)
+
+
+# _autosummary/muvid.footage.luts.html.md
+
+# muvid.footage.luts
+
+The LUTs a look’s `lut3d` may load: named in the EDL, found at render (muvid#252).
+
+A look names a LUT by its **name in muvid’s LUT folder** ([`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir))
+— `lut3d=file=warm.cube`, or `film/warm.cube` for one in a subfolder — never by a
+path on this machine. The split is what muvid#244’s review asked for:
+
+- **The EDL gate checks only the text** ([`lut_name()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.lut_name), called by
+  `muvid.footage.edl._validate_look_luts()`). `validate_edl` runs on every
+  > named-edit change, and an edit is a plan: reading the cube there meant a deleted LUT
+  > made an edit holding it unchangeable, even on an unrelated cut.
+- **The assembler resolves the name** ([`bind_look_luts()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.bind_look_luts)) just before it encodes:
+  the file must exist, be a regular file inside the folder once symlinks are resolved,
+  and declare `LUT_3D_SIZE` at most [`MAX_LUT_SIZE`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_SIZE). That is the environment
+  refusal, and it sits where the encode is.
+- **Nothing persisted carries a host path.** `edits/*.json` and a render’s
+  `meta.json["edl"]` keep the name, so an edit survives `MUVID_DATA_HOME` moving or
+  the project moving to another machine, and a remote caller can name a LUT it found
+  through the `luts` op ([`list_luts()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.list_luts)) without learning where the folder is.
+
+The #244 spelling — the cube’s absolute path — is no longer accepted: it is the host
+path this exists to keep out of stored edits, and it was live for five days during which
+no caller could name a LUT at all (the refusal hid the folder and nothing listed it).
+
+Stdlib only, plus [`muvid.paths`](_autosummary/muvid.paths.html.md#module-muvid.paths): `edl` imports this at module top and must stay
+import-light.
+
+### Module Attributes
+
+| [`MAX_LUT_SIZE`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_SIZE)     | The largest `LUT_3D_SIZE` a look's `lut3d` may load (muvid#244).                                                                                                     |
+|-------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`LUT_SUFFIX`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LUT_SUFFIX)       | The suffix a LUT file has (compared without case, as `.CUBE` exports exist).                                                                                         |
+| [`MAX_LUT_NAME_LEN`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_NAME_LEN) | The longest LUT name, in characters — far below any filesystem's limit, so a long name is a refusal of the NAME rather than an `OSError` carrying the folder's path. |
+| [`MAX_LISTED_LUTS`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LISTED_LUTS)  | The most LUTs [`list_luts()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.list_luts) reports, so a huge folder is not one huge reply.                                          |
+
+### Functions
+
+| [`bind_look_luts`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.bind_look_luts)(look)   | `look` with each `lut3d` link REBUILT from what ffmpeg reads of it, its `file` the checked file the name loads ([`resolve_lut()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.resolve_lut); raises [`LutError`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LutError)) — what the assembler hands ffmpeg.   |
+|-------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`check_look_luts`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.check_look_luts)(look)  | Raise [`LutError`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LutError) unless every LUT `look` names can be bound here — the same code path the assembler runs, with its result discarded.                                                                                                    |
+| [`cube_size`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.cube_size)(path)        | The `LUT_3D_SIZE` a `.cube` declares in its header, or `None`.                                                                                                                                                                                                                         |
+| [`list_luts`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.list_luts)()            | Every LUT in muvid's LUT folder, by the name a look gives it: `{"luts": [{name, size, usable[, problem]}], "total": n}` — sorted by name, at most [`MAX_LISTED_LUTS`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LISTED_LUTS) rows of `total`.                                                    |
+| [`look_lut_names`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.look_lut_names)(look)   | The LUT names `look`'s `lut3d` links load, as ffmpeg reads them (`[]` for none) — the LAST `file` of a link, as `av_opt_set` keeps the last.                                                                                                                                           |
+| [`lut_name`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.lut_name)(text)         | `text` when it is a LUT name — the cube's path relative to [`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) — else `None`.                                                                                                                   |
+| [`resolve_lut`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.resolve_lut)(name)      | The file LUT `name` loads, checked: inside the LUT folder once symlinks are resolved, a regular file, declaring `LUT_3D_SIZE` at most [`MAX_LUT_SIZE`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_SIZE).                                                                                   |
+
+### Exceptions
+
+| [`LutError`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LutError)   | A look names a LUT that cannot be loaded here: absent, outside the folder, unreadable, or too large.   |
+|-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+
+### muvid.footage.luts.LUT_SUFFIX *= '.cube'*
+
+The suffix a LUT file has (compared without case, as `.CUBE` exports exist).
+
+### *exception* muvid.footage.luts.LutError
+
+Bases: [`ValueError`](https://docs.python.org/3/builtins/exceptions.html#ValueError)
+
+A look names a LUT that cannot be loaded here: absent, outside the folder,
+unreadable, or too large. Raised at render time, never by the EDL gate.
+
+### muvid.footage.luts.MAX_LISTED_LUTS *= 500*
+
+The most LUTs [`list_luts()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.list_luts) reports, so a huge folder is not one huge reply.
+
+### muvid.footage.luts.MAX_LUT_NAME_LEN *= 255*
+
+The longest LUT name, in characters — far below any filesystem’s limit, so a long
+name is a refusal of the NAME rather than an `OSError` carrying the folder’s path.
+
+### muvid.footage.luts.MAX_LUT_SIZE *= 65*
+
+The largest `LUT_3D_SIZE` a look’s `lut3d` may load (muvid#244). `lut3d`’s memory
+is its cube’s, not the frame’s: 12 bytes x size^3 — 3.3 MB at 65 (the usual grading
+size), 201 MB at 256 — so the frame-cost budget cannot see it and this bounds it.
+
+### muvid.footage.luts.bind_look_luts(look)
+
+`look` with each `lut3d` link REBUILT from what ffmpeg reads of it, its
+`file` the checked file the name loads ([`resolve_lut()`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.resolve_lut); raises
+[`LutError`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LutError)) — what the assembler hands ffmpeg. Every other link, and a
+look with no LUT, is returned as written.
+
+Rebuilt rather than spliced: the options are re-emitted from one parse, so the
+text ffmpeg receives says exactly what the gate read (one `file`, no escaped
+separator smuggling a second), and the path is escaped at both of ffmpeg’s levels.
+
+```pycon
+>>> bind_look_luts("hue=s=0")
+'hue=s=0'
+>>> bind_look_luts(None) is None
+True
+```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.luts.check_look_luts(look)
+
+Raise [`LutError`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LutError) unless every LUT `look` names can be bound here — the
+same code path the assembler runs, with its result discarded.
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.luts.cube_size(path)
+
+The `LUT_3D_SIZE` a `.cube` declares in its header, or `None`.
+
+```pycon
+>>> import tempfile, pathlib
+>>> with tempfile.TemporaryDirectory() as d:
+...     p = pathlib.Path(d, "a.cube")
+...     _ = p.write_text("TITLE t\nLUT_3D_SIZE 33\n0 0 0\n")
+...     cube_size(p)
+33
+```
+
+* **Return type:**
+  [`int`](https://docs.python.org/3/builtins/functions.html#int) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.luts.list_luts()
+
+Every LUT in muvid’s LUT folder, by the name a look gives it: `{"luts": [{name,
+size, usable[, problem]}], "total": n}` — sorted by name, at most
+[`MAX_LISTED_LUTS`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LISTED_LUTS) rows of `total`. Empty when the folder does not exist.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.luts.look_lut_names(look)
+
+The LUT names `look`’s `lut3d` links load, as ffmpeg reads them (`[]` for
+none) — the LAST `file` of a link, as `av_opt_set` keeps the last.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.luts.lut_name(text)
+
+`text` when it is a LUT name — the cube’s path relative to
+[`muvid.paths.lut_dir()`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir) — else `None`. Reads no file and no environment.
+
+```pycon
+>>> lut_name("warm.cube"), lut_name("film/Warm-2.CUBE")
+('warm.cube', 'film/Warm-2.CUBE')
+>>> [lut_name(t) for t in ("../x.cube", ".hidden.cube", "/etc/passwd", "a b.cube",
+...                        "warm.png", "film//warm.cube", "a" * 300 + ".cube")]
+[None, None, None, None, None, None, None]
+```
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.luts.resolve_lut(name)
+
+The file LUT `name` loads, checked: inside the LUT folder once symlinks are
+resolved, a regular file, declaring `LUT_3D_SIZE` at most [`MAX_LUT_SIZE`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_SIZE).
+
+Raises [`LutError`](_autosummary/muvid.footage.luts.html.md#muvid.footage.luts.LutError) otherwise. The message names the LUT and never the folder:
+hosted replies carry project-relative paths only.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
 
 # _autosummary/muvid.footage.media_views.html.md
@@ -8098,6 +8264,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`set_span`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.set_span)(fp, \*, edit_id, start_s, end_s)        | Choose which part of the song the video covers — where it starts and ends.                                                                                                                                                                                                                                                                                                                                   |
 | [`rename_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.rename_edit)(fp, \*, edit_id, name)               | Give an edit a new name — what the edit picker and the renders made from it show.                                                                                                                                                                                                                                                                                                                            |
 | [`looks`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.looks)([fp])                                      | The looks a cut can take — camera moves (punch in, slow push, slow pull, pans) and grades (vivid, black and white, posterize, cartoon) — each with its `params_schema`.                                                                                                                                                                                                                                      |
+| [`luts`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.luts)([fp])                                       | The colour LUTs a look can load, each by the name a look gives it — `set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether it can be used (`usable`; `problem` says why not), and `total` (the list is capped).                                                                                                                                                                     |
 | [`undo_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.undo_edit)(fp, \*, edit_id)                       | Undo the last change to a saved edit (a cut changed, split, joined, the span, a whole replacement — by a person or by the assistant).                                                                                                                                                                                                                                                                        |
 | [`redo_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.redo_edit)(fp, \*, edit_id)                       | Redo the change `undo_edit` last took back.                                                                                                                                                                                                                                                                                                                                                                  |
 | [`delete_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.delete_edit)(fp, \*, edit_id)                     | Delete a saved edit.                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -8591,6 +8758,17 @@ Idempotent: the same bytes under the same id change nothing.
 The looks a cut can take — camera moves (punch in, slow push, slow pull, pans)
 and grades (vivid, black and white, posterize, cartoon) — each with its
 `params_schema`. Give one to `set_cut` as `look={"name": ..., **params}`.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.service.luts(fp=None)
+
+The colour LUTs a look can load, each by the name a look gives it —
+`set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether
+it can be used (`usable`; `problem` says why not), and `total` (the list is
+capped). Empty when none are installed. The LUT is found when the edit is rendered, so a name stays valid in a
+saved edit wherever the files are kept.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -13548,6 +13726,7 @@ alignment, exactly as `set_song` does.
 | [`footage_fit_to_beat`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_fit_to_beat)(project_id, \*, edit_id)       | Fit the moves to the beat: for each cut that shows a video in the part of the song the edit covers (its span) — or the cuts at `indices` — find the slip and speed that put its video's movement accents on the song's beat, and apply it where the evidence is strong. |
 | [`footage_get_edit`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_get_edit)(project_id, \*, edit_id)          | One saved edit: its cut list (`edl`, every span of the song, gaps as `clip_id: null`), its name and history, and a `coverage` report.                                                                                                                                   |
 | [`footage_looks`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_looks)(project_id)                          | The looks a cut can take — camera moves (punch in, slow push, slow pull, pans) and grades (vivid, black and white, posterize, cartoon) — each with its `params_schema`.                                                                                                 |
+| [`footage_luts`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_luts)(project_id)                           | The colour LUTs a look can load, each by the name a look gives it — `footage_set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether it can be used (`usable`; `problem` says why not), and `total` (the list is capped).                        |
 | [`footage_merge_cut`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_merge_cut)(project_id, \*, edit_id, index)  | Join cut `index` to its neighbour: the neighbour (`into` "previous" or "next") takes over its span, so the neighbour's video must cover it.                                                                                                                             |
 | [`footage_peaks`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_peaks)(project_id, \*[, n])                 | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                |
 | [`footage_redo_edit`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_redo_edit)(project_id, \*, edit_id)         | Redo the change `footage_undo_edit` last took back.                                                                                                                                                                                                                     |
@@ -13974,6 +14153,17 @@ and grades (vivid, black and white, posterize, cartoon) — each with its
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.mcp.footage_tools.footage_luts(project_id)
+
+The colour LUTs a look can load, each by the name a look gives it —
+`footage_set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether
+it can be used (`usable`; `problem` says why not), and `total` (the list is
+capped). Empty when none are installed. The LUT is found when the edit is rendered, so a name stays valid in a
+saved edit wherever the files are kept.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.mcp.footage_tools.footage_merge_cut(project_id, , edit_id, index, into='previous')
 
 Join cut `index` to its neighbour: the neighbour (`into` “previous” or
@@ -14372,15 +14562,15 @@ an unpriced call must force approval (muvid#47).
 | [`VisualizerWorkspace`](_autosummary/muvid.mcp.html.md#muvid.mcp.VisualizerWorkspace)(email, root)   | A single caller's private visualizer area, addressed by `email`.   |
 |-------------------------------------------------------------------------------------|--------------------------------------------------------------------|
 
-### muvid.mcp.FREE_TOOLS *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
+### muvid.mcp.FREE_TOOLS *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_luts', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
 
 Alias — muvid has no costed tools.
 
-### muvid.mcp.TOOL_NAMES *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'propose_lyric_treatments_ai', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
+### muvid.mcp.TOOL_NAMES *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_luts', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'propose_lyric_treatments_ai', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
 
 All tools this package exposes (all free). Bare names; a host may prefix them.
 
-### muvid.mcp.TOOL_REFS *= {'add_footage': 'muvid.mcp.footage_tools:add_footage', 'add_footage_folder': 'muvid.mcp.footage_tools:add_footage_folder', 'align_footage': 'muvid.mcp.footage_tools:align_footage', 'analyze_song_lyrics': 'muvid.mcp.lyricvid_tools:analyze_song_lyrics', 'assemble_music_video': 'muvid.mcp.footage_tools:assemble_music_video', 'beat_grid': 'muvid.mcp.footage_tools:beat_grid', 'footage_beat_signals': 'muvid.mcp.footage_tools:footage_beat_signals', 'footage_clear_beat_grid': 'muvid.mcp.footage_tools:footage_clear_beat_grid', 'footage_clear_offset': 'muvid.mcp.footage_tools:footage_clear_offset', 'footage_delete_edit': 'muvid.mcp.footage_tools:footage_delete_edit', 'footage_editor_document': 'muvid.mcp.footage_tools:footage_editor_document', 'footage_edits': 'muvid.mcp.footage_tools:footage_edits', 'footage_edl_from_annotations': 'muvid.mcp.footage_tools:footage_edl_from_annotations', 'footage_explain_edit': 'muvid.mcp.footage_tools:footage_explain_edit', 'footage_filmstrip': 'muvid.mcp.footage_tools:footage_filmstrip', 'footage_filmstrips': 'muvid.mcp.footage_tools:footage_filmstrips', 'footage_fit_to_beat': 'muvid.mcp.footage_tools:footage_fit_to_beat', 'footage_get_edit': 'muvid.mcp.footage_tools:footage_get_edit', 'footage_looks': 'muvid.mcp.footage_tools:footage_looks', 'footage_merge_cut': 'muvid.mcp.footage_tools:footage_merge_cut', 'footage_peaks': 'muvid.mcp.footage_tools:footage_peaks', 'footage_redo_edit': 'muvid.mcp.footage_tools:footage_redo_edit', 'footage_rename_edit': 'muvid.mcp.footage_tools:footage_rename_edit', 'footage_render': 'muvid.mcp.footage_tools:footage_render', 'footage_renders': 'muvid.mcp.footage_tools:footage_renders', 'footage_replace_edit': 'muvid.mcp.footage_tools:footage_replace_edit', 'footage_save_edit': 'muvid.mcp.footage_tools:footage_save_edit', 'footage_score_candidates': 'muvid.mcp.footage_tools:footage_score_candidates', 'footage_score_status': 'muvid.mcp.scoring_tools:footage_score_status', 'footage_scores': 'muvid.mcp.scoring_tools:footage_scores', 'footage_set_beat_grid': 'muvid.mcp.footage_tools:footage_set_beat_grid', 'footage_set_cut': 'muvid.mcp.footage_tools:footage_set_cut', 'footage_set_has_song': 'muvid.mcp.footage_tools:footage_set_has_song', 'footage_set_offset': 'muvid.mcp.footage_tools:footage_set_offset', 'footage_set_span': 'muvid.mcp.footage_tools:footage_set_span', 'footage_split_cut': 'muvid.mcp.footage_tools:footage_split_cut', 'footage_status': 'muvid.mcp.footage_tools:footage_status', 'footage_timeline': 'muvid.mcp.footage_tools:footage_timeline', 'footage_undo_edit': 'muvid.mcp.footage_tools:footage_undo_edit', 'list_archetypes': 'muvid.mcp.lyricvid_tools:list_archetypes', 'list_music_video_projects': 'muvid.mcp.footage_tools:list_music_video_projects', 'list_projects': 'muvid.mcp.tools:list_projects', 'list_strategies': 'muvid.mcp.footage_tools:list_strategies', 'list_subgenres': 'muvid.mcp.subgenre_tools:list_subgenres', 'list_visuals': 'muvid.mcp.tools:list_visuals', 'project_status': 'muvid.mcp.tools:project_status', 'propose_edit': 'muvid.mcp.footage_tools:propose_edit', 'propose_lyric_treatments': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments', 'propose_lyric_treatments_ai': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments_ai', 'remove_footage': 'muvid.mcp.footage_tools:remove_footage', 'render_lyric_video': 'muvid.mcp.lyricvid_tools:render_lyric_video', 'render_subgenre': 'muvid.mcp.subgenre_tools:render_subgenre', 'render_visualizer': 'muvid.mcp.tools:render_visualizer', 'score_footage': 'muvid.mcp.scoring_tools:score_footage', 'set_song': 'muvid.mcp.footage_tools:set_song', 'validate_lyric_treatment': 'muvid.mcp.lyricvid_tools:validate_lyric_treatment'}*
+### muvid.mcp.TOOL_REFS *= {'add_footage': 'muvid.mcp.footage_tools:add_footage', 'add_footage_folder': 'muvid.mcp.footage_tools:add_footage_folder', 'align_footage': 'muvid.mcp.footage_tools:align_footage', 'analyze_song_lyrics': 'muvid.mcp.lyricvid_tools:analyze_song_lyrics', 'assemble_music_video': 'muvid.mcp.footage_tools:assemble_music_video', 'beat_grid': 'muvid.mcp.footage_tools:beat_grid', 'footage_beat_signals': 'muvid.mcp.footage_tools:footage_beat_signals', 'footage_clear_beat_grid': 'muvid.mcp.footage_tools:footage_clear_beat_grid', 'footage_clear_offset': 'muvid.mcp.footage_tools:footage_clear_offset', 'footage_delete_edit': 'muvid.mcp.footage_tools:footage_delete_edit', 'footage_editor_document': 'muvid.mcp.footage_tools:footage_editor_document', 'footage_edits': 'muvid.mcp.footage_tools:footage_edits', 'footage_edl_from_annotations': 'muvid.mcp.footage_tools:footage_edl_from_annotations', 'footage_explain_edit': 'muvid.mcp.footage_tools:footage_explain_edit', 'footage_filmstrip': 'muvid.mcp.footage_tools:footage_filmstrip', 'footage_filmstrips': 'muvid.mcp.footage_tools:footage_filmstrips', 'footage_fit_to_beat': 'muvid.mcp.footage_tools:footage_fit_to_beat', 'footage_get_edit': 'muvid.mcp.footage_tools:footage_get_edit', 'footage_looks': 'muvid.mcp.footage_tools:footage_looks', 'footage_luts': 'muvid.mcp.footage_tools:footage_luts', 'footage_merge_cut': 'muvid.mcp.footage_tools:footage_merge_cut', 'footage_peaks': 'muvid.mcp.footage_tools:footage_peaks', 'footage_redo_edit': 'muvid.mcp.footage_tools:footage_redo_edit', 'footage_rename_edit': 'muvid.mcp.footage_tools:footage_rename_edit', 'footage_render': 'muvid.mcp.footage_tools:footage_render', 'footage_renders': 'muvid.mcp.footage_tools:footage_renders', 'footage_replace_edit': 'muvid.mcp.footage_tools:footage_replace_edit', 'footage_save_edit': 'muvid.mcp.footage_tools:footage_save_edit', 'footage_score_candidates': 'muvid.mcp.footage_tools:footage_score_candidates', 'footage_score_status': 'muvid.mcp.scoring_tools:footage_score_status', 'footage_scores': 'muvid.mcp.scoring_tools:footage_scores', 'footage_set_beat_grid': 'muvid.mcp.footage_tools:footage_set_beat_grid', 'footage_set_cut': 'muvid.mcp.footage_tools:footage_set_cut', 'footage_set_has_song': 'muvid.mcp.footage_tools:footage_set_has_song', 'footage_set_offset': 'muvid.mcp.footage_tools:footage_set_offset', 'footage_set_span': 'muvid.mcp.footage_tools:footage_set_span', 'footage_split_cut': 'muvid.mcp.footage_tools:footage_split_cut', 'footage_status': 'muvid.mcp.footage_tools:footage_status', 'footage_timeline': 'muvid.mcp.footage_tools:footage_timeline', 'footage_undo_edit': 'muvid.mcp.footage_tools:footage_undo_edit', 'list_archetypes': 'muvid.mcp.lyricvid_tools:list_archetypes', 'list_music_video_projects': 'muvid.mcp.footage_tools:list_music_video_projects', 'list_projects': 'muvid.mcp.tools:list_projects', 'list_strategies': 'muvid.mcp.footage_tools:list_strategies', 'list_subgenres': 'muvid.mcp.subgenre_tools:list_subgenres', 'list_visuals': 'muvid.mcp.tools:list_visuals', 'project_status': 'muvid.mcp.tools:project_status', 'propose_edit': 'muvid.mcp.footage_tools:propose_edit', 'propose_lyric_treatments': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments', 'propose_lyric_treatments_ai': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments_ai', 'remove_footage': 'muvid.mcp.footage_tools:remove_footage', 'render_lyric_video': 'muvid.mcp.lyricvid_tools:render_lyric_video', 'render_subgenre': 'muvid.mcp.subgenre_tools:render_subgenre', 'render_visualizer': 'muvid.mcp.tools:render_visualizer', 'score_footage': 'muvid.mcp.scoring_tools:score_footage', 'set_song': 'muvid.mcp.footage_tools:set_song', 'validate_lyric_treatment': 'muvid.mcp.lyricvid_tools:validate_lyric_treatment'}*
 
 Bare tool name → its `module:function` reference (tools live in three modules).
 
@@ -19434,7 +19624,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-10-30 17:54 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/80ee86e927dde9c95ffeb9dc5276a4259f6359da"><code>80ee86e</code></a> on branch <code>main</code>, for **muvid 0.0.143** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-01 18:24 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/2ca0708cfb2591802a2b1ec519233a555dfd26ca"><code>2ca0708</code></a> on branch <code>main</code>, for **muvid 0.0.144** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19443,9 +19633,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/80ee86e927dde9c95ffeb9dc5276a4259f6359da"><code>80ee86e927dde9c95ffeb9dc5276a4259f6359da</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/2ca0708cfb2591802a2b1ec519233a555dfd26ca"><code>2ca0708cfb2591802a2b1ec519233a555dfd26ca</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.143</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.144</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19454,9 +19644,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41100983981">41100983981</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41335122385">41335122385</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>31bf3ae4062df6a86763f02a5bae4402af5380a6</code> (in the history of the built commit) |
+| Event commit | <code>85d38b015bd1fea403b487e526735cd05b0cbcf8</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19481,13 +19671,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.143/">0.0.143</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.144/">0.0.144</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 80ee86e927dde9c95ffeb9dc5276a4259f6359da
+git checkout 2ca0708cfb2591802a2b1ec519233a555dfd26ca
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

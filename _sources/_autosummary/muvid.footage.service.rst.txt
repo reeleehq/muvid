@@ -52,6 +52,7 @@ muvid.footage.service
       set_span
       rename_edit
       looks
+      luts
       undo_edit
       redo_edit
       delete_edit

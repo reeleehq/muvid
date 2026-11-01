@@ -47,6 +47,7 @@ alignment, exactly as `set_song` does.
 | [`footage_fit_to_beat`](#muvid.mcp.footage_tools.footage_fit_to_beat)(project_id, \*, edit_id)       | Fit the moves to the beat: for each cut that shows a video in the part of the song the edit covers (its span) — or the cuts at `indices` — find the slip and speed that put its video's movement accents on the song's beat, and apply it where the evidence is strong. |
 | [`footage_get_edit`](#muvid.mcp.footage_tools.footage_get_edit)(project_id, \*, edit_id)          | One saved edit: its cut list (`edl`, every span of the song, gaps as `clip_id: null`), its name and history, and a `coverage` report.                                                                                                                                   |
 | [`footage_looks`](#muvid.mcp.footage_tools.footage_looks)(project_id)                          | The looks a cut can take — camera moves (punch in, slow push, slow pull, pans) and grades (vivid, black and white, posterize, cartoon) — each with its `params_schema`.                                                                                                 |
+| [`footage_luts`](#muvid.mcp.footage_tools.footage_luts)(project_id)                           | The colour LUTs a look can load, each by the name a look gives it — `footage_set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether it can be used (`usable`; `problem` says why not), and `total` (the list is capped).                        |
 | [`footage_merge_cut`](#muvid.mcp.footage_tools.footage_merge_cut)(project_id, \*, edit_id, index)  | Join cut `index` to its neighbour: the neighbour (`into` "previous" or "next") takes over its span, so the neighbour's video must cover it.                                                                                                                             |
 | [`footage_peaks`](#muvid.mcp.footage_tools.footage_peaks)(project_id, \*[, n])                 | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                |
 | [`footage_redo_edit`](#muvid.mcp.footage_tools.footage_redo_edit)(project_id, \*, edit_id)         | Redo the change `footage_undo_edit` last took back.                                                                                                                                                                                                                     |
@@ -469,6 +470,17 @@ One saved edit: its cut list (`edl`, every span of the song, gaps as
 The looks a cut can take — camera moves (punch in, slow push, slow pull, pans)
 and grades (vivid, black and white, posterize, cartoon) — each with its
 `params_schema`. Give one to `footage_set_cut` as `look={"name": ..., **params}`.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.mcp.footage_tools.footage_luts(project_id)
+
+The colour LUTs a look can load, each by the name a look gives it —
+`footage_set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether
+it can be used (`usable`; `problem` says why not), and `total` (the list is
+capped). Empty when none are installed. The LUT is found when the edit is rendered, so a name stays valid in a
+saved edit wherever the files are kept.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

@@ -26,6 +26,7 @@ muvid.mcp.footage\_tools
       footage_fit_to_beat
       footage_get_edit
       footage_looks
+      footage_luts
       footage_merge_cut
       footage_peaks
       footage_redo_edit

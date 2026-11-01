@@ -36,7 +36,6 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 |-----------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`MAX_EDL_ENTRIES`](#muvid.footage.edl.MAX_EDL_ENTRIES)            | Cap on EDL entries (env-tunable), on BOTH the auto and the explicit-`edl` paths.                                                                                                                                                                                |
 | [`MAX_LOOK_SCALE`](#muvid.footage.edl.MAX_LOOK_SCALE)             | How many times the delivery canvas a `look` may ask for, PER DIMENSION (env-tunable).                                                                                                                                                                           |
-| [`MAX_LUT_SIZE`](#muvid.footage.edl.MAX_LUT_SIZE)               | The largest `LUT_3D_SIZE` a look's `lut3d` may load (muvid#244).                                                                                                                                                                                                |
 | [`MAX_LOOK_LINKS`](#muvid.footage.edl.MAX_LOOK_LINKS)             | How many filter links one look may carry.                                                                                                                                                                                                                       |
 | [`MAX_LOOK_COST`](#muvid.footage.edl.MAX_LOOK_COST)              | The memory a look may cost, in canvas-sized YUV frames (`_look_cost()`) — ONE budget in place of the three counts of muvid#196/#199 (resizes, links holding a large frame, heavy filters), which each answered one version of this question (#229).             |
 | [`DFLT_LOOK_CANVAS`](#muvid.footage.edl.DFLT_LOOK_CANVAS)           | The canvas [`validate_edl()`](#muvid.footage.edl.validate_edl) bounds a look against when its caller names none: the element-wise maximum of `workspace.CANVASES`, so the default is the LOOSEST bound that is still a bound — never an absent one. |
@@ -542,7 +541,8 @@ filter must declare no filesystem-path option at all. `lut3d`’s `file` is
 the single recorded exception (`_LOOK_FILE_OPTIONS`) — it *loads* a
 `.cube`, which is how `looks`’ flagship grade reaches its LUT, and it reads
 rather than writes (a cube `looks.materialize` builds must land in
-[`muvid.paths.lut_dir()`](muvid.paths.html.md#muvid.paths.lut_dir) — pass `into=` — to pass muvid#244’s rule). Nothing
+[`muvid.paths.lut_dir()`](muvid.paths.html.md#muvid.paths.lut_dir) — pass `into=` — and be named relative to it, to pass
+muvid#252’s rule). Nothing
 else may name a path, so adding a filter here is a
 two-place edit and the second place is a measurement of the real binary.
 
@@ -555,10 +555,11 @@ on the OPTIONS that set a size: `pad`’s `aspect` and `scale`’s
 dimension a bound can read, so the four filters that can change the output
 geometry are allowlisted per OPTION as well as by name.
 
-**\`\`lut3d=file=\`\` is confined separately** (muvid#244): before that it would
-*attempt* to open any path the renderer could read, and load a cube of any size.
-`_validate_look_luts()` now allows only a `.cube` inside
-[`muvid.paths.lut_dir()`](muvid.paths.html.md#muvid.paths.lut_dir) with `LUT_3D_SIZE` at most [`MAX_LUT_SIZE`](#muvid.footage.edl.MAX_LUT_SIZE).
+**\`\`lut3d=file=\`\` is confined separately** (muvid#244, muvid#252): before that it
+would *attempt* to open any path the renderer could read, and load a cube of any
+size. `_validate_look_luts()` now allows only a LUT NAME — the cube’s path
+relative to [`muvid.paths.lut_dir()`](muvid.paths.html.md#muvid.paths.lut_dir) — and the assembler resolves it there and
+checks `LUT_3D_SIZE` at most [`muvid.footage.luts.MAX_LUT_SIZE`](muvid.footage.luts.html.md#muvid.footage.luts.MAX_LUT_SIZE) ([`muvid.footage.luts`](muvid.footage.luts.html.md#module-muvid.footage.luts)).
 
 ### muvid.footage.edl.MAX_EDL_ENTRIES *= 500*
 
@@ -625,12 +626,6 @@ How many times the delivery canvas a `look` may ask for, PER DIMENSION
 Bigger than the canvas is never useful — the delivered frame IS the canvas, so
 anything past it is resampled straight back down — which is why a *small*
 multiple is the whole of the legitimate range.
-
-### muvid.footage.edl.MAX_LUT_SIZE *= 65*
-
-The largest `LUT_3D_SIZE` a look’s `lut3d` may load (muvid#244). `lut3d`’s memory
-is its cube’s, not the frame’s: 12 bytes x size^3 — 3.3 MB at 65 (the usual grading
-size), 201 MB at 256 — so the frame-cost budget cannot see it and this bounds it.
 
 ### muvid.footage.edl.MEASURED *= 'measured'*
 
