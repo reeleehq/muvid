@@ -57,6 +57,7 @@ import re
 import shutil
 import tempfile
 import time
+import warnings
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -172,32 +173,51 @@ def fresh_output(dest):
         tmp.unlink(missing_ok=True)
 
 
+def file_identity(path) -> "tuple[int, int, int] | None":
+    """``(inode, size, mtime_ns)`` of ``path``, or ``None`` when it is absent — what a
+    measurement recorded after the fact checks the file still is (muvid#254). Every
+    project write replaces a file (a new inode, :func:`replace_file`), so a re-upload
+    under the same name never shares an identity with the file it replaced."""
+    try:
+        st = os.stat(path)
+    except FileNotFoundError:
+        return None
+    return st.st_ino, st.st_size, st.st_mtime_ns
+
+
+#: The suffix every muvid lock file carries — ``dol``'s sidecar for the file it protects.
+LOCK_SUFFIX = ".lock"
+
+
 @contextmanager
 def file_lock(path):
-    """An exclusive advisory lock on ``path`` for a read-modify-write (POSIX ``flock``;
-    ``msvcrt.locking`` on Windows). Serialises concurrent edits of one project's files;
-    each write is also atomic, so a reader never needs the lock."""
+    """An exclusive advisory lock on the lock file ``path`` (which must end in
+    :data:`LOCK_SUFFIX`) for a read-modify-write. Serialises concurrent edits of one
+    project's files; each write is also atomic, so a reader never needs the lock.
+
+    The fleet's lock, :func:`dol.atomic.file_lock` (muvid#254): on Windows it polls
+    rather than raising after ~10 s of contention (``LK_LOCK`` did, and
+    :func:`muvid.footage.beats.cached_signals` holds its lock across minutes of work),
+    and the body still runs when the folder cannot be locked at all (read-only, a
+    filesystem without lock support). ``path`` names the lock file itself, as before,
+    so every existing lock file keeps its name. Not re-entrant: taking it again on the
+    same path from the same thread waits forever.
+    """
+    from dol.atomic import file_lock as _file_lock
+
     path = Path(path)
+    text = os.fspath(path)
+    if not text.endswith(LOCK_SUFFIX):
+        raise ValueError(f"a lock file's name ends in {LOCK_SUFFIX!r}, got {path.name!r}")
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a+b") as f:
-        try:
-            import fcntl
-
-            fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-            try:
-                yield
-            finally:
-                fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-        except ImportError:  # Windows
-            import msvcrt
-
-            f.seek(0)
-            msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)
-            try:
-                yield
-            finally:
-                f.seek(0)
-                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+    with _file_lock(text[: -len(LOCK_SUFFIX)], sidecar=LOCK_SUFFIX) as held:
+        if not held:
+            warnings.warn(
+                f"could not lock {path.name} (a read-only folder, or a filesystem "
+                "without lock support): this read-modify-write runs unserialised",
+                stacklevel=3,
+            )
+        yield held
 
 
 @dataclass(frozen=True)
@@ -241,6 +261,47 @@ class MusicVideoFootageProject:
         self.root.mkdir(parents=True, exist_ok=True)
         m.setdefault("created", time.time())
         atomic_write_text(self._manifest_path(), json.dumps(m, indent=2))
+
+    def manifest_lock(self):
+        """Serialise a read-modify-write of ``manifest.json`` (see :func:`file_lock`).
+
+        Every manifest writer takes it, through :meth:`update_manifest` (muvid#254):
+        each write was already atomic, but two writers that read the same manifest
+        (an upload recording its clip while another records a duration) lost one
+        update. The rule is the alignments lock's: do the slow work (copy, probe,
+        hash, register) OUTSIDE it, then re-read and change under it. Lock order:
+        :meth:`alignments_lock` may be held when this is taken, never the reverse, and
+        nothing done under this lock takes another lock.
+        """
+        return file_lock(self.root / "locks" / "manifest.lock")
+
+    def update_manifest(self, change):
+        """Re-read the manifest under :meth:`manifest_lock`, apply ``change(m)`` (which
+        mutates ``m`` in place and may raise to write nothing), and write it if it
+        changed; return what ``change`` returned.
+
+        The read is STRICT, unlike :meth:`manifest`'s: only an absent manifest reads as
+        the defaults. A transient read failure written back as "defaults plus this
+        change" would drop every clip. And a change that changes nothing writes
+        nothing, so a no-op neither creates a manifest nor moves its mtime.
+        """
+        with self.manifest_lock():
+            path = self._manifest_path()
+            try:
+                m = json.loads(path.read_text()) if path.exists() else self.manifest()
+            except ValueError as e:  # a manifest torn before writes were atomic
+                from muvid.footage.errors import FootageError
+
+                raise FootageError(
+                    "this project's manifest.json is not valid JSON, so nothing can be "
+                    "recorded in it without losing what it held; restore it from a "
+                    "backup"
+                ) from e
+            before = json.dumps(m, sort_keys=True)
+            out = change(m)
+            if json.dumps(m, sort_keys=True) != before:
+                self._write_manifest(m)
+            return out
 
     def canvas(self) -> tuple[int, int]:
         return CANVASES.get(
@@ -328,24 +389,32 @@ class MusicVideoFootageProject:
                 artifact_id = self._register(
                     dest, kind="audio", artifact_id=digest, duration_s=duration
                 )
-                m = self.manifest()
-                m["song"] = dest.name
-                m["song_duration"] = duration
-                m["song_hash"] = digest
-                _set_or_drop(m, "song_name", name or None)
-                _set_or_drop(m, "song_artifact_id", artifact_id)
-                self._write_manifest(m)
+
+                def name_the_song(m):
+                    m["song"] = dest.name
+                    m["song_duration"] = duration
+                    m["song_hash"] = digest
+                    _set_or_drop(m, "song_name", name or None)
+                    _set_or_drop(m, "song_artifact_id", artifact_id)
+
+                self.update_manifest(name_the_song)
         finally:
             staged.unlink(missing_ok=True)
 
     def song_hash(self) -> str:
         """The clean song's content hash (cached in the manifest; computed if missing)."""
-        m = self.manifest()
-        h = m.get("song_hash")
+        h = self.manifest().get("song_hash")
         if not h:
-            h = _hash_file(self.song_path())
-            m["song_hash"] = h
-            self._write_manifest(m)
+            path = self.song_path()
+            identity = file_identity(path)
+            h = _hash_file(path)  # outside the lock: a 100 MB song takes a while
+
+            def record(m):
+                # only if it is still the very file that was hashed (#254)
+                if m.get("song") == path.name and file_identity(path) == identity:
+                    m["song_hash"] = h
+
+            self.update_manifest(record)
         return h
 
     def invalidate_scores(self) -> None:
@@ -390,15 +459,16 @@ class MusicVideoFootageProject:
         folder.mkdir(parents=True, exist_ok=True)
         dest = replace_file(src_path, folder / f"{cid}{_safe_ext(ext)}")
         artifact_id = self._register(dest, kind="audio")
-        m = self.manifest()
-        rows = m.setdefault("song_candidates", [])
-        rows[:] = [r for r in rows if r.get("candidate_id") != cid]
         row = {"candidate_id": cid, "file": dest.name, "name": name or cid}
         _set_or_drop(row, "duration_s", duration_s)
         _set_or_drop(row, "song_hash", song_hash or None)
         _set_or_drop(row, "artifact_id", artifact_id)
-        rows.append(row)
-        self._write_manifest(m)
+
+        def add(m):
+            rows = m.setdefault("song_candidates", [])
+            rows[:] = [r for r in rows if r.get("candidate_id") != cid] + [row]
+
+        self.update_manifest(add)
         for old in _files_with_stem(folder, cid):
             if old != dest:
                 old.unlink()
@@ -422,13 +492,18 @@ class MusicVideoFootageProject:
     def remove_song_candidate(self, candidate_id: str) -> bool:
         """Forget candidate ``candidate_id`` and its file; whether it existed."""
         cid = normalise_id(candidate_id, label="candidate_id")
-        m = self.manifest()
-        rows = m.get("song_candidates", [])
-        kept = [r for r in rows if r.get("candidate_id") != cid]
-        if len(kept) == len(rows):
+
+        def drop(m) -> bool:
+            rows = m.get("song_candidates", [])
+            kept = [r for r in rows if r.get("candidate_id") != cid]
+            found = len(kept) != len(rows)
+            if found:
+                m["song_candidates"] = kept
+            return found
+
+        # the manifest first: it never names a missing file
+        if not self.update_manifest(drop):
             return False
-        m["song_candidates"] = kept
-        self._write_manifest(m)  # the manifest first: it never names a missing file
         for old in _files_with_stem(self.root / "song_candidates", cid):
             old.unlink()
         return True
@@ -463,16 +538,17 @@ class MusicVideoFootageProject:
             old.unlink()
         dest = replace_file(src_path, clips_dir / f"{cid}{_safe_ext(ext)}")
         artifact_id = self._register(dest, kind="image" if kind == "still" else "video")
-        m = self.manifest()
-        clips = m.setdefault("clips", [])
-        clips[:] = [c for c in clips if c.get("clip_id") != cid]
         entry = {"clip_id": cid, "file": dest.name, "name": name or cid}
         _set_or_drop(entry, "kind", kind or None)
         _set_or_drop(entry, "artifact_id", artifact_id)
         _set_or_drop(entry, "taken_at", taken_at)
         _set_or_drop(entry, "taken_source", taken_source or None)
-        clips.append(entry)
-        self._write_manifest(m)
+
+        def add(m):
+            clips = m.setdefault("clips", [])
+            clips[:] = [c for c in clips if c.get("clip_id") != cid] + [entry]
+
+        self.update_manifest(add)
         return cid
 
     def remove_clip(self, clip_id: str) -> dict:
@@ -500,8 +576,8 @@ class MusicVideoFootageProject:
         alignment = self.root / "alignments.json"
         # Held through the manifest write: an `align` merging under the lock re-reads
         # the clip list, so it must not see this clip after its records are dropped.
-        # This orders remove_clip against the other alignments writers only —
-        # add_clip and set_has_song write the manifest without the lock.
+        # This orders remove_clip against the other alignments writers; the manifest
+        # write itself is under the manifest lock, as every manifest write is (#254).
         with self.alignments_lock():
             # Look the clip up UNDER the lock: a second remove that overlapped this one
             # must refuse, not drop the measured records made since the first (muvid#236).
@@ -524,8 +600,11 @@ class MusicVideoFootageProject:
                 self.save_alignments(kept)
             had_scores = (self.root / "scores").exists()
             self.invalidate_scores()
-            m["clips"] = [c for c in m.get("clips", []) if c.get("clip_id") != cid]
-            self._write_manifest(m)
+
+            def drop(m):  # re-read: another writer may have changed it since
+                m["clips"] = [c for c in m.get("clips", []) if c.get("clip_id") != cid]
+
+            self.update_manifest(drop)
         removed_files = []
         # The same sweep add_clip uses: any extension this id was ever stored under.
         for old in _files_with_stem(self.root / "clips", cid):
@@ -656,11 +735,9 @@ class MusicVideoFootageProject:
         if Path(image_path) != dest:
             replace_file(image_path, dest)
         artifact_id = self._register(dest, kind="image")
-        m = self.manifest()
         cover = {"file": dest.name, "taken_from": taken_from}
         _set_or_drop(cover, "artifact_id", artifact_id)
-        m["cover"] = cover
-        self._write_manifest(m)
+        self.update_manifest(lambda m: m.update(cover=cover))
         return artifact_id
 
     # -- alignments ----------------------------------------------------------
