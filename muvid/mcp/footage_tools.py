@@ -204,7 +204,7 @@ def set_song(project_id: str, *, url: str) -> dict:
         except FetchError as e:
             # A web page where media was asked for: a page link, unless it was a share
             # link (then the page is a sign-in page, and graze's diagnosis is the answer).
-            if direct != url or not _answered_with_a_page(e):
+            if direct != url.strip() or not _answered_with_a_page(e):
                 raise _tool_error(f"could not fetch the song: {e}") from e
             page = _song_from_page(url, Path(tmp))
             tmp_song, ext, notice = page.path, "mp3", page.notice
