@@ -190,28 +190,85 @@ def set_song(project_id: str, *, url: str) -> dict:
     Accepts a **share link** (Google Drive / Dropbox / OneDrive) as well as a direct media
     URL — the link is normalised before fetching, and the downloaded bytes are checked to be
     media, so a private-file sign-in page is refused with that diagnosis rather than stored.
+    A **page link** — a video or music page (YouTube, SoundCloud, Bandcamp, ...) — has its
+    audio taken as mp3 through ``yb`` when that is installed, and the song then carries the
+    source's copyright notice (``song.notice``): you must have the right to use it.
 
     This is the reference every uploaded clip is aligned to and whose audio the final
     video uses. Replaces any previous song. Duration/size-capped.
     """
     import tempfile
 
+    from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
+
     proj = _open(project_id)
     direct = _resolve_media_url(url, what="song")
+    notice, filename = "", ""
     with tempfile.TemporaryDirectory() as tmp:
         ext = _url_ext(url, "") or _url_ext(direct, "mp3")
         tmp_song = Path(tmp) / f"song.{ext}"
-        _fetch_media(
-            direct, tmp_song, kind="audio", max_bytes=_SONG_MAX_BYTES, what="song"
-        )
+        try:
+            fetch_to_file_streaming(
+                direct, tmp_song, max_bytes=_SONG_MAX_BYTES, expect_kind="audio"
+            )
+        except FetchError as e:
+            # A web page where media was asked for: a page link, unless it was a share
+            # link (then the page is a sign-in page, and graze's diagnosis is the answer).
+            if direct != url or not _answered_with_a_page(e):
+                raise _tool_error(f"could not fetch the song: {e}") from e
+            page = _song_from_page(url, Path(tmp))
+            tmp_song, ext, notice = page.path, "mp3", page.notice
+            filename = f"{_display_name(page.title) or 'song'}.mp3"
         dur = _duration(tmp_song)
         if dur > _SONG_MAX_DURATION_S:
             raise _tool_error(
                 f"song is {dur:.0f}s; the {_SONG_MAX_DURATION_S}s limit is exceeded"
             )
         with _refusals():
-            out = service.set_song(proj, path=str(tmp_song), ext=ext, duration_s=dur)
+            out = service.set_song(
+                proj,
+                path=str(tmp_song),
+                ext=ext,
+                filename=filename,
+                duration_s=dur,
+                notice=notice,
+            )
     return {"project_id": project_id, **out}
+
+
+def _answered_with_a_page(e: Exception) -> bool:
+    """Whether a fetch was refused because a web page came back instead of media."""
+    from graze.content_kind import ContentKindMismatch
+
+    cause = e.__cause__
+    if not isinstance(cause, ContentKindMismatch):
+        return False
+    # graze states the family only in its message today (see reeleehq/muvid#274's PR)
+    return getattr(cause, "family", None) == "html" or "got an HTML page" in str(cause)
+
+
+def _song_from_page(url: str, workdir: Path):
+    """The song's audio from a page link, through yb (muvid#274), as a ToolError on refusal."""
+    from muvid.mcp._audio_link import PageAudioUnavailable, song_from_page_link
+
+    try:
+        return song_from_page_link(
+            url,
+            workdir=workdir,
+            max_bytes=_SONG_MAX_BYTES,
+            max_duration_s=_SONG_MAX_DURATION_S,
+        )
+    except PageAudioUnavailable as e:
+        raise _tool_error(
+            f"that link is a web page, not a media file, and {e} on the server"
+        ) from e
+    except ValueError as e:  # muvid's target check, or yb's caps (AudioLimitError)
+        raise _tool_error(f"could not take the song from that page: {e}") from e
+
+
+def _display_name(title: str) -> str:
+    """A page title as a file name: no path separators, bounded."""
+    return title.replace("/", "-").replace("\\", "-").strip()[:120]
 
 
 def add_footage(project_id: str, *, url: str, name: str = "") -> dict:
