@@ -40,14 +40,16 @@ _INPUTS = {
         },
         "photos": {
             "type": "array",
-            "items": {"type": "string"},
+            # a FILE input: the remote transport fetches each one (muvid#23 review —
+            # undeclared, raw strings reached ffprobe/ffmpeg as host paths and URLs)
+            "items": {"type": "string", "format": "path"},
             "maxItems": MAX_MEDIA_PER_INPUT,
             "description": "Paths to still images (any format ffmpeg decodes). "
             "Photos and/or clips: at least one of the two must be non-empty.",
         },
         "clips": {
             "type": "array",
-            "items": {"type": "string"},
+            "items": {"type": "string", "format": "path"},
             "maxItems": MAX_MEDIA_PER_INPUT,
             "description": "Paths to video clips with no timeline of their own. "
             "Each use of a clip trims a different stretch of it.",

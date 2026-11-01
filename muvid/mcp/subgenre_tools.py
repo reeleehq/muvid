@@ -39,8 +39,19 @@ _FILE_INPUT_NAMES = frozenset(
         "reference_image",
         "clip",
         "video",
+        # the list-valued pools (muvid#23 review): a plugin that forgets
+        # `format: path` must not hand raw strings to its renderer
+        "photos",
+        "clips",
+        "images",
+        "videos",
     }
 )
+
+#: Inputs that name a SERVER path by design (lyric-video's ``project``: an existing
+#: muvid project folder). A remote caller never names a server file, so the transport
+#: refuses them rather than passing a host path through.
+_HOST_ONLY_INPUT_NAMES = frozenset({"project"})
 
 #: A plugin may declare list-valued file inputs (photos[], clips[]); cap them.
 MAX_FILE_INPUTS = int(os.environ.get("MUVID_SUBGENRE_MAX_FILE_INPUTS", "64"))
@@ -98,6 +109,13 @@ def render_subgenre(
         raise _tool_error(
             f"subgenre {subgenre!r} declares a cost profile and cannot be rendered "
             "through the free generic tool"
+        )
+
+    host_only = sorted(set(inputs) & _HOST_ONLY_INPUT_NAMES)
+    if host_only:  # before any project is opened or folder made
+        raise _tool_error(
+            f"input {host_only[0]!r} names a folder on the server, which a remote "
+            "caller cannot do; leave it out"
         )
 
     # Its own bucket, else a visualizer one of that id (every pre-muvid#103 project).
