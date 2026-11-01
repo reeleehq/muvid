@@ -137,14 +137,39 @@ def project_status(project_id: str) -> dict:
     return out
 
 
+#: The media kind each named input must be, asserted on its first bytes (muvid#23): a
+#: private share link answers HTTP 200 with a sign-in page, which would otherwise reach
+#: ffmpeg as "Invalid data found". An input not named here (lyrics text, a subgenre's
+#: own file) is not kind-checked.
+_INPUT_KINDS = {"audio": "audio", "cover": "image"}
+
+
 def _resolve_input(url: str, dest: Path, *, label: str) -> Path:
-    """Fetch a caller-supplied media URL to ``dest`` (SSRF-guarded, size/time-bounded)."""
-    from muvid.mcp._fetch import FetchError, fetch_to_file
+    """Fetch a caller-supplied media URL to ``dest`` (SSRF-guarded, size/time-bounded).
+
+    A pasted share link (Drive / Dropbox / OneDrive) is normalised to its direct download
+    first and a folder link refused, and an ``audio`` or ``cover`` input must BE audio or
+    an image before a byte is written (muvid#23) — the same intake the footage tools use.
+    """
+    from muvid.mcp._fetch import (
+        MAX_BYTES,
+        FetchError,
+        fetch_to_file_streaming,
+        resolve_share_link,
+    )
 
     if not isinstance(url, str) or not url.strip():
         raise _tool_error(f"{label} must be an http(s) URL")
     try:
-        return fetch_to_file(url.strip(), dest)
+        direct, kind = resolve_share_link(url.strip())
+        if kind in ("archive", "folder"):
+            raise _tool_error(
+                f"{label} is a FOLDER link, which holds many files — share the single "
+                "file and pass its link"
+            )
+        return fetch_to_file_streaming(
+            direct, dest, max_bytes=MAX_BYTES, expect_kind=_INPUT_KINDS.get(label, "")
+        )
     except FetchError as e:
         raise _tool_error(f"could not fetch {label}: {e}") from e
 
