@@ -11,6 +11,7 @@ muvid.footage.workspace
       DATA_HOME_ENV_VAR
       CANVASES
       ID_PATTERN
+      LOCK_SUFFIX
    
    .. rubric:: Functions
 
@@ -19,6 +20,7 @@ muvid.footage.workspace
       atomic_write_bytes
       atomic_write_text
       data_root
+      file_identity
       file_lock
       fresh_output
       init_footage_project

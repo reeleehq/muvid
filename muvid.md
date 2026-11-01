@@ -1,4 +1,4 @@
-> built 2026-11-01 18:24 UTC from 2ca0708 (main) · muvid 0.0.144. Details: build_info.json
+> built 2026-11-01 18:46 UTC from 36503b2 (main) · muvid 0.0.145. Details: build_info.json
 
 # index.html.md
 
@@ -9461,6 +9461,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 |----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | [`CANVASES`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.CANVASES)            | Named output canvases a project may choose at create (the genre Templates).                                                                |
 | [`ID_PATTERN`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.ID_PATTERN)          | What a caller-chosen id (a clip's, an edit's) may be — after surrounding whitespace is dropped.                                            |
+| [`LOCK_SUFFIX`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.LOCK_SUFFIX)         | The suffix every muvid lock file carries — `dol`'s sidecar for the file it protects.                                                       |
 
 ### Functions
 
@@ -9468,7 +9469,8 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 |----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`atomic_write_text`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.atomic_write_text)(path, text)                     | Atomically replace `path` with `text` (UTF-8) — see [`atomic_write_bytes()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.atomic_write_bytes).                                                                                                             |
 | [`data_root`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.data_root)()                                       | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.                                                                                                                                                                     |
-| [`file_lock`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on `path` for a read-modify-write (POSIX `flock`; `msvcrt.locking` on Windows).                                                                                                                             |
+| [`file_identity`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.file_identity)(path)                               | `(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a measurement recorded after the fact checks the file still is (muvid#254).                                                                                    |
+| [`file_lock`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on the lock file `path` (which must end in [`LOCK_SUFFIX`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write.                                                                           |
 | [`fresh_output`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.fresh_output)(dest)                                | A temp path beside `dest` for a writer that cannot be told to be careful (ffmpeg); on success it is renamed onto `dest` — a new inode, as in [`replace_file()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.replace_file) — and on failure removed. |
 | [`init_footage_project`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.init_footage_project)(root, \*, project_id[, ...]) | A footage project rooted at `root`, writing its manifest if there is none yet.                                                                                                                                                         |
 | [`normalise_id`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.ID_PATTERN).                                                                                                            |
@@ -9503,6 +9505,10 @@ What a caller-chosen id (a clip’s, an edit’s) may be — after surrounding w
 dropped. Letters, digits, `_` and `-` only: an id names a FILE (`clips/<id>.mp4`,
 `edits/<id>.json`), and a looser rule let `*` through to a glob that deleted every
 clip, and `" c1"` replace `c1`’s bytes under a different manifest key.
+
+### muvid.footage.workspace.LOCK_SUFFIX *= '.lock'*
+
+The suffix every muvid lock file carries — `dol`’s sidecar for the file it protects.
 
 ### *class* muvid.footage.workspace.MusicVideoFootageProject(email, project_id, root, media_catalog=None, defaults=dict())
 
@@ -9624,6 +9630,18 @@ Every readable edit record, oldest first (by its `created` stamp).
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
+
+#### manifest_lock()
+
+Serialise a read-modify-write of `manifest.json` (see [`file_lock()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.file_lock)).
+
+Every manifest writer takes it, through [`update_manifest()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.MusicVideoFootageProject.update_manifest) (muvid#254):
+each write was already atomic, but two writers that read the same manifest
+(an upload recording its clip while another records a duration) lost one
+update. The rule is the alignments lock’s: do the slow work (copy, probe,
+hash, register) OUTSIDE it, then re-read and change under it. Lock order:
+[`alignments_lock()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.MusicVideoFootageProject.alignments_lock) may be held when this is taken, never the reverse, and
+nothing done under this lock takes another lock.
 
 #### media_catalog *: [object](https://docs.python.org/3/builtins/functions.html#object)* *= None*
 
@@ -9756,6 +9774,17 @@ The song’s display facts (`None` before one is set).
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+#### update_manifest(change)
+
+Re-read the manifest under [`manifest_lock()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.MusicVideoFootageProject.manifest_lock), apply `change(m)` (which
+mutates `m` in place and may raise to write nothing), and write it if it
+changed; return what `change` returned.
+
+The read is STRICT, unlike `manifest()`’s: only an absent manifest reads as
+the defaults. A transient read failure written back as “defaults plus this
+change” would drop every clip. And a change that changes nothing writes
+nothing, so a no-op neither creates a manifest nor moves its mtime.
+
 #### write_edit(edit_id, record)
 
 Persist one named edit record (replacing it atomically).
@@ -9830,11 +9859,29 @@ docstring would not render here) and this repo’s own drift-test idiom in
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
+### muvid.footage.workspace.file_identity(path)
+
+`(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a
+measurement recorded after the fact checks the file still is (muvid#254). Every
+project write replaces a file (a new inode, [`replace_file()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.replace_file)), so a re-upload
+under the same name never shares an identity with the file it replaced.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### muvid.footage.workspace.file_lock(path)
 
-An exclusive advisory lock on `path` for a read-modify-write (POSIX `flock`;
-`msvcrt.locking` on Windows). Serialises concurrent edits of one project’s files;
-each write is also atomic, so a reader never needs the lock.
+An exclusive advisory lock on the lock file `path` (which must end in
+[`LOCK_SUFFIX`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write. Serialises concurrent edits of one
+project’s files; each write is also atomic, so a reader never needs the lock.
+
+The fleet’s lock, `dol.atomic.file_lock()` (muvid#254): on Windows it polls
+rather than raising after ~10 s of contention (`LK_LOCK` did, and
+[`muvid.footage.beats.cached_signals()`](_autosummary/muvid.footage.beats.html.md#muvid.footage.beats.cached_signals) holds its lock across minutes of work),
+and the body still runs when the folder cannot be locked at all (read-only, a
+filesystem without lock support). `path` names the lock file itself, as before,
+so every existing lock file keeps its name. Not re-entrant: taking it again on the
+same path from the same thread waits forever.
 
 ### muvid.footage.workspace.fresh_output(dest)
 
@@ -19624,7 +19671,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-01 18:24 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/2ca0708cfb2591802a2b1ec519233a555dfd26ca"><code>2ca0708</code></a> on branch <code>main</code>, for **muvid 0.0.144** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-01 18:46 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/36503b20b6c0c3f65474d129bf92504f4ee4c2ca"><code>36503b2</code></a> on branch <code>main</code>, for **muvid 0.0.145** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19633,9 +19680,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/2ca0708cfb2591802a2b1ec519233a555dfd26ca"><code>2ca0708cfb2591802a2b1ec519233a555dfd26ca</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/36503b20b6c0c3f65474d129bf92504f4ee4c2ca"><code>36503b20b6c0c3f65474d129bf92504f4ee4c2ca</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.144</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.145</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19644,9 +19691,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41335122385">41335122385</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41337325206">41337325206</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>85d38b015bd1fea403b487e526735cd05b0cbcf8</code> (in the history of the built commit) |
+| Event commit | <code>68fca558c819bfed54157f2ef86ec07acaa56a3c</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19671,13 +19718,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.144/">0.0.144</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.145/">0.0.145</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 2ca0708cfb2591802a2b1ec519233a555dfd26ca
+git checkout 36503b20b6c0c3f65474d129bf92504f4ee4c2ca
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

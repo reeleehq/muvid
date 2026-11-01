@@ -417,91 +417,92 @@
 </span><span id="line-224"><span class="w">    </span><span class="sd">"""The clip's content hash, recorded in the manifest the first time it is needed."""</span>
 </span><span id="line-225">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.catalog</span><span class="w"> </span><span class="kn">import</span> <span class="n">hash_file</span>
 </span><span id="line-226">
-</span><span id="line-227">    <span class="n">m</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">manifest</span><span class="p">()</span>
-</span><span id="line-228">    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"clips"</span><span class="p">,</span> <span class="p">[]):</span>
-</span><span id="line-229">        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"clip_id"</span><span class="p">)</span> <span class="o">==</span> <span class="n">clip_id</span><span class="p">:</span>
-</span><span id="line-230">            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"hash"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"file"</span><span class="p">)</span> <span class="o">==</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
-</span><span id="line-231">                <span class="k">return</span> <span class="n">c</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">]</span>
-</span><span id="line-232">            <span class="n">c</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">]</span> <span class="o">=</span> <span class="n">hash_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="line-233">            <span class="n">fp</span><span class="o">.</span><span class="n">_write_manifest</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
-</span><span id="line-234">            <span class="k">return</span> <span class="n">c</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">]</span>
-</span><span id="line-235">    <span class="k">return</span> <span class="n">hash_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="line-236">
+</span><span id="line-227">    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">fp</span><span class="o">.</span><span class="n">manifest</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"clips"</span><span class="p">,</span> <span class="p">[]):</span>
+</span><span id="line-228">        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"clip_id"</span><span class="p">)</span> <span class="o">==</span> <span class="n">clip_id</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"hash"</span><span class="p">)</span> <span class="ow">and</span> <span class="n">c</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"file"</span><span class="p">)</span> <span class="o">==</span> <span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="p">:</span>
+</span><span id="line-229">            <span class="k">return</span> <span class="n">c</span><span class="p">[</span><span class="s2">"hash"</span><span class="p">]</span>
+</span><span id="line-230">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.service</span><span class="w"> </span><span class="kn">import</span> <span class="n">_set_clip_field</span>
+</span><span id="line-231">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.workspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">file_identity</span>
+</span><span id="line-232">
+</span><span id="line-233">    <span class="n">measured</span> <span class="o">=</span> <span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">file_identity</span><span class="p">(</span><span class="n">path</span><span class="p">))</span>  <span class="c1"># before hashing: the record checks it</span>
+</span><span id="line-234">    <span class="n">digest</span> <span class="o">=</span> <span class="n">hash_file</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>  <span class="c1"># outside the manifest lock: a clip can be 400 MB</span>
+</span><span id="line-235">    <span class="n">_set_clip_field</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">clip_id</span><span class="p">,</span> <span class="s2">"hash"</span><span class="p">,</span> <span class="n">digest</span><span class="p">,</span> <span class="n">measured</span><span class="o">=</span><span class="n">measured</span><span class="p">)</span>
+</span><span id="line-236">    <span class="k">return</span> <span class="n">digest</span>
 </span><span id="line-237">
-</span><span id="line-238"><span class="c1"># -- peaks --------------------------------------------------------------------------</span>
-</span><span id="line-239">
+</span><span id="line-238">
+</span><span id="line-239"><span class="c1"># -- peaks --------------------------------------------------------------------------</span>
 </span><span id="line-240">
+</span><span id="line-241">
 <div class="viewcode-block" id="song_peaks">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.media_views.html#muvid.footage.media_views.song_peaks">[docs]</a>
-</span><span id="line-241"><span class="k">def</span><span class="w"> </span><span class="nf">song_peaks</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-242"><span class="w">    </span><span class="sd">"""``{duration_s, n, peaks}`` — ``n`` buckets of the song's peak |amplitude|, mono,</span>
-</span><span id="line-243"><span class="sd">    normalised so the loudest bucket is 1.0 (all zeros for a silent song)."""</span>
-</span><span id="line-244">    <span class="n">song_hash</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">song_hash</span><span class="p">()</span>
-</span><span id="line-245">    <span class="n">path</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="n">_PEAKS_DIRNAME</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">song_hash</span><span class="p">[:</span><span class="n">_HASH_PREFIX</span><span class="p">]</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">.json"</span>
-</span><span id="line-246">    <span class="n">cached</span> <span class="o">=</span> <span class="n">read_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
-</span><span id="line-247">    <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-248">        <span class="k">return</span> <span class="n">cached</span>
-</span><span id="line-249">    <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-250">        <span class="s2">"duration_s"</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">song_duration</span><span class="p">()),</span> <span class="mi">3</span><span class="p">),</span>
-</span><span id="line-251">        <span class="s2">"n"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
-</span><span id="line-252">        <span class="s2">"peaks"</span><span class="p">:</span> <span class="n">_bucket_peaks</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">song_path</span><span class="p">(),</span> <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">),</span>
-</span><span id="line-253">    <span class="p">}</span>
-</span><span id="line-254">    <span class="n">write_json</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">record</span><span class="p">)</span>
-</span><span id="line-255">    <span class="k">return</span> <span class="n">record</span></div>
+</span><span id="line-242"><span class="k">def</span><span class="w"> </span><span class="nf">song_peaks</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-243"><span class="w">    </span><span class="sd">"""``{duration_s, n, peaks}`` — ``n`` buckets of the song's peak |amplitude|, mono,</span>
+</span><span id="line-244"><span class="sd">    normalised so the loudest bucket is 1.0 (all zeros for a silent song)."""</span>
+</span><span id="line-245">    <span class="n">song_hash</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">song_hash</span><span class="p">()</span>
+</span><span id="line-246">    <span class="n">path</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="n">_PEAKS_DIRNAME</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">song_hash</span><span class="p">[:</span><span class="n">_HASH_PREFIX</span><span class="p">]</span><span class="si">}</span><span class="s2">-</span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">.json"</span>
+</span><span id="line-247">    <span class="n">cached</span> <span class="o">=</span> <span class="n">read_json</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+</span><span id="line-248">    <span class="k">if</span> <span class="n">cached</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-249">        <span class="k">return</span> <span class="n">cached</span>
+</span><span id="line-250">    <span class="n">record</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-251">        <span class="s2">"duration_s"</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">song_duration</span><span class="p">()),</span> <span class="mi">3</span><span class="p">),</span>
+</span><span id="line-252">        <span class="s2">"n"</span><span class="p">:</span> <span class="n">n</span><span class="p">,</span>
+</span><span id="line-253">        <span class="s2">"peaks"</span><span class="p">:</span> <span class="n">_bucket_peaks</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">song_path</span><span class="p">(),</span> <span class="n">n</span><span class="o">=</span><span class="n">n</span><span class="p">),</span>
+</span><span id="line-254">    <span class="p">}</span>
+</span><span id="line-255">    <span class="n">write_json</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">record</span><span class="p">)</span>
+</span><span id="line-256">    <span class="k">return</span> <span class="n">record</span></div>
 
-</span><span id="line-256">
 </span><span id="line-257">
-</span><span id="line-258"><span class="k">def</span><span class="w"> </span><span class="nf">_bucket_peaks</span><span class="p">(</span><span class="n">song</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-</span><span id="line-259">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-</span><span id="line-260">
-</span><span id="line-261">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_pcm</span>
-</span><span id="line-262">
-</span><span id="line-263">    <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span>
-</span><span id="line-264">        <span class="n">decode_pcm</span><span class="p">(</span><span class="n">song</span><span class="p">,</span> <span class="n">sample_rate</span><span class="o">=</span><span class="n">PEAKS_SAMPLE_RATE</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
-</span><span id="line-265">    <span class="p">)</span>
-</span><span id="line-266">    <span class="k">if</span> <span class="n">samples</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-267">        <span class="k">return</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
-</span><span id="line-268">    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">samples</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
-</span><span id="line-269">    <span class="n">mags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
-</span><span id="line-270">    <span class="n">peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
-</span><span id="line-271">        <span class="p">[</span><span class="n">mags</span><span class="p">[</span><span class="n">a</span><span class="p">:</span><span class="n">b</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="n">a</span> <span class="k">else</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
-</span><span id="line-272">    <span class="p">)</span>
-</span><span id="line-273">    <span class="n">top</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">peaks</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
-</span><span id="line-274">    <span class="k">if</span> <span class="n">top</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-275">        <span class="n">peaks</span> <span class="o">=</span> <span class="n">peaks</span> <span class="o">/</span> <span class="n">top</span>
-</span><span id="line-276">    <span class="k">return</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">peaks</span><span class="p">]</span>
-</span><span id="line-277">
+</span><span id="line-258">
+</span><span id="line-259"><span class="k">def</span><span class="w"> </span><span class="nf">_bucket_peaks</span><span class="p">(</span><span class="n">song</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+</span><span id="line-260">    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+</span><span id="line-261">
+</span><span id="line-262">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">decode_pcm</span>
+</span><span id="line-263">
+</span><span id="line-264">    <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span>
+</span><span id="line-265">        <span class="n">decode_pcm</span><span class="p">(</span><span class="n">song</span><span class="p">,</span> <span class="n">sample_rate</span><span class="o">=</span><span class="n">PEAKS_SAMPLE_RATE</span><span class="p">,</span> <span class="n">channels</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span>
+</span><span id="line-266">    <span class="p">)</span>
+</span><span id="line-267">    <span class="k">if</span> <span class="n">samples</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-268">        <span class="k">return</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span> <span class="o">*</span> <span class="n">n</span>
+</span><span id="line-269">    <span class="n">edges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">samples</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+</span><span id="line-270">    <span class="n">mags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+</span><span id="line-271">    <span class="n">peaks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+</span><span id="line-272">        <span class="p">[</span><span class="n">mags</span><span class="p">[</span><span class="n">a</span><span class="p">:</span><span class="n">b</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&gt;</span> <span class="n">a</span> <span class="k">else</span> <span class="mf">0.0</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">edges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">edges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])]</span>
+</span><span id="line-273">    <span class="p">)</span>
+</span><span id="line-274">    <span class="n">top</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">peaks</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+</span><span id="line-275">    <span class="k">if</span> <span class="n">top</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-276">        <span class="n">peaks</span> <span class="o">=</span> <span class="n">peaks</span> <span class="o">/</span> <span class="n">top</span>
+</span><span id="line-277">    <span class="k">return</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="mi">4</span><span class="p">)</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">peaks</span><span class="p">]</span>
 </span><span id="line-278">
-</span><span id="line-279"><span class="c1"># -- files --------------------------------------------------------------------------</span>
-</span><span id="line-280">
+</span><span id="line-279">
+</span><span id="line-280"><span class="c1"># -- files --------------------------------------------------------------------------</span>
 </span><span id="line-281">
-</span><span id="line-282"><span class="k">def</span><span class="w"> </span><span class="nf">read_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-</span><span id="line-283">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-284">        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-285">    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-286">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-287">    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="line-288">
+</span><span id="line-282">
+</span><span id="line-283"><span class="k">def</span><span class="w"> </span><span class="nf">read_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+</span><span id="line-284">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-285">        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-286">    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-287">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-288">    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
 </span><span id="line-289">
-</span><span id="line-290"><span class="k">def</span><span class="w"> </span><span class="nf">write_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-291">    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-292">    <span class="n">fd</span><span class="p">,</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">),</span> <span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">".</span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
-</span><span id="line-293">    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-</span><span id="line-294">        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-</span><span id="line-295">    <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
-</span><span id="line-296">
+</span><span id="line-290">
+</span><span id="line-291"><span class="k">def</span><span class="w"> </span><span class="nf">write_json</span><span class="p">(</span><span class="n">path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">record</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-292">    <span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-293">    <span class="n">fd</span><span class="p">,</span> <span class="n">tmp</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkstemp</span><span class="p">(</span><span class="nb">dir</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="o">.</span><span class="n">parent</span><span class="p">),</span> <span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">".</span><span class="si">{</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">."</span><span class="p">)</span>
+</span><span id="line-294">    <span class="k">with</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+</span><span id="line-295">        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+</span><span id="line-296">    <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
 </span><span id="line-297">
-</span><span id="line-298"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-299">    <span class="s2">"clip_filmstrip"</span><span class="p">,</span>
-</span><span id="line-300">    <span class="s2">"song_peaks"</span><span class="p">,</span>
-</span><span id="line-301">    <span class="s2">"filmstrip_key"</span><span class="p">,</span>
-</span><span id="line-302">    <span class="s2">"FILMSTRIP_FPS"</span><span class="p">,</span>
-</span><span id="line-303">    <span class="s2">"FILMSTRIP_HEIGHT"</span><span class="p">,</span>
-</span><span id="line-304">    <span class="s2">"FILMSTRIP_COLS"</span><span class="p">,</span>
-</span><span id="line-305">    <span class="s2">"FILMSTRIP_ROWS"</span><span class="p">,</span>
-</span><span id="line-306">    <span class="s2">"read_json"</span><span class="p">,</span>
-</span><span id="line-307">    <span class="s2">"write_json"</span><span class="p">,</span>
-</span><span id="line-308"><span class="p">]</span>
+</span><span id="line-298">
+</span><span id="line-299"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-300">    <span class="s2">"clip_filmstrip"</span><span class="p">,</span>
+</span><span id="line-301">    <span class="s2">"song_peaks"</span><span class="p">,</span>
+</span><span id="line-302">    <span class="s2">"filmstrip_key"</span><span class="p">,</span>
+</span><span id="line-303">    <span class="s2">"FILMSTRIP_FPS"</span><span class="p">,</span>
+</span><span id="line-304">    <span class="s2">"FILMSTRIP_HEIGHT"</span><span class="p">,</span>
+</span><span id="line-305">    <span class="s2">"FILMSTRIP_COLS"</span><span class="p">,</span>
+</span><span id="line-306">    <span class="s2">"FILMSTRIP_ROWS"</span><span class="p">,</span>
+</span><span id="line-307">    <span class="s2">"read_json"</span><span class="p">,</span>
+</span><span id="line-308">    <span class="s2">"write_json"</span><span class="p">,</span>
+</span><span id="line-309"><span class="p">]</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -515,7 +516,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=1412e09f"></script>
+    <script src="../../../_static/documentation_options.js?v=b06a6486"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

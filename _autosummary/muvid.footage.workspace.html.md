@@ -56,6 +56,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 |----------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | [`CANVASES`](#muvid.footage.workspace.CANVASES)            | Named output canvases a project may choose at create (the genre Templates).                                                                |
 | [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN)          | What a caller-chosen id (a clip's, an edit's) may be — after surrounding whitespace is dropped.                                            |
+| [`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)         | The suffix every muvid lock file carries — `dol`'s sidecar for the file it protects.                                                       |
 
 ### Functions
 
@@ -63,7 +64,8 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 |----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`atomic_write_text`](#muvid.footage.workspace.atomic_write_text)(path, text)                     | Atomically replace `path` with `text` (UTF-8) — see [`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes).                                                                                                             |
 | [`data_root`](#muvid.footage.workspace.data_root)()                                       | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.                                                                                                                                                                     |
-| [`file_lock`](#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on `path` for a read-modify-write (POSIX `flock`; `msvcrt.locking` on Windows).                                                                                                                             |
+| [`file_identity`](#muvid.footage.workspace.file_identity)(path)                               | `(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a measurement recorded after the fact checks the file still is (muvid#254).                                                                                    |
+| [`file_lock`](#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on the lock file `path` (which must end in [`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write.                                                                           |
 | [`fresh_output`](#muvid.footage.workspace.fresh_output)(dest)                                | A temp path beside `dest` for a writer that cannot be told to be careful (ffmpeg); on success it is renamed onto `dest` — a new inode, as in [`replace_file()`](#muvid.footage.workspace.replace_file) — and on failure removed. |
 | [`init_footage_project`](#muvid.footage.workspace.init_footage_project)(root, \*, project_id[, ...]) | A footage project rooted at `root`, writing its manifest if there is none yet.                                                                                                                                                         |
 | [`normalise_id`](#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).                                                                                                            |
@@ -98,6 +100,10 @@ What a caller-chosen id (a clip’s, an edit’s) may be — after surrounding w
 dropped. Letters, digits, `_` and `-` only: an id names a FILE (`clips/<id>.mp4`,
 `edits/<id>.json`), and a looser rule let `*` through to a glob that deleted every
 clip, and `" c1"` replace `c1`’s bytes under a different manifest key.
+
+### muvid.footage.workspace.LOCK_SUFFIX *= '.lock'*
+
+The suffix every muvid lock file carries — `dol`’s sidecar for the file it protects.
 
 ### *class* muvid.footage.workspace.MusicVideoFootageProject(email, project_id, root, media_catalog=None, defaults=dict())
 
@@ -219,6 +225,18 @@ Every readable edit record, oldest first (by its `created` stamp).
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
+
+#### manifest_lock()
+
+Serialise a read-modify-write of `manifest.json` (see [`file_lock()`](#muvid.footage.workspace.file_lock)).
+
+Every manifest writer takes it, through [`update_manifest()`](#muvid.footage.workspace.MusicVideoFootageProject.update_manifest) (muvid#254):
+each write was already atomic, but two writers that read the same manifest
+(an upload recording its clip while another records a duration) lost one
+update. The rule is the alignments lock’s: do the slow work (copy, probe,
+hash, register) OUTSIDE it, then re-read and change under it. Lock order:
+[`alignments_lock()`](#muvid.footage.workspace.MusicVideoFootageProject.alignments_lock) may be held when this is taken, never the reverse, and
+nothing done under this lock takes another lock.
 
 #### media_catalog *: [object](https://docs.python.org/3/builtins/functions.html#object)* *= None*
 
@@ -351,6 +369,17 @@ The song’s display facts (`None` before one is set).
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+#### update_manifest(change)
+
+Re-read the manifest under [`manifest_lock()`](#muvid.footage.workspace.MusicVideoFootageProject.manifest_lock), apply `change(m)` (which
+mutates `m` in place and may raise to write nothing), and write it if it
+changed; return what `change` returned.
+
+The read is STRICT, unlike `manifest()`’s: only an absent manifest reads as
+the defaults. A transient read failure written back as “defaults plus this
+change” would drop every clip. And a change that changes nothing writes
+nothing, so a no-op neither creates a manifest nor moves its mtime.
+
 #### write_edit(edit_id, record)
 
 Persist one named edit record (replacing it atomically).
@@ -425,11 +454,29 @@ docstring would not render here) and this repo’s own drift-test idiom in
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
+### muvid.footage.workspace.file_identity(path)
+
+`(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a
+measurement recorded after the fact checks the file still is (muvid#254). Every
+project write replaces a file (a new inode, [`replace_file()`](#muvid.footage.workspace.replace_file)), so a re-upload
+under the same name never shares an identity with the file it replaced.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### muvid.footage.workspace.file_lock(path)
 
-An exclusive advisory lock on `path` for a read-modify-write (POSIX `flock`;
-`msvcrt.locking` on Windows). Serialises concurrent edits of one project’s files;
-each write is also atomic, so a reader never needs the lock.
+An exclusive advisory lock on the lock file `path` (which must end in
+[`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write. Serialises concurrent edits of one
+project’s files; each write is also atomic, so a reader never needs the lock.
+
+The fleet’s lock, `dol.atomic.file_lock()` (muvid#254): on Windows it polls
+rather than raising after ~10 s of contention (`LK_LOCK` did, and
+[`muvid.footage.beats.cached_signals()`](muvid.footage.beats.html.md#muvid.footage.beats.cached_signals) holds its lock across minutes of work),
+and the body still runs when the folder cannot be locked at all (read-only, a
+filesystem without lock support). `path` names the lock file itself, as before,
+so every existing lock file keeps its name. Not re-entrant: taking it again on the
+same path from the same thread waits forever.
 
 ### muvid.footage.workspace.fresh_output(dest)
 
