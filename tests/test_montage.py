@@ -753,13 +753,41 @@ def _accented(duration: float = 32.0) -> Analysis:
 def test_accents_keep_the_grids_number_of_cuts_but_move_them_onto_the_strong_beats():
     a = _accented()
     section = a.sections[0]
-    grid_cuts = cut_times(section, a, 4)
-    accent_cuts = cut_times(section, a, 4, on="accents")
+    grid_cuts = cut_times(section, a, 3)  # beat-level: off-bar beats are candidates
+    accent_cuts = cut_times(section, a, 3, on="accents")
     assert len(accent_cuts) == len(grid_cuts)
-    strong = {a.beats[i] for i in range(len(a.beats)) if a.cut_rank[i] == 1.0}
-    inner = accent_cuts[1:-1]
-    assert inner and all(c in strong for c in inner)
-    assert all(c not in strong for c in grid_cuts[1:-1])  # the grid is on the bar line
+    moved = [c for c, g in zip(accent_cuts, grid_cuts) if c != g]
+    assert moved and all(a.cut_rank[a.beats.index(c)] == 1.0 for c in moved)
+
+
+def test_accents_hold_the_grids_count_and_pace_on_any_rank():
+    """The review's property: over random (non-periodic) ranks, the cut count and the
+    longest hold are the grid's — a snap within half an interval cannot bunch cuts."""
+    import random
+    from dataclasses import replace
+
+    rng = random.Random(275)
+    base = _analysis(32.0)
+    for step in (2, 3, 4, 6, 8):
+        for _ in range(60):
+            a = replace(base, cut_rank=tuple(rng.random() for _ in base.beats))
+            sec = Section(label="verse", start=rng.uniform(0, 2), end=rng.uniform(20, 32))
+            g, c = cut_times(sec, a, step), cut_times(sec, a, step, on="accents")
+            assert len(c) == len(g)
+            holds = lambda b: [y - x for x, y in zip(b, b[1:])]  # noqa: E731
+            assert max(holds(c)) <= max(holds(g)) + (step - 1) * a.beat_s + 1e-9
+            assert all(y > x for x, y in zip(c, c[1:]))
+
+
+def test_a_bar_level_cut_stays_on_the_bar_line():
+    a = _accented()
+    import random
+    from dataclasses import replace
+
+    rng = random.Random(8)
+    a = replace(a, cut_rank=tuple(rng.random() for _ in a.beats))
+    cuts = cut_times(a.sections[0], a, 8, on="accents")  # two bars per cut
+    assert all(c in a.downbeats for c in cuts[1:-1])
 
 
 def test_accents_fall_back_to_the_grid_without_a_rank_and_below_one_beat():
@@ -768,25 +796,22 @@ def test_accents_fall_back_to_the_grid_without_a_rank_and_below_one_beat():
     assert cut_times(section, a, 4, on="accents") == cut_times(section, a, 4)
     b = _accented()
     assert cut_times(b.sections[0], b, 0.5, on="accents") == cut_times(b.sections[0], b, 0.5)
-
-
-def test_accent_cuts_never_bunch_closer_than_half_the_interval():
-    from dataclasses import replace
-
-    a = _analysis(32.0)
-    rank = tuple(1.0 if 8 <= i < 16 else 0.0 for i in range(len(a.beats)))  # one loud stretch
-    a = replace(a, cut_rank=rank)
-    cuts = cut_times(a.sections[0], a, 4, on="accents")
-    beat_idx = [a.beats.index(c) for c in cuts[1:-1]]
-    assert all(j - i >= 2 for i, j in zip(beat_idx, beat_idx[1:]))
+    plan = plan_montage(_analysis(128.0), _pool(12), S.one_scene("beat_cut", cut_on="accents"))
+    assert any("fell back to the grid" in n for n in plan.notes)  # said, not silent
 
 
 def test_cut_on_is_a_closed_vocabulary_the_plan_reads():
     assert set(S.vocabulary()["cut_ons"]) == {"grid", "accents"}
     spec, notes = S.coerce({"direction": {"cut_on": "loudest"}, "scenes": [{}]})
     assert spec.direction.cut_on == "grid" and any("cut_on" in n for n in notes)
-    a = _accented(128.0)
-    grid = plan_montage(a, _pool(12), S.one_scene("beat_cut"))
-    accents = plan_montage(a, _pool(12), S.one_scene("beat_cut", cut_on="accents"))
+    from dataclasses import replace
+    import random
+
+    rng = random.Random(1)
+    a = _analysis(128.0)
+    a = replace(a, cut_rank=tuple(rng.random() for _ in a.beats))
+    grid = plan_montage(a, _pool(12), S.one_scene("beat_cut", cut_feel="slow"))
+    accents = plan_montage(a, _pool(12), S.one_scene("beat_cut", cut_feel="slow", cut_on="accents"))
+    assert len(grid.slots) == len(accents.slots)
     assert [s.start for s in grid.slots] != [s.start for s in accents.slots]
     assert accents.treatment["direction"]["cut_on"] == "accents"

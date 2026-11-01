@@ -144,11 +144,12 @@ CUT_FEEL_FACTORS: dict[str, float] = {
 }
 
 #: WHICH beats the cuts land on, at the density the archetype and cut feel chose
-#: (muvid#275). ``accents`` reads :meth:`muvid.montage.analysis.Analysis.ranked_beats`'
-#: rank (onset strength per beat) and falls back to ``grid`` on a song without it.
+#: (muvid#275). ``accents`` moves each grid cut to the most accented beat near it
+#: (``Analysis.cut_rank``, onset strength per beat; a bar-level cut stays on a
+#: downbeat) and falls back to ``grid``, with a plan note, on a song without a rank.
 CUT_ONS: dict[str, str] = {
     "grid": "Every n-th beat of the measured grid, anchored on the bar.",
-    "accents": "The same number of cuts, on the beats the song accents most.",
+    "accents": "Each cut nudged onto the most accented beat near it; same count and pace.",
 }
 
 #: A colour grade applied to every frame. Closed because the grade is
