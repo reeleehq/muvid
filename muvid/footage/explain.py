@@ -10,7 +10,10 @@ Each cut gets a few sentences in a fixed order — *where and on what* → *how 
 changes* → *what picture and why that stretch* → *what is worth a look* — plus the
 facts behind them (song times, the beat it lands on, the fade's real start) and
 ``flags`` for the ones worth a look: ``straddles_the_beat``, ``off_the_beat``,
-``long_hold``, ``repeated_stretch``. Every clock time in a sentence is also listed in
+``long_hold``, ``repeated_stretch``, ``coverage_only`` (a synced video shown only
+because nothing better covers that part of the song, though its placement is weak —
+muvid#20's "say when a segment made the cut only for coverage's sake, and how bad it
+is"). Every clock time in a sentence is also listed in
 ``times`` with its second, so a screen can turn it into a link that seeks the player.
 
 Plain nouns only (beat, bar, fade, picture, photo, clip); clock times, never floats.
@@ -44,6 +47,7 @@ FLAG_WORDS = {
     "off_the_beat": "not on a beat",
     "long_hold": "long hold",
     "repeated_stretch": "shown before",
+    "coverage_only": "only for coverage",
 }
 
 _ORDINAL = {1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth"}
@@ -302,6 +306,14 @@ def _explain_cut(
         shown.setdefault(e.clip_id, []).append((from_s, to_s, start))
 
     # 4. what is worth a look
+    if synced and e.clip_id in alignments:
+        weak = _coverage_only(e, start, end, clips=clips, alignments=alignments, t=t)
+        if weak:
+            flags.append("coverage_only")
+            said.append(
+                "Nothing better covers this part of the song, so this video is here "
+                f"for coverage, though {weak}."
+            )
     long_limit = max(LONG_HOLD_S, (bar_s or 0.0) * LONG_HOLD_BARS)
     if kind != "black" and length > long_limit:
         flags.append("long_hold")
@@ -336,6 +348,39 @@ def _explain_cut(
         "text": " ".join(said),
         "times": times,
     }
+
+
+def _coverage_only(e, start, end, *, clips, alignments, t) -> str:
+    """Why synced cut ``e`` is WEAK footage, when no other video could have shown that
+    stretch in sync — else ``""`` (muvid#20 clause b).
+
+    "Could have shown it" is another SYNCED video the aligner vouches for whose
+    placement covers ``[start, end]``. Weak is the trust verdict the render gate reads
+    (:func:`muvid.footage.edl.vouches_for`, via ``reliable``) or stretches of the cut
+    the measured spans do not confirm (:func:`muvid.footage.edl.unverified_in_cut`).
+    Only a cut that is BOTH is flagged: a single-camera shoot's good footage is not news.
+    """
+    from muvid.footage.edl import _EPS, unverified_in_cut
+
+    a = alignments[e.clip_id]
+    for cid, b in alignments.items():
+        if cid == e.clip_id or not b.reliable or not getattr(b, "overlaps", True):
+            continue
+        if (clips.get(cid, {}).get("role") or "synced") != "synced":
+            continue  # cut to the music: it claims no sync to offer here
+        if b.coverage[0] <= start + _EPS and b.coverage[1] >= end - _EPS:
+            return ""
+    reasons = []
+    if not a.reliable:
+        measured = (
+            f"support {a.support:.2f}" if a.support is not None else f"confidence {a.confidence:.2f}"
+        )
+        reasons.append(f"the listening could not be sure where it goes ({measured})")
+    for lo, hi in unverified_in_cut(e, a):
+        reasons.append(
+            f"from {t(lo)} to {t(hi)} the song could not be heard matching it there"
+        )
+    return " and ".join(reasons)
 
 
 def _why_stretch(e, grid, envelope_of, from_s: float) -> str:
@@ -388,6 +433,13 @@ def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
         said.append(f"{off} change{'s are' if off > 1 else ' is'} not on a beat.")
     elif not straddle and any(c.get("free") for c in cuts):
         said.append("Every change to the music starts on a beat.")
+    forced = sum(1 for c in cuts if "coverage_only" in c["flags"])
+    if forced:
+        said.append(
+            f"{forced} shot{'s are' if forced > 1 else ' is'} there only because nothing "
+            "better covers that part of the song, and the footage is weak — look at "
+            f"{'those' if forced > 1 else 'it'} first."
+        )
     fallback = selection.get("fallback")
     if fallback and selection.get("strategy") == "weighted":
         # what `select_score.selection_notice` recorded: the score-driven cut could not

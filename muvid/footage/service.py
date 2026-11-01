@@ -3033,7 +3033,9 @@ def explain_edit(
     starts), what picture it shows and why that stretch (its picture changes on the
     beats inside the cut; a photo's camera move; a video synced where it was
     filmed), and ``flags`` for the ones worth a look (``straddles_the_beat``,
-    ``off_the_beat``, ``long_hold``, ``repeated_stretch``). Plus a ``summary`` of the
+    ``off_the_beat``, ``long_hold``, ``repeated_stretch``, ``coverage_only`` — a video
+    shown only because nothing better covers that part of the song, with what makes it
+    weak and when). Plus a ``summary`` of the
     whole edit (fades vs cuts, the song's pace and shape, the longest shot).
 
     Every clock time in a sentence is listed in ``times`` (``{label, s}``) so a screen
