@@ -46,6 +46,14 @@ def _cube(path, size=2):
     return path
 
 
+def _bound(path):
+    """How a resolved cube appears in the bound link: POSIX, escaped for ffmpeg (so a
+    Windows drive's colon reads as ``C\\:/...``)."""
+    from looks.ffmpeg import escape_filter_value
+
+    return escape_filter_value(path.resolve().as_posix())
+
+
 def _validate(look):
     return validate_edl([EdlEntry(0.0, 4.0, "A", look=look)], [_A], 4.0)
 
@@ -123,8 +131,8 @@ def test_an_escaped_separator_cannot_reach_a_geometry_option():
 def test_bind_replaces_the_name_with_the_checked_file(luts):
     cube = _cube(luts / "film" / "warm.cube")
     bound = L.bind_look_luts("hue=s=0,lut3d@g=file=film/warm.cube:interp=nearest")
-    assert bound == f"hue=s=0,lut3d@g=file={cube.resolve()}:interp=nearest"
-    assert L.bind_look_luts("lut3d=film/warm.cube") == f"lut3d=file={cube.resolve()}"
+    assert bound == f"hue=s=0,lut3d@g=file={_bound(cube)}:interp=nearest"
+    assert L.bind_look_luts("lut3d=film/warm.cube") == f"lut3d=file={_bound(cube)}"
     assert L.bind_look_luts("lut3d") == "lut3d"
 
 
@@ -139,15 +147,15 @@ def test_bind_escapes_a_folder_path_ffmpeg_would_split(tmp_path, monkeypatch):
 def test_bind_rebuilds_the_link_from_what_ffmpeg_reads(luts):
     cube = _cube(luts / "warm.cube")
     # one `file` reaches ffmpeg, the one the gate read; quoting is re-escaped
-    assert L.bind_look_luts("lut3d=../x.cube:file=warm.cube") == f"lut3d=file={cube}"
+    assert L.bind_look_luts("lut3d=../x.cube:file=warm.cube") == f"lut3d=file={_bound(cube)}"
     assert (
         L.bind_look_luts("lut3d=file='warm.cube':enable='between(t,0,1)'")
-        == f"lut3d=file={cube}:enable=between(t\\,0\\,1)"
+        == f"lut3d=file={_bound(cube)}:enable=between(t\\,0\\,1)"
     )
     # check and bind are one path: whatever check passes, bind binds
     for look in ("lut3d=:file=warm.cube", "lut3d=/etc/passwd:file=warm.cube"):
         L.check_look_luts(look)
-        assert L.bind_look_luts(look) == f"lut3d=file={cube}"
+        assert L.bind_look_luts(look) == f"lut3d=file={_bound(cube)}"
 
 
 def test_a_long_or_odd_name_is_a_lut_refusal_not_an_oserror(luts):
