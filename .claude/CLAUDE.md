@@ -165,7 +165,7 @@ Pipeline: `align → score → select → EDL → assemble`.
 |---|---|
 | `muvid/footage/align.py` | thin over `mixing.audio.align_clips_to_reference`; per-clip `offset_s`, `confidence`, `support`, `coverage`, `overlaps`; re-exports `edl.vouches_for` (muvid#59) |
 | `muvid/footage/edl.py` | `FootageAlignment`, `EdlEntry`, `AssemblyCut`, `ExcludedSpan`; `fill_gaps`, **`validate_edl`** (the ONE gate), `exclude_unvouched` (the auto path's recovery — a transform, not a second gate), `derive_cuts` (the ONE place `clip_in = song_start - offset_s` is derived) |
-| `muvid/footage/strategy.py` | the `SelectionStrategy` registry — `best_confidence` (`DEFAULT_STRATEGY`), `longest_take`, `fewest_cuts`, plus `weighted` registered **lazily** so `import muvid.footage` stays numpy-free; `_prefer_vouched` is where every built-in ranks trust above its own metric (muvid#88) |
+| `muvid/footage/strategy.py` | the `SelectionStrategy` registry — `best_confidence` (`DEFAULT_STRATEGY`), `longest_take`, `fewest_cuts`, plus `weighted` registered **lazily** so `import muvid.footage` stays numpy-free; `trust.TRUST_TIERS` is where every strategy ranks trust above its own metric (muvid#88, muvid#255) |
 | `muvid/footage/select_score.py` | the `weighted` strategy: beat-snapped semi-Markov Viterbi over the score tensor |
 | `muvid/footage/scoring/` | `grid.py` (`ScoreTrack`/`ScoreTensor` + resample + robust-normalize + `.npz` persistence), `frames.py` (ONE decode pass per clip), `quality.py`, `motionbeat.py`, `segment.py`, `lipsync.py`, `orchestrator.py` (`score_project`) |
 | `muvid/footage/assemble.py` | three bounded stages (one ffmpeg per cut → concat demuxer stream-copy → mux) — memory O(1) in cut count |
@@ -239,7 +239,7 @@ Pipeline: `align → score → select → EDL → assemble`.
   failed an edit the other four covered, and the caller's only recoveries were
   `allow_unreliable=True` (render the bad clip) or hand-writing an EDL (the thing the
   auto path exists to prevent). So `reliable` is now read the way `overlaps` already was:
-  every built-in runs its `pick` over `strategy._prefer_vouched(covering)` and `weighted`
+  every built-in runs its `pick` over `trust.prefer_trusted(covering, mid)` (the trust-tier table, muvid#255) and `weighted`
   charges `select_score.UNVOUCHED_REWARD_PENALTY` (3.0 reward-seconds per second, chosen
   to exceed the composite's whole `[0,1]` range — a tensor column would have been
   *commensurate* with sharpness and therefore outbiddable, which is why it is not one).
