@@ -208,7 +208,9 @@ def file_lock(path):
     path = Path(path)
     text = os.fspath(path)
     if not text.endswith(LOCK_SUFFIX):
-        raise ValueError(f"a lock file's name ends in {LOCK_SUFFIX!r}, got {path.name!r}")
+        raise ValueError(
+            f"a lock file's name ends in {LOCK_SUFFIX!r}, got {path.name!r}"
+        )
     path.parent.mkdir(parents=True, exist_ok=True)
     with _file_lock(text[: -len(LOCK_SUFFIX)], sidecar=LOCK_SUFFIX) as held:
         if not held:
