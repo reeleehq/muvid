@@ -962,7 +962,11 @@ def weak_stretches(e: "EdlEntry", a: FootageAlignment) -> "list[WeakStretch]":
     if e.is_gap or e.is_free:
         return []
     if not a.reliable:
-        return [WeakStretch(e.song_start, e.song_end, UNVOUCHED_STRETCH, _failing_measure(a))]
+        return [
+            WeakStretch(
+                e.song_start, e.song_end, UNVOUCHED_STRETCH, _failing_measure(a)
+            )
+        ]
     floor = _weak_floor(e)
     return [
         WeakStretch(lo, hi, UNVERIFIED_STRETCH)
@@ -1016,7 +1020,9 @@ def only_weak_footage(
     >>> [(w.song_start, w.song_end) for w in only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b])]
     [(20.0, 40.0)]
     """
-    cover = [st for b in alternatives if b.clip_id != e.clip_id for st in trusted_cover(b)]
+    cover = [
+        st for b in alternatives if b.clip_id != e.clip_id for st in trusted_cover(b)
+    ]
     # No second floor here: a cover edge is a placement edge, exact to the frame, so a
     # 4 s residue of an unvouched cut is 4 s of footage that may be out of sync and is
     # named; only the weak stretches' own edges (from spans) were floored (#20 review).

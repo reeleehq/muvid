@@ -2559,6 +2559,7 @@ def coverage_report(
     trustworthy sync; with why, and the number that failed.
     """
     from muvid.footage.edl import only_weak_footage
+
     by_id = {a.clip_id: a for a in aligns}
     lo_bound, hi_bound = span if span is not None else (0.0, song_dur)
     covered = sorted((e.song_start, e.song_end) for e in entries)
