@@ -12,6 +12,7 @@ muvid.montage.spec
       ARCHETYPE_PARAMS
       CUT_FEELS
       CUT_FEEL_FACTORS
+      CUT_ONS
       GRADES
       MOTIONS
       TRANSITIONS

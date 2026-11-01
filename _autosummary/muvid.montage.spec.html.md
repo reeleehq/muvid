@@ -30,16 +30,17 @@ path of the plugin surface.
 
 ### Module Attributes
 
-| [`ARCHETYPES`](#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                                    |
-|-------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| [`ARCHETYPE_PARAMS`](#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key.              |
-| [`CUT_FEELS`](#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                                        |
-| [`CUT_FEEL_FACTORS`](#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                                           |
-| [`GRADES`](#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                              |
-| [`MOTIONS`](#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                                    |
-| [`TRANSITIONS`](#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                                 |
-| [`SECTION_LABELS`](#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                                       |
-| [`REUSE_ORDERS`](#muvid.montage.spec.REUSE_ORDERS)     | The reuse orders a [`Reuse`](#muvid.montage.spec.Reuse) may name. |
+| [`ARCHETYPES`](#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                                           |
+|-------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| [`ARCHETYPE_PARAMS`](#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key.                     |
+| [`CUT_FEELS`](#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                                               |
+| [`CUT_FEEL_FACTORS`](#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                                                  |
+| [`CUT_ONS`](#muvid.montage.spec.CUT_ONS)          | WHICH beats the cuts land on, at the density the archetype and cut feel chose (muvid#275). |
+| [`GRADES`](#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                                     |
+| [`MOTIONS`](#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                                           |
+| [`TRANSITIONS`](#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                                        |
+| [`SECTION_LABELS`](#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                                              |
+| [`REUSE_ORDERS`](#muvid.montage.spec.REUSE_ORDERS)     | The reuse orders a [`Reuse`](#muvid.montage.spec.Reuse) may name.        |
 
 ### Functions
 
@@ -81,7 +82,14 @@ without the model naming a number of beats.
 
 Multiplier on beats-per-cut per cut feel. Smaller is more cuts.
 
-### *class* muvid.montage.spec.Direction(, mood='', palette=Palette(), cut_feel='steady', grade='none', reuse=Reuse(), rationale='')
+### muvid.montage.spec.CUT_ONS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= {'accents': 'Each cut nudged onto the most accented beat near it; same count and pace.', 'grid': 'Every n-th beat of the measured grid, anchored on the bar.'}*
+
+WHICH beats the cuts land on, at the density the archetype and cut feel chose
+(muvid#275). `accents` moves each grid cut to the most accented beat near it
+(`Analysis.cut_rank`, onset strength per beat; a bar-level cut stays on a
+downbeat) and falls back to `grid`, with a plan note, on a song without a rank.
+
+### *class* muvid.montage.spec.Direction(, mood='', palette=Palette(), cut_feel='steady', cut_on='grid', grade='none', reuse=Reuse(), rationale='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 

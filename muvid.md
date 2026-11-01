@@ -1,4 +1,4 @@
-> built 2026-11-01 20:18 UTC from 5271e9c (main) · muvid 0.0.148. Details: build_info.json
+> built 2026-11-01 20:36 UTC from 219a2e8 (main) · muvid 0.0.149. Details: build_info.json
 
 # index.html.md
 
@@ -15849,7 +15849,7 @@ asks for.
 
 | [`assign_media`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.assign_media)(drafts, media, reuse, \*[, ...])   | Fill every region of every draft with `(media_index, use_ordinal)`.                         |
 |--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| [`cut_times`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.cut_times)(section, analysis, beats_per_cut)     | Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.                            |
+| [`cut_times`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.cut_times)(section, analysis, beats_per_cut, \*) | Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.                            |
 | [`plan_montage`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.plan_montage)(analysis, media, treatment, \*)    | Pool + measurements + treatment -> a [`Plan`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.Plan). |
 | [`register_archetype`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.register_archetype)(name)                        | Register an archetype planner under `name`.                                                 |
 | [`tile_path`](_autosummary/muvid.montage.plan.html.md#muvid.montage.plan.tile_path)(variant, motion, length_s, \*[, ...]) | The window path for one still: piecewise linear, slot-relative seconds.                     |
@@ -15964,7 +15964,7 @@ actually produced), which goes into the plan for inspection.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]]], [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
 
-### muvid.montage.plan.cut_times(section, analysis, beats_per_cut)
+### muvid.montage.plan.cut_times(section, analysis, beats_per_cut, , on='grid', bar_line=False)
 
 Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.
 
@@ -15974,6 +15974,11 @@ or, below one beat, evenly spaced subdivisions between consecutive beats.
 A leading or trailing slot shorter than half the cut interval is folded into
 its neighbour — a half-beat pickup is not a slot — and a cut within
 `MIN_SLOT_S` of a boundary is dropped.
+
+`on="accents"` (muvid#275) keeps the same NUMBER of cuts but nudges each onto
+the most accented beat near it (`_snap_to_accents()`; `bar_line` keeps
+every cut on a downbeat, for an archetype whose contract is the bar); at one beat
+per cut or faster, and on a song with no per-beat rank, it is the grid.
 
 ```pycon
 >>> from muvid.montage.analysis import Analysis, Section
@@ -16220,16 +16225,17 @@ path of the plugin surface.
 
 ### Module Attributes
 
-| [`ARCHETYPES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                                    |
-|-------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| [`ARCHETYPE_PARAMS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key.              |
-| [`CUT_FEELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                                        |
-| [`CUT_FEEL_FACTORS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                                           |
-| [`GRADES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                              |
-| [`MOTIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                                    |
-| [`TRANSITIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                                 |
-| [`SECTION_LABELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                                       |
-| [`REUSE_ORDERS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.REUSE_ORDERS)     | The reuse orders a [`Reuse`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Reuse) may name. |
+| [`ARCHETYPES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPES)       | How the pool is cut to the song.                                                           |
+|-------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| [`ARCHETYPE_PARAMS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.ARCHETYPE_PARAMS) | The parameters each archetype accepts, as a small JSON Schema per key.                     |
+| [`CUT_FEELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEELS)        | How the cutting should feel.                                                               |
+| [`CUT_FEEL_FACTORS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_FEEL_FACTORS) | Multiplier on beats-per-cut per cut feel.                                                  |
+| [`CUT_ONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_ONS)          | WHICH beats the cuts land on, at the density the archetype and cut feel chose (muvid#275). |
+| [`GRADES`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.GRADES)           | A colour grade applied to every frame.                                                     |
+| [`MOTIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.MOTIONS)          | How a still moves within a slot.                                                           |
+| [`TRANSITIONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.TRANSITIONS)      | How a slot arrives.                                                                        |
+| [`SECTION_LABELS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.SECTION_LABELS)   | Section labels the planner knows how to pace.                                              |
+| [`REUSE_ORDERS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.REUSE_ORDERS)     | The reuse orders a [`Reuse`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.Reuse) may name.        |
 
 ### Functions
 
@@ -16271,7 +16277,14 @@ without the model naming a number of beats.
 
 Multiplier on beats-per-cut per cut feel. Smaller is more cuts.
 
-### *class* muvid.montage.spec.Direction(, mood='', palette=Palette(), cut_feel='steady', grade='none', reuse=Reuse(), rationale='')
+### muvid.montage.spec.CUT_ONS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= {'accents': 'Each cut nudged onto the most accented beat near it; same count and pace.', 'grid': 'Every n-th beat of the measured grid, anchored on the bar.'}*
+
+WHICH beats the cuts land on, at the density the archetype and cut feel chose
+(muvid#275). `accents` moves each grid cut to the most accented beat near it
+(`Analysis.cut_rank`, onset strength per beat; a bar-level cut stays on a
+downbeat) and falls back to `grid`, with a plan note, on a song without a rank.
+
+### *class* muvid.montage.spec.Direction(, mood='', palette=Palette(), cut_feel='steady', cut_on='grid', grade='none', reuse=Reuse(), rationale='')
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -19894,20 +19907,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-01 20:18 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5271e9c33685b30745adf83f3815101036fa6e10"><code>5271e9c</code></a> on branch <code>main</code>, for **muvid 0.0.148** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-01 20:36 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/219a2e8d50ecfab7ea71b7bbd3a5e4b1e28af00d"><code>219a2e8</code></a> on branch <code>main</code>, for **muvid 0.0.149** (from <code>pyproject.toml</code>).
 
 #### WARNING
 The documentation and the package may be misaligned:
 
-- The documented version (0.0.148) is ahead of the latest release on PyPI (0.0.147): these docs describe unreleased code.
+- The documented version (0.0.149) is ahead of the latest release on PyPI (0.0.148): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5271e9c33685b30745adf83f3815101036fa6e10"><code>5271e9c33685b30745adf83f3815101036fa6e10</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/219a2e8d50ecfab7ea71b7bbd3a5e4b1e28af00d"><code>219a2e8d50ecfab7ea71b7bbd3a5e4b1e28af00d</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.148</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.149</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19916,9 +19929,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41345326640">41345326640</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41346794507">41346794507</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>e2e71d8cc50119889465633cd276449c248164d9</code> (in the history of the built commit) |
+| Event commit | <code>8df56b08e8a86f869c1195c45159d3becdad4a04</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19943,13 +19956,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.147/">0.0.147</a>, older than the documented version (0.0.148).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.148/">0.0.148</a>, older than the documented version (0.0.149).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 5271e9c33685b30745adf83f3815101036fa6e10
+git checkout 219a2e8d50ecfab7ea71b7bbd3a5e4b1e28af00d
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

@@ -51,7 +51,7 @@ asks for.
 
 | [`assign_media`](#muvid.montage.plan.assign_media)(drafts, media, reuse, \*[, ...])   | Fill every region of every draft with `(media_index, use_ordinal)`.                         |
 |--------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
-| [`cut_times`](#muvid.montage.plan.cut_times)(section, analysis, beats_per_cut)     | Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.                            |
+| [`cut_times`](#muvid.montage.plan.cut_times)(section, analysis, beats_per_cut, \*) | Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.                            |
 | [`plan_montage`](#muvid.montage.plan.plan_montage)(analysis, media, treatment, \*)    | Pool + measurements + treatment -> a [`Plan`](#muvid.montage.plan.Plan). |
 | [`register_archetype`](#muvid.montage.plan.register_archetype)(name)                        | Register an archetype planner under `name`.                                                 |
 | [`tile_path`](#muvid.montage.plan.tile_path)(variant, motion, length_s, \*[, ...]) | The window path for one still: piecewise linear, slot-relative seconds.                     |
@@ -166,7 +166,7 @@ actually produced), which goes into the plan for inspection.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`int`](https://docs.python.org/3/builtins/functions.html#int), [`int`](https://docs.python.org/3/builtins/functions.html#int)]]], [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`Any`](https://docs.python.org/3/library/typing.html#typing.Any)]]
 
-### muvid.montage.plan.cut_times(section, analysis, beats_per_cut)
+### muvid.montage.plan.cut_times(section, analysis, beats_per_cut, , on='grid', bar_line=False)
 
 Slot boundaries inside `section`: `[start, cut, cut, ..., end]`.
 
@@ -176,6 +176,11 @@ or, below one beat, evenly spaced subdivisions between consecutive beats.
 A leading or trailing slot shorter than half the cut interval is folded into
 its neighbour — a half-beat pickup is not a slot — and a cut within
 `MIN_SLOT_S` of a boundary is dropped.
+
+`on="accents"` (muvid#275) keeps the same NUMBER of cuts but nudges each onto
+the most accented beat near it (`_snap_to_accents()`; `bar_line` keeps
+every cut on a downbeat, for an archetype whose contract is the bar); at one beat
+per cut or faster, and on a song with no per-beat rank, it is the grid.
 
 ```pycon
 >>> from muvid.montage.analysis import Analysis, Section
