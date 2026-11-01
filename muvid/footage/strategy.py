@@ -10,7 +10,7 @@ any cutting, so a strategy that leaves a gap fails loudly with the exact uncover
 
 **A strategy sees ``reliable`` the way it already sees ``overlaps``: as a preference**
 (muvid#88). Every built-in ranks a vouched clip above an unvouched one for the same span
-via :func:`_prefer_vouched`, and falls back to an unvouched clip only where nothing else
+via :func:`_prefer_trusted`, and falls back to an unvouched clip only where nothing else
 covers the span — so one badly-aligned clip in a shoot costs the spans only it covered,
 not the whole edit. The strategies still decide nothing about trust: they never drop a
 source, and the verdict they read (``FootageAlignment.reliable``) is
@@ -33,8 +33,8 @@ from muvid.footage.edl import (
     SELECTION_MIN_UNVERIFIED_S,
     EdlEntry,
     FootageAlignment,
-    selection_unverified_stretches,
 )
+from muvid.footage.trust import prefer_trusted, tier_edges
 
 #: A strategy: alignments + song duration → an EDL (built-ins ignore song_duration but it
 #: is passed so a strategy MAY reason about the full timeline).
@@ -183,20 +183,15 @@ def select_edl(
 
 def _breakpoints(alignments: Sequence[FootageAlignment]) -> list[float]:
     """Sorted unique coverage boundaries — the elementary-interval grid — and the edges
-    of every clip's unverified stretches (muvid#16), so a preference can change there.
+    of every trust tier's intervals (:mod:`muvid.footage.trust`; the unverified
+    stretches of muvid#16 today), so a preference can change there.
 
     A stretch edge closer than :data:`SELECTION_MIN_UNVERIFIED_S` to a boundary already
     on the grid is left off it (muvid#241 review): its position is only good to the span
     window, and an interval that short between them is a flash cut made on noise.
     """
     bs = {round(x, 6) for a in alignments for x in a.coverage}
-    edges = sorted(
-        round(x, 6)
-        for a in alignments
-        for st in selection_unverified_stretches(a)
-        for x in st
-    )
-    for x in edges:
+    for x in (round(x, 6) for x in tier_edges(alignments)):
         if all(abs(x - b) >= SELECTION_MIN_UNVERIFIED_S for b in bs):
             bs.add(x)
     return sorted(bs)
@@ -209,19 +204,22 @@ def _covering(
     return [a for a in alignments if a.coverage[0] - _EPS <= mid < a.coverage[1] + _EPS]
 
 
-def _prefer_vouched(covering: list[FootageAlignment]) -> list[FootageAlignment]:
-    """Rank trust ahead of everything else, for ONE span (muvid#88).
+def _prefer_trusted(
+    covering: list[FootageAlignment], mid: float
+) -> list[FootageAlignment]:
+    """Rank trust ahead of everything else, for ONE elementary interval (muvid#88,
+    muvid#16 slice 2) — :func:`muvid.footage.trust.prefer_trusted` over the tier table.
 
-    ``reliable`` is a **preference, not a filter**, and the distinction is the whole
-    point. Where a vouched clip covers the span, the unvouched ones are not considered —
-    a clip nobody vouches for should never win a span some other clip could have had, on
-    any metric. Where none does, the full set is returned and the unvouched clip is still
-    chosen, because a strategy PROPOSES: dropping the only footage for a span here would
-    put a second trust check next to :func:`~muvid.footage.edl.validate_edl` and remove a
-    source from the edit on the strength of a measurement — the two things
-    ``overlaps=False`` is carefully written not to do.
-
-    What happens to that forced span is decided downstream and out loud:
+    Trust is a **preference, not a filter**, and the distinction is the whole point.
+    Where a vouched clip covers the span, the unvouched ones are not considered — a
+    clip nobody vouches for should never win a span some other clip could have had, on
+    any metric — and among those, a clip whose measured spans confirm the moment beats
+    one whose spans say it does not match the song there. Where only distrusted footage
+    covers, it is still chosen, because a strategy PROPOSES: dropping the only footage
+    for a span here would put a second trust check next to
+    :func:`~muvid.footage.edl.validate_edl` and remove a source from the edit on the
+    strength of a measurement — the two things ``overlaps=False`` is carefully written
+    not to do. What happens to that forced span is decided downstream and out loud:
     :func:`~muvid.footage.edl.exclude_unvouched` sets it aside as a reported gap on the
     auto path, and ``validate_edl`` refuses it everywhere else.
 
@@ -229,26 +227,7 @@ def _prefer_vouched(covering: list[FootageAlignment]) -> list[FootageAlignment]:
     the only cover for one span and one of several for the next is preferred away from
     the second without losing the first.
     """
-    vouched = [a for a in covering if a.reliable]
-    return vouched or covering
-
-
-def _prefer_confirmed(
-    covering: list[FootageAlignment], mid: float
-) -> list[FootageAlignment]:
-    """Rank a clip whose measured spans confirm this moment ahead of one whose spans
-    say it does not match the song here (muvid#16 slice 2) — the same per-interval
-    PREFERENCE as :func:`_prefer_vouched`, at the granularity of a stretch: where only
-    an unverified clip covers, it is still chosen. A clip with no spans measured counts
-    as confirmed (no measurement is not evidence against it)."""
-
-    def unverified(a: FootageAlignment) -> bool:
-        return any(
-            s - 1e-6 <= mid < e + 1e-6 for s, e in selection_unverified_stretches(a)
-        )
-
-    confirmed = [a for a in covering if not unverified(a)]
-    return confirmed or covering
+    return prefer_trusted(covering, mid)
 
 
 def _coalesce(spans: list[tuple[float, float, str]]) -> list[EdlEntry]:
@@ -283,7 +262,7 @@ def _build(alignments, pick) -> list[EdlEntry]:
         # Trust first, then whatever the strategy optimizes (muvid#88). Here rather than
         # in each `pick` so every built-in — and `fewest_cuts`, which would otherwise sit
         # on an unvouched clip precisely because staying is free — carries it identically.
-        covering = _prefer_confirmed(_prefer_vouched(covering), (lo + hi) / 2)
+        covering = _prefer_trusted(covering, (lo + hi) / 2)
         clip_id = pick(covering, prev_clip_id)
         spans.append((lo, hi, clip_id))
         prev_clip_id = clip_id

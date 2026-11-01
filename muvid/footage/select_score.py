@@ -40,6 +40,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Mapping, NamedTuple, Sequence
 
+import math
+
 import numpy as np
 
 from muvid.footage.edl import (
@@ -49,6 +51,10 @@ from muvid.footage.edl import (
     _EPS,
     validate_edl,
 )
+from muvid.footage.trust import TRUST_TIERS
+
+#: Each trust tier's charge per second, by name (:mod:`muvid.footage.trust`).
+_TIER_PENALTY = {t.name: t.penalty for t in TRUST_TIERS}
 
 _NEG_INF = float("-inf")
 
@@ -501,46 +507,35 @@ def composite_lane(tensor, weights: Mapping[str, float], clip_id: str) -> np.nda
 #: :func:`~muvid.footage.edl.exclude_unvouched` would then black that span out (the
 #: #16 slice-2 review measured exactly that with equal penalties). Raised from 2.0 to
 #: make room for the tier below it; a test pins the ordering.
-UNVOUCHED_REWARD_PENALTY = 3.0
+UNVOUCHED_REWARD_PENALTY = _TIER_PENALTY["unvouched"]  # the table is the SSOT
 #: The charge per second of a clip's UNVERIFIED stretch — footage its measured spans say
 #: does not match the song there (muvid#16 slice 2): above the composite's whole range,
 #: so a confirmed clip always outranks it on any metric, and below the unvouched charge
 #: by more than that range (see above). Not a config field, for the same reason.
-UNVERIFIED_REWARD_PENALTY = 1.5
+UNVERIFIED_REWARD_PENALTY = _TIER_PENALTY["unverified"]
 
 
-def _demote_unvouched(composite: np.ndarray, aligns) -> np.ndarray:
-    """Charge :data:`UNVOUCHED_REWARD_PENALTY` per second to every unvouched clip (muvid#88).
+def _demote_distrusted(composite: np.ndarray, aligns, tensor) -> np.ndarray:
+    """Charge each trust tier's penalty per second on the grid frames where a clip is
+    in that tier (:data:`muvid.footage.trust.TRUST_TIERS`: unvouched clips, muvid#88;
+    unverified stretches, muvid#16) — the ``weighted`` form of the same preference the
+    alignment-only built-ins apply in :func:`muvid.footage.strategy._prefer_trusted`.
 
-    The ``weighted`` strategy's form of the same preference the alignment-only built-ins
-    apply in :func:`muvid.footage.strategy._prefer_vouched`. Applied to the composite the
-    DP integrates rather than inside ``feasible()``, so it demotes without pruning: the
-    clip stays reachable where it is the only coverage, which is what keeps a refusal a
-    refusal and not a silently missing source.
-
-    Applied here rather than in :func:`_composite` because ``_composite`` also feeds
-    :func:`selection_margin`, a diagnostic about how close two clips are on SCORE. Trust
-    is not a score, and folding it in there would make that number answer a different
-    question than its name.
+    Applied to the composite the DP integrates rather than inside ``feasible()``, so it
+    demotes without pruning: the clip stays reachable where it is the only coverage,
+    which is what keeps a refusal a refusal and not a silently missing source. And not
+    inside :func:`_composite`, because that also feeds :func:`selection_margin`, a
+    diagnostic about how close two clips are on SCORE: trust is not a score.
     """
-    for ai, a in enumerate(aligns):
-        if not a.reliable:
-            composite[ai] -= UNVOUCHED_REWARD_PENALTY
-    return composite
+    def frame(t: float) -> int:
+        if math.isinf(t):
+            return 0 if t < 0 else tensor.n
+        return _kappa(t, tensor.hop_s, tensor.n, tensor.t0)
 
-
-def _demote_unverified(composite: np.ndarray, aligns, tensor) -> np.ndarray:
-    """Charge :data:`UNVERIFIED_REWARD_PENALTY` on the grid frames of each clip's
-    unverified stretches (muvid#16 slice 2) — :func:`_demote_unvouched` at the
-    granularity of a stretch, the ``weighted`` form of
-    :func:`muvid.footage.strategy._prefer_confirmed`. Demotes, never prunes."""
-    from muvid.footage.edl import selection_unverified_stretches
-
-    for ai, a in enumerate(aligns):
-        for start, end in selection_unverified_stretches(a):
-            ki = _kappa(start, tensor.hop_s, tensor.n, tensor.t0)
-            kj = _kappa(end, tensor.hop_s, tensor.n, tensor.t0)
-            composite[ai, ki:kj] -= UNVERIFIED_REWARD_PENALTY
+    for tier in TRUST_TIERS:
+        for ai, a in enumerate(aligns):
+            for start, end in tier.intervals(a):
+                composite[ai, frame(start) : frame(end)] -= tier.penalty
     return composite
 
 
@@ -567,9 +562,7 @@ def dp_composite(tensor, aligns, *, config) -> "tuple[np.ndarray, float]":
     stretch one (:data:`UNVERIFIED_REWARD_PENALTY`, muvid#16); and the total weight,
     ``0`` when no weighted metric is in the tensor (the DP then does not run)."""
     composite, total = _composite(tensor, config.weights, aligns)
-    return _demote_unverified(
-        _demote_unvouched(composite, aligns), aligns, tensor
-    ), total
+    return _demote_distrusted(composite, aligns, tensor), total
 
 
 def span_rewards(tensor, aligns, spans, *, config) -> "list[float | None]":

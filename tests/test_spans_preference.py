@@ -255,3 +255,39 @@ def test_propose_edit_reports_the_unverified_stretch_it_kept(tmp_path, monkeypat
     fp.save_alignments([_clip("A", 0.9, spans=A_CONFIRMED_TO_15)])
     out = service.propose_edit(fp)
     assert any("of clip 'A' at 15.0-40.0 s" in w for w in out["warnings"]), out["warnings"]
+
+
+def test_the_trust_tiers_are_one_ordered_table():
+    """muvid#255: the penalties live in one table, the named constants read it, and the
+    ordering rule is a check over the table rather than over two hand-picked numbers."""
+    from muvid.footage import trust
+    from muvid.footage.select_score import (
+        UNVERIFIED_REWARD_PENALTY,
+        UNVOUCHED_REWARD_PENALTY,
+    )
+
+    assert [t.name for t in trust.TRUST_TIERS] == ["unvouched", "unverified"]
+    assert trust.penalties_are_ordered()
+    assert (UNVOUCHED_REWARD_PENALTY, UNVERIFIED_REWARD_PENALTY) == tuple(
+        t.penalty for t in trust.TRUST_TIERS
+    )
+
+
+def test_prefer_trusted_is_lexicographic_over_the_tiers():
+    from muvid.footage.edl import FootageAlignment, MeasuredSpan
+    from muvid.footage.trust import prefer_trusted
+
+    def clip(cid, *, reliable, confirmed_until=None):
+        spans = None if confirmed_until is None else (MeasuredSpan(0.0, confirmed_until, 0.0, 0.8),)
+        return FootageAlignment(cid, 0.0, 0.9, 60.0, (0.0, 60.0), reliable=reliable,
+                                support=0.9 if reliable else 0.1, spans=spans)
+
+    vouched_unverified = clip("A", reliable=True, confirmed_until=20.0)
+    vouched_confirmed = clip("B", reliable=True)
+    unvouched = clip("C", reliable=False)
+    # at 40 s: B (clear of both) beats A (unverified there) beats C (unvouched)
+    assert prefer_trusted([unvouched, vouched_unverified, vouched_confirmed], 40.0) == [vouched_confirmed]
+    assert prefer_trusted([unvouched, vouched_unverified], 40.0) == [vouched_unverified]
+    assert prefer_trusted([unvouched], 40.0) == [unvouched]  # a preference, not a filter
+    # at 10 s A is confirmed too, so both vouched clips tie
+    assert prefer_trusted([vouched_unverified, vouched_confirmed], 10.0) == [vouched_unverified, vouched_confirmed]
