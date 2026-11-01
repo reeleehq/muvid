@@ -731,3 +731,62 @@ def test_the_cli_renders_and_plans(fixtures, tmp_path):
         capture_output=True, text=True, timeout=60,
     )
     assert proc.returncode == 0 and json.loads(proc.stdout)["valid"] is False
+
+
+# --------------------------------------------------------------------------
+# muvid#275: cut on the song's accents, at the same density
+# --------------------------------------------------------------------------
+
+
+from muvid.montage.plan import cut_times  # noqa: E402
+
+
+def _accented(duration: float = 32.0) -> Analysis:
+    """A verse whose strongest beats are the off-beat '3's of each bar, not the bar line."""
+    from dataclasses import replace
+
+    a = _analysis(duration)
+    rank = tuple(1.0 if i % 4 == 2 else 0.1 for i in range(len(a.beats)))
+    return replace(a, cut_rank=rank)
+
+
+def test_accents_keep_the_grids_number_of_cuts_but_move_them_onto_the_strong_beats():
+    a = _accented()
+    section = a.sections[0]
+    grid_cuts = cut_times(section, a, 4)
+    accent_cuts = cut_times(section, a, 4, on="accents")
+    assert len(accent_cuts) == len(grid_cuts)
+    strong = {a.beats[i] for i in range(len(a.beats)) if a.cut_rank[i] == 1.0}
+    inner = accent_cuts[1:-1]
+    assert inner and all(c in strong for c in inner)
+    assert all(c not in strong for c in grid_cuts[1:-1])  # the grid is on the bar line
+
+
+def test_accents_fall_back_to_the_grid_without_a_rank_and_below_one_beat():
+    a = _analysis(32.0)  # no cut_rank measured
+    section = a.sections[0]
+    assert cut_times(section, a, 4, on="accents") == cut_times(section, a, 4)
+    b = _accented()
+    assert cut_times(b.sections[0], b, 0.5, on="accents") == cut_times(b.sections[0], b, 0.5)
+
+
+def test_accent_cuts_never_bunch_closer_than_half_the_interval():
+    from dataclasses import replace
+
+    a = _analysis(32.0)
+    rank = tuple(1.0 if 8 <= i < 16 else 0.0 for i in range(len(a.beats)))  # one loud stretch
+    a = replace(a, cut_rank=rank)
+    cuts = cut_times(a.sections[0], a, 4, on="accents")
+    beat_idx = [a.beats.index(c) for c in cuts[1:-1]]
+    assert all(j - i >= 2 for i, j in zip(beat_idx, beat_idx[1:]))
+
+
+def test_cut_on_is_a_closed_vocabulary_the_plan_reads():
+    assert set(S.vocabulary()["cut_ons"]) == {"grid", "accents"}
+    spec, notes = S.coerce({"direction": {"cut_on": "loudest"}, "scenes": [{}]})
+    assert spec.direction.cut_on == "grid" and any("cut_on" in n for n in notes)
+    a = _accented(128.0)
+    grid = plan_montage(a, _pool(12), S.one_scene("beat_cut"))
+    accents = plan_montage(a, _pool(12), S.one_scene("beat_cut", cut_on="accents"))
+    assert [s.start for s in grid.slots] != [s.start for s in accents.slots]
+    assert accents.treatment["direction"]["cut_on"] == "accents"

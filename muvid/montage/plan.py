@@ -439,7 +439,11 @@ def _beats_per_cut(
 
 
 def cut_times(
-    section: Section, analysis: Analysis, beats_per_cut: float
+    section: Section,
+    analysis: Analysis,
+    beats_per_cut: float,
+    *,
+    on: str = "grid",
 ) -> list[float]:
     """Slot boundaries inside ``section``: ``[start, cut, cut, ..., end]``.
 
@@ -449,6 +453,10 @@ def cut_times(
     A leading or trailing slot shorter than half the cut interval is folded into
     its neighbour — a half-beat pickup is not a slot — and a cut within
     :data:`MIN_SLOT_S` of a boundary is dropped.
+
+    ``on="accents"`` (muvid#275) keeps the same NUMBER of cuts but puts them on
+    the beats the song accents most (:func:`_accented_cuts`); below one beat per
+    cut, and on a song with no per-beat rank, it is the grid.
 
     >>> from muvid.montage.analysis import Analysis, Section
     >>> a = Analysis(duration=8.0, tempo_bpm=120.0,
@@ -479,6 +487,16 @@ def cut_times(
                     k0 = i
                     break
         cuts = beats[k0::step]
+        if on == "accents" and len(analysis.cut_rank) == len(beats):
+            # as many as the grid keeps once the boundary margin drops its edge cuts,
+            # chosen among the beats that margin allows
+            def kept(t: float) -> bool:
+                return start + MIN_SLOT_S < t < end - MIN_SLOT_S
+
+            n = sum(1 for c in cuts if kept(c))
+            cuts = _accented_cuts(
+                [i for i in inside if kept(beats[i])], analysis, step, n=n
+            )
         interval_s = step * analysis.beat_s
     else:
         sub = max(1, int(round(1 / beats_per_cut)))
@@ -494,6 +512,35 @@ def cut_times(
         cuts = cuts[:-1]
     bounds = [start] + [round(c, 6) for c in cuts] + [end]
     return _split_long(bounds, beats, MAX_HOLD_S)
+
+
+#: The closest two accent cuts may sit, as a fraction of the grid's cut interval —
+#: so ``accents`` moves cuts onto the strong beats without bunching them into a
+#: flurry the archetype's density did not ask for.
+ACCENT_MIN_GAP_FRACTION = 0.5
+
+
+def _accented_cuts(
+    inside: Sequence[int], analysis: Analysis, step: int, *, n: int
+) -> list[float]:
+    """``n`` cuts among the beats at indices ``inside``, the most accented first (by
+    ``analysis.cut_rank``), no two closer than :data:`ACCENT_MIN_GAP_FRACTION` of
+    ``step`` beats; in time order. Deterministic: ties go to the earlier beat.
+
+    >>> from muvid.montage.analysis import Analysis
+    >>> a = Analysis(duration=4.0, tempo_bpm=120.0, beats=tuple(i * 0.5 for i in range(8)),
+    ...              downbeats=(0.0, 2.0), cut_rank=(0.1, 0.9, 0.8, 0.2, 0.3, 0.1, 1.0, 0.2))
+    >>> _accented_cuts(range(8), a, 4, n=3)  # 3.0 and 0.5 lead; 1.0 is too close to 0.5
+    [0.5, 2.0, 3.0]
+    """
+    gap = max(1, math.ceil(ACCENT_MIN_GAP_FRACTION * step))
+    chosen: list[int] = []
+    for i in sorted(inside, key=lambda i: (-analysis.cut_rank[i], i)):
+        if len(chosen) >= n:
+            break
+        if all(abs(i - j) >= gap for j in chosen):
+            chosen.append(i)
+    return [analysis.beats[i] for i in sorted(chosen)]
 
 
 #: A leading/trailing slot shorter than this fraction of the cut interval is
@@ -602,7 +649,7 @@ def ballad_dissolve(
             transition="fade" if fade_s > 0 else "cut",
             transition_s=fade_s,
         )
-        for s, e in _spans(cut_times(section, a, bpc))
+        for s, e in _spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))
     ]
 
 
@@ -629,7 +676,7 @@ def beat_cut(
             motions=("punch",) if punch > 0 else ("none",),
             amplitude=punch,
         )
-        for s, e in _spans(cut_times(section, a, bpc))
+        for s, e in _spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))
     ]
 
 
@@ -651,7 +698,7 @@ def grid(
         beat_s=a.beat_s,
     )
     drafts = []
-    for k, (s, e) in enumerate(_spans(cut_times(section, a, bpc))):
+    for k, (s, e) in enumerate(_spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))):
         fresh = (
             tuple(range(GRID_REGIONS))
             if k == 0
@@ -693,7 +740,7 @@ def stop_motion(
             archetype="stop_motion",
             motions=("none",),
         )
-        for s, e in _spans(cut_times(section, a, bpc))
+        for s, e in _spans(cut_times(section, a, bpc, on=ctx.direction.cut_on))
     ]
 
 
