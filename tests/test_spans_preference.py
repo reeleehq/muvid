@@ -43,7 +43,7 @@ def test_every_built_in_prefers_a_confirmed_clip_over_an_unverified_stretch(name
 
 def test_an_unverified_stretch_only_one_clip_covers_is_still_chosen():
     """A preference, not a filter: dropping the only footage would make the strategy a
-    second gate (the rule `_prefer_vouched` is written to)."""
+    second gate (the rule `trust.prefer_trusted` is written to)."""
     a = _clip("A", 0.9, spans=A_CONFIRMED_TO_15)
     assert _cuts(S.select_edl("best_confidence", [a], 40.0)) == [(0.0, 40.0, "A")]
 
@@ -255,3 +255,72 @@ def test_propose_edit_reports_the_unverified_stretch_it_kept(tmp_path, monkeypat
     fp.save_alignments([_clip("A", 0.9, spans=A_CONFIRMED_TO_15)])
     out = service.propose_edit(fp)
     assert any("of clip 'A' at 15.0-40.0 s" in w for w in out["warnings"]), out["warnings"]
+
+
+def test_the_trust_tiers_are_one_ordered_table():
+    """muvid#255: the penalties live in one table, the named constants read it, and the
+    ordering rule is a check over the table rather than over two hand-picked numbers."""
+    from muvid.footage import trust
+    from muvid.footage.select_score import (
+        UNVERIFIED_REWARD_PENALTY,
+        UNVOUCHED_REWARD_PENALTY,
+    )
+
+    assert [t.name for t in trust.TRUST_TIERS] == ["unvouched", "unverified"]
+    tiers = trust.TRUST_TIERS
+    for i, tier in enumerate(tiers):  # each above the sum of the lower ones + the range
+        assert tier.penalty > sum(t.penalty for t in tiers[i + 1 :]) + trust.COMPOSITE_RANGE
+    assert (UNVOUCHED_REWARD_PENALTY, UNVERIFIED_REWARD_PENALTY) == tuple(
+        t.penalty for t in trust.TRUST_TIERS
+    )
+
+
+def test_prefer_trusted_is_lexicographic_over_the_tiers():
+    from muvid.footage.edl import FootageAlignment, MeasuredSpan
+    from muvid.footage.trust import prefer_trusted
+
+    def clip(cid, *, reliable, confirmed_until=None):
+        spans = None if confirmed_until is None else (MeasuredSpan(0.0, confirmed_until, 0.0, 0.8),)
+        return FootageAlignment(cid, 0.0, 0.9, 60.0, (0.0, 60.0), reliable=reliable,
+                                support=0.9 if reliable else 0.1, spans=spans)
+
+    vouched_unverified = clip("A", reliable=True, confirmed_until=20.0)
+    vouched_confirmed = clip("B", reliable=True)
+    unvouched = clip("C", reliable=False)
+    # at 40 s: B (clear of both) beats A (unverified there) beats C (unvouched)
+    assert prefer_trusted([unvouched, vouched_unverified, vouched_confirmed], 40.0) == [vouched_confirmed]
+    assert prefer_trusted([unvouched, vouched_unverified], 40.0) == [vouched_unverified]
+    assert prefer_trusted([unvouched], 40.0) == [unvouched]  # a preference, not a filter
+    # at 10 s A is confirmed too, so both vouched clips tie
+    assert prefer_trusted([vouched_unverified, vouched_confirmed], 10.0) == [vouched_unverified, vouched_confirmed]
+
+
+def test_prefer_trusted_equals_the_two_step_rule_it_replaced():
+    """muvid#255 is a pure refactor: the table's lexicographic preference must equal
+    the old sequential one — keep the vouched clips (if any), then among those the
+    ones confirmed at that moment (if any) — over random alignment sets."""
+    import random
+
+    from muvid.footage.edl import FootageAlignment, MeasuredSpan, selection_unverified_stretches
+    from muvid.footage.trust import prefer_trusted
+
+    def old_rule(covering, mid):
+        vouched = [a for a in covering if a.reliable] or covering
+        def unverified(a):
+            return any(s - 1e-6 <= mid < e + 1e-6 for s, e in selection_unverified_stretches(a))
+        return [a for a in vouched if not unverified(a)] or vouched
+
+    rng = random.Random(255)
+    for _ in range(500):
+        covering = []
+        for i in range(rng.randint(1, 4)):
+            spans = None
+            if rng.random() < 0.6:
+                end = rng.uniform(5.0, 60.0)
+                spans = (MeasuredSpan(0.0, end, rng.choice([0.0, 7.97]), 0.8),)
+            reliable = rng.random() < 0.6
+            covering.append(FootageAlignment(f"c{i}", 0.0, 0.5, 60.0, (0.0, 60.0),
+                                             reliable=reliable, support=0.9 if reliable else 0.2,
+                                             spans=spans))
+        mid = rng.uniform(0.0, 60.0)
+        assert prefer_trusted(covering, mid) == old_rule(covering, mid)

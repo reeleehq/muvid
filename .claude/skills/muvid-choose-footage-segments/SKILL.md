@@ -81,7 +81,7 @@ higher = better) + `raw_values[]` + a coverage `mask[]`; grid frame *k* ↔ song
   — a strategy proposes, the gate decides — so do not add a second check in a strategy.
 - **But a strategy PREFERS a vouched clip, which is a different thing from filtering**
   (muvid#88). Ranking is the strategy's job; refusing is the gate's. Every built-in runs
-  its `pick` over `strategy._prefer_vouched(covering)`, so an unvouched clip never wins a
+  its `pick` over `trust.prefer_trusted(covering, mid)`, so an unvouched clip never wins a
   span another clip covers — and is still chosen where nothing else does, because dropping
   it there would remove a source from the edit on the strength of a measurement, which is
   exactly what `overlaps=False` is written not to do. `weighted` carries the same

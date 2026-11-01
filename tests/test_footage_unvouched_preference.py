@@ -82,7 +82,7 @@ def _clip_at(entries, t: float) -> str | None:
     Filtering entries by span END cannot tell "no entry reaches here" from "one long
     entry covers here", so a preference test written that way passes VACUOUSLY when the
     preference is absent and one clip wins the whole song. Measured: with
-    ``_prefer_vouched`` stubbed out, the span-filtered form of these assertions stayed
+    ``trust.prefer_trusted`` stubbed out, the span-filtered form of these assertions stayed
     green while the unvouched clip held every second of the edit.
     """
     for e in entries:
