@@ -767,16 +767,34 @@ def test_accents_hold_the_grids_count_and_pace_on_any_rank():
     from dataclasses import replace
 
     rng = random.Random(275)
-    base = _analysis(32.0)
-    for step in (2, 3, 4, 6, 8):
-        for _ in range(60):
+    for bpm, bpb in ((120.0, 4), (60.0, 4), (88.5, 3), (180.0, 6)):
+      beat = 60.0 / bpm
+      beats = tuple(round(i * beat, 6) for i in range(int(64 / beat)))
+      base = Analysis(duration=64.0, tempo_bpm=bpm, beats=beats, downbeats=beats[::bpb],
+                      beats_per_bar=bpb, sections=(), beat_source="t", section_source="t")
+      for step in (2, 3, 4, 6, 8, 12, 16):  # slow tempos x big steps reach _split_long
+        for _ in range(25):
             a = replace(base, cut_rank=tuple(rng.random() for _ in base.beats))
-            sec = Section(label="verse", start=rng.uniform(0, 2), end=rng.uniform(20, 32))
+            sec = Section(label="verse", start=rng.uniform(0, 2), end=rng.uniform(30, 64))
             g, c = cut_times(sec, a, step), cut_times(sec, a, step, on="accents")
-            assert len(c) == len(g)
+            assert len(c) == len(g), (bpm, step)
             holds = lambda b: [y - x for x, y in zip(b, b[1:])]  # noqa: E731
-            assert max(holds(c)) <= max(holds(g)) + (step - 1) * a.beat_s + 1e-9
+            assert max(holds(c)) <= max(holds(g)) + (step - 1) * a.beat_s + 1e-5  # bounds round to 1 us
             assert all(y > x for x, y in zip(c, c[1:]))
+
+
+def test_ballad_dissolve_keeps_every_cut_on_a_downbeat():
+    import random
+    from dataclasses import replace
+
+    rng = random.Random(3)
+    a = _analysis(128.0)
+    a = replace(a, cut_rank=tuple(rng.random() for _ in a.beats))
+    for feel in ("driving", "frantic", "steady"):
+        plan = plan_montage(a, _pool(12), S.one_scene("ballad_dissolve", cut_on="accents", cut_feel=feel))
+        starts = [s.start for s in plan.slots][1:]
+        sec_starts = {x.start for x in a.sections}
+        assert all(t in a.downbeats or t in sec_starts for t in starts), feel
 
 
 def test_a_bar_level_cut_stays_on_the_bar_line():
