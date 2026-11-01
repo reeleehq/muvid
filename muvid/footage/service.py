@@ -2541,7 +2541,7 @@ def _round_opt(x: Optional[float]) -> Optional[float]:
 
 
 def coverage_report(
-    entries, aligns, song_dur: float, *, excluded=(), span=None
+    entries, aligns, song_dur: float, *, excluded=(), span=None, roles=None
 ) -> dict:
     """What the song's timeline looks like under ``entries`` — covered, weak, MISSING.
 
@@ -2550,7 +2550,12 @@ def coverage_report(
     aligned is listed with the numbers that make it weak; ``excluded`` (muvid#88) names
     spans the auto path gave up because only an unvouched clip covered them.
     ``span`` (a trimmed edit's ``(start, end)``) bounds what counts as uncovered.
+    ``only_weak_footage`` (muvid#20 clause b) lists the stretches a synced cut shows
+    footage whose sync nobody can vouch for there, because no other synced clip
+    (``roles``, :func:`footage_roles`; every aligned clip when ``None``) covers them in
+    trustworthy sync — with why, and the number that failed.
     """
+    from muvid.footage.edl import only_weak_footage
     by_id = {a.clip_id: a for a in aligns}
     lo_bound, hi_bound = span if span is not None else (0.0, song_dur)
     covered = sorted((e.song_start, e.song_end) for e in entries)
@@ -2576,6 +2581,13 @@ def coverage_report(
         # a free cut claims no sync, so its clip's placement cannot make it weak
         if e.clip_id in by_id and not by_id[e.clip_id].reliable and not e.is_free
     ]
+    synced = [a for a in aligns if roles is None or roles.get(a.clip_id) == SYNCED]
+    only_weak = [
+        {"clip_id": e.clip_id, **w.to_dict()}
+        for e in entries
+        if e.clip_id in by_id
+        for w in only_weak_footage(e, by_id[e.clip_id], synced)
+    ]
     covered_s = sum(hi - lo for lo, hi in covered)
     length = hi_bound - lo_bound
     report = {
@@ -2584,6 +2596,7 @@ def coverage_report(
         "coverage_fraction": round(covered_s / length, 4) if length else 0.0,
         "uncovered": gaps,
         "weak_segments": weak,
+        "only_weak_footage": only_weak,
         "excluded": [x.to_dict() for x in excluded],
         "confidence_threshold": _MIN_CONFIDENCE,
     }
@@ -2957,6 +2970,7 @@ def propose_edit(
             song_dur,
             excluded=excluded,
             span=span,
+            roles=footage_roles(fp),
         ),
         "warnings": [exclusion_note(x) for x in excluded]
         + _unverified_notes(window, aligns),
@@ -3033,9 +3047,9 @@ def explain_edit(
     starts), what picture it shows and why that stretch (its picture changes on the
     beats inside the cut; a photo's camera move; a video synced where it was
     filmed), and ``flags`` for the ones worth a look (``straddles_the_beat``,
-    ``off_the_beat``, ``long_hold``, ``repeated_stretch``, ``coverage_only`` — a video
-    shown only because nothing better covers that part of the song, with what makes it
-    weak and when). Plus a ``summary`` of the
+    ``off_the_beat``, ``long_hold``, ``repeated_stretch``, ``only_weak_footage`` — a
+    video whose sync muvid can't vouch for, shown because no other video covers that
+    stretch, with what makes it weak and when). Plus a ``summary`` of the
     whole edit (fades vs cuts, the song's pace and shape, the longest shot).
 
     Every clock time in a sentence is listed in ``times`` (``{label, s}``) so a screen
@@ -4115,6 +4129,7 @@ def _edit_reply(fp, record: dict) -> dict:
             _placements(fp),
             fp.song_duration(),
             span=_span_of(record),
+            roles=footage_roles(fp),
         )
     return reply
 
@@ -4340,6 +4355,7 @@ def assemble(
             song_dur,
             excluded=excluded,
             span=span,
+            roles=footage_roles(fp),
         ),
         "ok": not failures(checks),
         "checks": report(checks),

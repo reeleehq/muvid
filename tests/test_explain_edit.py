@@ -177,57 +177,119 @@ def test_a_weighted_edit_that_fell_back_says_so():
     assert "score-driven" not in plain["summary"]
 
 
-# -- muvid#20 (b): a cut that is there only for coverage, and how weak it is ----------
+# -- muvid#20 (b): a cut showing weak footage nothing better covers --------------------
 
 
-def _synced(cid, offset, dur, *, reliable=True, support=0.9, spans=None):
+def _synced(cid, offset, dur, *, reliable=True, support=0.9, margin=0.5, spans=None):
     from muvid.footage.edl import FootageAlignment
 
     return FootageAlignment(
-        cid, offset, 0.5, dur, (offset, offset + dur), support=support,
+        cid, offset, 0.5, dur, (offset, offset + dur), support=support, margin=margin,
         reliable=reliable, spans=spans,
     )
 
 
-def test_weak_footage_nothing_better_covers_is_flagged_and_says_how_weak():
-    an = _analysis(bpm=60.0)
-    aligns = {"A": _synced("A", 0.0, 40.0, reliable=False, support=0.31)}
-    clips = {"A": {"name": "Front row", "kind": "video", "role": "synced"}}
-    out = explain([EdlEntry(0.0, 40.0, "A")], analysis=an, song_duration=40.0,
+def _roles(*cids, free=()):
+    return {c: {"name": c, "kind": "video", "role": "to_the_music" if c in free else "synced"}
+            for c in cids}
+
+
+def _flag(entries, aligns, clips):
+    out = explain(entries, analysis=_analysis(bpm=60.0), song_duration=40.0,
                   clips=clips, alignments=aligns)
-    cut = out["cuts"][0]
-    assert "coverage_only" in cut["flags"]
-    assert "here for coverage" in cut["text"] and "support 0.31" in cut["text"]
-    assert "only because nothing better covers" in out["summary"]
+    return out, out["cuts"][0]
+
+
+def test_weak_footage_nothing_better_covers_is_flagged_with_the_failing_number():
+    aligns = {"A": _synced("A", 0.0, 40.0, reliable=False, support=0.31)}
+    out, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A"))
+    assert "only_weak_footage" in cut["flags"]
+    assert "support 0.31" in cut["text"] and "couldn't tell where" in cut["text"]
+    assert "(at 0:00.0)" in out["summary"] and "check it first" in out["summary"]
+
+
+def test_the_number_named_is_the_one_that_failed():
+    """support 0.80 is a GOOD support; this clip was refused on its margin (review)."""
+    aligns = {"A": _synced("A", 0.0, 40.0, reliable=False, support=0.8, margin=-0.1)}
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A"))
+    assert "margin -0.10" in cut["text"] and "support" not in cut["text"]
 
 
 def test_unconfirmed_stretches_are_named_with_their_times():
     from muvid.footage.edl import MeasuredSpan
 
-    an = _analysis(bpm=60.0)
     aligns = {"A": _synced("A", 0.0, 40.0, spans=(MeasuredSpan(0.0, 15.0, 0.0, 0.8),))}
-    out = explain([EdlEntry(0.0, 40.0, "A")], analysis=an, song_duration=40.0,
-                  clips={"A": {"name": "Front row", "kind": "video"}}, alignments=aligns)
-    cut = out["cuts"][0]
-    assert "coverage_only" in cut["flags"]
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A"))
+    assert "only_weak_footage" in cut["flags"]
     assert "from 0:15.0 to 0:40.0" in cut["text"]
     assert {"label": "0:15.0", "s": 15.0} in cut["times"]
 
 
-def test_good_or_replaceable_footage_is_not_flagged():
-    an = _analysis(bpm=60.0)
-    clips = {c: {"name": c, "kind": "video", "role": "synced"} for c in "AB"}
+def test_two_cameras_between_them_are_better_cover():
+    weak = _synced("A", 0.0, 40.0, reliable=False)
+    aligns = {"A": weak, "B": _synced("B", 0.0, 20.0), "C": _synced("C", 20.0, 20.0)}
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A", "B", "C"))
+    assert "only_weak_footage" not in cut["flags"]
+    # with only B, the second half is what nothing better covers — and only that is named
+    aligns = {"A": weak, "B": _synced("B", 0.0, 20.0)}
+    from muvid.footage.edl import only_weak_footage
+
+    [w] = only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [aligns["B"]])
+    assert (w.song_start, w.song_end) == (20.0, 40.0)
+
+
+def test_an_alternative_is_only_better_where_its_own_sync_is_confirmed():
+    from muvid.footage.edl import MeasuredSpan
+
+    shaky_b = _synced("B", 0.0, 40.0, spans=(MeasuredSpan(0.0, 5.0, 0.0, 0.8),))
+    aligns = {"A": _synced("A", 0.0, 40.0, reliable=False), "B": shaky_b}
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A", "B"))
+    assert "only_weak_footage" in cut["flags"]
+
+
+def test_a_sliver_below_the_measurement_is_not_named():
+    from muvid.footage.edl import MeasuredSpan
+
+    aligns = {"A": _synced("A", 0.0, 40.0, spans=(MeasuredSpan(0.0, 15.0, 0.0, 0.8),))}
+    _, cut = _flag([EdlEntry(0.0, 15.05, "A")], aligns, _roles("A"))
+    assert "only_weak_footage" not in cut["flags"]
+
+
+def test_good_replaceable_free_and_declared_footage_is_not_flagged():
+    from muvid.footage.edl import DECLARED, FootageAlignment
+
     # good footage, single camera: not news
-    out = explain([EdlEntry(0.0, 40.0, "A")], analysis=an, song_duration=40.0,
-                  clips=clips, alignments={"A": _synced("A", 0.0, 40.0)})
-    assert "coverage_only" not in out["cuts"][0]["flags"]
-    # weak footage, but a vouched camera covers the same stretch: a choice, not coverage
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], {"A": _synced("A", 0.0, 40.0)}, _roles("A"))
+    assert "only_weak_footage" not in cut["flags"]
+    # weak, but a vouched synced camera covers the same stretch: a choice, not coverage
     aligns = {"A": _synced("A", 0.0, 40.0, reliable=False), "B": _synced("B", 0.0, 40.0)}
-    out = explain([EdlEntry(0.0, 40.0, "A")], analysis=an, song_duration=40.0,
-                  clips=clips, alignments=aligns)
-    assert "coverage_only" not in out["cuts"][0]["flags"]
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A", "B"))
+    assert "only_weak_footage" not in cut["flags"]
     # ...unless that camera is cut to the music, which offers no sync there
-    clips["B"]["role"] = "to_the_music"
-    out = explain([EdlEntry(0.0, 40.0, "A")], analysis=an, song_duration=40.0,
-                  clips=clips, alignments=aligns)
-    assert "coverage_only" in out["cuts"][0]["flags"]
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A", "B", free=("B",)))
+    assert "only_weak_footage" in cut["flags"]
+    # an alignment whose clip left the project offers nothing either
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], aligns, _roles("A"))
+    assert "only_weak_footage" in cut["flags"]
+    # a free cut claims no sync; a declared offset was vouched for by a person
+    _, cut = _flag([EdlEntry(0.0, 10.0, "A", source_in=0.0)], aligns, _roles("A"))
+    assert "only_weak_footage" not in cut["flags"]
+    declared = FootageAlignment("A", 0.0, 1.0, 40.0, (0.0, 40.0), reliable=True, source=DECLARED)
+    _, cut = _flag([EdlEntry(0.0, 40.0, "A")], {"A": declared}, _roles("A"))
+    assert "only_weak_footage" not in cut["flags"]
+
+
+def test_the_coverage_report_lists_the_same_stretches(tmp_path, monkeypatch):
+    """The replies an agent reads BEFORE rendering carry it too, from the same helper."""
+    aligns = [_synced("A", 0.0, 40.0, reliable=False, support=0.31), _synced("B", 0.0, 10.0)]
+    report = service.coverage_report(
+        [EdlEntry(0.0, 40.0, "A")], aligns, 40.0, roles={"A": "synced", "B": "synced"}
+    )
+    assert report["only_weak_footage"] == [
+        {"clip_id": "A", "song_start": 10.0, "song_end": 40.0, "why": "unvouched",
+         "measure": {"support": 0.31, "threshold": 0.5}},
+    ]
+    free_b = service.coverage_report(
+        [EdlEntry(0.0, 40.0, "A")], aligns, 40.0, roles={"A": "synced", "B": "to_the_music"}
+    )
+    assert free_b["only_weak_footage"][0]["song_start"] == 0.0

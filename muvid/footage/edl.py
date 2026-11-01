@@ -895,6 +895,137 @@ def unverified_in_cut(
     return out
 
 
+#: Why a stretch of a cut is weak footage (:func:`weak_stretches`).
+UNVOUCHED_STRETCH, UNVERIFIED_STRETCH = "unvouched", "unverified"
+
+
+@dataclass(frozen=True)
+class WeakStretch:
+    """A stretch of a synced cut showing footage whose sync is not trustworthy there
+    (muvid#20 clause b): ``why`` is :data:`UNVOUCHED_STRETCH` (the aligner does not
+    vouch for the clip's offset — ``measure`` names the number that failed, with its
+    threshold) or :data:`UNVERIFIED_STRETCH` (the measured spans do not confirm the
+    placement there). Song-time seconds."""
+
+    song_start: float
+    song_end: float
+    why: str
+    measure: "dict[str, float | None]" = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        out = {
+            "song_start": round(self.song_start, 2),
+            "song_end": round(self.song_end, 2),
+            "why": self.why,
+        }
+        if self.measure:
+            out["measure"] = dict(self.measure)
+        return out
+
+
+def _failing_measure(a: FootageAlignment) -> "dict[str, float | None]":
+    """The number :func:`vouches_for` refused ``a`` on, with its threshold — the one
+    that failed, not merely the first one there is (a support of 0.8 refused on its
+    margin must not be reported as "support 0.80"); ``{}`` when none of them did."""
+    if a.support is None:
+        if a.confidence < MIN_CONFIDENCE:
+            return {"confidence": round(a.confidence, 3), "threshold": MIN_CONFIDENCE}
+        return {}
+    if a.margin is None:
+        return {"margin": None}
+    if not a.support > MIN_SUPPORT:
+        return {"support": round(a.support, 3), "threshold": MIN_SUPPORT}
+    if not a.margin > MIN_MARGIN:
+        return {"margin": round(a.margin, 3), "threshold": MIN_MARGIN}
+    return {}  # refused by something other than the numbers (e.g. a derived record)
+
+
+def _weak_floor(e: "EdlEntry") -> float:
+    """The shortest weak stretch worth naming in cut ``e``: half the selection's
+    resolution (:data:`SELECTION_MIN_UNVERIFIED_S`), or half the cut when it is
+    shorter — a span edge is only good to about the span window, so a 0.05 s overlap
+    is noise, while a short cut entirely inside an unverified stretch is not."""
+    return min(SELECTION_MIN_UNVERIFIED_S, e.song_end - e.song_start) / 2
+
+
+def weak_stretches(e: "EdlEntry", a: FootageAlignment) -> "list[WeakStretch]":
+    """Where synced cut ``e`` shows its clip ``a`` with sync nobody can vouch for: the
+    whole cut when ``a`` is not :attr:`~FootageAlignment.reliable`, else its unverified
+    stretches (:func:`unverified_in_cut`) longer than :func:`_weak_floor`. ``[]`` for a
+    gap and a free cut (cut to the music, it claims no sync).
+
+    >>> a = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0), support=0.8, margin=-0.1,
+    ...                      reliable=False)
+    >>> [(w.why, w.measure) for w in weak_stretches(EdlEntry(0.0, 40.0, "A"), a)]
+    [('unvouched', {'margin': -0.1, 'threshold': 0.0})]
+    """
+    if e.is_gap or e.is_free:
+        return []
+    if not a.reliable:
+        return [WeakStretch(e.song_start, e.song_end, UNVOUCHED_STRETCH, _failing_measure(a))]
+    floor = _weak_floor(e)
+    return [
+        WeakStretch(lo, hi, UNVERIFIED_STRETCH)
+        for lo, hi in unverified_in_cut(e, a)
+        if hi - lo >= floor - _EPS
+    ]
+
+
+def trusted_cover(a: FootageAlignment) -> "list[tuple[float, float]]":
+    """The song-time stretches clip ``a`` could show in TRUSTWORTHY sync: its placement
+    minus its unverified stretches, and nothing at all when the aligner does not vouch
+    for it or it does not overlap the song."""
+    if not a.reliable or not a.overlaps:
+        return []
+    return _subtract(a.coverage[0], a.coverage[1], selection_unverified_stretches(a))
+
+
+def _subtract(lo: float, hi: float, holes) -> "list[tuple[float, float]]":
+    """``[lo, hi]`` minus the union of ``holes``, as sorted disjoint stretches.
+
+    >>> _subtract(0.0, 40.0, [(0.0, 20.0), (15.0, 30.0)])
+    [(30.0, 40.0)]
+    """
+    out, at = [], lo
+    for s, t in sorted(holes):
+        if t <= at or s >= hi:
+            continue
+        if s > at + _EPS:
+            out.append((at, s))
+        at = max(at, t)
+    if hi > at + _EPS:
+        out.append((at, hi))
+    return out
+
+
+def only_weak_footage(
+    e: "EdlEntry", a: FootageAlignment, alternatives: "Sequence[FootageAlignment]"
+) -> "list[WeakStretch]":
+    """The :func:`weak_stretches` of cut ``e`` that no OTHER clip among
+    ``alternatives`` could have shown in trustworthy sync (:func:`trusted_cover`,
+    unioned — two cameras can cover one stretch between them): the cut is there only
+    because nothing better covers that part of the song (muvid#20 clause b). Pass the
+    synced clips as ``alternatives``; a clip cut to the music claims no sync to offer.
+
+    >>> weak = FootageAlignment("A", 0.0, 0.9, 40.0, (0.0, 40.0), support=0.3, margin=0.1,
+    ...                         reliable=False)
+    >>> b = FootageAlignment("B", 0.0, 0.9, 20.0, (0.0, 20.0), support=0.9, margin=0.5)
+    >>> c = FootageAlignment("C", 20.0, 0.9, 20.0, (20.0, 40.0), support=0.9, margin=0.5)
+    >>> only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b, c])  # B and C cover it
+    []
+    >>> [(w.song_start, w.song_end) for w in only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [b])]
+    [(20.0, 40.0)]
+    """
+    cover = [st for b in alternatives if b.clip_id != e.clip_id for st in trusted_cover(b)]
+    floor = _weak_floor(e)
+    return [
+        WeakStretch(lo, hi, w.why, w.measure)
+        for w in weak_stretches(e, a)
+        for lo, hi in _subtract(w.song_start, w.song_end, cover)
+        if hi - lo >= floor - _EPS
+    ]
+
+
 @dataclass(frozen=True)
 class CropWindow:
     """A rectangle to take from the source frame, as fractions of its width/height.
