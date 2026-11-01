@@ -293,3 +293,16 @@ def test_the_coverage_report_lists_the_same_stretches(tmp_path, monkeypatch):
         [EdlEntry(0.0, 40.0, "A")], aligns, 40.0, roles={"A": "synced", "B": "to_the_music"}
     )
     assert free_b["only_weak_footage"][0]["song_start"] == 0.0
+
+
+def test_a_short_residue_next_to_exact_cover_is_still_named():
+    """The floor is for edges read off spans; a cover edge is a placement edge, exact,
+    so 4 s an unvouched cut shows beyond a vouched camera's end is named (#20 review)."""
+    from muvid.footage.edl import only_weak_footage
+
+    weak = _synced("A", 0.0, 40.0, reliable=False)
+    [w] = only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, [_synced("B", 0.0, 36.0)])
+    assert (w.song_start, w.song_end) == (36.0, 40.0)
+    split = [_synced("B", 0.0, 12.0), _synced("C", 16.0, 12.0), _synced("D", 32.0, 8.0)]
+    holes = only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, split)
+    assert [(h.song_start, h.song_end) for h in holes] == [(12.0, 16.0), (28.0, 32.0)]

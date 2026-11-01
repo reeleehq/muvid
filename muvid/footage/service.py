@@ -2541,7 +2541,7 @@ def _round_opt(x: Optional[float]) -> Optional[float]:
 
 
 def coverage_report(
-    entries, aligns, song_dur: float, *, excluded=(), span=None, roles=None
+    entries, aligns, song_dur: float, *, roles, excluded=(), span=None
 ) -> dict:
     """What the song's timeline looks like under ``entries`` — covered, weak, MISSING.
 
@@ -2550,10 +2550,13 @@ def coverage_report(
     aligned is listed with the numbers that make it weak; ``excluded`` (muvid#88) names
     spans the auto path gave up because only an unvouched clip covered them.
     ``span`` (a trimmed edit's ``(start, end)``) bounds what counts as uncovered.
-    ``only_weak_footage`` (muvid#20 clause b) lists the stretches a synced cut shows
-    footage whose sync nobody can vouch for there, because no other synced clip
-    (``roles``, :func:`footage_roles`; every aligned clip when ``None``) covers them in
-    trustworthy sync — with why, and the number that failed.
+    ``weak_segments`` is trust alone: every synced cut whose clip the aligner does not
+    vouch for, whether or not another clip could have covered it. ``only_weak_footage``
+    (muvid#20 clause b) is the narrower list that DOES check: the stretches a synced
+    cut shows footage whose sync nobody can vouch for there (unvouched, or not confirmed
+    by its spans) because no other synced clip — ``roles`` is :func:`footage_roles`,
+    required so no caller forgets which clips are cut to the music — covers them in
+    trustworthy sync; with why, and the number that failed.
     """
     from muvid.footage.edl import only_weak_footage
     by_id = {a.clip_id: a for a in aligns}
@@ -2581,7 +2584,7 @@ def coverage_report(
         # a free cut claims no sync, so its clip's placement cannot make it weak
         if e.clip_id in by_id and not by_id[e.clip_id].reliable and not e.is_free
     ]
-    synced = [a for a in aligns if roles is None or roles.get(a.clip_id) == SYNCED]
+    synced = [a for a in aligns if roles.get(a.clip_id) == SYNCED]
     only_weak = [
         {"clip_id": e.clip_id, **w.to_dict()}
         for e in entries
@@ -2958,10 +2961,11 @@ def propose_edit(
         )
     except (ValueError, KeyError) as e:
         raise FootageError(f"could not build a valid edit: {e}") from e
+    roles = footage_roles(fp)
     out = {
         "strategy": strat,
         "music": music,
-        "roles": footage_roles(fp),
+        "roles": roles,
         "edl": [edl_json(e) for e in entries],
         "assemble_refusal": assemble_refusal(window, aligns, song_dur, fp.canvas()),
         "coverage": coverage_report(
@@ -2970,7 +2974,7 @@ def propose_edit(
             song_dur,
             excluded=excluded,
             span=span,
-            roles=footage_roles(fp),
+            roles=roles,
         ),
         "warnings": [exclusion_note(x) for x in excluded]
         + _unverified_notes(window, aligns),

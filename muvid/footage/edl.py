@@ -1017,12 +1017,14 @@ def only_weak_footage(
     [(20.0, 40.0)]
     """
     cover = [st for b in alternatives if b.clip_id != e.clip_id for st in trusted_cover(b)]
-    floor = _weak_floor(e)
+    # No second floor here: a cover edge is a placement edge, exact to the frame, so a
+    # 4 s residue of an unvouched cut is 4 s of footage that may be out of sync and is
+    # named; only the weak stretches' own edges (from spans) were floored (#20 review).
     return [
         WeakStretch(lo, hi, w.why, w.measure)
         for w in weak_stretches(e, a)
         for lo, hi in _subtract(w.song_start, w.song_end, cover)
-        if hi - lo >= floor - _EPS
+        if hi - lo > COINCIDENT_S
     ]
 
 
