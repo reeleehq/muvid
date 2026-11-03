@@ -498,7 +498,7 @@ def test_the_positional_prefix_is_the_order_the_binary_really_uses(
 def test_a_bare_argument_after_a_named_one_is_refused_because_builds_DISAGREE(
     sweep_source,
 ):
-    """``_link_options``' ``named_seen`` rule, against the binaries that decide it.
+    """``fflex.options``' ``named_seen`` rule, against the binaries that decide it.
 
     **This test found that the rule is load-bearing, not cosmetic, and corrected
     what the code said about it.** The first version asserted ffmpeg refuses a
@@ -566,8 +566,8 @@ def test_the_edl_modules_own_doctests_actually_run():
 
     Every `>>>` in `muvid/footage/edl.py` and `muvid/footage/fflex.py` documents the
     lexer and the option
-    reader -- `_link_options`' positional rules, `_look_unclassified_options`'
-    three offences, `_significant`'s two escape mechanisms. Uncollected they are
+    reader -- `fflex.options`' positional rules, `edl._look_unclassified_options`'
+    three offences, `fflex.significant`'s two escape mechanisms. Uncollected they are
     prose that happens to look executable, which is the "green tick over zero
     tests" shape (`an`'s CLAUDE.md names it; muvid's own CI canary exists for the
     same reason). Running them from a real test makes them a gate without

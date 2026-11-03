@@ -856,7 +856,7 @@ def test_the_allowlist_resolves_a_name_the_way_ffmpeg_does(spelling):
     Each spelling here was measured against ffmpeg 9.0.1 *outside* muvid: every one
     resolves to ``metadata`` and truncated a canary file to 0 bytes on exit 0. So
     the check has to resolve the token, not grep the string — that is what
-    ``_unquote`` in the gate is for, and this test is the reason it exists.
+    ``fflex.unquote`` in the gate is for, and this test is the reason it exists.
     """
     with pytest.raises(ValueError, match="names the filter 'metadata'"):
         validate_edl([_entry(look=spelling)], [_A], 4.0)
@@ -1429,7 +1429,7 @@ class TestTheNameResolvesTheWayFfmpegResolvesIt:
         assert b"No such filter" in proc.stderr
 
     def test_an_escaped_space_is_refused_by_the_DESIGNED_message(self):
-        """It used to raise `_LookSyntaxError` whose whole message was a single
+        """It used to raise `_LookSyntaxError` (now `fflex.FilterSyntaxError`) whose whole message was a single
         backslash — `.strip()` removed the escaped space and left the backslash
         that escaped it, and the lexer then raised from OUTSIDE the try/except
         that produces the readable refusal. Through the MCP tool that backslash
