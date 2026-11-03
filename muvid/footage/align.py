@@ -24,6 +24,7 @@ from muvid.footage.edl import (
     MIN_SUPPORT,
     FootageAlignment,
     MeasuredSpan,
+    judge_song_match,
     vouches_for,
 )
 
@@ -71,12 +72,32 @@ __all__ = [
 WINDOW_PARAMETERS = ("window_s", "hop_s")
 
 
+def fingerprint_matcher(song_path: str):
+    """The default second opinion (muvid#251): ``clip_path -> SongMatch.to_dict()``,
+    from ``mixing.audio.fingerprint.contains_song`` against the song's landmark hashes,
+    computed ONCE for all clips. A failure inside it raises (the ``mixing`` rule: a
+    swallowed error is a quietly missing opinion)."""
+    from mixing.audio.fingerprint import SongThresholds, contains_song, landmarks
+
+    from muvid.footage.edl import SONG_THRESHOLDS
+
+    index = landmarks(str(song_path))
+    # judged LIVE under muvid's bars: the speed probes that can veto an "absent" run
+    # only where the bars a call was made with said "absent" (a re-judge under other
+    # bars reads the unprobed ones "undecided")
+    bars = SongThresholds(**SONG_THRESHOLDS)
+    return lambda clip_path: contains_song(
+        str(clip_path), index, thresholds=bars
+    ).to_dict()
+
+
 def align_footage(
     song_path: str,
     clips: Sequence[tuple],
     *,
     song_duration: float | None = None,
     sample_rate: int = ALIGN_SAMPLE_RATE,
+    song_matcher=fingerprint_matcher,
     **estimator_kwargs,
 ) -> list[FootageAlignment]:
     """Align ``clips`` (``[(clip_id, clip_path), ...]``) to the song at ``song_path``.
@@ -104,6 +125,12 @@ def align_footage(
         clips: ``(clip_id, clip_path)`` pairs; a video path works directly.
         song_duration: The song timeline length; probed from ``song_path`` when omitted.
         sample_rate: Analysis sample rate (mono).
+        song_matcher: ``song_path -> (clip_path -> song-match record)``, the
+            independent "is the song in this clip at all?" opinion beside the vote
+            (muvid#251; default :func:`fingerprint_matcher`). Its record rides on the
+            alignment (``song_match``), and an ``"absent"`` verdict refuses an offset
+            the vote vouched for (:func:`~muvid.footage.edl.vouches_for`). ``None``
+            skips it.
         **estimator_kwargs: Passed straight to ``mixing.audio.align_clips_to_reference``
             — the seam for the windowed-consensus estimator's parameters (muvid#59).
             Forwarding rather than enumerating keeps muvid out of the business of
@@ -129,7 +156,15 @@ def align_footage(
         sample_rate=sample_rate,
         **estimator_kwargs,
     )
-    return [_as_alignment(clip_ids[a.index], a) for a in aligned]
+    match = song_matcher(song_path) if song_matcher is not None else None
+    return [
+        _as_alignment(
+            clip_ids[a.index],
+            a,
+            song_match=match(clip_paths[a.index]) if match is not None else None,
+        )
+        for a in aligned
+    ]
 
 
 def measure_spans(
@@ -199,7 +234,7 @@ def _refuse_window_parameters(estimator_kwargs: dict) -> None:
     )
 
 
-def _as_alignment(clip_id: str, a) -> FootageAlignment:
+def _as_alignment(clip_id: str, a, *, song_match: "dict | None" = None) -> FootageAlignment:
     """One ``mixing.audio.ClipAlignment`` → muvid's record, verdict included.
 
     ``support``, ``window_s`` and ``hop_s`` are read BY NAME, and absence is ``None``
@@ -234,8 +269,10 @@ def _as_alignment(clip_id: str, a) -> FootageAlignment:
             support=support,
             margin=margin,
             window_s=window_s,
+            song_verdict=judge_song_match(song_match),
         ),
         window_s=window_s,
         hop_s=read("hop_s"),
         margin=margin,
+        song_match=song_match,
     )
