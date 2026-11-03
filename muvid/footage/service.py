@@ -2486,8 +2486,8 @@ def strategies(fp=None) -> dict:
     """The ways to cut on offer — the selection strategies ``propose_edit`` accepts
     (``weighted`` reads the footage scores; the rest use only the alignment), with
     ``titles``: each one's name in words, for a screen to label it with; and the
-    ``presets`` (``name``, ``title``, ``description``) that ``propose_edit(preset=…)``
-    and ``scores(preset=…)`` accept — a feel, so the cut and the scores a person reads
+    ``presets`` (``{name: {title, description}}``, in order) that
+    ``propose_edit(preset=…)`` and ``scores(preset=…)`` accept — a feel, so the cut and the scores a person reads
     rank the same way."""
     from muvid.footage.strategy import (
         DEFAULT_STRATEGY,
@@ -2504,12 +2504,13 @@ def strategies(fp=None) -> dict:
     }
 
 
-def _preset_rows() -> list:
-    """The named presets as ``{name, title, description}``, in their declared order.
-    Imported lazily: :mod:`~muvid.footage.select_score` pulls numpy."""
+def _preset_rows() -> dict:
+    """The named presets as ``{name: {title, description}}`` — the shape ``scores``'
+    ``metric_words`` has — in their declared order. Imported lazily:
+    :mod:`~muvid.footage.select_score` pulls numpy."""
     from muvid.footage.select_score import PRESET_WORDS, PRESETS
 
-    return [{"name": name, **PRESET_WORDS.get(name, {})} for name in PRESETS]
+    return {name: dict(PRESET_WORDS.get(name, {})) for name in PRESETS}
 
 
 #: Every optional :class:`~muvid.footage.edl.EdlEntry` field :func:`edl_json` carries,

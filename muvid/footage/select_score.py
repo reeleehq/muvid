@@ -126,11 +126,11 @@ PRESETS: dict[str, WeightedSelectionConfig] = {
 PRESET_WORDS: dict[str, dict[str, str]] = {
     "energetic": {
         "title": "Energetic",
-        "description": "Many short shots, cut on the movement and the beat.",
+        "description": "Many short shots, favouring footage that moves with the music.",
     },
     "contemplative": {
         "title": "Contemplative",
-        "description": "Long, sharp shots and few cuts, favouring well-framed faces.",
+        "description": "Long, sharp shots and few cuts, favouring large, central faces.",
     },
 }
 

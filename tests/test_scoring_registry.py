@@ -383,5 +383,5 @@ def test_every_preset_is_published_in_words():
 
     assert set(PRESET_WORDS) == set(PRESETS)
     rows = service.strategies()["presets"]
-    assert [r["name"] for r in rows] == list(PRESETS)
-    assert all(r["title"] and r["description"] for r in rows)
+    assert list(rows) == list(PRESETS)
+    assert all(w["title"] and w["description"] for w in rows.values())

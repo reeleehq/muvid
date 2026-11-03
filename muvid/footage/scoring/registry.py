@@ -206,7 +206,9 @@ class Scorer:
     #: A change to one stales only the metrics that declared it (muvid#206).
     inputs: Mapping[str, tuple[str, ...]] = field(default_factory=dict, compare=False)
     #: Each metric's name in plain words, for a screen to label it with ("Steadiness"),
-    #: by metric (muvid#291). A metric with none is shown by its name.
+    #: by metric (muvid#291). A metric with none is shown by its name. Words describe
+    #: the SERVED value, which ``grid.apply_norm`` makes higher-is-better for every
+    #: metric (a lower-is-better raw measure is flipped).
     titles: Mapping[str, str] = field(default_factory=dict, compare=False)
     #: One line per metric: what it measures, and what "unmeasured" means for it.
     descriptions: Mapping[str, str] = field(default_factory=dict, compare=False)
@@ -398,11 +400,12 @@ register_scorer(
             "face_framing": "Face framing",
         },
         descriptions={
-            "sharpness": "How in focus the picture is.",
-            "exposure": "How well lit the picture is: neither too dark nor blown out.",
+            "sharpness": "How crisp the picture is: out of focus and motion blur both lower it.",
+            "exposure": "How well lit the picture is: not too dark, not blown out, and with "
+            "contrast (a flat grey frame scores low).",
             "stability_shake": "How steady the camera is: the less shake, the higher.",
-            "face_framing": "How well a face is framed. Frames where no face is found "
-            "are unmeasured, not scored low.",
+            "face_framing": "How large and central the main face is. Frames where no "
+            "face is found are unmeasured, not scored low.",
         },
     )
 )
@@ -418,10 +421,11 @@ register_scorer(
             "motion_onset_xcorr": "Moves with the music",
         },
         descriptions={
-            "motion_beat_bas": "How close the picture's movement lands to each beat. "
-            "Where nothing moves it is unmeasured, not scored low.",
-            "motion_onset_xcorr": "How the video's movement follows the song's accents "
-            "overall: one value per video, held over the part of the song it covers.",
+            "motion_beat_bas": "How close the movement in the shot (not the camera's) "
+            "lands to each beat. Where nothing moves it is unmeasured, not scored low.",
+            "motion_onset_xcorr": "How closely the movement in the shot rises and falls "
+            "with the song's accents: one value per video, held over the part of the "
+            "song it covers.",
         },
     )
 )
@@ -435,12 +439,12 @@ register_scorer(
         tier=LIPSYNC_TIER,
         available=_lipsync_available,
         needs=(VOCAL_STEM,),
-        titles={"lip_sync_lse_c": "Lip sync", "lse_d_offset": "Lip-sync distance"},
+        titles={"lip_sync_lse_c": "Lip sync", "lse_d_offset": "Lip-sync match"},
         descriptions={
             "lip_sync_lse_c": "How surely the singer's mouth matches the vocals (higher "
             "is better). Unmeasured where no singing face is found.",
-            "lse_d_offset": "How far the mouth is from the vocals (lower is better). "
-            "Unmeasured where no singing face is found.",
+            "lse_d_offset": "How close the mouth's movement is to the vocals' (higher "
+            "is closer). Unmeasured where no singing face is found.",
         },
     )
 )
