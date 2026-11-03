@@ -150,32 +150,25 @@ _INPUT_KINDS = {
 }
 
 
-def _resolve_input(url: str, dest: Path, *, label: str) -> Path:
-    """Fetch a caller-supplied media URL to ``dest`` (SSRF-guarded, size/time-bounded).
-
-    A pasted share link (Drive / Dropbox / OneDrive) is normalised to its direct download
-    first and a folder link refused, and an ``audio`` or ``cover`` input must BE audio or
-    an image before a byte is written (muvid#23) — the same intake the footage tools use.
+def _resolve_input(url: str, dest: Path, *, label: str, kind: "str | None" = None) -> Path:
+    """Fetch a caller-supplied media URL to ``dest`` through the one intake,
+    ``_fetch.fetch_media`` (SSRF-guarded, size/time-bounded, share links normalised,
+    a folder link refused). ``kind`` (``'audio'``, ``'image'``, ``'video'``) is asserted
+    on the first bytes (muvid#23). A declared kind only ADDS a check: with none
+    declared (``None`` or ``''``), :data:`_INPUT_KINDS` by ``label`` is the backstop,
+    so a plugin's ``audio`` input declared ``application/ogg`` is still checked as
+    audio (muvid#293 review).
     """
-    from muvid.mcp._fetch import (
-        MAX_BYTES,
-        FetchError,
-        fetch_to_file_streaming,
-        resolve_share_link,
-    )
+    from muvid.mcp._fetch import FetchError, FolderLinkError, fetch_media
 
-    if not isinstance(url, str) or not url.strip():
-        raise _tool_error(f"{label} must be an http(s) URL")
+    expect = kind or _INPUT_KINDS.get(label, "")
     try:
-        direct, kind = resolve_share_link(url.strip())
-        if kind in ("archive", "folder"):
-            raise _tool_error(
-                f"{label} is a FOLDER link, which holds many files — share the single "
-                "file and pass its link"
-            )
-        return fetch_to_file_streaming(
-            direct, dest, max_bytes=MAX_BYTES, expect_kind=_INPUT_KINDS.get(label, "")
-        )
+        return fetch_media(url, dest, kind=expect)
+    except FolderLinkError as e:
+        raise _tool_error(
+            f"{label} is a FOLDER link, which holds many files — share the single "
+            "file and pass its link"
+        ) from e
     except FetchError as e:
         raise _tool_error(f"could not fetch {label}: {e}") from e
 

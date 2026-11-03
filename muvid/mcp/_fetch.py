@@ -19,6 +19,9 @@ Because audio is legitimately tens of MB, the byte cap is larger than a document
 env-tunable. A per-*duration* cap (a long song is cheap to download but expensive to
 render) is enforced separately, on the render path, via ``muvid.visualize.media_duration``.
 
+Every single-file intake goes through :func:`fetch_media` (muvid#293); a folder of clips
+through :func:`resolve_share_link` + :func:`extract_media_members`.
+
 A shared, zero-dep safe-fetch util (folding braidio's and this one together) is a filed
 follow-up; until then each connector keeps its own guard rather than sharing a weaker one.
 """
@@ -70,6 +73,15 @@ _ALLOWED_PORTS = (80, 443)
 
 class FetchError(ValueError):
     """A media fetch was rejected (unsafe target) or failed (network/size/timeout)."""
+
+
+class FolderLinkError(FetchError):
+    """A FOLDER (or whole-folder archive) link where one file was asked for.
+
+    Typed so each surface adds only its own next step — the footage tools point at
+    ``add_footage_folder``, the visualizer and subgenre inputs say "share the single
+    file" — while the resolve, the refusal and the fetch stay one code path (muvid#293).
+    """
 
 
 class PermissionDeniedError(FetchError):
@@ -125,24 +137,6 @@ def _validate_target(uri: str) -> None:
         raise FetchError(f"host {host!r} does not resolve to a public address")
 
 
-def _read_bounded(resp, deadline: float) -> bytes:
-    """Read the body in chunks, enforcing the byte cap and the wall-clock deadline."""
-    chunks: list[bytes] = []
-    total = 0
-    while total <= MAX_BYTES:
-        if time.monotonic() > deadline:
-            raise FetchError("fetch exceeded the time budget")
-        chunk = resp.read(_CHUNK)
-        if not chunk:
-            break
-        total += len(chunk)
-        chunks.append(chunk)
-    data = b"".join(chunks)
-    if len(data) > MAX_BYTES:
-        raise FetchError(f"resource exceeds the {MAX_BYTES}-byte limit")
-    return data
-
-
 def _opener() -> urllib.request.OpenerDirector:
     return urllib.request.build_opener(_NoRedirect)
 
@@ -180,26 +174,6 @@ def _open_following_redirects(uri: str, deadline: float):
         except (urllib.error.URLError, OSError) as e:
             raise FetchError(f"fetch failed: {e}") from e
     raise FetchError(f"too many redirects (>{MAX_REDIRECTS})")
-
-
-def fetch_bytes(uri: str) -> bytes:
-    """Fetch ``uri``'s body as bytes (SSRF-guarded, byte/time-capped, in-memory).
-
-    For SMALL resources (audio, images) — buffers the whole body in RAM. Use
-    :func:`fetch_to_file_streaming` for large media (video) so a big file is written
-    straight to disk rather than materialized (~2x) in memory.
-    """
-    deadline = time.monotonic() + TOTAL_TIMEOUT_S
-    with _open_following_redirects(uri, deadline) as resp:
-        return _read_bounded(resp, deadline)
-
-
-def fetch_to_file(uri: str, dest: Path) -> Path:
-    """Fetch a SMALL ``uri`` to ``dest`` (in-memory then written). Returns ``dest``."""
-    data = fetch_bytes(uri)
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(data)
-    return dest
 
 
 def fetch_to_file_streaming(
@@ -242,6 +216,39 @@ def fetch_to_file_streaming(
         Path(part).unlink(missing_ok=True)
         raise
     return dest
+
+
+def resolve_media_link(url: str) -> str:
+    """The direct-download URL for a pasted media link — a share link (Drive / Dropbox
+    / OneDrive) normalised, a direct URL as it is; :class:`FolderLinkError` for a folder
+    link, which holds many files. The one place a single-file intake resolves a link."""
+    if not isinstance(url, str) or not url.strip():
+        raise FetchError("the link must be an http(s) URL")
+    direct, kind = resolve_share_link(url.strip())
+    if kind in ("archive", "folder"):
+        raise FolderLinkError("that is a FOLDER link, which holds many files")
+    return direct
+
+
+def fetch_media(
+    url: str, dest: Path, *, kind: str = "", max_bytes: "int | None" = None
+) -> Path:
+    """Fetch ONE media file from a caller's link to ``dest`` — THE intake (muvid#293).
+
+    :func:`resolve_media_link` (share links normalised, a folder refused with
+    :class:`FolderLinkError`), then :func:`fetch_to_file_streaming` (SSRF-guarded,
+    streamed to disk under ``max_bytes`` and :func:`deadline_for` it, the payload's
+    ``kind`` — ``'audio'``, ``'video'``, ``'image'`` — asserted before a byte is
+    written; ``''`` asserts nothing). Every surface that takes a media URL goes through
+    here and adds only its own words to a :class:`FetchError`. ``max_bytes`` defaults
+    to :data:`MAX_BYTES`, read at call time. Returns ``dest``.
+    """
+    return fetch_to_file_streaming(
+        resolve_media_link(url),
+        dest,
+        max_bytes=MAX_BYTES if max_bytes is None else max_bytes,
+        expect_kind=kind,
+    )
 
 
 def _iter_chunks(resp, deadline: float):

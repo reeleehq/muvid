@@ -151,24 +151,37 @@ def _duration(path) -> float:
 def _resolve_media_url(url: str, *, what: str) -> str:
     """Normalise a pasted share link to a direct-download URL, refusing folder links.
 
-    A user pastes what their cloud drive gave them, which is a *page*, not a download. This
-    is where that becomes a fetchable URL — and where a folder link is turned away with the
-    name of the tool that does handle it, rather than being fetched and failing later as an
-    unreadable 'media' file.
+    A user pastes what their cloud drive gave them, which is a *page*, not a download.
+    ``_fetch.resolve_media_link`` makes it fetchable (the intake every surface shares,
+    muvid#293); this adds the footage tools' own next step for a folder link — the tool
+    that does handle it — rather than letting it fail later as an unreadable 'media'
+    file.
     """
-    from muvid.mcp._fetch import FetchError, resolve_share_link
+    from muvid.mcp._fetch import FetchError, FolderLinkError, resolve_media_link
 
     try:
-        direct, kind = resolve_share_link(url)
-    except FetchError as e:
-        raise _tool_error(f"could not resolve the {what} link: {e}") from e
-    if kind in ("archive", "folder"):
+        return resolve_media_link(url)
+    except FolderLinkError as e:
         raise _tool_error(
             f"that is a FOLDER link, not a single {what} — one such link holds many files. "
             f"Use add_footage_folder(project_id, url=...) to add every clip in it, or share "
             f"the individual file and pass its link here."
+        ) from e
+    except FetchError as e:
+        raise _tool_error(f"could not resolve the {what} link: {e}") from e
+
+
+def _fetch_media(direct: str, dest: Path, *, kind: str, max_bytes: int, what: str):
+    """The streamed fetch of a link :func:`_resolve_media_url` already resolved (so it
+    is not resolved twice), its failure in words."""
+    from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
+
+    try:
+        return fetch_to_file_streaming(
+            direct, dest, max_bytes=max_bytes, expect_kind=kind
         )
-    return direct
+    except FetchError as e:
+        raise _tool_error(f"could not fetch the {what}: {e}") from e
 
 
 def set_song(project_id: str, *, url: str) -> dict:
@@ -183,19 +196,14 @@ def set_song(project_id: str, *, url: str) -> dict:
     """
     import tempfile
 
-    from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
-
     proj = _open(project_id)
     direct = _resolve_media_url(url, what="song")
     with tempfile.TemporaryDirectory() as tmp:
         ext = _url_ext(url, "") or _url_ext(direct, "mp3")
         tmp_song = Path(tmp) / f"song.{ext}"
-        try:
-            fetch_to_file_streaming(
-                direct, tmp_song, max_bytes=_SONG_MAX_BYTES, expect_kind="audio"
-            )
-        except FetchError as e:
-            raise _tool_error(f"could not fetch the song: {e}") from e
+        _fetch_media(
+            direct, tmp_song, kind="audio", max_bytes=_SONG_MAX_BYTES, what="song"
+        )
         dur = _duration(tmp_song)
         if dur > _SONG_MAX_DURATION_S:
             raise _tool_error(
@@ -218,8 +226,6 @@ def add_footage(project_id: str, *, url: str, name: str = "") -> dict:
     """
     import tempfile
 
-    from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
-
     proj = _open(project_id)
     if _n_videos(proj) >= _MAX_CLIPS:
         raise _tool_error(_limit_message(_n_videos(proj)))
@@ -229,12 +235,9 @@ def add_footage(project_id: str, *, url: str, name: str = "") -> dict:
     # the sanitized name) — so a failed/oversized fetch leaves no orphan in the project.
     with tempfile.TemporaryDirectory() as tmp:
         tmp_clip = Path(tmp) / f"clip.{ext}"
-        try:
-            fetch_to_file_streaming(
-                direct, tmp_clip, max_bytes=_CLIP_MAX_BYTES, expect_kind="video"
-            )
-        except FetchError as e:
-            raise _tool_error(f"could not fetch the clip: {e}") from e
+        _fetch_media(
+            direct, tmp_clip, kind="video", max_bytes=_CLIP_MAX_BYTES, what="clip"
+        )
         dur = _duration(tmp_clip)
         if dur > _CLIP_MAX_DURATION_S:
             raise _tool_error(

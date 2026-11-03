@@ -131,6 +131,13 @@ def check_subgenre_conformance(
     if reason := reserved_slug_reason(subgenre.slug or ""):
         report.failures.append(reason)
 
+    from muvid.subgenres._schema import media_kind_problems
+
+    if kind_problems := media_kind_problems(subgenre.inputs or {}):
+        report.failures.extend(kind_problems)  # muvid#293: a remote caller hit it first
+    else:
+        report.passed.append("every declared input kind is one muvid knows")
+
     if not subgenre.description.strip():
         report.failures.append("description is empty — it is what an agent chooses on")
     else:

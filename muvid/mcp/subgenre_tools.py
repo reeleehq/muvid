@@ -26,9 +26,11 @@ from muvid.mcp.workspace import open_subgenre_project
 __all__ = ["list_subgenres", "render_subgenre"]
 
 #: Inputs whose values are file references (fetched) rather than primitives
-#: are identified by the manifest: a property with ``"format": "path"`` OR a
-#: name in this set is fetched through _resolve_input. Everything else is
-#: passed through as-is after schema validation.
+#: are identified by the manifest: a property with ``"format": "path"`` or a
+#: declared media kind (``x-muvid-kind`` / ``contentMediaType``, muvid#293), OR —
+#: the backstop for a plugin that declares nothing — a name in this set, fetched
+#: through _resolve_input. Everything else is passed through as-is after schema
+#: validation.
 _FILE_INPUT_NAMES = frozenset(
     {
         "audio",
@@ -69,13 +71,13 @@ def list_subgenres() -> dict:
 
 
 def _is_file_input(name: str, schema: dict) -> bool:
-    prop = (schema.get("properties") or {}).get(name) or {}
-    if prop.get("format") == "path":
-        return True
-    if (
-        prop.get("type") == "array"
-        and (prop.get("items") or {}).get("format") == "path"
-    ):
+    """Whether input ``name`` is a file reference to fetch: its schema says so
+    (``format: path``, or a declared media kind — on the property or a list's items),
+    else its name is a known file input — the backstop for a plugin that declares
+    nothing (muvid#293)."""
+    from muvid.subgenres._schema import declared_media_kind, declares_path
+
+    if declares_path(name, schema) or declared_media_kind(name, schema) is not None:
         return True
     return name in _FILE_INPUT_NAMES
 
@@ -111,6 +113,12 @@ def render_subgenre(
             "through the free generic tool"
         )
 
+    from muvid.subgenres._schema import media_kind_problems
+
+    bad_kinds = media_kind_problems(manifest.inputs or {})
+    if bad_kinds:  # before any project is opened or folder made
+        raise _tool_error(f"subgenre {subgenre!r} is misdeclared: {bad_kinds[0]}")
+
     host_only = sorted(set(inputs) & _HOST_ONLY_INPUT_NAMES)
     if host_only:  # before any project is opened or folder made
         raise _tool_error(
@@ -130,6 +138,8 @@ def render_subgenre(
     fetch_dir = render_dir / "inputs"
     fetch_dir.mkdir(parents=True, exist_ok=True)
 
+    from muvid.subgenres._schema import declared_media_kind
+
     resolved: dict[str, Any] = {}
     n_files = 0
     for name, value in inputs.items():
@@ -141,7 +151,14 @@ def render_subgenre(
                 if n_files > MAX_FILE_INPUTS:
                     raise _tool_error(f"more than {MAX_FILE_INPUTS} file inputs")
                 fetched.append(
-                    str(_resolve_input(url, fetch_dir / f"{name}-{i}", label=name))
+                    str(
+                        _resolve_input(
+                            url,
+                            fetch_dir / f"{name}-{i}",
+                            label=name,
+                            kind=declared_media_kind(name, manifest.inputs or {}),
+                        )
+                    )
                 )
             resolved[name] = fetched if isinstance(value, list) else fetched[0]
         else:
