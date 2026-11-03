@@ -687,10 +687,20 @@ def footage_roles(fp) -> dict:
 
 
 def _free_sources(fp, placements) -> list:
-    """The clips and photos to cut to the music, as :class:`music_cut.FreeSource`."""
+    """The clips and photos to cut to the music, as :class:`music_cut.FreeSource`.
+
+    A video's ``duration_s`` is the length the planner may read, so it must be no
+    longer than what the gate will check the cut against: its placement's
+    ``duration_s`` (measured from the clip's AUDIO when it was aligned), nor than the
+    file's probed length (the container's, normally its longest stream). A phone
+    video whose audio track is shorter than its picture otherwise got in-points the
+    gate then refused (muvid#290: "does not contain song span", on a 21.6 s video with
+    20 s of audio). The gate itself still bounds a free cut by the audio, not the
+    picture it actually renders — muvid#322."""
     from muvid.footage.music_cut import STILL, VIDEO, FreeSource
 
     by_id = {a.clip_id: a for a in fp.load_alignments()}
+    placed = {a.clip_id: a for a in placements}
     paths = fp.clip_paths()
     out = []
     for c in fp.manifest().get("clips", []):
@@ -703,12 +713,21 @@ def _free_sources(fp, placements) -> list:
                 clip_id=cid,
                 path=paths[cid],
                 kind=STILL if still else VIDEO,
-                duration_s=None if still else _clip_duration(fp, cid),
+                duration_s=None if still else _free_length(fp, cid, placed.get(cid)),
                 taken_at=c.get("taken_at"),
                 taken_source=c.get("taken_source", ""),
             )
         )
     return out
+
+
+def _free_length(fp, clip_id: str, placement) -> float:
+    """How much of a video a free cut may read (see :func:`_free_sources`): the length
+    the planner and the in-point swap both size a free cut's room by."""
+    picture = _clip_duration(fp, clip_id)
+    if placement is None or not placement.duration_s:
+        return picture
+    return min(picture, float(placement.duration_s))
 
 
 def _activity_envelope(fp, source):
@@ -3347,7 +3366,8 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
         except ValueError as exc:
             raise FootageError(str(exc)) from exc
     following_t = following.transition if following is not None else None
-    duration = _clip_duration(fp, clip_id)
+    # the length the gate checks the cut against, as the planner uses (muvid#290)
+    duration = _free_length(fp, clip_id, aligns.get(clip_id))
     span = e.song_end - e.song_start
     bounds = in_point_bounds(
         e, clip_duration_s=duration, next_transition=following_t, edge_s=EDGE_S

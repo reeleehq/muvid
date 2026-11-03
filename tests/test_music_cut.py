@@ -232,6 +232,18 @@ def test_a_project_nothing_could_be_synced_in_is_cut_to_the_music(bath):
     assert "cut to the music" in service.get_edit(bath, edit_id=out["edit_id"])["how_made"]
 
 
+def test_a_video_whose_audio_is_shorter_than_its_picture_is_cut_within_both(bath):
+    """muvid#290: listening measured 12 s of audio on a video whose picture is 20 s, so
+    the gate checks free cuts against 12 s; the planner read 20 s and proposed in-points
+    the gate then refused ("does not contain song span"). It now plans within both."""
+    service._record_clip_duration(bath, "abbey", 20.0)  # the picture is longer
+    out = service.propose_edit(bath, save=False)
+    abbey = [e for e in out["edl"] if e["clip_id"] == "abbey"]
+    assert abbey  # it is still used, only within what the gate checks
+    for e in abbey:
+        assert e["source_in"] + (e["song_end"] - e["song_start"]) <= 12.0 + 1e-6
+
+
 def test_a_synced_clip_keeps_its_place_and_the_rest_is_cut_to_the_music(bath):
     service.set_offset(bath, clip_id="abbey", offset_s=10.0)  # declared: synced
     assert service.footage_roles(bath)["abbey"] == "synced"
