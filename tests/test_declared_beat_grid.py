@@ -578,9 +578,17 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
     from muvid.footage.scoring import registry as R
     from muvid.footage.scoring.grid import ScoreTrack
 
+    from types import SimpleNamespace
+
     decodes = []
+    # a stand-in frame pass: the frames shot strategy reads its changes (muvid#259)
+    spike = np.full(19, 3.0)
+    spike[9] = 120.0  # one cut, at the 11th sample
+    fake = SimpleNamespace(
+        shot_change=spike, clip_times=np.arange(20) * 0.2, truncated=False
+    )
     monkeypatch.setattr(
-        F, "sample_clip_frames", lambda path, **kw: decodes.append(path) or object()
+        F, "sample_clip_frames", lambda path, **kw: decodes.append(path) or fake
     )
     monkeypatch.setattr(F, "make_face_scorer", lambda: None)
     monkeypatch.setattr(quality, "quality_gate_mask", lambda fp, **kw: np.array([True]))
@@ -606,14 +614,23 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
             inputs={"b_m": (R.BEATS,)},
         )
     )
+    from muvid.footage.scoring.grid import load_manifest
+
     service.run_scoring(proj)
     assert len(decodes) == 1  # q reads frames: the full run decodes
+    shots = load_manifest(proj.root)["shot_boundaries"]
+    assert len(shots["A"]) == 1  # the frames strategy read the pass (muvid#259)
 
     service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
     decodes.clear()
     out = service.run_scoring(proj)
     assert out["rescored"] == ["b_m"]
     assert decodes == []  # only b re-ran, and it reads no frames
+    # ...so it had no frames to find shots in: it kept the ones found, never []
+    manifest = load_manifest(proj.root)
+    assert manifest["shot_boundaries"] == shots
+    assert manifest["shot_strategies"] == {"A": "frames"}
+    assert out["shots_skipped"] == {}
 
 
 def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
@@ -805,7 +822,21 @@ def test_a_shot_detector_failure_is_recorded_per_clip_and_keeps_the_tracks(
     def broken(path, **kw):
         raise OSError("Video file not found.")
 
+    # the named-detector path (a second decode through mixing.video.shots)
+    monkeypatch.setattr(
+        "muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY", "pyscenedetect"
+    )
     monkeypatch.setattr("muvid.footage.scoring.segment.shot_boundaries", broken)
     out = service.run_scoring(proj, metrics=["beats_seen"])
     assert out["shots_skipped"] == {"A": "shot detection failed: Video file not found."}
+    assert "beats_seen" in out["metrics"]
+
+
+def test_a_run_that_decodes_no_frames_says_why_it_has_no_shots(scored_proj):
+    """muvid#259: the frames strategy reads the decode pass; a run whose scorers need
+    no frames has none, and with no earlier shots to keep it records why, per clip,
+    rather than reporting a clip with no cuts."""
+    proj, _seen, _ = scored_proj
+    out = service.run_scoring(proj, metrics=["beats_seen"])
+    assert "no frames were decoded" in out["shots_skipped"]["A"]
     assert "beats_seen" in out["metrics"]

@@ -9,7 +9,8 @@ review's fix for the double-decode / camera-motion-sharing problem):
 2. (opt-in) **Master vocal stem** (Demucs) — ONCE, for the lip-sync tier.
 3. **Per clip: ONE decode pass** (:func:`~muvid.footage.scoring.frames.sample_clip_frames`)
    feeds BOTH quality and motion-beat (sharpness/exposure/face + the camera-compensated motion
-   envelope come out of the same loop). Plus shot boundaries (PySceneDetect) and, when enabled,
+   envelope come out of the same loop). Plus shot boundaries — by default from that same
+   pass's frames (muvid#259), PySceneDetect on request — and, when enabled,
    the lip-sync tracks.
 4. Assemble + **persist** the tensor (per-metric-global normalization, atomic writes).
 
@@ -114,6 +115,7 @@ def score_project(
     inputs: "Mapping[str, Callable[[Any], tuple[Any, str]]] | None" = None,
     beat_source: "Callable[[Any], registry.MasterBeats] | None" = None,
     keep: "KeptScores | None" = None,
+    shot_strategy: str | None = None,
 ) -> dict:
     """Score every aligned clip of ``project`` → persist the tensor; return a summary dict.
 
@@ -141,6 +143,11 @@ def score_project(
             beside the ``keep.recompute`` ones this run measures (``metrics`` is then
             ignored). Re-checked against the song and alignments under the scoring lock:
             if either changed since they were read, the run scores in full instead.
+        shot_strategy: how the shot boundaries are found (muvid#259): ``"frames"``,
+            from this pass's own decoded frames (no second decode), or a
+            ``mixing.video.shots`` strategy by name (``"pyscenedetect"``,
+            ``"diff"``). Default :data:`~muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY`
+            (the ``MUVID_SCORING_SHOT_STRATEGY`` env var, else ``"frames"``).
     """
     with _SCORING_SEMAPHORE:
         return _score(
@@ -153,7 +160,33 @@ def score_project(
             should_cancel=should_cancel,
             inputs=_with_beat_source(inputs, beat_source),
             keep=keep,
+            shot_strategy=shot_strategy,
         )
+
+
+#: The shot strategy that reads this pass's own frames (``segment.FRAMES_STRATEGY``).
+FRAMES = "frames"
+
+
+def _clip_shots(strategy: str, a, *, path, frame_pass, keep) -> tuple:
+    """``(cuts, strategy that found them)`` for one clip, or ``(None, None)`` when the
+    ``frames`` strategy has no frames to read and no earlier shots to keep.
+
+    ``frames`` reads ``frame_pass`` (muvid#259). A partial re-score whose scorers
+    decode nothing keeps the shots already recorded for the clip, with the strategy
+    that found them, rather than overwriting them with ``[]``. Any other strategy
+    is ``mixing.video.shots`` by name, its own decode (a failure there raises; the
+    caller records it per clip).
+    """
+    from muvid.footage.scoring.segment import shot_boundaries, shots_from_frame_pass
+
+    if strategy != FRAMES:
+        return shot_boundaries(str(path), offset_s=a.offset_s, strategy=strategy), strategy
+    if frame_pass is not None:
+        return shots_from_frame_pass(frame_pass, offset_s=a.offset_s), FRAMES
+    if keep is not None and a.clip_id in keep.shots:
+        return list(keep.shots[a.clip_id]), keep.shot_strategies.get(a.clip_id, "")
+    return None, None
 
 
 @dataclass(frozen=True)
@@ -168,6 +201,10 @@ class KeptScores:
     align_fingerprint: str
     #: the keyed inputs' fingerprints the kept tracks were measured on, by name
     input_fingerprints: Mapping[str, str] = field(default_factory=dict)
+    #: the shot boundaries already recorded, per clip, and the strategy that found
+    #: each: kept when this run decodes no frames for the ``frames`` strategy to read
+    shots: Mapping[str, Sequence[float]] = field(default_factory=dict)
+    shot_strategies: Mapping[str, str] = field(default_factory=dict)
 
 
 def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
@@ -330,10 +367,13 @@ def _score(
     should_cancel,
     inputs=None,
     keep=None,
+    shot_strategy=None,
 ):
     from muvid.footage.scoring import frames as F
     from muvid.footage.scoring.quality import quality_gate_mask
-    from muvid.footage.scoring.segment import shot_boundaries
+    from muvid.footage.scoring.segment import DEFAULT_SHOT_STRATEGY
+
+    shot_strategy = shot_strategy or DEFAULT_SHOT_STRATEGY
 
     from muvid.footage.scoring.grid import align_fingerprint
 
@@ -400,6 +440,8 @@ def _score(
     tracks_by_clip: dict[str, list] = {}
     shots_by_clip: dict[str, list] = {}
     shots_skipped: dict[str, str] = {}
+    shot_strategies: dict[str, str] = {}
+    shots_truncated: dict[str, float] = {}
     skipped: dict[str, str] = {}
 
     for a in aligns:
@@ -458,9 +500,22 @@ def _score(
         # raising here would throw away every clip's tracks, the most expensive artifact
         # in the pipeline (muvid#220). Recorded in `shots_skipped`, so it is not silent.
         try:
-            shots_by_clip[a.clip_id] = shot_boundaries(str(path), offset_s=a.offset_s)
+            cuts, used = _clip_shots(
+                shot_strategy, a, path=path, frame_pass=fp, keep=keep
+            )
         except Exception as e:  # noqa: BLE001 - recorded per clip in shots_skipped
             shots_skipped[a.clip_id] = f"shot detection failed: {e}"
+        else:
+            if cuts is None:
+                shots_skipped[a.clip_id] = (
+                    "no frames were decoded this run (no scorer needed them), so the "
+                    "frames shot strategy had nothing to read"
+                )
+            else:
+                shots_by_clip[a.clip_id], shot_strategies[a.clip_id] = cuts, used
+        if fp is not None and fp.truncated and shot_strategy == FRAMES:
+            # the cap stopped the pass: no shot past this is detected (#259)
+            shots_truncated[a.clip_id] = round(float(fp.clip_times[-1]), 3)
 
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 
@@ -511,6 +566,8 @@ def _score(
         input_metrics=input_metrics,
         extra={
             "shot_boundaries": shots_by_clip,
+            "shot_strategies": shot_strategies,
+            "shots_truncated": shots_truncated,
             "tempo_bpm": round(tempo, 3) if math.isfinite(tempo) else None,
             "sample_fps": sample_fps or F.DEFAULT_SAMPLE_FPS,
             "lipsync_enabled": want_lipsync,
@@ -524,6 +581,7 @@ def _score(
         "clips_scored": list(tracks_by_clip.keys()),
         "skipped": skipped,
         "shots_skipped": shots_skipped,
+        "shots_truncated": shots_truncated,
         "n_frames": n,
         "hop_s": hop_s,
         "beats": int(len(bg.beat_times)),

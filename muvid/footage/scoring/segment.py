@@ -1,17 +1,29 @@
-"""Shot boundaries (via ``mixing.video.shots``) + the per-clip coverage mask.
+"""Shot boundaries + the per-clip coverage mask.
 
 - ``coverage_mask`` is dependency-free: the boolean of song-grid frames a clip actually
   covers (from its offset + duration). It is the base mask every metric ANDs with, and the
   authority for "does this clip exist at song time t".
-- ``shot_boundaries`` returns song-times of within-clip scene cuts, detected by
-  ``mixing.video.shots`` (muvid#220 — the detector lives in mixing, muvid maps it onto the
-  song). Consumed by the selector ONLY when ``boundary_mode="beats+shots"`` (they become
-  *inter-clip* cut candidates at shot-boundary times — a within-clip jump cut is
-  unrepresentable in the single-offset EDL model). The default strategy is PySceneDetect
-  (BSD-3, the ``scoring-shots`` extra); absent → ``[]`` and the mode degrades to beats-only.
+- Shot boundaries are song-times of within-clip scene cuts. Consumed by the selector
+  ONLY when ``boundary_mode="beats+shots"`` (they become *inter-clip* cut candidates at
+  shot-boundary times — a within-clip jump cut is unrepresentable in the single-offset
+  EDL model). Two ways to find them, by ``shot_strategy``:
+
+  - ``"frames"`` (the default since muvid#259): :func:`shots_from_frame_pass`, from the
+    picture changes the scoring decode pass ALREADY measured (``FramePass.shot_change``),
+    through ``mixing.shot_changes`` with its ``"spike"`` rule. No second decode, no extra
+    dependency, and it sees what cv2 decodes. The ``"spike"`` rule is what makes it
+    usable on phone footage: mixing's plain threshold reported a false cut about every
+    second on handheld clips (mixing#160: 473 false cuts at 5 Hz on 14 single-take clips;
+    the spike rule, 11; PySceneDetect, 16). Its price is recall (about 71 % of real cuts
+    at 5 Hz) and cuts on consecutive samples, which continuous footage does not have.
+  - any ``mixing.video.shots`` strategy by name (``"pyscenedetect"`` — frame-accurate,
+    the ``scoring-shots`` extra — or ``"diff"``): :func:`shot_boundaries`, a second
+    decode at full rate (muvid#220). A missing optional package is ``[]``.
 """
 
 from __future__ import annotations
+
+import os
 
 import numpy as np
 
@@ -33,24 +45,54 @@ def coverage_mask(
     return (times >= lo - _EPS) & (times < hi + _EPS)
 
 
-#: The ``mixing.video.shots`` strategy :func:`shot_boundaries` uses by default, and the
-#: package it needs (the ``scoring-shots`` extra). NOT mixing's own default ``"diff"`` as a
-#: fallback when that package is absent: every install without it pays no shot decode
-#: today, and a fallback would add one per clip to every scoring run — paid even when the
-#: selector's default ``boundary_mode="beats"`` never reads a shot.
-DEFAULT_SHOT_STRATEGY = "pyscenedetect"
-_DEFAULT_PACKAGE = "scenedetect"
+#: The strategy that reads the scoring pass's own frames (:func:`shots_from_frame_pass`).
+FRAMES_STRATEGY = "frames"
+#: What ``score_project(shot_strategy=None)`` uses: ``MUVID_SCORING_SHOT_STRATEGY``, else
+#: :data:`FRAMES_STRATEGY`. Any other value names a ``mixing.video.shots`` strategy.
+SHOT_STRATEGY_ENV_VAR = "MUVID_SCORING_SHOT_STRATEGY"
+DEFAULT_SHOT_STRATEGY = os.environ.get(SHOT_STRATEGY_ENV_VAR) or FRAMES_STRATEGY
+#: The frames strategy's ``mixing.shot_changes.cut_indices`` rule: for continuous
+#: footage (see the module docstring), not for edited video.
+FRAMES_CUT_RULE = "spike"
+#: The ``mixing.video.shots`` strategy that needs an optional package, and that package
+#: (the ``scoring-shots`` extra): absent, it is ``[]``, never a fallback decode.
+PYSCENEDETECT_STRATEGY = "pyscenedetect"
+_PYSCENEDETECT_PACKAGE = "scenedetect"
 
 
 def shots_available(strategy: str = DEFAULT_SHOT_STRATEGY) -> bool:
-    """Whether :func:`shot_boundaries` can detect anything with ``strategy`` here."""
+    """Whether ``strategy`` can detect anything here."""
     from importlib.util import find_spec
 
-    return strategy != DEFAULT_SHOT_STRATEGY or find_spec(_DEFAULT_PACKAGE) is not None
+    return (
+        strategy != PYSCENEDETECT_STRATEGY
+        or find_spec(_PYSCENEDETECT_PACKAGE) is not None
+    )
+
+
+def shots_from_frame_pass(
+    frame_pass, *, offset_s: float, rule: str = FRAMES_CUT_RULE
+) -> list[float]:
+    """Song-times of the cuts in the scoring pass's own frames (``frames`` strategy).
+
+    ``frame_pass.shot_change[i]`` is the change between samples ``i`` and ``i + 1``, so
+    a cut there is at ``clip_times[i + 1]``; ``mixing.shot_changes.shots_from_changes``
+    picks the cuts (its adaptive threshold, ``rule``) and its spans tile the sampled
+    clip. The cuts are the span starts after the first, moved onto the song by
+    ``offset_s``. No changes (one sample, or none) → no cuts.
+    """
+    from mixing.shot_changes import shots_from_changes  # numpy only
+
+    changes = np.asarray(frame_pass.shot_change, dtype=np.float64)
+    times = np.asarray(frame_pass.clip_times, dtype=np.float64)
+    if changes.size == 0 or times.size != changes.size + 1:
+        return []
+    spans = shots_from_changes(changes, times=times, rule=rule)
+    return [float(start) + offset_s for start, _end in spans[1:]]
 
 
 def shot_boundaries(
-    clip_path: str, *, offset_s: float, strategy: str = DEFAULT_SHOT_STRATEGY
+    clip_path: str, *, offset_s: float, strategy: str = PYSCENEDETECT_STRATEGY
 ) -> list[float]:
     """Song-times of within-clip scene cuts, or ``[]`` when ``strategy``'s package is
     not installed (so ``beats+shots`` degrades to beats-only).
