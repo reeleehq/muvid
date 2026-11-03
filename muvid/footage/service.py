@@ -687,10 +687,18 @@ def footage_roles(fp) -> dict:
 
 
 def _free_sources(fp, placements) -> list:
-    """The clips and photos to cut to the music, as :class:`music_cut.FreeSource`."""
+    """The clips and photos to cut to the music, as :class:`music_cut.FreeSource`.
+
+    A video's ``duration_s`` is the length the planner may read, so it must be no
+    longer than what the gate will check the cut against: its placement's
+    ``duration_s`` (measured from the clip's AUDIO when it was aligned), and no longer
+    than the picture itself (the manifest's probed length). A phone video whose audio
+    track is shorter than its picture otherwise got in-points the gate then refused
+    (muvid#290: "does not contain song span", on a 21.6 s video with 20 s of audio)."""
     from muvid.footage.music_cut import STILL, VIDEO, FreeSource
 
     by_id = {a.clip_id: a for a in fp.load_alignments()}
+    placed = {a.clip_id: a for a in placements}
     paths = fp.clip_paths()
     out = []
     for c in fp.manifest().get("clips", []):
@@ -703,12 +711,20 @@ def _free_sources(fp, placements) -> list:
                 clip_id=cid,
                 path=paths[cid],
                 kind=STILL if still else VIDEO,
-                duration_s=None if still else _clip_duration(fp, cid),
+                duration_s=None if still else _free_length(fp, cid, placed.get(cid)),
                 taken_at=c.get("taken_at"),
                 taken_source=c.get("taken_source", ""),
             )
         )
     return out
+
+
+def _free_length(fp, clip_id: str, placement) -> float:
+    """How much of a video a free cut may read (see :func:`_free_sources`)."""
+    picture = _clip_duration(fp, clip_id)
+    if placement is None or not placement.duration_s:
+        return picture
+    return min(picture, float(placement.duration_s))
 
 
 def _activity_envelope(fp, source):
