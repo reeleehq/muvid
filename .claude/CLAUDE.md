@@ -194,7 +194,7 @@ Pipeline: `align → score → select → EDL → assemble`.
   Since the **`mixing>=0.0.51`** floor that fallback is narrow: the estimator fits its
   window per clip and GRADES each window's evidence, so a vote is held and readable for
   everything except a clip too short for two windows. `support is None` means only that.
-  **The gate is `support > 0.5` AND `margin > 0`, and it needs both.** `MIN_SUPPORT` is
+  **The gate is `support > 0.5` AND `margin > 0`, and it needs both** — plus, since muvid#251, a third term that can only REFUSE: the song fingerprint (`mixing.audio.fingerprint.contains_song`, judged under `edl.SONG_THRESHOLDS`, calibrated on this shoot; env `MUVID_FOOTAGE_SONG_*`) saying the song is **absent** refuses an offset the vote vouched for, and also makes the clip b-roll (`heard_the_song` False). "contains" and "undecided" change nothing; whether a "contains" may RESCUE a refused offset is the user's decision, muvid#330 — do not add it without that answer. The refusal is explained (`song_verdict`/`song_reason` on the `unreliable` and status rows). `MIN_SUPPORT` is
   a ceiling-of-ballot-only-evidence threshold (a window contributes 1.0 when its own
   argmax reached the offset, at most 0.5 when it was merely on the ballot, so at exactly
   0.5 nothing found it unaided). `MIN_MARGIN` is the SEPARATOR — the same tally minus

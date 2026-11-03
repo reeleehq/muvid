@@ -109,9 +109,8 @@ def _music(seed, seconds, notes):
 
 
 def test_the_real_fingerprint_calls_another_song_absent_and_the_song_contained():
-    fp = pytest.importorskip("mixing.audio.fingerprint")
-    if "max_absent_vote_rate" not in {f.name for f in fp.fields(fp.SongThresholds)}:
-        pytest.skip("mixing predates max_absent_vote_rate")
+    import mixing.audio.fingerprint as fp  # core dependency: never skipped
+
     from muvid.footage.edl import judge_song_match
 
     song = _music(1, 120, [220, 247, 262, 294, 330, 349, 392, 440])
@@ -138,9 +137,8 @@ def _wav(path, y):
 def test_the_default_matcher_judges_live_under_muvids_bars(tmp_path):
     """The probes that can veto an "absent" run only under the bars a call was made
     with, so the default matcher must call with muvid's — its record says which."""
-    fp = pytest.importorskip("mixing.audio.fingerprint")
-    if "max_absent_vote_rate" not in {f.name for f in fp.fields(fp.SongThresholds)}:
-        pytest.skip("mixing predates max_absent_vote_rate")
+    import mixing.audio.fingerprint as fp  # core dependency: never skipped
+
     from muvid.footage.edl import judge_song_match
 
     song = _wav(
@@ -152,3 +150,36 @@ def test_the_default_matcher_judges_live_under_muvids_bars(tmp_path):
     record = A.fingerprint_matcher(str(song))(str(other))
     assert record["thresholds"] == SONG_THRESHOLDS
     assert judge_song_match(record) == SONG_ABSENT
+
+
+def test_the_installed_mixing_has_the_rate_the_bars_use():
+    """The canary (no skip): muvid's floor must reach the field SONG_THRESHOLDS uses,
+    or align fails for every clip with a TypeError (the #251 review)."""
+    from dataclasses import fields
+
+    from mixing.audio.fingerprint import SongThresholds
+
+    assert "max_absent_vote_rate" in {f.name for f in fields(SongThresholds)}
+    SongThresholds(**SONG_THRESHOLDS)  # the bars construct
+
+
+def test_an_absent_song_makes_the_clip_b_roll_and_says_why(monkeypatch):
+    """The #251 review: a fingerprint refusal must be explained to the caller, and a
+    clip the song is absent from is cut to the music, not a synced clip that failed."""
+    from muvid.footage import edl, service
+
+    monkeypatch.setattr(
+        edl, "song_opinion", lambda m: None if m is None else ("absent", "K=3 on 9000")
+    )
+    monkeypatch.setattr(
+        edl, "judge_song_match", lambda m: None if m is None else "absent"
+    )
+    a = _alignment(
+        support=0.9, margin=0.5, window_s=6.0, hop_s=3.0, song_match={"k": 1}
+    )
+    assert service.heard_the_song(a) is False
+    row = service._alignment_row(a)
+    assert row["song_verdict"] == "absent" and "K=3" in row["song_reason"]
+    assert "song_verdict" not in service._alignment_row(
+        _alignment()
+    )  # omit-when-absent
