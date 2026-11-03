@@ -1626,3 +1626,37 @@ def test_genre_status_summarises_a_lyric_video(tmp_path):
     out = nw.genre_status_of(project)
     assert out["sources"] == {"lyrics": 1, "poem": 1} and out["has_song"] is True
     assert out["renders"] == 1
+
+
+def test_a_reimported_render_keeps_what_a_caller_set_on_it(fp, tmp_path, monkeypatch):
+    """muvid#299: re-importing a render rewrote its meta.json from scratch, so the
+    title, tags and note `organise` had set on it were lost — though the op says the
+    same bytes change nothing. Its ref (cut N) never moves either."""
+    pytest.importorskip("nw")
+    from muvid.downloads import organise
+
+    monkeypatch.setattr(service, "_probe_duration", lambda p: 12.0)
+    monkeypatch.setattr(service, "frame_size", lambda p: [1920, 1080])
+    video = _bytes_file(tmp_path / "made-elsewhere.mp4", b"video-bytes")
+    first = service.import_render(fp, path=str(video), render_id="r1" * 6)
+    organise("u@x.com", "p", "r1" * 6, title="The Take", tags=["keeper"])
+    again = service.import_render(fp, path=str(video), render_id="r1" * 6, label="x")
+    meta = json.loads((fp.renders_dir / ("r1" * 6) / "meta.json").read_text())
+    assert meta["organise"] == {"title": "The Take", "tags": ["keeper"]}
+    assert meta["ref_n"] == first["ref_n"] == again["ref_n"]  # (held before #299 too)
+    assert meta["label"] == "x" and meta["imported"] is True  # the import's own fields
+
+
+def test_a_reimport_over_a_torn_meta_is_refused_not_overwritten(fp, tmp_path, monkeypatch):
+    monkeypatch.setattr(service, "_probe_duration", lambda p: 12.0)
+    monkeypatch.setattr(service, "frame_size", lambda p: [1920, 1080])
+    video = _bytes_file(tmp_path / "v.mp4", b"video-bytes")
+    service.import_render(fp, path=str(video), render_id="r2" * 6)
+    meta = fp.renders_dir / ("r2" * 6) / "meta.json"
+    meta.write_text("{torn")
+    other = _bytes_file(tmp_path / "w.mp4", b"other-bytes")
+    with pytest.raises(FootageError, match="not valid JSON"):
+        service.import_render(fp, path=str(other), render_id="r2" * 6)
+    assert meta.read_text() == "{torn"
+    # refused before anything moved: the old video is still the render's
+    assert (fp.renders_dir / ("r2" * 6) / "final.mp4").read_bytes() == b"video-bytes"
