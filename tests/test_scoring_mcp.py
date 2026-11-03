@@ -143,6 +143,10 @@ def test_score_job_flow_and_weighted_assemble(tmp_path, monkeypatch):
         summary = st.footage_scores("p")
         assert "motion_beat_bas" in summary["metrics"]
         assert "selection_margin" in summary
+        # muvid#291: the words a screen shows, for exactly the metrics measured
+        words = summary["metric_words"]
+        assert set(words) <= set(summary["metrics"])
+        assert words["motion_beat_bas"]["title"] == "Moves on the beat"
         # per-clip detail: values are null-masked (NaN never on the wire)
         detail = st.footage_scores("p", clip_id="A")
         vals = detail["metrics"]["sharpness"]["values"]

@@ -2384,7 +2384,7 @@ def _candidate(c, i: int, *, song_end: float) -> "tuple[str, float, float]":
 
 def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
     from muvid.footage.scoring.grid import recorded_fingerprint
-    from muvid.footage.scoring.registry import BEATS
+    from muvid.footage.scoring.registry import BEATS, metric_words
     from muvid.footage.select_score import selection_margin
 
     margin = selection_margin(fp.load_alignments(), tensor, weights=weights)
@@ -2392,6 +2392,8 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
     return {
         "project_id": fp.project_id,
         "metrics": tensor.metrics,
+        # each metric in plain words, where its scorer gives them (muvid#291)
+        "metric_words": {m: w for m, w in metric_words().items() if m in tensor.metrics},
         "clips": [
             {
                 "clip_id": cid,
@@ -2503,7 +2505,10 @@ def _decimate_list(xs, max_points: int) -> list:
 def strategies(fp=None) -> dict:
     """The ways to cut on offer — the selection strategies ``propose_edit`` accepts
     (``weighted`` reads the footage scores; the rest use only the alignment), with
-    ``titles``: each one's name in words, for a screen to label it with."""
+    ``titles``: each one's name in words, for a screen to label it with; and the
+    ``presets`` (``{name: {title, description}}``, in order) that
+    ``propose_edit(preset=…)`` and ``scores(preset=…)`` accept — a feel, so the cut and the scores a person reads
+    rank the same way."""
     from muvid.footage.strategy import (
         DEFAULT_STRATEGY,
         list_strategies,
@@ -2515,7 +2520,17 @@ def strategies(fp=None) -> dict:
         "strategies": slugs,
         "default": DEFAULT_STRATEGY,
         "titles": {s: strategy_title(s) for s in slugs},
+        "presets": _preset_rows(),
     }
+
+
+def _preset_rows() -> dict:
+    """The named presets as ``{name: {title, description}}`` — the shape ``scores``'
+    ``metric_words`` has — in their declared order. Imported lazily:
+    :mod:`~muvid.footage.select_score` pulls numpy."""
+    from muvid.footage.select_score import PRESET_WORDS, PRESETS
+
+    return {name: dict(PRESET_WORDS.get(name, {})) for name in PRESETS}
 
 
 #: Every optional :class:`~muvid.footage.edl.EdlEntry` field :func:`edl_json` carries,
