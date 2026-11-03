@@ -326,6 +326,17 @@ def test_the_recorded_entity_kinds_match_the_installed_an():
             f"tests/data/an_camera_moves.json is stale for genre {owner!r}; "
             "regenerate it (see _refresh_snapshot in this file)."
         )
+    moved = {
+        kind: owner
+        for gone in missing
+        for kind in RECORDED_AN_ENTITY_KINDS[gone]
+        for owner, kinds in installed.items()
+        if kind in kinds
+    }
+    assert not moved, (
+        f"{moved} moved to another genre since the recording; regenerate it "
+        "(see _refresh_snapshot in this file)"
+    )
     if missing:
         pytest.skip(f"genre(s) {missing} are recorded but not installed here")
 
