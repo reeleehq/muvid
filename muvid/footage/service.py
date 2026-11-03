@@ -3164,8 +3164,10 @@ def save_edit(
 
 def edits(fp) -> dict:
     """The saved edits, oldest first: each one's ``edit_id``, ``name``, how it was made
-    (``how_made``, a sentence, and ``selection`` — its ``strategy``, ``preset``,
-    ``pace``, ``order`` and ``style`` as data, ``null`` for one made by hand),
+    (``how_made``, a sentence, and ``selection`` — its ``strategy`` (with
+    ``fallback``/``cause`` when the weighted cut could not run), ``preset``, ``pace``,
+    ``order`` and ``style`` as data, and ``recut_by_hand`` once you changed its cuts;
+    ``null`` for one made by hand),
     how many cuts it has, and ``problem`` — why it would not validate against the
     current alignment (``null`` when it does). ``unreliable`` names clips it cuts to
     whose offsets rendering would refuse."""
@@ -4053,6 +4055,11 @@ def _store_changed(fp, record: dict, entries, *, changed: Optional[int] = None) 
     validated = _validated_entries(fp, entries)
     previous = record
     record = dict(record, edl=[edl_json(e) for e in validated], modified=time.time())
+    if record.get("selection"):
+        # The cuts are no longer only what the selection made (muvid#281). Marked,
+        # not dropped: explain_edit reads the selection as provenance, and undo
+        # restores the whole record, mark included.
+        record["recut_by_hand"] = True
     _commit(fp, previous, record)
     reply = _edit_reply(fp, record)
     if changed is not None:
@@ -4098,18 +4105,34 @@ def _edit_check(fp, record: dict) -> tuple[Optional[str], list, list]:
 
 
 #: What of an edit's stored ``selection`` its summary row carries (muvid#281): how it
-#: was cut, in the words a screen shows ("63 cuts · steady · fades"). Not ``weights``
-#: or ``config``, which are inputs to replay, not a description.
-EDIT_SUMMARY_SELECTION_KEYS = ("strategy", "preset", "pace", "order", "style")
+#: was cut, in the words a screen shows ("63 cuts · steady · fades"). ``fallback`` and
+#: ``cause`` ride with ``strategy`` because a weighted cut that fell back is NOT
+#: score-driven, and a row saying "weighted" without them is muvid#19's lie on a chip;
+#: ``stale_metrics`` names what the cut ran without. Not ``weights`` or ``config``,
+#: which are inputs to replay, not a description.
+EDIT_SUMMARY_SELECTION_KEYS = (
+    "strategy",
+    "fallback",
+    "cause",
+    "stale_metrics",
+    "preset",
+    "pace",
+    "order",
+    "style",
+)
 
 
 def _summary_selection(record: dict) -> Optional[dict]:
-    """The edit's ``selection`` as its summary shows it; ``None`` for an edit nothing
-    selected (imported, hand-made)."""
+    """The edit's ``selection`` as its summary shows it, plus ``recut_by_hand`` once a
+    person changed its cuts (so "steady · fades" is no longer the whole story);
+    ``None`` for an edit nothing selected (imported, hand-made)."""
     selection = record.get("selection")
     if not isinstance(selection, dict):
         return None
-    return {k: selection[k] for k in EDIT_SUMMARY_SELECTION_KEYS if k in selection}
+    shown = {k: selection[k] for k in EDIT_SUMMARY_SELECTION_KEYS if k in selection}
+    if record.get("recut_by_hand"):
+        shown["recut_by_hand"] = True
+    return shown
 
 
 def _edit_summary(fp, record: dict) -> dict:

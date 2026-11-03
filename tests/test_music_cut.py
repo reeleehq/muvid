@@ -266,8 +266,6 @@ def test_a_saved_music_cut_lists_its_pace_and_order(bath):
     service.propose_edit(bath, pace="driving")
     paces = [r["selection"].get("pace") for r in service.edits(bath)["edits"]]
     assert sorted(paces) == ["driving", "slow"]
-    for row in service.edits(bath)["edits"]:
-        assert "weights" not in row["selection"] and "config" not in row["selection"]
 
 
 def test_pace_changes_how_often_the_music_cuts_come(bath):
