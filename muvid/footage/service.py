@@ -691,10 +691,12 @@ def _free_sources(fp, placements) -> list:
 
     A video's ``duration_s`` is the length the planner may read, so it must be no
     longer than what the gate will check the cut against: its placement's
-    ``duration_s`` (measured from the clip's AUDIO when it was aligned), and no longer
-    than the picture itself (the manifest's probed length). A phone video whose audio
-    track is shorter than its picture otherwise got in-points the gate then refused
-    (muvid#290: "does not contain song span", on a 21.6 s video with 20 s of audio)."""
+    ``duration_s`` (measured from the clip's AUDIO when it was aligned), nor than the
+    file's probed length (the container's, normally its longest stream). A phone
+    video whose audio track is shorter than its picture otherwise got in-points the
+    gate then refused (muvid#290: "does not contain song span", on a 21.6 s video with
+    20 s of audio). The gate itself still bounds a free cut by the audio, not the
+    picture it actually renders — muvid#322."""
     from muvid.footage.music_cut import STILL, VIDEO, FreeSource
 
     by_id = {a.clip_id: a for a in fp.load_alignments()}
@@ -720,7 +722,8 @@ def _free_sources(fp, placements) -> list:
 
 
 def _free_length(fp, clip_id: str, placement) -> float:
-    """How much of a video a free cut may read (see :func:`_free_sources`)."""
+    """How much of a video a free cut may read (see :func:`_free_sources`): the length
+    the planner and the in-point swap both size a free cut's room by."""
     picture = _clip_duration(fp, clip_id)
     if placement is None or not placement.duration_s:
         return picture
@@ -3362,7 +3365,8 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
         except ValueError as exc:
             raise FootageError(str(exc)) from exc
     following_t = following.transition if following is not None else None
-    duration = _clip_duration(fp, clip_id)
+    # the length the gate checks the cut against, as the planner uses (muvid#290)
+    duration = _free_length(fp, clip_id, aligns.get(clip_id))
     span = e.song_end - e.song_start
     bounds = in_point_bounds(
         e, clip_duration_s=duration, next_transition=following_t, edge_s=EDGE_S
