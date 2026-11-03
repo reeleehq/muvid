@@ -5026,6 +5026,38 @@ BEAT_GRID_READS: tuple[str, ...] = (
 )
 
 
+#: The reads that answer from the score tensor or its manifest (``beat_grid`` lifts the
+#: grid a scoring run measured): what ``score`` makes stale (muvid#286).
+#: ``test_score_and_alignment_invalidations`` derives the same set from the code.
+#: ``explain_edit`` is NOT here, deliberately: it reads the edit's stored selection and
+#: the song's own beat analysis, never the scores, so a score run cannot change it.
+SCORE_READS: tuple[str, ...] = (
+    "beat_grid",
+    "editor_document",
+    "score_candidates",
+    "scores",
+)
+
+#: The reads that answer from where the videos sit on the song (the alignments), plus
+#: the score reads, since moving a video makes the scores measured on it stale: what
+#: ``align`` / ``set_offset`` / ``clear_offset`` make stale (muvid#286).
+ALIGNMENT_READS: tuple[str, ...] = tuple(
+    sorted(
+        {
+            "editor_document",
+            "edits",
+            "explain_edit",
+            "get_edit",
+            "score_candidates",
+            "scores",
+            "status",
+            "timeline",
+            *SCORE_READS,
+        }
+    )
+)
+
+
 #: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.
 FOOTAGE_LIMITS: Mapping[str, int] = {
     "max_videos": MAX_CLIPS,
@@ -5071,9 +5103,21 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec(
         "rank_songs", "Find the song the videos fit best", "read", runs="job", mcp=False
     ),
-    OpSpec("align", "Listen to the videos", "write", runs="job"),
-    OpSpec("set_offset", "Place a video on the song by hand", "write"),
-    OpSpec("clear_offset", "Forget where I placed this video", "destroy"),
+    OpSpec(
+        "align", "Listen to the videos", "write", runs="job", invalidates=ALIGNMENT_READS
+    ),
+    OpSpec(
+        "set_offset",
+        "Place a video on the song by hand",
+        "write",
+        invalidates=ALIGNMENT_READS,
+    ),
+    OpSpec(
+        "clear_offset",
+        "Forget where I placed this video",
+        "destroy",
+        invalidates=ALIGNMENT_READS,
+    ),
     OpSpec(
         "measure_spans",
         "Check which parts of each video match the song",
@@ -5106,6 +5150,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "write",
         runs="job",
         host_params=("should_cancel",),
+        invalidates=SCORE_READS,
     ),
     OpSpec("scores", "Show how each video scores over the song", "read"),
     OpSpec("score_candidates", "Compare how stretches of the videos score", "read"),
