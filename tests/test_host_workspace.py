@@ -168,3 +168,26 @@ def test_a_visualizer_factory_places_where_asked(host):
     from muvid.production import Project
 
     assert Project(root).genre == "music_visualizer"
+
+
+def test_a_neighbour_with_an_unreadable_graph_hides_nothing(host):
+    """The #296 review's blocker: one story in the caller's bucket whose graph cannot
+    be read (corrupt, or locked while the host writes it) must not fail the listing
+    of their muvid projects, and reads as "no such project" itself."""
+    import muvid
+
+    _place(host, A, "mv", "music_video")
+    bad = muvid.create_project_at(host / A, "story", genre="lyric-video").root
+    (bad / "project.annot.sqlite").write_bytes(b"not a database at all" * 64)
+    listed = [p.project_id for p in downloads.list_projects(A)]
+    assert listed == ["mv"]
+    with pytest.raises(FileNotFoundError):
+        open_caller_project(A, "story", kind="footage")
+
+
+def test_an_id_in_both_footage_drawers_lists_once(host):
+    from muvid.footage.workspace import FootageWorkspace
+
+    FootageWorkspace.for_email(A).create_project("mv")
+    _place(host, A, "mv", "music_video")
+    assert [p.project_id for p in downloads.list_projects(A)] == ["mv"]

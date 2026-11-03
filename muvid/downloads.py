@@ -523,10 +523,13 @@ def list_projects(email: str) -> list:
     from nw.delivery import ProjectSummary
 
     rows = []
+    listed = set()  # an id muvid's drawer AND the host's hold lists once (muvid#296)
     for kind, workspace, _stem in _sources():
         ws = workspace.for_email(email)
         for r in ws.list_projects():
             pid = r["project_id"]
+            if (kind, pid) in listed:
+                continue
             try:
                 proj = ws.open_project(pid)
             except (FileNotFoundError, ValueError):
@@ -542,6 +545,7 @@ def list_projects(email: str) -> list:
                     meta={"muvid_genre": _genre_label(proj, kind)},
                 )
             )
+            listed.add((kind, pid))
     rows.sort(key=lambda p: p.modified_at or 0.0, reverse=True)
     return rows
 

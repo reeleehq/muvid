@@ -91,8 +91,16 @@ class HostWorkspace:
             inside = False
         if not (inside and (root / PROJECT_FILE_NAME).is_file()):
             raise missing
-        project = Project(root, auto_migrate=False)
-        if project.genre != self.genre:
+        try:
+            project = Project(root, auto_migrate=False)
+            genre = project.genre
+        except Exception as e:  # noqa: BLE001 - see below
+            # A neighbour's graph that cannot be read (corrupt, or locked while the
+            # host writes it) is not a project this drawer can serve; letting its
+            # sqlite error out would fail every listing of the caller's OWN muvid
+            # projects because of a project that is not muvid's (#296 review).
+            raise missing from e
+        if genre != self.genre:
             raise missing
         return project
 
@@ -109,8 +117,8 @@ class HostWorkspace:
             try:
                 project = self._project(child.name)
                 modified = child.stat().st_mtime
-            except (FileNotFoundError, ValueError, OSError):
-                continue  # not one of ours, or vanished mid-scan
+            except (ValueError, OSError):  # FileNotFoundError is an OSError
+                continue  # not one of ours, unreadable, or vanished mid-scan
             rows.append(
                 {
                     "project_id": child.name,

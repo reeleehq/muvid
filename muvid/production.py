@@ -66,10 +66,18 @@ class Project(nw.Project):
         """The host's artifact catalog of this project (``<root>/.reelee/artifacts``)."""
         return HostArtifactCatalog(self.root)
 
+    @cached_property
+    def _envelope(self) -> dict:
+        """The genre envelope, read once: it is written at creation and never changes,
+        and each read opens the project's graph (muvid#296's host drawer classifies
+        every child of a caller's bucket by it)."""
+        return self.resolved_genre() or {}
+
     @property
     def genre(self) -> Optional[str]:
-        """The genre this project was created as (``music_video``, ``lyric-video``)."""
-        return (self.resolved_genre() or {}).get("genre")
+        """The genre this project was created as (``music_video``, ``lyric-video``,
+        ``music_visualizer``)."""
+        return self._envelope.get("genre")
 
     @property
     def title(self) -> str:
@@ -83,7 +91,7 @@ class Project(nw.Project):
         ones this project was created with (the genre envelope), and the first write
         persists them. So a lyric-video project never sprouts a ``footage/`` folder.
         """
-        params = (self.resolved_genre() or {}).get("params") or {}
+        params = self._envelope.get("params") or {}
         return MusicVideoFootageProject(
             "",
             self.root.name,
