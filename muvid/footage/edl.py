@@ -2161,7 +2161,7 @@ LOOK_FILTERS = frozenset(
         "null",
         "pad",
         # -- compiled: looks 0.0.23 (grain, vignette, colorbalance) --
-        # ``curves``, ``halation`` and ``gate_weave`` are NOT here, deliberately
+        # ``curves``, ``halation``, ``gate_weave`` and ``ripple`` are NOT here, deliberately
         # (see :data:`LOOKS_EFFECTS_NOT_OFFERED`): a look compiling to one is
         # refused at this gate, by filter or by option.
         "colorbalance",
@@ -2183,7 +2183,7 @@ LOOKS_EFFECTS_NOT_OFFERED = {
     "one-linear-chain rule refuses",
     "ripple": "compiles to split/blend with pad labels around a `geq` (looks "
     "0.0.38), which the one-linear-chain rule refuses; `geq` is a per-pixel "
-    "expression, not yet costed in the memory budget (muvid#302)",
+    "expression, not yet costed in the memory budget",
     "gate_weave": "compiles to `crop=...:exact=1`, an option the geometry table "
     "does not classify, and to `setsar`, which is not offered; its "
     "`scale=w=iw+4` is a size expression the frame bound refuses besides",
