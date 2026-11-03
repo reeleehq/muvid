@@ -1,5 +1,6 @@
-"""The beat-grid writers declare which reads they make stale (reelee#750), and that
-declaration is checked against the code: every read whose calls inside
+"""The beat-grid, score and alignment writers declare which reads they make stale
+(reelee#750, muvid#286), and each declaration is checked against the code. For the
+beat grid: every read whose calls inside
 :mod:`muvid.footage.service` (by name or attribute) reach
 :func:`~muvid.footage.service.declared_beat_grid`, or the file it reads, must be in it.
 A path through another module is not followed; today none reads the grid."""
@@ -58,6 +59,7 @@ def test_score_and_alignment_invalidations_cover_every_read_of_them():
     assert _reads_reaching("load_tensor", "load_manifest") == set(service.SCORE_READS)
     placed = _reads_reaching("load_alignments", "_placements")
     assert set(service.ALIGNMENT_READS) == placed | set(service.SCORE_READS)
+    assert set(service.PLACEMENT_READS) == placed - set(service.SCORE_READS)
 
 
 def test_the_score_and_alignment_writers_declare_them():

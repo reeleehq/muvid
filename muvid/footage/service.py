@@ -5038,24 +5038,20 @@ SCORE_READS: tuple[str, ...] = (
     "scores",
 )
 
-#: The reads that answer from where the videos sit on the song (the alignments), plus
-#: the score reads, since moving a video makes the scores measured on it stale: what
-#: ``align`` / ``set_offset`` / ``clear_offset`` make stale (muvid#286).
-ALIGNMENT_READS: tuple[str, ...] = tuple(
-    sorted(
-        {
-            "editor_document",
-            "edits",
-            "explain_edit",
-            "get_edit",
-            "score_candidates",
-            "scores",
-            "status",
-            "timeline",
-            *SCORE_READS,
-        }
-    )
+#: The reads that answer from where the videos sit on the song (the alignments) and
+#: are not already score reads.
+PLACEMENT_READS: tuple[str, ...] = (
+    "edits",
+    "explain_edit",
+    "get_edit",
+    "status",
+    "timeline",
 )
+
+#: What ``align`` / ``set_offset`` / ``clear_offset`` make stale (muvid#286): the
+#: placement reads, plus the score reads, since moving a video makes the scores
+#: measured on it stale (and the score reads answer from the placements too).
+ALIGNMENT_READS: tuple[str, ...] = tuple(sorted({*PLACEMENT_READS, *SCORE_READS}))
 
 
 #: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.
