@@ -199,6 +199,9 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.workspace.LOCK_SUFFIX" title="muvid.footage.workspace.LOCK_SUFFIX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LOCK_SUFFIX</span></code></a></p></td>
 <td><p>The suffix every muvid lock file carries — <code class="docutils literal notranslate"><span class="pre">dol</span></code>'s sidecar for the file it protects.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.workspace.RECORD_PERMS" title="muvid.footage.workspace.RECORD_PERMS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RECORD_PERMS</span></code></a></p></td>
+<td><p>owner-only, as <a class="reference internal" href="#muvid.footage.workspace.atomic_write_bytes" title="muvid.footage.workspace.atomic_write_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">atomic_write_bytes()</span></code></a> (<code class="docutils literal notranslate"><span class="pre">mkstemp</span></code>) always made them.</p></td>
+</tr>
 </tbody>
 </table>
 <p class="rubric">Functions</p>
@@ -225,14 +228,20 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.workspace.init_footage_project" title="muvid.footage.workspace.init_footage_project"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init_footage_project</span></code></a>(root, *, project_id[, ...])</p></td>
 <td><p>A footage project rooted at <code class="docutils literal notranslate"><span class="pre">root</span></code>, writing its manifest if there is none yet.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.workspace.normalise_id" title="muvid.footage.workspace.normalise_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalise_id</span></code></a>(value, *, label)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.workspace.no_record" title="muvid.footage.workspace.no_record"><code class="xref py py-obj docutils literal notranslate"><span class="pre">no_record</span></code></a>()</p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">default</span></code> of an <a class="reference internal" href="#muvid.footage.workspace.update_json_record" title="muvid.footage.workspace.update_json_record"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_json_record()</span></code></a> that must not CREATE its record (a render's <code class="docutils literal notranslate"><span class="pre">meta.json</span></code>): an absent one raises <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code>, which the caller turns into its own "no such thing".</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.workspace.normalise_id" title="muvid.footage.workspace.normalise_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalise_id</span></code></a>(value, *, label)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">value</span></code> stripped, and refused (<code class="docutils literal notranslate"><span class="pre">ValueError</span></code>) unless it matches <a class="reference internal" href="#muvid.footage.workspace.ID_PATTERN" title="muvid.footage.workspace.ID_PATTERN"><code class="xref py py-data docutils literal notranslate"><span class="pre">ID_PATTERN</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.workspace.read_json_dict" title="muvid.footage.workspace.read_json_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_json_dict</span></code></a>(path)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.workspace.read_json_dict" title="muvid.footage.workspace.read_json_dict"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_json_dict</span></code></a>(path)</p></td>
 <td><p>The JSON object at <code class="docutils literal notranslate"><span class="pre">path</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when it is absent, unreadable or not an object — the read side of <a class="reference internal" href="#muvid.footage.workspace.atomic_write_text" title="muvid.footage.workspace.atomic_write_text"><code class="xref py py-func docutils literal notranslate"><span class="pre">atomic_write_text()</span></code></a> for a record a reader may find missing.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.workspace.replace_file" title="muvid.footage.workspace.replace_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">replace_file</span></code></a>(src, dest)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.workspace.replace_file" title="muvid.footage.workspace.replace_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">replace_file</span></code></a>(src, dest)</p></td>
 <td><p>Put a copy of <code class="docutils literal notranslate"><span class="pre">src</span></code> at <code class="docutils literal notranslate"><span class="pre">dest</span></code> as a NEW file (temp sibling + <code class="docutils literal notranslate"><span class="pre">os.replace</span></code>).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.workspace.update_json_record" title="muvid.footage.workspace.update_json_record"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_json_record</span></code></a>(path, change, *[, ...])</p></td>
+<td><p>Re-read the JSON record at <code class="docutils literal notranslate"><span class="pre">path</span></code> under its lock, apply <code class="docutils literal notranslate"><span class="pre">change(record)</span></code> (which mutates it in place and may raise to write nothing), and write it back only if it changed; return what <code class="docutils literal notranslate"><span class="pre">change</span></code> returned.</p></td>
 </tr>
 </tbody>
 </table>
@@ -601,7 +610,7 @@ With a host catalog the song is registered too, and its id recorded as
 <span class="sig-name descname"><span class="pre">update_manifest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">change</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#MusicVideoFootageProject.update_manifest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.MusicVideoFootageProject.update_manifest" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.MusicVideoFootageProject.update_manifest'">¶</a></dt>
 <dd><p>Re-read the manifest under <a class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.manifest_lock" title="muvid.footage.workspace.MusicVideoFootageProject.manifest_lock"><code class="xref py py-meth docutils literal notranslate"><span class="pre">manifest_lock()</span></code></a>, apply <code class="docutils literal notranslate"><span class="pre">change(m)</span></code> (which
 mutates <code class="docutils literal notranslate"><span class="pre">m</span></code> in place and may raise to write nothing), and write it if it
-changed; return what <code class="docutils literal notranslate"><span class="pre">change</span></code> returned.</p>
+changed; return what <code class="docutils literal notranslate"><span class="pre">change</span></code> returned (<a class="reference internal" href="#muvid.footage.workspace.update_json_record" title="muvid.footage.workspace.update_json_record"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_json_record()</span></code></a>).</p>
 <p>The read is STRICT, unlike <code class="xref py py-meth docutils literal notranslate"><span class="pre">manifest()</span></code>’s: only an absent manifest reads as
 the defaults. A transient read failure written back as “defaults plus this
 change” would drop every clip. And a change that changes nothing writes
@@ -627,6 +636,17 @@ nothing, so a no-op neither creates a manifest nor moves its mtime.</p>
 </dd>
 </dl>
 </dd></dl>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.footage.workspace.RECORD_PERMS">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.workspace.</span></span><span class="sig-name descname"><span class="pre">RECORD_PERMS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">384</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.RECORD_PERMS" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.RECORD_PERMS'">¶</a></dt>
+<dd><p>owner-only, as
+<a class="reference internal" href="#muvid.footage.workspace.atomic_write_bytes" title="muvid.footage.workspace.atomic_write_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">atomic_write_bytes()</span></code></a> (<code class="docutils literal notranslate"><span class="pre">mkstemp</span></code>) always made them.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The mode of every record <a class="reference internal" href="#muvid.footage.workspace.update_json_record" title="muvid.footage.workspace.update_json_record"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_json_record()</span></code></a> writes</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.workspace.atomic_write_bytes">
@@ -719,7 +739,8 @@ rather than raising after ~10 s of contention (<code class="docutils literal not
 and the body still runs when the folder cannot be locked at all (read-only, a
 filesystem without lock support). <code class="docutils literal notranslate"><span class="pre">path</span></code> names the lock file itself, as before,
 so every existing lock file keeps its name. Not re-entrant: taking it again on the
-same path from the same thread waits forever.</p>
+same path from the same thread raises <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> (dol&gt;=0.3.109) rather than
+waiting on itself.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.workspace.fresh_output">
@@ -740,6 +761,13 @@ Idempotent: an existing manifest is left exactly as it is.</p>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject" title="muvid.footage.workspace.MusicVideoFootageProject"><code class="xref py py-class docutils literal notranslate"><span class="pre">MusicVideoFootageProject</span></code></a></span></p>
 </dd>
 </dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.workspace.no_record">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.workspace.</span></span><span class="sig-name descname"><span class="pre">no_record</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#no_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.no_record" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.no_record'">¶</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">default</span></code> of an <a class="reference internal" href="#muvid.footage.workspace.update_json_record" title="muvid.footage.workspace.update_json_record"><code class="xref py py-func docutils literal notranslate"><span class="pre">update_json_record()</span></code></a> that must not CREATE its record
+(a render’s <code class="docutils literal notranslate"><span class="pre">meta.json</span></code>): an absent one raises <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code>, which the
+caller turns into its own “no such thing”.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.workspace.normalise_id">
@@ -786,6 +814,26 @@ silently change the bytes behind an id that names the old ones. A rename gives
 </dd>
 </dl>
 </dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.workspace.update_json_record">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.workspace.</span></span><span class="sig-name descname"><span class="pre">update_json_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">change</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">default</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;class</span> <span class="pre">'dict'&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#update_json_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.update_json_record" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.update_json_record'">¶</a></dt>
+<dd><p>Re-read the JSON record at <code class="docutils literal notranslate"><span class="pre">path</span></code> under its lock, apply <code class="docutils literal notranslate"><span class="pre">change(record)</span></code>
+(which mutates it in place and may raise to write nothing), and write it back only
+if it changed; return what <code class="docutils literal notranslate"><span class="pre">change</span></code> returned.</p>
+<p>The ONE locked read-modify-write of a muvid record (muvid#254, muvid#280), over the
+fleet’s <code class="xref py py-func docutils literal notranslate"><span class="pre">dol.atomic.update_json()</span></code>: the lock is <code class="docutils literal notranslate"><span class="pre">lock</span></code> (a context manager
+yielding whether it is held, e.g. a project’s <code class="docutils literal notranslate"><span class="pre">manifest_lock()</span></code>; default
+<a class="reference internal" href="#muvid.footage.workspace.file_lock" title="muvid.footage.workspace.file_lock"><code class="xref py py-func docutils literal notranslate"><span class="pre">file_lock()</span></code></a> of <code class="docutils literal notranslate"><span class="pre">&lt;path&gt;.lock</span></code> beside it), the write is dol’s
+<code class="xref py py-func docutils literal notranslate"><span class="pre">atomic_write()</span></code>, fsync’d and <a class="reference internal" href="#muvid.footage.workspace.RECORD_PERMS" title="muvid.footage.workspace.RECORD_PERMS"><code class="xref py py-data docutils literal notranslate"><span class="pre">RECORD_PERMS</span></code></a> (as
+<a class="reference internal" href="#muvid.footage.workspace.atomic_write_bytes" title="muvid.footage.workspace.atomic_write_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">atomic_write_bytes()</span></code></a> writes; dol’s also retries a Windows reader holding the
+file), the format is <code class="docutils literal notranslate"><span class="pre">indent=2</span></code> as every record already is. The read is STRICT: only an absent file starts from
+<code class="docutils literal notranslate"><span class="pre">default()</span></code>; a file that is not valid JSON raises
+<code class="xref py py-class docutils literal notranslate"><span class="pre">dol.atomic.InvalidJSONError</span></code> (a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>), because writing “default
+plus this change” over a record that could not be read destroys what it held. A
+change that changes nothing writes nothing — no file created, no mtime moved.</p>
+<p>Do the slow work (copy, probe, hash) OUTSIDE, then call this: the lock is held
+only for the read, the change and the write. <code class="docutils literal notranslate"><span class="pre">path</span></code>’s folder must exist.</p>
+</dd></dl>
 </section>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
@@ -826,6 +874,7 @@ silently change the bytes behind an id that names the old ones. A rename gives
 <li><a :data-current="activeSection === '#muvid.footage.workspace.MusicVideoFootageProject.write_edit_history'" class="reference internal" href="#muvid.footage.workspace.MusicVideoFootageProject.write_edit_history"><code class="docutils literal notranslate"><span class="pre">MusicVideoFootageProject.write_edit_history()</span></code></a></li>
 </ul>
 </li>
+<li><a :data-current="activeSection === '#muvid.footage.workspace.RECORD_PERMS'" class="reference internal" href="#muvid.footage.workspace.RECORD_PERMS"><code class="docutils literal notranslate"><span class="pre">RECORD_PERMS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.atomic_write_bytes'" class="reference internal" href="#muvid.footage.workspace.atomic_write_bytes"><code class="docutils literal notranslate"><span class="pre">atomic_write_bytes()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.atomic_write_text'" class="reference internal" href="#muvid.footage.workspace.atomic_write_text"><code class="docutils literal notranslate"><span class="pre">atomic_write_text()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.data_root'" class="reference internal" href="#muvid.footage.workspace.data_root"><code class="docutils literal notranslate"><span class="pre">data_root()</span></code></a></li>
@@ -833,9 +882,11 @@ silently change the bytes behind an id that names the old ones. A rename gives
 <li><a :data-current="activeSection === '#muvid.footage.workspace.file_lock'" class="reference internal" href="#muvid.footage.workspace.file_lock"><code class="docutils literal notranslate"><span class="pre">file_lock()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.fresh_output'" class="reference internal" href="#muvid.footage.workspace.fresh_output"><code class="docutils literal notranslate"><span class="pre">fresh_output()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.init_footage_project'" class="reference internal" href="#muvid.footage.workspace.init_footage_project"><code class="docutils literal notranslate"><span class="pre">init_footage_project()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.workspace.no_record'" class="reference internal" href="#muvid.footage.workspace.no_record"><code class="docutils literal notranslate"><span class="pre">no_record()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.normalise_id'" class="reference internal" href="#muvid.footage.workspace.normalise_id"><code class="docutils literal notranslate"><span class="pre">normalise_id()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.read_json_dict'" class="reference internal" href="#muvid.footage.workspace.read_json_dict"><code class="docutils literal notranslate"><span class="pre">read_json_dict()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.workspace.replace_file'" class="reference internal" href="#muvid.footage.workspace.replace_file"><code class="docutils literal notranslate"><span class="pre">replace_file()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.workspace.update_json_record'" class="reference internal" href="#muvid.footage.workspace.update_json_record"><code class="docutils literal notranslate"><span class="pre">update_json_record()</span></code></a></li>
 </ul>
 </div>
 </aside>
@@ -849,7 +900,7 @@ silently change the bytes behind an id that names the old ones. A rename gives
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=6f884d2e"></script>
+<script src="../_static/documentation_options.js?v=8cac2a7c"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

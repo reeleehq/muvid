@@ -501,7 +501,7 @@ the pair is what makes a support fraction reproducible (which windows were
 eligible to agree depends on the hop), and a record that cannot reproduce its own
 measurement is a record you have to take on faith.
 
-### muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED *= {'curves': '\`curves\` has \`plot=\`, which WRITES a script to a path the caller names (the \`metadata=file=\` class this allowlist exists to stop), and \`psfile=\`, which reads one. Never allow it by name', 'gate_weave': 'compiles to \`crop=...:exact=1\`, an option the geometry table does not classify, and to \`setsar\`, which is not offered; its \`scale=w=iw+4\` is a size expression the frame bound refuses besides', 'halation': 'compiles to split/blend with pad labels, which the one-linear-chain rule refuses'}*
+### muvid.footage.edl.LOOKS_EFFECTS_NOT_OFFERED *= {'curves': '\`curves\` has \`plot=\`, which WRITES a script to a path the caller names (the \`metadata=file=\` class this allowlist exists to stop), and \`psfile=\`, which reads one. Never allow it by name', 'gate_weave': 'compiles to \`crop=...:exact=1\`, an option the geometry table does not classify, and to \`setsar\`, which is not offered; its \`scale=w=iw+4\` is a size expression the frame bound refuses besides', 'halation': 'compiles to split/blend with pad labels, which the one-linear-chain rule refuses', 'ripple': 'compiles to split/blend with pad labels around a \`geq\` (looks 0.0.38), which the one-linear-chain rule refuses; \`geq\` is a per-pixel expression, not yet costed in the memory budget'}*
 
 `looks` effects muvid’s gate does not offer, each with why. A look naming one
 is refused at the gate by filter name; the drift tests read this table so the

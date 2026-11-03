@@ -57,20 +57,23 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`CANVASES`](#muvid.footage.workspace.CANVASES)            | Named output canvases a project may choose at create (the genre Templates).                                                                |
 | [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN)          | What a caller-chosen id (a clip's, an edit's) may be — after surrounding whitespace is dropped.                                            |
 | [`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)         | The suffix every muvid lock file carries — `dol`'s sidecar for the file it protects.                                                       |
+| [`RECORD_PERMS`](#muvid.footage.workspace.RECORD_PERMS)        | owner-only, as [`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes) (`mkstemp`) always made them.                         |
 
 ### Functions
 
-| [`atomic_write_bytes`](#muvid.footage.workspace.atomic_write_bytes)(path, data)                    | Replace `path`'s content with `data` so a reader never sees a torn file.                                                                                                                                                               |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`atomic_write_text`](#muvid.footage.workspace.atomic_write_text)(path, text)                     | Atomically replace `path` with `text` (UTF-8) — see [`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes).                                                                                                             |
-| [`data_root`](#muvid.footage.workspace.data_root)()                                       | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.                                                                                                                                                                     |
-| [`file_identity`](#muvid.footage.workspace.file_identity)(path)                               | `(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a measurement recorded after the fact checks the file still is (muvid#254).                                                                                    |
-| [`file_lock`](#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on the lock file `path` (which must end in [`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write.                                                                           |
-| [`fresh_output`](#muvid.footage.workspace.fresh_output)(dest)                                | A temp path beside `dest` for a writer that cannot be told to be careful (ffmpeg); on success it is renamed onto `dest` — a new inode, as in [`replace_file()`](#muvid.footage.workspace.replace_file) — and on failure removed. |
-| [`init_footage_project`](#muvid.footage.workspace.init_footage_project)(root, \*, project_id[, ...]) | A footage project rooted at `root`, writing its manifest if there is none yet.                                                                                                                                                         |
-| [`normalise_id`](#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).                                                                                                            |
-| [`read_json_dict`](#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                    |
-| [`replace_file`](#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                             |
+| [`atomic_write_bytes`](#muvid.footage.workspace.atomic_write_bytes)(path, data)                    | Replace `path`'s content with `data` so a reader never sees a torn file.                                                                                                                                                                           |
+|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`atomic_write_text`](#muvid.footage.workspace.atomic_write_text)(path, text)                     | Atomically replace `path` with `text` (UTF-8) — see [`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes).                                                                                                                         |
+| [`data_root`](#muvid.footage.workspace.data_root)()                                       | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.                                                                                                                                                                                 |
+| [`file_identity`](#muvid.footage.workspace.file_identity)(path)                               | `(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a measurement recorded after the fact checks the file still is (muvid#254).                                                                                                |
+| [`file_lock`](#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on the lock file `path` (which must end in [`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write.                                                                                       |
+| [`fresh_output`](#muvid.footage.workspace.fresh_output)(dest)                                | A temp path beside `dest` for a writer that cannot be told to be careful (ffmpeg); on success it is renamed onto `dest` — a new inode, as in [`replace_file()`](#muvid.footage.workspace.replace_file) — and on failure removed.             |
+| [`init_footage_project`](#muvid.footage.workspace.init_footage_project)(root, \*, project_id[, ...]) | A footage project rooted at `root`, writing its manifest if there is none yet.                                                                                                                                                                     |
+| [`no_record`](#muvid.footage.workspace.no_record)()                                       | The `default` of an [`update_json_record()`](#muvid.footage.workspace.update_json_record) that must not CREATE its record (a render's `meta.json`): an absent one raises `FileNotFoundError`, which the caller turns into its own "no such thing". |
+| [`normalise_id`](#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).                                                                                                                        |
+| [`read_json_dict`](#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                                |
+| [`replace_file`](#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                                         |
+| [`update_json_record`](#muvid.footage.workspace.update_json_record)(path, change, \*[, ...])       | Re-read the JSON record at `path` under its lock, apply `change(record)` (which mutates it in place and may raise to write nothing), and write it back only if it changed; return what `change` returned.                                          |
 
 ### Classes
 
@@ -373,7 +376,7 @@ The song’s display facts (`None` before one is set).
 
 Re-read the manifest under [`manifest_lock()`](#muvid.footage.workspace.MusicVideoFootageProject.manifest_lock), apply `change(m)` (which
 mutates `m` in place and may raise to write nothing), and write it if it
-changed; return what `change` returned.
+changed; return what `change` returned ([`update_json_record()`](#muvid.footage.workspace.update_json_record)).
 
 The read is STRICT, unlike `manifest()`’s: only an absent manifest reads as
 the defaults. A transient read failure written back as “defaults plus this
@@ -393,6 +396,14 @@ Persist one edit’s undo/redo stacks (atomically; callers hold the lock).
 
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
+### muvid.footage.workspace.RECORD_PERMS *= 384*
+
+owner-only, as
+[`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes) (`mkstemp`) always made them.
+
+* **Type:**
+  The mode of every record [`update_json_record()`](#muvid.footage.workspace.update_json_record) writes
 
 ### muvid.footage.workspace.atomic_write_bytes(path, data)
 
@@ -476,7 +487,8 @@ rather than raising after ~10 s of contention (`LK_LOCK` did, and
 and the body still runs when the folder cannot be locked at all (read-only, a
 filesystem without lock support). `path` names the lock file itself, as before,
 so every existing lock file keeps its name. Not re-entrant: taking it again on the
-same path from the same thread waits forever.
+same path from the same thread raises `RuntimeError` (dol>=0.3.109) rather than
+waiting on itself.
 
 ### muvid.footage.workspace.fresh_output(dest)
 
@@ -494,6 +506,12 @@ Idempotent: an existing manifest is left exactly as it is.
 
 * **Return type:**
   [`MusicVideoFootageProject`](#muvid.footage.workspace.MusicVideoFootageProject)
+
+### muvid.footage.workspace.no_record()
+
+The `default` of an [`update_json_record()`](#muvid.footage.workspace.update_json_record) that must not CREATE its record
+(a render’s `meta.json`): an absent one raises `FileNotFoundError`, which the
+caller turns into its own “no such thing”.
 
 ### muvid.footage.workspace.normalise_id(value, , label)
 
@@ -532,3 +550,24 @@ silently change the bytes behind an id that names the old ones. A rename gives
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.footage.workspace.update_json_record(path, change, \*, default=<class 'dict'>, lock=None)
+
+Re-read the JSON record at `path` under its lock, apply `change(record)`
+(which mutates it in place and may raise to write nothing), and write it back only
+if it changed; return what `change` returned.
+
+The ONE locked read-modify-write of a muvid record (muvid#254, muvid#280), over the
+fleet’s `dol.atomic.update_json()`: the lock is `lock` (a context manager
+yielding whether it is held, e.g. a project’s `manifest_lock()`; default
+[`file_lock()`](#muvid.footage.workspace.file_lock) of `<path>.lock` beside it), the write is dol’s
+`atomic_write()`, fsync’d and [`RECORD_PERMS`](#muvid.footage.workspace.RECORD_PERMS) (as
+[`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes) writes; dol’s also retries a Windows reader holding the
+file), the format is `indent=2` as every record already is. The read is STRICT: only an absent file starts from
+`default()`; a file that is not valid JSON raises
+`dol.atomic.InvalidJSONError` (a `ValueError`), because writing “default
+plus this change” over a record that could not be read destroys what it held. A
+change that changes nothing writes nothing — no file created, no mtime moved.
+
+Do the slow work (copy, probe, hash) OUTSIDE, then call this: the lock is held
+only for the read, the change and the write. `path`’s folder must exist.

@@ -12,6 +12,7 @@ muvid.footage.workspace
       CANVASES
       ID_PATTERN
       LOCK_SUFFIX
+      RECORD_PERMS
    
    .. rubric:: Functions
 
@@ -24,9 +25,11 @@ muvid.footage.workspace
       file_lock
       fresh_output
       init_footage_project
+      no_record
       normalise_id
       read_json_dict
       replace_file
+      update_json_record
    
    .. rubric:: Classes
 
