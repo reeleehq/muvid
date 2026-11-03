@@ -1453,15 +1453,27 @@ def test_every_effect_recorded_as_not_offered_is_real_and_really_refused():
     from muvid.footage.look import stylize
 
     assert set(LOOKS_EFFECTS_NOT_OFFERED) <= set(looks.effects())
+    assert set(_NOT_OFFERED_PARAMS) <= set(LOOKS_EFFECTS_NOT_OFFERED)
     for name in LOOKS_EFFECTS_NOT_OFFERED:
-        try:
-            frag = stylize(
-                looks.Look(steps=(looks.Effect(name=name),)),
-                canvas=(640, 360),
-                fps=25,
-                duration_s=3.0,
-            )
-        except Exception:  # noqa: BLE001 - needs params or a missing filter: nothing to refuse
-            continue
+        # Every exempted effect is COMPILED and refused — none is skipped, or a
+        # gate loosened later would let it through unseen (the #302 review: ripple
+        # needs params, and a catch-all skip passed it untested).
+        frag = stylize(
+            looks.Look(
+                steps=(
+                    looks.Effect(name=name, params=_NOT_OFFERED_PARAMS.get(name, {})),
+                )
+            ),
+            canvas=(640, 360),
+            fps=25,
+            duration_s=3.0,
+        )
         with pytest.raises(ValueError):
             validate_edl([_entry(look=frag)], [_A], 4.0)
+
+
+#: The params an exempted effect needs before it compiles at all.
+_NOT_OFFERED_PARAMS = {
+    "curves": {"all": [(0.0, 0.0), (0.5, 0.6), (1.0, 1.0)]},
+    "ripple": {"start_s": 0.5, "duration_s": 1.0},
+}
