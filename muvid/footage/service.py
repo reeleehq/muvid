@@ -1998,6 +1998,10 @@ def _kept_scores(fp, *, hop_s: float):
         input_fingerprints={
             name: recorded_fingerprint(manifest, name) for name in INPUTS
         },
+        # a re-score that decodes no frames keeps these rather than losing them (#259)
+        shots=manifest.get("shot_boundaries") or {},
+        shot_strategies=manifest.get("shot_strategies") or {},
+        shots_truncated=manifest.get("shots_truncated") or {},
     )
 
 

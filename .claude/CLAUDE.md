@@ -907,12 +907,12 @@ a declared grid as current once the grid is cleared; readers go through
 | `ai` | part 3 | `falaw`, `lacing`, `lookbook` |
 | `mcp` | serving genres/tools | `fastmcp`, `py2mcp>=0.1.9`, `nw` (floor and reasons in `pyproject.toml`) |
 | `scoring` | part 2 core tier | `mediapipe` (also brings the `cv2` the CV kernels use), `mixing[beats]>=0.0.30` |
-| `scoring-shots` | `boundary_mode="beats+shots"` | `scenedetect`; absent → degrades to beats-only |
+| `scoring-shots` | frame-accurate shots on request (`shot_strategy="pyscenedetect"`) | `scenedetect`; absent → `[]`. Scoring's default `frames` strategy needs nothing: it reads the decode pass's own frames through `mixing.shot_changes`'s `spike` rule (muvid#259) |
 | `scoring-lipsync` | **opt-in, off-prod** | see the licence boundary above |
 | `editor` | the lacing bridge | `lacing` |
 | `ui` | the local single-page UI | `fastapi`, `uvicorn`, `pydantic` |
 
-Core (`pip install muvid`) is `argh`, `mixing>=0.0.77` (0.0.51 for the alignment gate, below; 0.0.77 for `stream_loudness`, `verify_video`'s bounded-memory meter, muvid#219), `numpy`, `graze>=0.1.44`, `looks`, and `dol>=0.3.110` (its `atomic.file_lock` is every project lock, muvid#254, and `atomic.update_json` under `workspace.update_json_record` every locked read-modify-write of a record, muvid#280).
+Core (`pip install muvid`) is `argh`, `mixing>=0.0.104` (0.0.51 for the alignment gate, below; 0.0.77 for `stream_loudness`, `verify_video`'s bounded-memory meter, muvid#219; 0.0.104 for `shot_changes`, the default shot strategy's stages, muvid#259), `numpy`, `graze>=0.1.44`, `looks`, and `dol>=0.3.110` (its `atomic.file_lock` is every project lock, muvid#254, and `atomic.update_json` under `workspace.update_json_record` every locked read-modify-write of a record, muvid#280).
 **`import muvid` must never pull any extra** — `muvid/__init__.py` is a PEP 562 lazy
 facade, `muvid.footage.scoring.__init__` is lazy the same way, and the genre modules
 import only `nw`. This is tested by subprocess import-safety checks that assert the

@@ -59,7 +59,9 @@ dependencies = [
     # condition. See `edl.MIN_SUPPORT` for the full table.
     # 0.0.77: `mixing.loudness.stream_loudness` (mixing#109), the bounded-memory meter
     # `verify_video`'s loudness check uses (muvid#219). The 0.0.51 reasons above hold.
-    "mixing[media]>=0.0.77",
+    # 0.0.104: `mixing.shot_changes` (mixing#160), the numpy-only shot stages and
+    # their `spike` rule that scoring's default `frames` shot strategy reads (muvid#259).
+    "mixing[media]>=0.0.104",
     "numpy",
     # 0.1.44 is where `graze.content_kind` exists alongside `graze.share_links`. muvid
     # needs both halves: normalise a pasted share link before fetching, then assert the

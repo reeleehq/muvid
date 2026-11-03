@@ -5,7 +5,9 @@ The design review flagged that quality.py and motionbeat.py must NOT each decode
 each estimate camera motion — that doubles IO/CPU on the memory-fragile box and makes the
 "camera-motion computed once" claim false. So a single sequential :func:`sample_clip_frames`
 pass computes, per sampled frame: sharpness, exposure, an (injected) face score, the
-camera-compensated motion residual, and the global-motion (shake) magnitude — in clip time.
+camera-compensated motion residual, the global-motion (shake) magnitude, and the picture
+change from the previous sample at mixing's shot size — in clip time. That last one is
+what the default shot detector reads (muvid#259), so shots cost no second decode.
 The orchestrator maps clip time → song time via the clip's offset and hands this
 :class:`FramePass` to both extractors.
 
@@ -16,7 +18,7 @@ cv2 is lazy-imported (``muvid[scoring]`` extra). Hard caps (``max_frames``) boun
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 import numpy as np
@@ -44,6 +46,13 @@ class FramePass:
     global_dy: np.ndarray  # float[k], camera-motion vector y (NaN @ frame 0)
     fps: float
     n_sampled: int
+    #: float[k-1]: the mean absolute change from each sample to the next, on frames
+    #: shrunk to :data:`mixing.shot_changes.SHOT_FRAME_SIZE` (what mixing's shot
+    #: thresholds are calibrated on) — the input of the ``frames`` shot strategy.
+    shot_change: np.ndarray = field(default_factory=lambda: np.zeros(0))
+    #: Whether ``max_frames`` stopped the pass before the clip ended: every signal
+    #: here then stops at ``clip_times[-1]``, and a reader must say so.
+    truncated: bool = False
 
 
 def sample_clip_frames(
@@ -68,6 +77,7 @@ def sample_clip_frames(
         should_cancel: polled every frame; returns early (a partial pass) when it goes True.
     """
     import cv2  # lazy
+    from mixing.shot_changes import SHOT_FRAME_SIZE, frame_changes  # numpy only
 
     cap = cv2.VideoCapture(str(clip_path))
     if not cap.isOpened():
@@ -76,7 +86,9 @@ def sample_clip_frames(
     stride = max(1, int(round(fps / max(0.1, sample_fps))))
 
     times, sharp, expo, faces, motion, gxs, gys = [], [], [], [], [], [], []
+    small = []  # each sample at the shot size, for the frames shot strategy
     prev_gray = None
+    truncated = False
     frame_idx = 0
     kept = 0
     try:
@@ -93,6 +105,9 @@ def sample_clip_frames(
                 sharp.append(fm.sharpness(gray))
                 expo.append(fm.exposure_quality(gray))
                 faces.append(_face_sample(face_fn, frame))
+                small.append(
+                    cv2.resize(gray, SHOT_FRAME_SIZE, interpolation=cv2.INTER_AREA)
+                )
                 if prev_gray is not None:
                     res, gdx, gdy = fm.flow_residual_and_global(
                         prev_gray, gray, downscale=flow_downscale
@@ -113,6 +128,8 @@ def sample_clip_frames(
                 if should_cancel is not None and should_cancel():
                     break
             frame_idx += 1
+        # stopped by the cap with frames still to come: the pass covers a prefix
+        truncated = kept >= max_frames and cap.grab()
     finally:
         cap.release()
 
@@ -126,6 +143,12 @@ def sample_clip_frames(
         global_dy=np.asarray(gys, dtype=np.float64),
         fps=float(fps),
         n_sampled=kept,
+        shot_change=(
+            frame_changes(np.stack(small)).astype(np.float64)
+            if len(small) > 1
+            else np.zeros(0)
+        ),
+        truncated=bool(truncated),
     )
 
 
