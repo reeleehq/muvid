@@ -360,7 +360,7 @@ def test_selection_margin_counts_only_clips_measured_at_the_frame():
     margin = selection_margin(aligns, tensor, weights={"m": 1.0})
     assert np.isnan(margin[10])  # 1.0 s: neither measured
     assert np.isnan(margin[30])  # 3.0 s: only A measured
-    assert not np.isnan(margin[50]) and margin[50] > 0  # 5.0 s: a real margin
+    assert margin[50] == pytest.approx(0.3, abs=1e-6)  # 5.0 s: a real margin
 
 
 def test_determinism_same_input_same_output():
