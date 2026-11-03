@@ -42,6 +42,7 @@ import pytest
 from muvid.renderers import RenderContext
 from muvid.renderers.animation import (
     AN_CAMERA_MOVE_PHRASES,
+    AN_ENTITY_KINDS,
     DFLT_AN_CAMERA_MOVE,
     _build_an_scene_md,
     an_camera_move,
@@ -51,6 +52,7 @@ from muvid.schema import ShotSpec
 SNAPSHOT_PATH = Path(__file__).parent / "data" / "an_camera_moves.json"
 SNAPSHOT = json.loads(SNAPSHOT_PATH.read_text())
 RECORDED_AN_CAMERA_MOVES = frozenset(SNAPSHOT["moves"])
+RECORDED_AN_ENTITY_KINDS = frozenset(SNAPSHOT["entity_kinds"])
 
 try:  # `an` is a soft dependency — see the module docstring.
     from an.ir.camera import CAMERA_MOVES as AN_CAMERA_MOVES
@@ -291,6 +293,33 @@ def test_the_recorded_vocabulary_matches_the_installed_an():
 
 
 @needs_an
+def test_the_recorded_entity_kinds_match_the_installed_an():
+    """The entity kinds' freshness check: the kinds ``an`` registers once its
+    genres are loaded (what ``an.orchestrate`` does before validating)."""
+    import an.genres
+    from an.genres.registry import entity_kind_names
+
+    an.genres.load()
+    assert RECORDED_AN_ENTITY_KINDS == frozenset(entity_kind_names()), (
+        "tests/data/an_camera_moves.json is stale against the installed `an`; "
+        "regenerate it (see _refresh_snapshot in this file)."
+    )
+
+
+def test_every_entity_kind_the_scene_names_is_one_an_registers():
+    """CI's guard (no ``an`` there): the kinds the synthesized scene emits are in
+    the recording, and the scene emits no kind the renderer does not declare."""
+    assert set(AN_ENTITY_KINDS) <= RECORDED_AN_ENTITY_KINDS, (
+        f"the scene names {sorted(set(AN_ENTITY_KINDS) - RECORDED_AN_ENTITY_KINDS)}, "
+        "which `an` does not register (once its genres are loaded)"
+    )
+    import re
+
+    md = _scene_md("static", characters=("alice",), environment="park")
+    assert set(re.findall(r"kind: (\w+)", md)) == set(AN_ENTITY_KINDS)
+
+
+@needs_an
 def test_the_fallback_move_is_ans_no_op():
     """`hold` is `an`'s spelling of "the camera does not move"."""
     assert DFLT_AN_CAMERA_MOVE in AN_CAMERA_MOVES
@@ -299,19 +328,14 @@ def test_the_fallback_move_is_ans_no_op():
 
 @needs_an
 @pytest.mark.parametrize("direction,_expected", CAMERA_DIRECTION_CASES)
-def test_synthesized_scene_md_validates_against_an(direction, _expected):
+def test_synthesized_scene_md_validates_against_an(direction, _expected, tmp_path):
     """The full round trip: muvid's `scene.md` → `an`'s IR → semantic validate.
 
     Zero ERROR findings. `an` errors exactly where it would raise at compile,
     so this is the check that would have caught muvid#44 the day `an`
     tightened the rule — and it costs no render.
     """
-    from an.ir.sync import markdown_to_ir
-    from an.ir.validate import validate_semantic
-
-    report = validate_semantic(markdown_to_ir(_scene_md(direction)))
-    errors = [f for f in report.findings if f.severity == "error"]
-    assert not errors, [f"{f.ir_path}: {f.description}" for f in errors]
+    _assert_validates_as_rendered(_scene_md(direction), tmp_path)
 
 
 @needs_an
@@ -320,17 +344,38 @@ def test_synthesized_scene_md_validates_against_an(direction, _expected):
     [((), ""), (("alice",), ""), ((), "park")],
     ids=["no-entities", "chars-only", "env-only"],
 )
-def test_synthesized_scene_md_parses_for_every_entity_shape(characters, environment):
+def test_synthesized_scene_md_parses_for_every_entity_shape(
+    characters, environment, tmp_path
+):
     """The shot shapes a muvid script can actually contain, all round-tripped.
 
     The entity-less one is the case the camera-only harness could not see: it
     raised at PARSE, before validate ever ran.
     """
-    from an.ir.sync import markdown_to_ir
-    from an.ir.validate import validate_semantic
-
     md = _scene_md("static", characters=characters, environment=environment)
-    report = validate_semantic(markdown_to_ir(md))
+    _assert_validates_as_rendered(md, tmp_path)
+
+
+@needs_an
+def test_the_render_path_validator_refuses_an_unknown_kind(tmp_path):
+    """The control: the helper below can fail — a kind no genre registers is an
+    error through the same path, so its green on the real scenes means something."""
+    md = _scene_md("static").replace("kind: character", "kind: dragon")
+    with pytest.raises(AssertionError, match="dragon"):
+        _assert_validates_as_rendered(md, tmp_path)
+
+
+def _assert_validates_as_rendered(md: str, tmp_path) -> None:
+    """Validate ``md`` the way ``render_animation`` has ``an`` do it: written to a
+    scene folder and read through ``an.orchestrate.validate_project``, which loads
+    the installed genres first (``an.project.load``). Parsing the markdown directly
+    skips that load, so every genre-scoped entity kind reads as unregistered
+    (muvid#277) — a failure of the test, not of the render. Zero ERROR findings;
+    a missing asset is a warning, and these scenes name no real assets."""
+    from an.orchestrate import validate_project
+
+    (tmp_path / "scene.md").write_text(md, encoding="utf-8")
+    report = validate_project(tmp_path)
     errors = [f for f in report.findings if f.severity == "error"]
     assert not errors, [f"{f.ir_path}: {f.description}" for f in errors]
 
@@ -346,11 +391,15 @@ def _refresh_snapshot() -> None:  # pragma: no cover - a maintenance helper
     """
     from importlib.metadata import version
 
+    import an.genres
+    from an.genres.registry import entity_kind_names
     from an.ir.camera import CAMERA_MOVES
 
+    an.genres.load()  # entity kinds are genre-scoped (muvid#277)
     doc = dict(SNAPSHOT)
     doc["recorded_from_an_version"] = version("an")
     doc["moves"] = sorted(CAMERA_MOVES)
+    doc["entity_kinds"] = sorted(entity_kind_names())
     SNAPSHOT_PATH.write_text(json.dumps(doc, indent=2) + "\n")
 
 

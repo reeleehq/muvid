@@ -464,6 +464,17 @@ def _word_timings_for_shot(
     return shifted_word_timings(absolute, offset_s=ctx.shot.start_s)
 
 
+#: The ``an`` entity kinds a synthesized ``scene.md`` names — the other half of the
+#: vocabulary this boundary emits, beside the camera moves. Since an genre-scoped its
+#: entity kinds, they exist only once ``an.genres.load()`` has run, which
+#: ``an.orchestrate`` does (through ``an.project.load``) before it validates; a test
+#: reading the markdown directly must do the same (muvid#277). Recorded, with the
+#: moves, in ``tests/data/an_camera_moves.json`` so CI checks them without ``an``.
+AN_CHARACTER_KIND = "character"
+AN_ENVIRONMENT_KIND = "environment"
+AN_ENTITY_KINDS = (AN_CHARACTER_KIND, AN_ENVIRONMENT_KIND)
+
+
 def _build_an_scene_md(ctx: RenderContext) -> str:
     duration = max(1.0, ctx.shot.duration_s)
     camera_move = an_camera_move(ctx.shot.camera)
@@ -478,13 +489,13 @@ def _build_an_scene_md(ctx: RenderContext) -> str:
     chars_block = ""
     if ctx.shot.characters:
         chars_block = "\n".join(
-            f"- {{ kind: character, id: {c}, store: characters, ref: {c}-v1 }}"
+            f"- {{ kind: {AN_CHARACTER_KIND}, id: {c}, store: characters, ref: {c}-v1 }}"
             for c in ctx.shot.characters
         )
     env_block = ""
     if ctx.shot.environment:
         env_block = (
-            f"- {{ kind: environment, id: {ctx.shot.environment}, "
+            f"- {{ kind: {AN_ENVIRONMENT_KIND}, id: {ctx.shot.environment}, "
             f"store: environments, ref: {ctx.shot.environment} }}"
         )
     entities = "\n".join(b for b in (env_block, chars_block) if b)
