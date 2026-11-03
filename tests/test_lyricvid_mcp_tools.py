@@ -32,9 +32,9 @@ def workspace(tmp_path, monkeypatch):
 
 @pytest.fixture
 def stub_fetch(monkeypatch):
-    """`_resolve_input(url, dest, label=)` copies a LOCAL file named by `url`."""
+    """`_resolve_input(url, dest, label=, kind=)` copies a LOCAL file named by `url`."""
 
-    def fake(url, dest, *, label):
+    def fake(url, dest, *, label, kind=None):
         src = Path(url)
         if not src.exists():
             raise FileNotFoundError(url)

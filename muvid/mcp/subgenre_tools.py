@@ -26,9 +26,11 @@ from muvid.mcp.workspace import open_subgenre_project
 __all__ = ["list_subgenres", "render_subgenre"]
 
 #: Inputs whose values are file references (fetched) rather than primitives
-#: are identified by the manifest: a property with ``"format": "path"`` OR a
-#: name in this set is fetched through _resolve_input. Everything else is
-#: passed through as-is after schema validation.
+#: are identified by the manifest: a property with ``"format": "path"`` or a
+#: declared media kind (``x-muvid-kind`` / ``contentMediaType``, muvid#293), OR —
+#: the backstop for a plugin that declares nothing — a name in this set, fetched
+#: through _resolve_input. Everything else is passed through as-is after schema
+#: validation.
 _FILE_INPUT_NAMES = frozenset(
     {
         "audio",
@@ -68,14 +70,44 @@ def list_subgenres() -> dict:
     return subgenre_catalog()
 
 
-def _is_file_input(name: str, schema: dict) -> bool:
+#: The media kinds an input may declare (``x-muvid-kind``), ``""`` meaning "a file,
+#: but nothing to assert about its bytes" (lyrics text, a subgenre's own format).
+MEDIA_KINDS = ("audio", "video", "image", "")
+
+
+def _property(name: str, schema: dict) -> dict:
+    """The JSON-schema property of input ``name`` — its ``items`` for a list input."""
     prop = (schema.get("properties") or {}).get(name) or {}
-    if prop.get("format") == "path":
-        return True
-    if (
-        prop.get("type") == "array"
-        and (prop.get("items") or {}).get("format") == "path"
-    ):
+    return (prop.get("items") or {}) if prop.get("type") == "array" else prop
+
+
+def _declared_kind(name: str, schema: dict) -> "str | None":
+    """The media kind input ``name`` DECLARES, or ``None`` when it declares none
+    (muvid#293): ``x-muvid-kind`` (one of :data:`MEDIA_KINDS`), else JSON Schema's
+    ``contentMediaType`` (``audio/*`` → ``audio``, a type outside the three → ``""``).
+    Declared beats the input's name, so a plugin's ``song`` input is checked as audio
+    though no name table lists it."""
+    prop = _property(name, schema)
+    kind = prop.get("x-muvid-kind")
+    if kind is not None:
+        if kind not in MEDIA_KINDS:
+            raise ValueError(
+                f"input {name!r} declares x-muvid-kind {kind!r}; one of {MEDIA_KINDS}"
+            )
+        return kind
+    media = prop.get("contentMediaType")
+    if isinstance(media, str) and media:
+        top = media.split("/", 1)[0]
+        return top if top in ("audio", "video", "image") else ""
+    return None
+
+
+def _is_file_input(name: str, schema: dict) -> bool:
+    """Whether input ``name`` is a file reference to fetch: its schema says so
+    (``format: path``, or a declared kind), else its name is a known file input —
+    the backstop for a plugin that declares nothing."""
+    prop = _property(name, schema)
+    if prop.get("format") == "path" or _declared_kind(name, schema) is not None:
         return True
     return name in _FILE_INPUT_NAMES
 
@@ -141,7 +173,14 @@ def render_subgenre(
                 if n_files > MAX_FILE_INPUTS:
                     raise _tool_error(f"more than {MAX_FILE_INPUTS} file inputs")
                 fetched.append(
-                    str(_resolve_input(url, fetch_dir / f"{name}-{i}", label=name))
+                    str(
+                        _resolve_input(
+                            url,
+                            fetch_dir / f"{name}-{i}",
+                            label=name,
+                            kind=_declared_kind(name, manifest.inputs or {}),
+                        )
+                    )
                 )
             resolved[name] = fetched if isinstance(value, list) else fetched[0]
         else:
