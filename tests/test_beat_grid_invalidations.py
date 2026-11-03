@@ -1,5 +1,6 @@
-"""The beat-grid writers declare which reads they make stale (reelee#750), and that
-declaration is checked against the code: every read whose calls inside
+"""The beat-grid, score and alignment writers declare which reads they make stale
+(reelee#750, muvid#286), and each declaration is checked against the code. For the
+beat grid: every read whose calls inside
 :mod:`muvid.footage.service` (by name or attribute) reach
 :func:`~muvid.footage.service.declared_beat_grid`, or the file it reads, must be in it.
 A path through another module is not followed; today none reads the grid."""
@@ -49,3 +50,24 @@ def test_the_beat_grid_writers_declare_them_and_the_catalogue_says_so():
     for writer in ("set_beat_grid", "clear_beat_grid"):
         assert rows[writer]["invalidates"] == list(service.BEAT_GRID_READS)
     assert rows["set_cut"]["invalidates"] is None  # not said: the client keeps its own rule
+
+
+def test_score_and_alignment_invalidations_cover_every_read_of_them():
+    """muvid#286: what ``score`` and the alignment writers make stale, checked against
+    the code the same way. ``beat_grid`` is a score read because it lifts the grid a
+    scoring run measured; ``explain_edit`` is not, because it reads no scores."""
+    assert _reads_reaching("load_tensor", "load_manifest") == set(service.SCORE_READS)
+    placed = _reads_reaching("load_alignments", "_placements")
+    assert set(service.ALIGNMENT_READS) == placed | set(service.SCORE_READS)
+    assert set(service.PLACEMENT_READS) == placed - set(service.SCORE_READS)
+
+
+def test_the_score_and_alignment_writers_declare_them():
+    import nw
+
+    import muvid.genre_music_video  # noqa: F401 - registers the catalogue
+
+    rows = {row["name"]: row for row in nw.genre_ops_catalogue("music_video")}
+    assert rows["score"]["invalidates"] == list(service.SCORE_READS)
+    for writer in ("align", "set_offset", "clear_offset"):
+        assert rows[writer]["invalidates"] == list(service.ALIGNMENT_READS)
