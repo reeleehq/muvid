@@ -400,7 +400,8 @@ register_scorer(
             "face_framing": "Face framing",
         },
         descriptions={
-            "sharpness": "How crisp the picture is: out of focus and motion blur both lower it.",
+            "sharpness": "How crisp the picture is: out of focus and motion blur "
+            "both lower it.",
             "exposure": "How well lit the picture is: not too dark, not blown out, and with "
             "contrast (a flat grey frame scores low).",
             "stability_shake": "How steady the camera is: the less shake, the higher.",
@@ -423,9 +424,9 @@ register_scorer(
         descriptions={
             "motion_beat_bas": "How close the movement in the shot (not the camera's) "
             "lands to each beat. Where nothing moves it is unmeasured, not scored low.",
-            "motion_onset_xcorr": "How closely the movement in the shot rises and falls "
-            "with the song's accents: one value per video, held over the part of the "
-            "song it covers.",
+            "motion_onset_xcorr": "How strongly the movement in the shot follows the "
+            "song's accents, in step or against them: one value per video, held over "
+            "the part of the song it covers.",
         },
     )
 )
