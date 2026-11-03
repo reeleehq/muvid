@@ -1643,7 +1643,7 @@ def test_a_reimported_render_keeps_what_a_caller_set_on_it(fp, tmp_path, monkeyp
     again = service.import_render(fp, path=str(video), render_id="r1" * 6, label="x")
     meta = json.loads((fp.renders_dir / ("r1" * 6) / "meta.json").read_text())
     assert meta["organise"] == {"title": "The Take", "tags": ["keeper"]}
-    assert meta["ref_n"] == first["ref_n"] == again["ref_n"]
+    assert meta["ref_n"] == first["ref_n"] == again["ref_n"]  # (held before #299 too)
     assert meta["label"] == "x" and meta["imported"] is True  # the import's own fields
 
 
@@ -1654,6 +1654,9 @@ def test_a_reimport_over_a_torn_meta_is_refused_not_overwritten(fp, tmp_path, mo
     service.import_render(fp, path=str(video), render_id="r2" * 6)
     meta = fp.renders_dir / ("r2" * 6) / "meta.json"
     meta.write_text("{torn")
+    other = _bytes_file(tmp_path / "w.mp4", b"other-bytes")
     with pytest.raises(FootageError, match="not valid JSON"):
-        service.import_render(fp, path=str(video), render_id="r2" * 6)
+        service.import_render(fp, path=str(other), render_id="r2" * 6)
     assert meta.read_text() == "{torn"
+    # refused before anything moved: the old video is still the render's
+    assert (fp.renders_dir / ("r2" * 6) / "final.mp4").read_bytes() == b"video-bytes"
