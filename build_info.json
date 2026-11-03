@@ -1,39 +1,41 @@
 {
   "schema_version": 1,
-  "built_at": "2026-11-03T15:23:51Z",
+  "built_at": "2026-11-03T15:51:36Z",
   "package": {
     "name": "muvid",
-    "version": "0.0.157",
+    "version": "0.0.158",
     "display_name": "muvid",
     "source": "pyproject.toml"
   },
   "git": {
     "available": true,
-    "commit": "01ebfc6daff657fa2a43f81ff3de01dc9565810b",
-    "short_commit": "01ebfc6",
+    "commit": "16a130c68bcd160b81288c0974b9221202addb9f",
+    "short_commit": "16a130c",
     "branch": "main",
-    "tags": [],
+    "tags": [
+      "0.0.158"
+    ],
     "dirty": false,
     "remote_url": "https://github.com/reeleehq/muvid",
-    "commit_url": "https://github.com/reeleehq/muvid/commit/01ebfc6daff657fa2a43f81ff3de01dc9565810b",
+    "commit_url": "https://github.com/reeleehq/muvid/commit/16a130c68bcd160b81288c0974b9221202addb9f",
     "error": null
   },
   "ci": {
     "provider": "github",
     "repository": "reeleehq/muvid",
-    "sha": "fc46d41d37d33e985bd0bde572bcd800d9dca294",
+    "sha": "3f4e820d06433ac296b258c4c2ab8bd9b5d86595",
     "sha_in_history": true,
     "ref": "refs/heads/main",
     "ref_name": "main",
-    "run_id": "41657154709",
-    "run_url": "https://github.com/reeleehq/muvid/actions/runs/41657154709",
+    "run_id": "41659944118",
+    "run_url": "https://github.com/reeleehq/muvid/actions/runs/41659944118",
     "server_url": "https://github.com"
   },
   "tools": {
     "epythet": "0.2.22",
     "sphinx": "9.1.1",
     "docutils": "0.22.4",
-    "python": "3.12.15"
+    "python": "3.12.16"
   },
   "config": {
     "theme": "auto",
@@ -55,16 +57,16 @@
     "docs_dir": "docsrc"
   },
   "site": {
-    "modules_documented": 99,
-    "objects_documented": 1226
+    "modules_documented": 100,
+    "objects_documented": 1235
   },
   "pypi": {
     "checked": true,
-    "latest": "0.0.157",
+    "latest": "0.0.158",
     "relation": "same",
     "error": null
   },
-  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 01ebfc6daff657fa2a43f81ff3de01dc9565810b\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
+  "reproduce": "git clone https://github.com/reeleehq/muvid && cd muvid\ngit checkout 16a130c68bcd160b81288c0974b9221202addb9f\npip install \"epythet==0.2.22\"\nepythet quickstart . --ignore tests/ scrap/ examples/",
   "warnings": [],
   "alignment": {
     "aligned": true,

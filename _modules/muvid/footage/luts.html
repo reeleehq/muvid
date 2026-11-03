@@ -341,15 +341,15 @@
 </span><span id="line-142"><span class="k">def</span><span class="w"> </span><span class="nf">_lut3d_links</span><span class="p">(</span><span class="n">look</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 </span><span id="line-143"><span class="w">    </span><span class="sd">"""``(link text, head, options)`` for each link of ``look``: ``head`` is the text up</span>
 </span><span id="line-144"><span class="sd">    to and including the link's ``=`` (name and ``@label``) and ``options`` what ffmpeg</span>
-</span><span id="line-145"><span class="sd">    reads (:func:`muvid.footage.edl._link_options`, both escape levels resolved) — for</span>
+</span><span id="line-145"><span class="sd">    reads (:func:`muvid.footage.fflex.options`, both escape levels resolved) — for</span>
 </span><span id="line-146"><span class="sd">    ``lut3d`` links only; ``(link, None, None)`` for every other link."""</span>
-</span><span id="line-147">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">_link_options</span><span class="p">,</span> <span class="n">_look_links</span><span class="p">,</span> <span class="n">_split_significant</span>
+</span><span id="line-147">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage</span><span class="w"> </span><span class="kn">import</span> <span class="n">fflex</span>
 </span><span id="line-148">
-</span><span id="line-149">    <span class="k">for</span> <span class="n">link</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">_split_significant</span><span class="p">(</span><span class="n">look</span><span class="p">,</span> <span class="s2">","</span><span class="p">),</span> <span class="n">_look_links</span><span class="p">(</span><span class="n">look</span><span class="p">)):</span>
+</span><span id="line-149">    <span class="k">for</span> <span class="n">link</span><span class="p">,</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">args</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">fflex</span><span class="o">.</span><span class="n">split_significant</span><span class="p">(</span><span class="n">look</span><span class="p">,</span> <span class="s2">","</span><span class="p">),</span> <span class="n">fflex</span><span class="o">.</span><span class="n">links</span><span class="p">(</span><span class="n">look</span><span class="p">)):</span>
 </span><span id="line-150">        <span class="k">if</span> <span class="n">name</span> <span class="o">!=</span> <span class="s2">"lut3d"</span><span class="p">:</span>
 </span><span id="line-151">            <span class="k">yield</span> <span class="n">link</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
 </span><span id="line-152">            <span class="k">continue</span>
-</span><span id="line-153">        <span class="n">opts</span><span class="p">,</span> <span class="n">_overflow</span> <span class="o">=</span> <span class="n">_link_options</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">(</span><span class="s2">"file"</span><span class="p">,))</span>  <span class="c1"># the gate refused overflow</span>
+</span><span id="line-153">        <span class="n">opts</span><span class="p">,</span> <span class="n">_overflow</span> <span class="o">=</span> <span class="n">fflex</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="p">(</span><span class="s2">"file"</span><span class="p">,))</span>  <span class="c1"># the gate refused overflow</span>
 </span><span id="line-154">        <span class="n">head</span> <span class="o">=</span> <span class="n">link</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">link</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)]</span>
 </span><span id="line-155">        <span class="n">head</span> <span class="o">=</span> <span class="n">head</span> <span class="k">if</span> <span class="n">head</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"="</span><span class="p">)</span> <span class="k">else</span> <span class="n">head</span> <span class="o">+</span> <span class="s2">"="</span>  <span class="c1"># a bare `lut3d`</span>
 </span><span id="line-156">        <span class="k">yield</span> <span class="n">link</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">opts</span>
@@ -357,9 +357,9 @@
 </span><span id="line-158">
 </span><span id="line-159"><span class="k">def</span><span class="w"> </span><span class="nf">_value</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
 </span><span id="line-160"><span class="w">    </span><span class="sd">"""An option-level value as ffmpeg finally reads it (the second escape level)."""</span>
-</span><span id="line-161">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">_strip_unescaped</span><span class="p">,</span> <span class="n">_unquote</span>
+</span><span id="line-161">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage</span><span class="w"> </span><span class="kn">import</span> <span class="n">fflex</span>
 </span><span id="line-162">
-</span><span id="line-163">    <span class="k">return</span> <span class="n">_unquote</span><span class="p">(</span><span class="n">_strip_unescaped</span><span class="p">(</span><span class="n">text</span><span class="p">))</span>
+</span><span id="line-163">    <span class="k">return</span> <span class="n">fflex</span><span class="o">.</span><span class="n">unquote</span><span class="p">(</span><span class="n">fflex</span><span class="o">.</span><span class="n">strip_unescaped</span><span class="p">(</span><span class="n">text</span><span class="p">))</span>
 </span><span id="line-164">
 </span><span id="line-165">
 <div class="viewcode-block" id="look_lut_names">
@@ -474,7 +474,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=4725bab1"></script>
+    <script src="../../../_static/documentation_options.js?v=af3f1973"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

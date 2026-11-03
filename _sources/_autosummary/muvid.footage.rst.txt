@@ -54,6 +54,7 @@ muvid.footage
    edl
    errors
    explain
+   fflex
    lacing_bridge
    look
    luts

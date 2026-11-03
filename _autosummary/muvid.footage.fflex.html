@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+
+<html :class="{ 'dark' : darkMode === true }" data-content_root="../" lang="en" x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}">
+<head>
+<script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<link href="muvid.footage.fflex.html.md" rel="alternate" type="text/markdown"/>
+<link href="../llms.txt" rel="describedby" type="text/markdown"/>
+<link href="muvid.footage.fflex.html.md" rel="alternate" type="text/markdown"/>
+<link href="llms.txt" rel="describedby"/>
+<title>muvid.footage.fflex | muvid</title>
+<meta content="muvid.footage.fflex | muvid" property="og:title"/>
+<meta content="muvid.footage.fflex | muvid" name="twitter:title"/>
+<link href="../_static/pygments.css?v=d75fae25" rel="stylesheet" type="text/css"/>
+<link href="../_static/theme.css?v=009055c6" rel="stylesheet" type="text/css"/>
+<link href="../_static/sphinx_autodoc_typehints.css?v=057ac668" rel="stylesheet" type="text/css"/>
+<link href="../_static/copybutton.css?v=76b2166b" rel="stylesheet" type="text/css"/>
+<link href="../_static/epythet.css?v=f9f95642" rel="stylesheet" type="text/css"/>
+<link href="../search.html" rel="search" title="Search"/>
+<link href="../genindex.html" rel="index" title="Index"/>
+<link href="muvid.footage.lacing_bridge.html" rel="next" title="muvid.footage.lacing_bridge"/>
+<link href="muvid.footage.explain.html" rel="prev" title="muvid.footage.explain"/>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="../index.html"><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">muvid</span>
+</a><nav class="flex items-center gap-6 text-sm font-medium">
+<a class="transition-colors hover:text-foreground/80 text-foreground/60" href="https://github.com/thorwhalen/muvid" rel="noopener nofollow">GitHub</a>
+</nav></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="../search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center gap-1">
+<button @click="darkMode = !darkMode" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" title="Toggle color scheme" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="justify-start text-sm md:!hidden bg-background" href="../index.html"><span class="font-bold text-clip whitespace-nowrap">muvid</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+<div class="overflow-y-auto h-full w-full relative pr-6"><nav class="flex md:hidden flex-col font-medium mt-4">
+<a href="https://github.com/thorwhalen/muvid" rel="nofollow noopener">GitHub</a>
+</nav><nav class="table w-full min-w-full my-6 lg:my-8">
+<ul class="current">
+<li class="toctree-l1 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="../api.html">API reference<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l2 current" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="muvid.html">muvid<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul class="current" x-show="expanded">
+<li class="toctree-l3"><a class="reference internal" href="muvid.align.html">muvid.align</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.characters.html">muvid.characters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.choreo.html">muvid.choreo</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.compose.html">muvid.compose</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.contracts.html">muvid.contracts</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.cost.html">muvid.cost</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.data.html">muvid.data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.environments.html">muvid.environments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.events.html">muvid.events</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.facade.html">muvid.facade</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="muvid.footage.html">muvid.footage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.importing.html">muvid.importing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.lyrics.html">muvid.lyrics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.lyricvid.html">muvid.lyricvid</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.mcp.html">muvid.mcp</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.montage.html">muvid.montage</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.paths.html">muvid.paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.project.html">muvid.project</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.renderers.html">muvid.renderers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.schema.html">muvid.schema</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.script.html">muvid.script</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.subgenres.html">muvid.subgenres</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.ui.html">muvid.ui</a></li>
+<li class="toctree-l3"><a class="reference internal" href="muvid.visualize.html">muvid.visualize</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../ai-agents.html">For AI agents</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="../index.html">
+<span class="hidden md:inline">muvid</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="../api.html">API reference</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="muvid.html">muvid</a>
+<div class="mr-1">/</div><a class="hover:text-foreground overflow-hidden text-ellipsis whitespace-nowrap" href="muvid.footage.html">muvid.footage</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">muvid.footage.fflex</span>
+</nav>
+<div id="content" role="main">
+<section id="module-muvid.footage.fflex">
+<span id="muvid-footage-fflex"></span><h1>muvid.footage.fflex<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#module-muvid.footage.fflex">¶</a></h1>
+<p>ffmpeg’s filtergraph text, read the way ffmpeg reads it — the ONE lexer (muvid#278).</p>
+<p>Every consumer of a look fragment (the gate in <a class="reference internal" href="muvid.footage.edl.html#module-muvid.footage.edl" title="muvid.footage.edl"><code class="xref py py-mod docutils literal notranslate"><span class="pre">muvid.footage.edl</span></code></a>, the LUT
+binding in <a class="reference internal" href="muvid.footage.luts.html#module-muvid.footage.luts" title="muvid.footage.luts"><code class="xref py py-mod docutils literal notranslate"><span class="pre">muvid.footage.luts</span></code></a>) reads it through this module, because two readers
+that disagree about what a fragment says is exactly the failure the gate exists to
+prevent. It used to be private helpers in <code class="docutils literal notranslate"><span class="pre">edl</span></code> that <code class="docutils literal notranslate"><span class="pre">luts</span></code> imported by their
+underscored names.</p>
+<p><strong>The contract: ffmpeg resolves a filter’s argument text at TWO levels.</strong></p>
+<ol class="arabic simple">
+<li><p>The graph parser (<code class="docutils literal notranslate"><span class="pre">av_get_token</span></code> over the whole chain) splits links on the commas
+it reads as separators and resolves ONE level of escapes (a backslash escapes the
+next character) and single quotes (copied literally) — <a class="reference internal" href="#muvid.footage.fflex.significant" title="muvid.footage.fflex.significant"><code class="xref py py-func docutils literal notranslate"><span class="pre">significant()</span></code></a>,
+<a class="reference internal" href="#muvid.footage.fflex.split_significant" title="muvid.footage.fflex.split_significant"><code class="xref py py-func docutils literal notranslate"><span class="pre">split_significant()</span></code></a> (<code class="docutils literal notranslate"><span class="pre">sep=","</span></code>), <a class="reference internal" href="#muvid.footage.fflex.links" title="muvid.footage.fflex.links"><code class="xref py py-func docutils literal notranslate"><span class="pre">links()</span></code></a>, <a class="reference internal" href="#muvid.footage.fflex.filter_names" title="muvid.footage.fflex.filter_names"><code class="xref py py-func docutils literal notranslate"><span class="pre">filter_names()</span></code></a>.</p></li>
+<li><p>The option parser then splits that resolved text on <code class="docutils literal notranslate"><span class="pre">:</span></code> and resolves a SECOND
+level per value — <a class="reference internal" href="#muvid.footage.fflex.options" title="muvid.footage.fflex.options"><code class="xref py py-func docutils literal notranslate"><span class="pre">options()</span></code></a> does level 1 first and returns option-level
+text; a caller reading a value passes it through <a class="reference internal" href="#muvid.footage.fflex.unquote" title="muvid.footage.fflex.unquote"><code class="xref py py-func docutils literal notranslate"><span class="pre">unquote()</span></code></a>, which is level 2.</p></li>
+</ol>
+<p>Reading one level where ffmpeg reads two let a graph-escaped colon through as part of
+one value while ffmpeg read it as a separator (the muvid#252 review). An unclosed
+fragment (an open quote, a dangling backslash) is a <a class="reference internal" href="#muvid.footage.fflex.FilterSyntaxError" title="muvid.footage.fflex.FilterSyntaxError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FilterSyntaxError</span></code></a>, not a
+character to refuse: it would swallow the text a caller splices after it.</p>
+<p>Pure and stdlib-only. <code class="docutils literal notranslate"><span class="pre">looks.ffmpeg</span></code> owns the opposite direction
+(<code class="docutils literal notranslate"><span class="pre">escape_filter_value</span></code>) and a comma splitter (<code class="docutils literal notranslate"><span class="pre">split_filters</span></code>); whether it should
+own this parse too is reeleehq/looks#68.</p>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.fflex.significant" title="muvid.footage.fflex.significant"><code class="xref py py-obj docutils literal notranslate"><span class="pre">significant</span></code></a>(s)</p></td>
+<td><p>Yield <code class="docutils literal notranslate"><span class="pre">(index,</span> <span class="pre">char)</span></code> for each character ffmpeg reads as SYNTAX.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.fflex.unquote" title="muvid.footage.fflex.unquote"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unquote</span></code></a>(s)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">s</span></code> as ffmpeg's tokenizer resolves it — escapes applied, quotes removed.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.fflex.first_unescaped" title="muvid.footage.fflex.first_unescaped"><code class="xref py py-obj docutils literal notranslate"><span class="pre">first_unescaped</span></code></a>(s, chars)</p></td>
+<td><p>The first character of <code class="docutils literal notranslate"><span class="pre">chars</span></code> in <code class="docutils literal notranslate"><span class="pre">s</span></code> that ffmpeg would read as syntax.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.fflex.strip_unescaped" title="muvid.footage.fflex.strip_unescaped"><code class="xref py py-obj docutils literal notranslate"><span class="pre">strip_unescaped</span></code></a>(s)</p></td>
+<td><p>Trim whitespace from the ends — but only whitespace ffmpeg would trim.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.fflex.split_significant" title="muvid.footage.fflex.split_significant"><code class="xref py py-obj docutils literal notranslate"><span class="pre">split_significant</span></code></a>(s, sep)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">s</span></code> split on the <code class="docutils literal notranslate"><span class="pre">sep</span></code> characters ffmpeg reads as SEPARATORS.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.fflex.links" title="muvid.footage.fflex.links"><code class="xref py py-obj docutils literal notranslate"><span class="pre">links</span></code></a>(look)</p></td>
+<td><p>Each link of the chain as <code class="docutils literal notranslate"><span class="pre">(filter</span> <span class="pre">name,</span> <span class="pre">argument</span> <span class="pre">string)</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.fflex.filter_names" title="muvid.footage.fflex.filter_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_names</span></code></a>(look)</p></td>
+<td><p>The filter each link of the chain names, as ffmpeg will resolve it.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.fflex.options" title="muvid.footage.fflex.options"><code class="xref py py-obj docutils literal notranslate"><span class="pre">options</span></code></a>(args, positional)</p></td>
+<td><p>One link's arguments as <code class="docutils literal notranslate"><span class="pre">{option</span> <span class="pre">name:</span> <span class="pre">value}</span></code>, ffmpeg's way.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Exceptions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.fflex.FilterSyntaxError" title="muvid.footage.fflex.FilterSyntaxError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">FilterSyntaxError</span></code></a>(char)</p></td>
+<td><p>A look fragment that is not lexically CLOSED.</p></td>
+</tr>
+</tbody>
+</table>
+<dl class="py exception">
+<dt class="sig sig-object py" id="muvid.footage.fflex.FilterSyntaxError">
+<span class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">FilterSyntaxError</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">char</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#FilterSyntaxError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.FilterSyntaxError" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.FilterSyntaxError'">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
+<p>A look fragment that is not lexically CLOSED. Carries the open character.</p>
+<dl class="field-list simple">
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.filter_names">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">filter_names</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">look</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#filter_names"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.filter_names" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.filter_names'">¶</a></dt>
+<dd><p>The filter each link of the chain names, as ffmpeg will resolve it.</p>
+<p>Splits on the commas ffmpeg reads as separators (not on the ones inside a
+quoted expression), then takes each link’s name token — everything before its
+first significant <code class="docutils literal notranslate"><span class="pre">=</span></code>, minus a <code class="docutils literal notranslate"><span class="pre">@instance</span></code> label — and resolves it through
+<a class="reference internal" href="#muvid.footage.fflex.unquote" title="muvid.footage.fflex.unquote"><code class="xref py py-func docutils literal notranslate"><span class="pre">unquote()</span></code></a>.</p>
+<p>Only <strong>unescaped</strong> whitespace is trimmed, because that is the only kind
+ffmpeg trims: <code class="docutils literal notranslate"><span class="pre">hue</span> <span class="pre">=s=0</span></code> works (rc=0), while <code class="docutils literal notranslate"><span class="pre">\</span> <span class="pre">hue=s=0</span></code> names the
+filter <em>space-h-u-e</em> and fails with “No such filter: ‘ hue’” (rc=8). Both
+measured. A plain <code class="docutils literal notranslate"><span class="pre">.strip()</span></code> here resolved the second to <code class="docutils literal notranslate"><span class="pre">hue</span></code> and
+accepted it — harmless, since ffmpeg then refused it, but it also meant the
+gate and the binary disagreed about what a fragment says, which is the one
+thing a gate must not do.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">filter_names</span><span class="p">(</span><span class="s2">"scale=2,hue=s=0"</span><span class="p">)</span>
+</span><span id="line-2"><span class="go">['scale', 'hue']</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">filter_names</span><span class="p">(</span><span class="s2">"crop=x='min(a,b)':y=0,zoompan=d=1"</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">['crop', 'zoompan']</span>
+</span><span id="line-5"><span class="gp">&gt;&gt;&gt; </span><span class="n">filter_names</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\m\e\t\a\d\a\t\a=mode=print"</span><span class="p">)</span>
+</span><span id="line-6"><span class="go">['metadata']</span>
+</span><span id="line-7"><span class="gp">&gt;&gt;&gt; </span><span class="n">filter_names</span><span class="p">(</span><span class="s2">"hue@grade=s=0"</span><span class="p">)</span>
+</span><span id="line-8"><span class="go">['hue']</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.first_unescaped">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">first_unescaped</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chars</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#first_unescaped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.first_unescaped" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.first_unescaped'">¶</a></dt>
+<dd><p>The first character of <code class="docutils literal notranslate"><span class="pre">chars</span></code> in <code class="docutils literal notranslate"><span class="pre">s</span></code> that ffmpeg would read as syntax.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">first_unescaped</span><span class="p">(</span><span class="s2">"scale=2,hue=s=0"</span><span class="p">,</span> <span class="s2">"[];"</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="line-2"><span class="go">True</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">first_unescaped</span><span class="p">(</span><span class="s2">"[0:v]scale=2"</span><span class="p">,</span> <span class="s2">"[];"</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">'['</span>
+</span><span id="line-5"><span class="gp">&gt;&gt;&gt; </span><span class="n">first_unescaped</span><span class="p">(</span><span class="sa">r</span><span class="s2">"lut3d=file=a\[b\].cube"</span><span class="p">,</span> <span class="s2">"[];"</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="line-6"><span class="go">True</span>
+</span><span id="line-7"><span class="gp">&gt;&gt;&gt; </span><span class="n">first_unescaped</span><span class="p">(</span><span class="s2">"lut3d=file='a[b].cube'"</span><span class="p">,</span> <span class="s2">"[];"</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="line-8"><span class="go">True</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a> | <span class="highlight sphinx_autodoc_typehints-value"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="kc"><span class="pre">None</span></span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.links">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">look</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.links" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.links'">¶</a></dt>
+<dd><p>Each link of the chain as <code class="docutils literal notranslate"><span class="pre">(filter</span> <span class="pre">name,</span> <span class="pre">argument</span> <span class="pre">string)</span></code>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">links</span><span class="p">(</span><span class="s2">"scale=2,hue=s=0"</span><span class="p">)</span>
+</span><span id="line-2"><span class="go">[('scale', '2'), ('hue', 's=0')]</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">links</span><span class="p">(</span><span class="s2">"null"</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">[('null', '')]</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.options">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">positional</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#options"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.options" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.options'">¶</a></dt>
+<dd><p>One link’s arguments as <code class="docutils literal notranslate"><span class="pre">{option</span> <span class="pre">name:</span> <span class="pre">value}</span></code>, ffmpeg’s way.</p>
+<p><code class="docutils literal notranslate"><span class="pre">args</span></code> is the link’s text as it sits in the filtergraph, and ffmpeg reads it
+at TWO levels: the graph parser (<code class="docutils literal notranslate"><span class="pre">av_get_token</span></code> over the whole argument
+string) resolves one level of escapes and quotes, and only THEN does the option
+parser split on <code class="docutils literal notranslate"><span class="pre">:</span></code> and resolve a second level per value. So the graph level
+is resolved here first, and each returned value is the OPTION-level text — what
+<code class="docutils literal notranslate"><span class="pre">av_get_token</span></code> will unescape once more (callers that read a value
+<a class="reference internal" href="#muvid.footage.fflex.unquote" title="muvid.footage.fflex.unquote"><code class="xref py py-func docutils literal notranslate"><span class="pre">unquote()</span></code></a> it, which is that second level). Splitting the graph-level
+text instead let a graph-escaped colon through as one value while ffmpeg read
+it as a separator: <code class="docutils literal notranslate"><span class="pre">lut3d=interp=nearest\:file=/elsewhere.cube</span></code> passed the
+gate as <code class="docutils literal notranslate"><span class="pre">{interp:</span> <span class="pre">...}</span></code> and loaded a cube from outside the LUT folder, and
+<code class="docutils literal notranslate"><span class="pre">pad=w=1920:h=1080:color=black\:aspect=1/30</span></code> reached <code class="docutils literal notranslate"><span class="pre">pad</span></code>’s <code class="docutils literal notranslate"><span class="pre">aspect</span></code>
+past the geometry gate (both measured on ffmpeg 9.0.1 and 6.1.6; muvid#252
+review).</p>
+<p>Two rules taken from libavfilter’s <code class="docutils literal notranslate"><span class="pre">process_options</span></code> rather than from
+intuition, and both change the answer:</p>
+<ul>
+<li><p>an argument with no <code class="docutils literal notranslate"><span class="pre">=</span></code> is POSITIONAL, filling the next slot of
+<code class="docutils literal notranslate"><span class="pre">positional</span></code> (the option list in declaration order, aliases collapsed);</p></li>
+<li><p><strong>positional slots stop being offered after the first named argument</strong>, so
+a bare argument after a <code class="docutils literal notranslate"><span class="pre">key=value</span></code> one goes to <code class="docutils literal notranslate"><span class="pre">overflow</span></code> and is
+REFUSED rather than read as a later slot. **Not because ffmpeg agrees —
+because the two builds this fleet runs do not agree with each other:**</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>fragment</p></th>
+<th class="head"><p>ffmpeg 9.0.1</p></th>
+<th class="head"><p>ffmpeg 6.1.6</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale=w=100:8000</span></code></p></td>
+<td><p>rc=234</p></td>
+<td><p><strong>100x8000</strong></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scale=w=8000:100</span></code></p></td>
+<td><p>rc=234</p></td>
+<td><p><strong>8000x100</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">scale=100:h=8000</span></code></p></td>
+<td><p>100x8000</p></td>
+<td><p>100x8000</p></td>
+</tr>
+</tbody>
+</table>
+<p>9.0.1 discards the remaining shorthand (“No option name near ‘8000’”); 6.1.6
+fills the next slot. A gate that picked either reading would be wrong on the
+other binary, and on 6.1.6 it would be wrong in the dangerous direction —
+reading <code class="docutils literal notranslate"><span class="pre">scale=w=8000:100</span></code> as <code class="docutils literal notranslate"><span class="pre">{w:</span> <span class="pre">100}</span></code> accepts a fragment that renders
+8000 px wide. So this is a hole where it is dropped, not merely an
+over-refusal: without the rule the trailing bare argument refills slot 0 and
+<strong>overwrites</strong> the named <code class="docutils literal notranslate"><span class="pre">w</span></code>.</p>
+</li>
+</ul>
+<p>Later assignments win, as <code class="docutils literal notranslate"><span class="pre">av_opt_set</span></code> does.</p>
+<p>Returns <code class="docutils literal notranslate"><span class="pre">(options,</span> <span class="pre">overflow)</span></code>. <code class="docutils literal notranslate"><span class="pre">overflow</span></code> is one <code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">after_named)</span></code>
+per positional argument that found no slot — <strong>reported rather than dropped</strong>,
+which is the half the first pass got wrong. <code class="docutils literal notranslate"><span class="pre">positional</span></code> stops at the slots
+muvid classifies (see <code class="docutils literal notranslate"><span class="pre">edl._LOOK_GEOMETRY_FILTERS</span></code>), so a bare argument past
+the end is not a triviality: <code class="docutils literal notranslate"><span class="pre">pad</span></code>’s <code class="docutils literal notranslate"><span class="pre">aspect</span></code> is its seventh slot, and
+<code class="docutils literal notranslate"><span class="pre">pad=1920:1080:0:0:black:init:1/30</span></code> reaches it without naming it. Silently
+dropping slot 7 is what let that fragment through.</p>
+<p>An EMPTY argument string declares nothing, which is a case rather than a
+triviality: <code class="docutils literal notranslate"><span class="pre">scale</span></code> and <code class="docutils literal notranslate"><span class="pre">pad</span></code> with no arguments at all are legal ffmpeg
+(rc=0, frame unchanged — measured), and reading their absent <code class="docutils literal notranslate"><span class="pre">w</span></code> as the
+empty string made the gate refuse a fragment the binary accepts. Note this is
+the whole list being empty; an empty value <em>within</em> a list (<code class="docutils literal notranslate"><span class="pre">scale=:100</span></code>)
+is left alone, because ffmpeg refuses that too (“Cannot parse expression for
+width: ‘’”, rc=234) and the gate agreeing is the point.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">"8000:8000"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"w"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">))</span>
+</span><span id="line-2"><span class="go">({'w': '8000', 'h': '8000'}, [])</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">"w=8000:h=8000"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"w"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">))</span>
+</span><span id="line-4"><span class="go">({'w': '8000', 'h': '8000'}, [])</span>
+</span><span id="line-5"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">"1:0:0:1:640x360:25"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"zoom"</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">,</span> <span class="s2">"y"</span><span class="p">,</span> <span class="s2">"d"</span><span class="p">,</span> <span class="s2">"s"</span><span class="p">,</span> <span class="s2">"fps"</span><span class="p">))[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"s"</span><span class="p">]</span>
+</span><span id="line-6"><span class="go">'640x360'</span>
+</span><span id="line-7"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">""</span><span class="p">,</span> <span class="p">(</span><span class="s2">"w"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">))</span>
+</span><span id="line-8"><span class="go">({}, [])</span>
+</span><span id="line-9"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">"64:48:0:0:black"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"w"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">,</span> <span class="s2">"y"</span><span class="p">))[</span><span class="mi">1</span><span class="p">]</span>
+</span><span id="line-10"><span class="go">[('black', False)]</span>
+</span><span id="line-11"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">"w=100:8000"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"w"</span><span class="p">,</span> <span class="s2">"h"</span><span class="p">))</span>
+</span><span id="line-12"><span class="go">({'w': '100'}, [('8000', True)])</span>
+</span><span id="line-13"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="sa">r</span><span class="s2">"interp=nearest\:file=/x.cube"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"file"</span><span class="p">,))[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-14"><span class="go">{'interp': 'nearest', 'file': '/x.cube'}</span>
+</span><span id="line-15"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="s2">"enable='between(t,0,1)'"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"file"</span><span class="p">,))[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-16"><span class="go">{'enable': 'between(t,0,1)'}</span>
+</span><span id="line-17"><span class="gp">&gt;&gt;&gt; </span><span class="n">options</span><span class="p">(</span><span class="sa">r</span><span class="s2">"enable=between(t\,0\,1)"</span><span class="p">,</span> <span class="p">(</span><span class="s2">"file"</span><span class="p">,))[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="line-18"><span class="go">{'enable': 'between(t,0,1)'}</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>], <a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>, <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]]]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.significant">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">significant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#significant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.significant" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.significant'">¶</a></dt>
+<dd><p>Yield <code class="docutils literal notranslate"><span class="pre">(index,</span> <span class="pre">char)</span></code> for each character ffmpeg reads as SYNTAX.</p>
+<p>Models both of ffmpeg’s escape mechanisms, because modelling only one is a
+silent hole: <code class="docutils literal notranslate"><span class="pre">av_get_token</span></code> treats <code class="docutils literal notranslate"><span class="pre">\</span></code> as escaping the next character
+<strong>and</strong> copies everything between single quotes literally — inside quotes a
+backslash is an ordinary character and a terminator is swallowed. So
+<code class="docutils literal notranslate"><span class="pre">crop=x='min(a,b)'</span></code> is ONE filter, not two, and a check that walks only
+backslashes splits it in the middle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#muvid.footage.fflex.FilterSyntaxError" title="muvid.footage.fflex.FilterSyntaxError"><strong>FilterSyntaxError</strong></a> – if the fragment ends inside a quote, or on a dangling
+    backslash. Neither is a character to refuse — it is the fragment
+    failing to be CLOSED, which is exactly what “one chain spliceable by
+    comma” requires: an open quote swallows the <code class="docutils literal notranslate"><span class="pre">,format=yuv420p[a];[1:</span></code>
+    the transition site appends, and a trailing backslash escapes the
+    splice’s own comma. Both render fine alone and restructure the graph
+    beside a transition (measured: ffmpeg exits 234 with
+    <code class="docutils literal notranslate"><span class="pre">No</span> <span class="pre">option</span> <span class="pre">name</span> <span class="pre">near</span> <span class="pre">'v]scale=...'</span></code>).</p>
+</dd>
+</dl>
+<p>Yields every character whose syntactic role ffmpeg will honour — i.e. all of
+them except the ones an escape or a quoted run hides:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">c</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">significant</span><span class="p">(</span><span class="s2">"scale=2,hue=s=0"</span><span class="p">))</span>
+</span><span id="line-2"><span class="go">'scale=2,hue=s=0'</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">c</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">significant</span><span class="p">(</span><span class="sa">r</span><span class="s2">"lut3d=file=a\[b\].cube"</span><span class="p">))</span>
+</span><span id="line-4"><span class="go">'lut3d=file=ab.cube'</span>
+</span><span id="line-5"><span class="gp">&gt;&gt;&gt; </span><span class="s2">""</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">c</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">significant</span><span class="p">(</span><span class="s2">"crop=x='min(a,b)'"</span><span class="p">))</span>
+</span><span id="line-6"><span class="go">'crop=x='</span>
+</span></code></pre></div>
+</div>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.split_significant">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">split_significant</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sep</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#split_significant"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.split_significant" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.split_significant'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">s</span></code> split on the <code class="docutils literal notranslate"><span class="pre">sep</span></code> characters ffmpeg reads as SEPARATORS.</p>
+<p>The one splitter for both of a filter chain’s levels — <code class="docutils literal notranslate"><span class="pre">,</span></code> between links,
+<code class="docutils literal notranslate"><span class="pre">:</span></code> between one link’s arguments — so a quoted expression survives both.
+Written once rather than twice because the second copy is where the two stop
+agreeing about what a fragment says.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">split_significant</span><span class="p">(</span><span class="s2">"scale=2,hue=s=0"</span><span class="p">,</span> <span class="s2">","</span><span class="p">)</span>
+</span><span id="line-2"><span class="go">['scale=2', 'hue=s=0']</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">split_significant</span><span class="p">(</span><span class="s2">"w='min(iw,2)':h=100"</span><span class="p">,</span> <span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">["w='min(iw,2)'", 'h=100']</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">list</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>]</span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.strip_unescaped">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">strip_unescaped</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#strip_unescaped"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.strip_unescaped" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.strip_unescaped'">¶</a></dt>
+<dd><p>Trim whitespace from the ends — but only whitespace ffmpeg would trim.</p>
+<p>A plain <code class="docutils literal notranslate"><span class="pre">.strip()</span></code> here removed an ESCAPED space and left the backslash
+that escaped it, so <code class="docutils literal notranslate"><span class="pre">hue\</span> <span class="pre">=s=0</span></code> became <code class="docutils literal notranslate"><span class="pre">hue\</span></code> and the lexer raised
+<code class="docutils literal notranslate"><span class="pre">FilterSyntaxError("\\")</span></code> from outside the caller’s try/except: a lexically
+closed look refused with a message that was a single backslash, reaching an
+MCP caller as the whole explanation.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">strip_unescaped</span><span class="p">(</span><span class="s2">"  hue  "</span><span class="p">)</span>
+</span><span id="line-2"><span class="go">'hue'</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">strip_unescaped</span><span class="p">(</span><span class="sa">r</span><span class="s2">"hue\ "</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">'hue\\ '</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.fflex.unquote">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.fflex.</span></span><span class="sig-name descname"><span class="pre">unquote</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/fflex.html#unquote"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.fflex.unquote" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.fflex.unquote'">¶</a></dt>
+<dd><p><code class="docutils literal notranslate"><span class="pre">s</span></code> as ffmpeg’s tokenizer resolves it — escapes applied, quotes removed.</p>
+<p>Needed for the <em>name</em> half of <a class="reference internal" href="#muvid.footage.fflex.filter_names" title="muvid.footage.fflex.filter_names"><code class="xref py py-func docutils literal notranslate"><span class="pre">filter_names()</span></code></a>, and its role is to
+<strong>widen</strong> what the allowlist accepts, not to secure it. An earlier version of
+this docstring had that backwards — it claimed a raw-text compare “would be
+bypassed” by <code class="docutils literal notranslate"><span class="pre">'metadata'</span></code> or <code class="docutils literal notranslate"><span class="pre">\m\e\t\a\d\a\t\a</span></code>. Measured, it is not:
+against an ALLOWLIST a raw compare fails <strong>closed</strong>, because neither spelling
+is a member either. What a raw compare loses is the legitimate direction —
+<code class="docutils literal notranslate"><span class="pre">h\ue=s=0</span></code> resolves to the allowed <code class="docutils literal notranslate"><span class="pre">hue</span></code> and would be refused.</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>spelling</p></th>
+<th class="head"><p>raw compare</p></th>
+<th class="head"><p>with <code class="docutils literal notranslate"><span class="pre">unquote</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">metadata=mode=print:file=…</span></code></p></td>
+<td><p>refused</p></td>
+<td><p>refused</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">\m\e\t\a\d\a\t\a=…</span></code></p></td>
+<td><p>refused</p></td>
+<td><p>refused</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">h\ue=s=0</span></code>  (legitimate)</p></td>
+<td><p><strong>refused</strong></p></td>
+<td><p>accepted</p></td>
+</tr>
+</tbody>
+</table>
+<p>The security comes from <a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.LOOK_FILTERS" title="muvid.footage.edl.LOOK_FILTERS"><code class="xref py py-data docutils literal notranslate"><span class="pre">muvid.footage.edl.LOOK_FILTERS</span></code></a> being a closed set. Stating that
+correctly matters: a reader who believes this function is the guard could
+“simplify” by dropping the allowlist and keeping the normalisation, which is
+the one edit that would reopen the hole.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">unquote</span><span class="p">(</span><span class="sa">r</span><span class="s2">"h\ue"</span><span class="p">)</span>
+</span><span id="line-2"><span class="go">'hue'</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">unquote</span><span class="p">(</span><span class="s2">"'hue'"</span><span class="p">)</span>
+</span><span id="line-4"><span class="go">'hue'</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+</section>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.FilterSyntaxError'" class="reference internal" href="#muvid.footage.fflex.FilterSyntaxError"><code class="docutils literal notranslate"><span class="pre">FilterSyntaxError</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.filter_names'" class="reference internal" href="#muvid.footage.fflex.filter_names"><code class="docutils literal notranslate"><span class="pre">filter_names()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.first_unescaped'" class="reference internal" href="#muvid.footage.fflex.first_unescaped"><code class="docutils literal notranslate"><span class="pre">first_unescaped()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.links'" class="reference internal" href="#muvid.footage.fflex.links"><code class="docutils literal notranslate"><span class="pre">links()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.options'" class="reference internal" href="#muvid.footage.fflex.options"><code class="docutils literal notranslate"><span class="pre">options()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.significant'" class="reference internal" href="#muvid.footage.fflex.significant"><code class="docutils literal notranslate"><span class="pre">significant()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.split_significant'" class="reference internal" href="#muvid.footage.fflex.split_significant"><code class="docutils literal notranslate"><span class="pre">split_significant()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.strip_unescaped'" class="reference internal" href="#muvid.footage.fflex.strip_unescaped"><code class="docutils literal notranslate"><span class="pre">strip_unescaped()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.fflex.unquote'" class="reference internal" href="#muvid.footage.fflex.unquote"><code class="docutils literal notranslate"><span class="pre">unquote()</span></code></a></li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left"></p>
+</div>
+</div>
+</footer>
+</div>
+<script src="../_static/documentation_options.js?v=af3f1973"></script>
+<script src="../_static/doctools.js?v=fd6eb6e6"></script>
+<script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+<script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+<script src="../_static/copybutton.js?v=fd10adb8"></script>
+<script defer="defer" src="../_static/theme.js?v=49cc6205"></script>
+</body>
+</html>

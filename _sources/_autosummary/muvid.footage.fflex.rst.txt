@@ -1,0 +1,25 @@
+muvid.footage.fflex
+===================
+
+.. automodule:: muvid.footage.fflex
+
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      significant
+      unquote
+      first_unescaped
+      strip_unescaped
+      split_significant
+      links
+      filter_names
+      options
+   
+   .. rubric:: Exceptions
+
+   .. autosummary::
+   
+      FilterSyntaxError
+   
