@@ -231,7 +231,7 @@ def resolve_media_link(url: str) -> str:
 
 
 def fetch_media(
-    url: str, dest: Path, *, kind: str = "", max_bytes: int = MAX_BYTES
+    url: str, dest: Path, *, kind: str = "", max_bytes: "int | None" = None
 ) -> Path:
     """Fetch ONE media file from a caller's link to ``dest`` — THE intake (muvid#293).
 
@@ -240,10 +240,14 @@ def fetch_media(
     streamed to disk under ``max_bytes`` and :func:`deadline_for` it, the payload's
     ``kind`` — ``'audio'``, ``'video'``, ``'image'`` — asserted before a byte is
     written; ``''`` asserts nothing). Every surface that takes a media URL goes through
-    here and adds only its own words to a :class:`FetchError`. Returns ``dest``.
+    here and adds only its own words to a :class:`FetchError`. ``max_bytes`` defaults
+    to :data:`MAX_BYTES`, read at call time. Returns ``dest``.
     """
     return fetch_to_file_streaming(
-        resolve_media_link(url), dest, max_bytes=max_bytes, expect_kind=kind
+        resolve_media_link(url),
+        dest,
+        max_bytes=MAX_BYTES if max_bytes is None else max_bytes,
+        expect_kind=kind,
     )
 
 

@@ -240,3 +240,11 @@ def test_fetch_media_resolves_then_streams_with_the_declared_kind(monkeypatch, t
 def test_a_missing_link_is_refused_in_words(bad):
     with pytest.raises(_fetch.FetchError, match="http"):
         _fetch.resolve_media_link(bad)
+
+
+def test_fetch_media_refuses_a_private_address_end_to_end(tmp_path):
+    """No stand-ins: the one intake keeps the SSRF guard (the #293 review)."""
+    for url in ("http://127.0.0.1/a.mp3", "http://169.254.169.254/latest", "file:///etc/passwd"):
+        with pytest.raises(_fetch.FetchError):
+            _fetch.fetch_media(url, tmp_path / "x", kind="audio")
+    assert not (tmp_path / "x").exists()

@@ -153,13 +153,15 @@ _INPUT_KINDS = {
 def _resolve_input(url: str, dest: Path, *, label: str, kind: "str | None" = None) -> Path:
     """Fetch a caller-supplied media URL to ``dest`` through the one intake,
     ``_fetch.fetch_media`` (SSRF-guarded, size/time-bounded, share links normalised,
-    a folder link refused). ``kind`` (``'audio'``, ``'image'``, ``'video'``, ``''`` for
-    none) is asserted on the first bytes (muvid#23); when the caller declares none,
-    :data:`_INPUT_KINDS` by ``label`` is the backstop (muvid#293).
+    a folder link refused). ``kind`` (``'audio'``, ``'image'``, ``'video'``) is asserted
+    on the first bytes (muvid#23). A declared kind only ADDS a check: with none
+    declared (``None`` or ``''``), :data:`_INPUT_KINDS` by ``label`` is the backstop,
+    so a plugin's ``audio`` input declared ``application/ogg`` is still checked as
+    audio (muvid#293 review).
     """
     from muvid.mcp._fetch import FetchError, FolderLinkError, fetch_media
 
-    expect = _INPUT_KINDS.get(label, "") if kind is None else kind
+    expect = kind or _INPUT_KINDS.get(label, "")
     try:
         return fetch_media(url, dest, kind=expect)
     except FolderLinkError as e:

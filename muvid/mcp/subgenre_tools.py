@@ -70,44 +70,14 @@ def list_subgenres() -> dict:
     return subgenre_catalog()
 
 
-#: The media kinds an input may declare (``x-muvid-kind``), ``""`` meaning "a file,
-#: but nothing to assert about its bytes" (lyrics text, a subgenre's own format).
-MEDIA_KINDS = ("audio", "video", "image", "")
-
-
-def _property(name: str, schema: dict) -> dict:
-    """The JSON-schema property of input ``name`` — its ``items`` for a list input."""
-    prop = (schema.get("properties") or {}).get(name) or {}
-    return (prop.get("items") or {}) if prop.get("type") == "array" else prop
-
-
-def _declared_kind(name: str, schema: dict) -> "str | None":
-    """The media kind input ``name`` DECLARES, or ``None`` when it declares none
-    (muvid#293): ``x-muvid-kind`` (one of :data:`MEDIA_KINDS`), else JSON Schema's
-    ``contentMediaType`` (``audio/*`` → ``audio``, a type outside the three → ``""``).
-    Declared beats the input's name, so a plugin's ``song`` input is checked as audio
-    though no name table lists it."""
-    prop = _property(name, schema)
-    kind = prop.get("x-muvid-kind")
-    if kind is not None:
-        if kind not in MEDIA_KINDS:
-            raise ValueError(
-                f"input {name!r} declares x-muvid-kind {kind!r}; one of {MEDIA_KINDS}"
-            )
-        return kind
-    media = prop.get("contentMediaType")
-    if isinstance(media, str) and media:
-        top = media.split("/", 1)[0]
-        return top if top in ("audio", "video", "image") else ""
-    return None
-
-
 def _is_file_input(name: str, schema: dict) -> bool:
     """Whether input ``name`` is a file reference to fetch: its schema says so
-    (``format: path``, or a declared kind), else its name is a known file input —
-    the backstop for a plugin that declares nothing."""
-    prop = _property(name, schema)
-    if prop.get("format") == "path" or _declared_kind(name, schema) is not None:
+    (``format: path``, or a declared media kind — on the property or a list's items),
+    else its name is a known file input — the backstop for a plugin that declares
+    nothing (muvid#293)."""
+    from muvid.subgenres._schema import declared_media_kind, declares_path
+
+    if declares_path(name, schema) or declared_media_kind(name, schema) is not None:
         return True
     return name in _FILE_INPUT_NAMES
 
@@ -143,6 +113,12 @@ def render_subgenre(
             "through the free generic tool"
         )
 
+    from muvid.subgenres._schema import media_kind_problems
+
+    bad_kinds = media_kind_problems(manifest.inputs or {})
+    if bad_kinds:  # before any project is opened or folder made
+        raise _tool_error(f"subgenre {subgenre!r} is misdeclared: {bad_kinds[0]}")
+
     host_only = sorted(set(inputs) & _HOST_ONLY_INPUT_NAMES)
     if host_only:  # before any project is opened or folder made
         raise _tool_error(
@@ -162,6 +138,8 @@ def render_subgenre(
     fetch_dir = render_dir / "inputs"
     fetch_dir.mkdir(parents=True, exist_ok=True)
 
+    from muvid.subgenres._schema import declared_media_kind
+
     resolved: dict[str, Any] = {}
     n_files = 0
     for name, value in inputs.items():
@@ -178,7 +156,7 @@ def render_subgenre(
                             url,
                             fetch_dir / f"{name}-{i}",
                             label=name,
-                            kind=_declared_kind(name, manifest.inputs or {}),
+                            kind=declared_media_kind(name, manifest.inputs or {}),
                         )
                     )
                 )

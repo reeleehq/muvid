@@ -7,6 +7,7 @@ import pytest
 pytest.importorskip("fastmcp")
 
 from muvid.mcp import subgenre_tools as st  # noqa: E402
+from muvid.subgenres._schema import SchemaError, declared_media_kind  # noqa: E402
 
 
 def _schema(**props):
@@ -16,7 +17,7 @@ def _schema(**props):
 def test_x_muvid_kind_declares_the_kind():
     schema = _schema(song={"type": "string", "x-muvid-kind": "audio"})
     assert st._is_file_input("song", schema)
-    assert st._declared_kind("song", schema) == "audio"
+    assert declared_media_kind("song", schema) == "audio"
 
 
 def test_content_media_type_declares_it_too():
@@ -25,21 +26,21 @@ def test_content_media_type_declares_it_too():
         notes={"type": "string", "contentMediaType": "text/markdown"},
         shots={"type": "array", "items": {"contentMediaType": "video/mp4"}},
     )
-    assert st._declared_kind("song", schema) == "audio"
-    assert st._declared_kind("notes", schema) == ""  # a file, nothing to assert
-    assert st._declared_kind("shots", schema) == "video"
+    assert declared_media_kind("song", schema) == "audio"
+    assert declared_media_kind("notes", schema) == ""  # a file, nothing to assert
+    assert declared_media_kind("shots", schema) == "video"
     assert all(st._is_file_input(n, schema) for n in ("song", "notes", "shots"))
 
 
 def test_an_undeclared_input_falls_back_to_its_name():
-    assert st._declared_kind("audio", _schema()) is None
+    assert declared_media_kind("audio", _schema()) is None
     assert st._is_file_input("audio", _schema())  # the backstop table
     assert not st._is_file_input("tempo", _schema(tempo={"type": "number"}))
 
 
 def test_an_unknown_declared_kind_is_refused():
-    with pytest.raises(ValueError, match="x-muvid-kind"):
-        st._declared_kind("song", _schema(song={"x-muvid-kind": "smell"}))
+    with pytest.raises(SchemaError, match="x-muvid-kind"):
+        declared_media_kind("song", _schema(song={"x-muvid-kind": "smell"}))
 
 
 def test_the_declared_kind_reaches_the_fetch(monkeypatch, tmp_path):
@@ -73,3 +74,49 @@ def test_the_declared_kind_reaches_the_fetch(monkeypatch, tmp_path):
     with use_email("u@x.com"), pytest.raises(Exception, match="stopped at the fetch"):
         st.render_subgenre("p", subgenre="kinded", inputs={"song": "https://x/s"})
     assert seen == [("song", "audio")]
+
+
+def test_a_kind_on_the_array_itself_counts():
+    """The #293 review: a list input declaring its kind at the array level was not a
+    file input, so raw URL strings reached the renderer (muvid#23's trap)."""
+    schema = _schema(shots={"type": "array", "x-muvid-kind": "image"})
+    assert st._is_file_input("shots", schema)
+    assert declared_media_kind("shots", schema) == "image"
+
+
+def test_a_declared_kind_only_adds_a_check(monkeypatch, tmp_path):
+    """``application/ogg`` (Ogg audio's official type) maps to "" — it must not remove
+    the audio check an input named ``audio`` always had."""
+    from muvid.mcp import tools
+
+    seen = []
+    monkeypatch.setattr(
+        "muvid.mcp._fetch.fetch_media",
+        lambda url, dest, *, kind="", max_bytes=None: seen.append(kind) or dest,
+    )
+    tools._resolve_input("https://x/a", tmp_path / "a", label="audio", kind="")
+    tools._resolve_input("https://x/a", tmp_path / "b", label="song", kind="")
+    assert seen == ["audio", ""]
+
+
+def test_a_misdeclared_kind_is_a_clean_refusal_before_any_folder(monkeypatch, tmp_path):
+    from muvid.mcp.identity import use_email
+    from muvid.mcp.workspace import SubgenreWorkspace
+    from muvid.subgenres import Subgenre
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    manifest = Subgenre(
+        slug="smelly",
+        title="Smelly",
+        description="a test plugin",
+        render="nowhere:render",
+        api_versions=("1",),
+        inputs={"type": "object", "properties": {"song": {"x-muvid-kind": "smell"}}},
+    )
+    monkeypatch.setattr("muvid.subgenres.get_subgenre", lambda slug: manifest)
+    proj = SubgenreWorkspace.for_slug("smelly", "u@x.com").create_project("p")
+    from fastmcp.exceptions import ToolError
+
+    with use_email("u@x.com"), pytest.raises(ToolError, match="misdeclared"):
+        st.render_subgenre("p", subgenre="smelly", inputs={"song": "https://x/s"})
+    assert not proj.renders_dir.exists() or not any(proj.renders_dir.iterdir())

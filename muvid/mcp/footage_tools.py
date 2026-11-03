@@ -172,11 +172,14 @@ def _resolve_media_url(url: str, *, what: str) -> str:
 
 
 def _fetch_media(direct: str, dest: Path, *, kind: str, max_bytes: int, what: str):
-    """``_fetch.fetch_media`` of an already-resolved link, its failure in words."""
-    from muvid.mcp._fetch import FetchError, fetch_media
+    """The streamed fetch of a link :func:`_resolve_media_url` already resolved (so it
+    is not resolved twice), its failure in words."""
+    from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
 
     try:
-        return fetch_media(direct, dest, kind=kind, max_bytes=max_bytes)
+        return fetch_to_file_streaming(
+            direct, dest, max_bytes=max_bytes, expect_kind=kind
+        )
     except FetchError as e:
         raise _tool_error(f"could not fetch the {what}: {e}") from e
 
