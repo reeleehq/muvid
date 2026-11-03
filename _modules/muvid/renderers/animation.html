@@ -660,58 +660,71 @@
 </span><span id="line-464">    <span class="k">return</span> <span class="n">shifted_word_timings</span><span class="p">(</span><span class="n">absolute</span><span class="p">,</span> <span class="n">offset_s</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">)</span>
 </span><span id="line-465">
 </span><span id="line-466">
-</span><span id="line-467"><span class="k">def</span><span class="w"> </span><span class="nf">_build_an_scene_md</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-468">    <span class="n">duration</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">duration_s</span><span class="p">)</span>
-</span><span id="line-469">    <span class="n">camera_move</span> <span class="o">=</span> <span class="n">an_camera_move</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">camera</span><span class="p">)</span>
-</span><span id="line-470">    <span class="n">lyrics</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">lyric_lines</span> <span class="ow">or</span> <span class="p">[</span>
-</span><span id="line-471">        <span class="p">{</span>
-</span><span id="line-472">            <span class="s2">"text"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">description</span> <span class="ow">or</span> <span class="s2">"..."</span><span class="p">,</span>
-</span><span id="line-473">            <span class="s2">"start_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">,</span>
-</span><span id="line-474">            <span class="s2">"end_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">end_s</span><span class="p">,</span>
-</span><span id="line-475">        <span class="p">}</span>
-</span><span id="line-476">    <span class="p">]</span>
-</span><span id="line-477">    <span class="n">speaker</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span> <span class="k">else</span> <span class="s2">"narrator"</span>
-</span><span id="line-478">    <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">""</span>
-</span><span id="line-479">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">:</span>
-</span><span id="line-480">        <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-</span><span id="line-481">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: character, id: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">, store: characters, ref: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">-v1 </span><span class="se">}}</span><span class="s2">"</span>
-</span><span id="line-482">            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span>
-</span><span id="line-483">        <span class="p">)</span>
-</span><span id="line-484">    <span class="n">env_block</span> <span class="o">=</span> <span class="s2">""</span>
-</span><span id="line-485">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="p">:</span>
-</span><span id="line-486">        <span class="n">env_block</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-487">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: environment, id: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2">, "</span>
-</span><span id="line-488">            <span class="sa">f</span><span class="s2">"store: environments, ref: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span><span class="s2">"</span>
-</span><span id="line-489">        <span class="p">)</span>
-</span><span id="line-490">    <span class="n">entities</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="n">env_block</span><span class="p">,</span> <span class="n">chars_block</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span><span class="p">)</span>
-</span><span id="line-491">    <span class="c1"># An EMPTY ```yaml entities``` block does not parse — `an`'s markdown reader</span>
-</span><span id="line-492">    <span class="c1"># fails on it with a bare `yaml.scanner.ScannerError`, which `orchestrate`</span>
-</span><span id="line-493">    <span class="c1"># swallows into `success=False` and this renderer turns into a silent</span>
-</span><span id="line-494">    <span class="c1"># fallback to `still`. Both `env` and `chars` are optional in a muvid script,</span>
-</span><span id="line-495">    <span class="c1"># so that shot is writable today. `an`'s own serializer omits the block when</span>
-</span><span id="line-496">    <span class="c1"># there are no entities; so do we.</span>
-</span><span id="line-497">    <span class="n">entities_block</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">```yaml entities</span><span class="se">\n</span><span class="si">{</span><span class="n">entities</span><span class="si">}</span><span class="se">\n</span><span class="s2">```</span><span class="se">\n</span><span class="s2">"</span> <span class="k">if</span> <span class="n">entities</span> <span class="k">else</span> <span class="s2">""</span>
-</span><span id="line-498">    <span class="n">dialogue</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">speaker</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">L</span><span class="p">[</span><span class="s1">'text'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">lyrics</span><span class="p">)</span>
-</span><span id="line-499">    <span class="k">return</span> <span class="sa">f</span><span class="s2">"""# </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
-</span><span id="line-500">
-</span><span id="line-501"><span class="s2">```yaml meta</span>
-</span><span id="line-502"><span class="s2">title: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
-</span><span id="line-503"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
-</span><span id="line-504"><span class="s2">fps: 24</span>
-</span><span id="line-505"><span class="s2">resolution: </span><span class="se">{{</span><span class="s2"> width: 640, height: 360 </span><span class="se">}}</span>
-</span><span id="line-506"><span class="s2">```</span>
-</span><span id="line-507">
-</span><span id="line-508"><span class="s2">## Shot </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> (cutout)</span>
-</span><span id="line-509">
-</span><span id="line-510"><span class="s2">```yaml shot</span>
-</span><span id="line-511"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
-</span><span id="line-512"><span class="s2">camera: </span><span class="se">{{</span><span class="s2"> move: </span><span class="si">{</span><span class="n">camera_move</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span>
-</span><span id="line-513"><span class="s2">```</span>
-</span><span id="line-514"><span class="si">{</span><span class="n">entities_block</span><span class="si">}</span>
-</span><span id="line-515"><span class="s2">```dialogue</span>
-</span><span id="line-516"><span class="si">{</span><span class="n">dialogue</span><span class="si">}</span>
-</span><span id="line-517"><span class="s2">```</span>
-</span><span id="line-518"><span class="s2">"""</span>
+</span><span id="line-467"><span class="c1">#: The ``an`` entity kinds a synthesized ``scene.md`` names — the other half of the</span>
+</span><span id="line-468"><span class="c1">#: vocabulary this boundary emits, beside the camera moves. They are genre-scoped:</span>
+</span><span id="line-469"><span class="c1">#: registered only once ``an.genres.load()`` has run, which ``an.orchestrate`` does</span>
+</span><span id="line-470"><span class="c1">#: (through ``an.project.load``) before it validates, so a test reading the markdown</span>
+</span><span id="line-471"><span class="c1">#: directly must validate the same way (muvid#277). And they are not all ``an``'s:</span>
+</span><span id="line-472"><span class="c1">#: ``character`` is the ``cutout_animation`` genre's, from the separate ``cutan``</span>
+</span><span id="line-473"><span class="c1">#: distribution (``an[cutout]``) — without it a character shot is refused (muvid#306).</span>
+</span><span id="line-474"><span class="c1">#: Recorded per owner, with the moves, in ``tests/data/an_camera_moves.json``.</span>
+</span><span id="line-475"><span class="n">AN_CHARACTER_KIND</span> <span class="o">=</span> <span class="s2">"character"</span>
+</span><span id="line-476"><span class="n">AN_ENVIRONMENT_KIND</span> <span class="o">=</span> <span class="s2">"environment"</span>
+</span><span id="line-477"><span class="n">AN_ENTITY_KINDS</span> <span class="o">=</span> <span class="p">(</span><span class="n">AN_CHARACTER_KIND</span><span class="p">,</span> <span class="n">AN_ENVIRONMENT_KIND</span><span class="p">)</span>
+</span><span id="line-478">
+</span><span id="line-479">
+</span><span id="line-480"><span class="k">def</span><span class="w"> </span><span class="nf">_build_an_scene_md</span><span class="p">(</span><span class="n">ctx</span><span class="p">:</span> <span class="n">RenderContext</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-481">    <span class="n">duration</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">duration_s</span><span class="p">)</span>
+</span><span id="line-482">    <span class="n">camera_move</span> <span class="o">=</span> <span class="n">an_camera_move</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">camera</span><span class="p">)</span>
+</span><span id="line-483">    <span class="n">lyrics</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">lyric_lines</span> <span class="ow">or</span> <span class="p">[</span>
+</span><span id="line-484">        <span class="p">{</span>
+</span><span id="line-485">            <span class="s2">"text"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">description</span> <span class="ow">or</span> <span class="s2">"..."</span><span class="p">,</span>
+</span><span id="line-486">            <span class="s2">"start_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">start_s</span><span class="p">,</span>
+</span><span id="line-487">            <span class="s2">"end_s"</span><span class="p">:</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">end_s</span><span class="p">,</span>
+</span><span id="line-488">        <span class="p">}</span>
+</span><span id="line-489">    <span class="p">]</span>
+</span><span id="line-490">    <span class="n">speaker</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span> <span class="k">else</span> <span class="s2">"narrator"</span>
+</span><span id="line-491">    <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span id="line-492">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span><span class="p">:</span>
+</span><span id="line-493">        <span class="n">chars_block</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+</span><span id="line-494">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: </span><span class="si">{</span><span class="n">AN_CHARACTER_KIND</span><span class="si">}</span><span class="s2">, id: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">, store: characters, ref: </span><span class="si">{</span><span class="n">c</span><span class="si">}</span><span class="s2">-v1 </span><span class="se">}}</span><span class="s2">"</span>
+</span><span id="line-495">            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">characters</span>
+</span><span id="line-496">        <span class="p">)</span>
+</span><span id="line-497">    <span class="n">env_block</span> <span class="o">=</span> <span class="s2">""</span>
+</span><span id="line-498">    <span class="k">if</span> <span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="p">:</span>
+</span><span id="line-499">        <span class="n">env_block</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-500">            <span class="sa">f</span><span class="s2">"- </span><span class="se">{{</span><span class="s2"> kind: </span><span class="si">{</span><span class="n">AN_ENVIRONMENT_KIND</span><span class="si">}</span><span class="s2">, id: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2">, "</span>
+</span><span id="line-501">            <span class="sa">f</span><span class="s2">"store: environments, ref: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">environment</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span><span class="s2">"</span>
+</span><span id="line-502">        <span class="p">)</span>
+</span><span id="line-503">    <span class="n">entities</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">b</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="p">(</span><span class="n">env_block</span><span class="p">,</span> <span class="n">chars_block</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span><span class="p">)</span>
+</span><span id="line-504">    <span class="c1"># An EMPTY ```yaml entities``` block does not parse — `an`'s markdown reader</span>
+</span><span id="line-505">    <span class="c1"># fails on it with a bare `yaml.scanner.ScannerError`, which `orchestrate`</span>
+</span><span id="line-506">    <span class="c1"># swallows into `success=False` and this renderer turns into a silent</span>
+</span><span id="line-507">    <span class="c1"># fallback to `still`. Both `env` and `chars` are optional in a muvid script,</span>
+</span><span id="line-508">    <span class="c1"># so that shot is writable today. `an`'s own serializer omits the block when</span>
+</span><span id="line-509">    <span class="c1"># there are no entities; so do we.</span>
+</span><span id="line-510">    <span class="n">entities_block</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">```yaml entities</span><span class="se">\n</span><span class="si">{</span><span class="n">entities</span><span class="si">}</span><span class="se">\n</span><span class="s2">```</span><span class="se">\n</span><span class="s2">"</span> <span class="k">if</span> <span class="n">entities</span> <span class="k">else</span> <span class="s2">""</span>
+</span><span id="line-511">    <span class="n">dialogue</span> <span class="o">=</span> <span class="s2">"</span><span class="se">\n</span><span class="s2">"</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">speaker</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">L</span><span class="p">[</span><span class="s1">'text'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">L</span> <span class="ow">in</span> <span class="n">lyrics</span><span class="p">)</span>
+</span><span id="line-512">    <span class="k">return</span> <span class="sa">f</span><span class="s2">"""# </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
+</span><span id="line-513">
+</span><span id="line-514"><span class="s2">```yaml meta</span>
+</span><span id="line-515"><span class="s2">title: </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span>
+</span><span id="line-516"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
+</span><span id="line-517"><span class="s2">fps: 24</span>
+</span><span id="line-518"><span class="s2">resolution: </span><span class="se">{{</span><span class="s2"> width: 640, height: 360 </span><span class="se">}}</span>
+</span><span id="line-519"><span class="s2">```</span>
+</span><span id="line-520">
+</span><span id="line-521"><span class="s2">## Shot </span><span class="si">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">shot</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> (cutout)</span>
+</span><span id="line-522">
+</span><span id="line-523"><span class="s2">```yaml shot</span>
+</span><span id="line-524"><span class="s2">duration: </span><span class="si">{</span><span class="n">duration</span><span class="si">}</span>
+</span><span id="line-525"><span class="s2">camera: </span><span class="se">{{</span><span class="s2"> move: </span><span class="si">{</span><span class="n">camera_move</span><span class="si">}</span><span class="s2"> </span><span class="se">}}</span>
+</span><span id="line-526"><span class="s2">```</span>
+</span><span id="line-527"><span class="si">{</span><span class="n">entities_block</span><span class="si">}</span>
+</span><span id="line-528"><span class="s2">```dialogue</span>
+</span><span id="line-529"><span class="si">{</span><span class="n">dialogue</span><span class="si">}</span>
+</span><span id="line-530"><span class="s2">```</span>
+</span><span id="line-531"><span class="s2">"""</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -725,7 +738,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=28d4ae65"></script>
+    <script src="../../../_static/documentation_options.js?v=1f2c240f"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

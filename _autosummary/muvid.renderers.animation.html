@@ -192,6 +192,9 @@ enforced at the only place that can see which <code class="docutils literal notr
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES" title="muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AN_CAMERA_MOVE_PHRASES</span></code></a></p></td>
 <td><p>muvid prose -&gt; <code class="docutils literal notranslate"><span class="pre">an</span></code> move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.renderers.animation.AN_CHARACTER_KIND" title="muvid.renderers.animation.AN_CHARACTER_KIND"><code class="xref py py-obj docutils literal notranslate"><span class="pre">AN_CHARACTER_KIND</span></code></a></p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">an</span></code> entity kinds a synthesized <code class="docutils literal notranslate"><span class="pre">scene.md</span></code> names — the other half of the vocabulary this boundary emits, beside the camera moves.</p></td>
+</tr>
 </tbody>
 </table>
 <p class="rubric">Functions</p>
@@ -225,6 +228,18 @@ the live set. A hand-copied vocabulary is exactly how <code class="docutils lite
 here after <code class="docutils literal notranslate"><span class="pre">an</span></code> tightened the rule.</p>
 <p><code class="docutils literal notranslate"><span class="pre">an</span></code> distinguishes a push (1.0-&gt;1.25) from a zoom (1.0-&gt;1.5), so the prose
 does too: a “push” is the gentler move, “zoom” the emphatic one.</p>
+</dd></dl>
+<dl class="py data">
+<dt class="sig sig-object py" id="muvid.renderers.animation.AN_CHARACTER_KIND">
+<span class="sig-prename descclassname"><span class="pre">muvid.renderers.animation.</span></span><span class="sig-name descname"><span class="pre">AN_CHARACTER_KIND</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'character'</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.renderers.animation.AN_CHARACTER_KIND" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.renderers.animation.AN_CHARACTER_KIND'">¶</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">an</span></code> entity kinds a synthesized <code class="docutils literal notranslate"><span class="pre">scene.md</span></code> names — the other half of the
+vocabulary this boundary emits, beside the camera moves. They are genre-scoped:
+registered only once <code class="docutils literal notranslate"><span class="pre">an.genres.load()</span></code> has run, which <code class="docutils literal notranslate"><span class="pre">an.orchestrate</span></code> does
+(through <code class="docutils literal notranslate"><span class="pre">an.project.load</span></code>) before it validates, so a test reading the markdown
+directly must validate the same way (muvid#277). And they are not all <code class="docutils literal notranslate"><span class="pre">an</span></code>’s:
+<code class="docutils literal notranslate"><span class="pre">character</span></code> is the <code class="docutils literal notranslate"><span class="pre">cutout_animation</span></code> genre’s, from the separate <code class="docutils literal notranslate"><span class="pre">cutan</span></code>
+distribution (<code class="docutils literal notranslate"><span class="pre">an[cutout]</span></code>) — without it a character shot is refused (muvid#306).
+Recorded per owner, with the moves, in <code class="docutils literal notranslate"><span class="pre">tests/data/an_camera_moves.json</span></code>.</p>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.renderers.animation.DFLT_AN_CAMERA_MOVE">
@@ -310,6 +325,7 @@ synthesized and a still image is a wrong answer, not a lesser one (muvid#46).</p
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
 <li><a :data-current="activeSection === '#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES'" class="reference internal" href="#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES"><code class="docutils literal notranslate"><span class="pre">AN_CAMERA_MOVE_PHRASES</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.renderers.animation.AN_CHARACTER_KIND'" class="reference internal" href="#muvid.renderers.animation.AN_CHARACTER_KIND"><code class="docutils literal notranslate"><span class="pre">AN_CHARACTER_KIND</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE'" class="reference internal" href="#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE"><code class="docutils literal notranslate"><span class="pre">DFLT_AN_CAMERA_MOVE</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.renderers.animation.an_camera_move'" class="reference internal" href="#muvid.renderers.animation.an_camera_move"><code class="docutils literal notranslate"><span class="pre">an_camera_move()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.renderers.animation.render_animation'" class="reference internal" href="#muvid.renderers.animation.render_animation"><code class="docutils literal notranslate"><span class="pre">render_animation()</span></code></a></li>
@@ -326,7 +342,7 @@ synthesized and a still image is a wrong answer, not a lesser one (muvid#46).</p
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=28d4ae65"></script>
+<script src="../_static/documentation_options.js?v=1f2c240f"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

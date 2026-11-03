@@ -51,9 +51,10 @@ enforced at the only place that can see which `an` is actually there.
 
 ### Module Attributes
 
-| [`DFLT_AN_CAMERA_MOVE`](#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)    | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                     |
-|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| [`AN_CAMERA_MOVE_PHRASES`](#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES) | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move". |
+| [`DFLT_AN_CAMERA_MOVE`](#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)    | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                               |
+|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| [`AN_CAMERA_MOVE_PHRASES`](#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES) | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".           |
+| [`AN_CHARACTER_KIND`](#muvid.renderers.animation.AN_CHARACTER_KIND)      | The `an` entity kinds a synthesized `scene.md` names — the other half of the vocabulary this boundary emits, beside the camera moves. |
 
 ### Functions
 
@@ -83,6 +84,17 @@ here after `an` tightened the rule.
 
 `an` distinguishes a push (1.0->1.25) from a zoom (1.0->1.5), so the prose
 does too: a “push” is the gentler move, “zoom” the emphatic one.
+
+### muvid.renderers.animation.AN_CHARACTER_KIND *= 'character'*
+
+The `an` entity kinds a synthesized `scene.md` names — the other half of the
+vocabulary this boundary emits, beside the camera moves. They are genre-scoped:
+registered only once `an.genres.load()` has run, which `an.orchestrate` does
+(through `an.project.load`) before it validates, so a test reading the markdown
+directly must validate the same way (muvid#277). And they are not all `an`’s:
+`character` is the `cutout_animation` genre’s, from the separate `cutan`
+distribution (`an[cutout]`) — without it a character shot is refused (muvid#306).
+Recorded per owner, with the moves, in `tests/data/an_camera_moves.json`.
 
 ### muvid.renderers.animation.DFLT_AN_CAMERA_MOVE *= 'hold'*
 

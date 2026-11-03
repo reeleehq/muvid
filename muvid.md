@@ -1,4 +1,4 @@
-> built 2026-11-03 12:17 UTC from 5c046db (main) · muvid 0.0.151. Details: build_info.json
+> built 2026-11-03 12:48 UTC from 587adda (main) · muvid 0.0.152. Details: build_info.json
 
 # index.html.md
 
@@ -16882,9 +16882,10 @@ enforced at the only place that can see which `an` is actually there.
 
 ### Module Attributes
 
-| [`DFLT_AN_CAMERA_MOVE`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)    | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                     |
-|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| [`AN_CAMERA_MOVE_PHRASES`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES) | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move". |
+| [`DFLT_AN_CAMERA_MOVE`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)    | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                               |
+|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| [`AN_CAMERA_MOVE_PHRASES`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES) | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".           |
+| [`AN_CHARACTER_KIND`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CHARACTER_KIND)      | The `an` entity kinds a synthesized `scene.md` names — the other half of the vocabulary this boundary emits, beside the camera moves. |
 
 ### Functions
 
@@ -16914,6 +16915,17 @@ here after `an` tightened the rule.
 
 `an` distinguishes a push (1.0->1.25) from a zoom (1.0->1.5), so the prose
 does too: a “push” is the gentler move, “zoom” the emphatic one.
+
+### muvid.renderers.animation.AN_CHARACTER_KIND *= 'character'*
+
+The `an` entity kinds a synthesized `scene.md` names — the other half of the
+vocabulary this boundary emits, beside the camera moves. They are genre-scoped:
+registered only once `an.genres.load()` has run, which `an.orchestrate` does
+(through `an.project.load`) before it validates, so a test reading the markdown
+directly must validate the same way (muvid#277). And they are not all `an`’s:
+`character` is the `cutout_animation` genre’s, from the separate `cutan`
+distribution (`an[cutout]`) — without it a character shot is refused (muvid#306).
+Recorded per owner, with the moves, in `tests/data/an_camera_moves.json`.
 
 ### muvid.renderers.animation.DFLT_AN_CAMERA_MOVE *= 'hold'*
 
@@ -19946,7 +19958,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-03 12:17 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5c046db7b7ace2ed44862a2c9c4face9139b1969"><code>5c046db</code></a> on branch <code>main</code>, for **muvid 0.0.151** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-03 12:48 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/587adda826abfdc19d1439e6e54541f6ba018310"><code>587adda</code></a> on branch <code>main</code>, for **muvid 0.0.152** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -19955,9 +19967,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5c046db7b7ace2ed44862a2c9c4face9139b1969"><code>5c046db7b7ace2ed44862a2c9c4face9139b1969</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/587adda826abfdc19d1439e6e54541f6ba018310"><code>587adda826abfdc19d1439e6e54541f6ba018310</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.151</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.152</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19966,9 +19978,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41631815522">41631815522</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41634793992">41634793992</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>3180a127575c0a154fd3853d157ef5d585d3317a</code> (in the history of the built commit) |
+| Event commit | <code>af38df934dcb37558c4bb81221f54e317c7b4850</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -19993,13 +20005,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.151/">0.0.151</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.152/">0.0.152</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 5c046db7b7ace2ed44862a2c9c4face9139b1969
+git checkout 587adda826abfdc19d1439e6e54541f6ba018310
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

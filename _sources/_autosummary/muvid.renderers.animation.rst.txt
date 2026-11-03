@@ -10,6 +10,7 @@ muvid.renderers.animation
    
       DFLT_AN_CAMERA_MOVE
       AN_CAMERA_MOVE_PHRASES
+      AN_CHARACTER_KIND
    
    .. rubric:: Functions
 
