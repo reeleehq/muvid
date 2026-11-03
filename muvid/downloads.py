@@ -44,6 +44,16 @@ The visualizer also writes a ``thumbnail.jpg`` beside its video, which is listed
 as a deliverable of its own. It is the one small image in the whole federation,
 and the only artifact that could plausibly be returned inline in a chat.
 
+Projects a host placed
+----------------------
+A host that serves muvid's genres creates their projects in ITS per-caller tree
+(``nw.create_genre_project(..., projects_dir=...)``) and registers where that tree is
+(``nw.caller_projects_dir``, placement's dual). :mod:`muvid.mcp.host_workspace` turns
+that into two more drawers, LAST in :func:`_sources`, so resolution, listing and
+organise find a host-placed project with no logic of their own, and the tools open
+through :func:`open_caller_project` (muvid#296). muvid's own drawers win an id both
+hold, so every existing record resolves exactly as before.
+
 Speakable references
 --------------------
 ``artifact_id`` accepts either the raw render id (``b02fc05417ea``) or the
@@ -111,6 +121,8 @@ def _sources():
         subgenre_slugs_on_disk,
     )
 
+    from muvid.mcp.host_workspace import HostDrawer
+
     return (
         ("footage", FootageWorkspace, _render_stem("footage")),
         ("visualizer", VisualizerWorkspace, _render_stem("visualizer")),
@@ -119,7 +131,29 @@ def _sources():
             for slug in subgenre_slugs_on_disk()
             if slug not in RESERVED_SLUGS
         ),
+        # LAST: projects a host placed in the caller's own tree (muvid#296). muvid's
+        # own drawers win an id both hold, so every existing record resolves as before.
+        ("footage", HostDrawer("music_video"), _render_stem("footage")),
+        ("visualizer", HostDrawer("music_visualizer"), _render_stem("visualizer")),
     )
+
+
+def caller_workspaces(email: str, kind: str) -> list:
+    """The caller's workspaces of one drawer ``kind`` (``"footage"``,
+    ``"visualizer"``), in :func:`_sources` order: muvid's own, then the host's."""
+    return [ws.for_email(email) for k, ws, _stem in _sources() if k == kind]
+
+
+def open_caller_project(email: str, project_id: str, *, kind: str):
+    """The caller's ``kind`` project ``project_id``, from the first drawer holding it;
+    ``FileNotFoundError`` when none does. The ONE resolver the footage, scoring and
+    visualizer tools open through, so a host-placed project is found by all of them."""
+    for ws in caller_workspaces(email, kind):
+        try:
+            return ws.open_project(project_id)
+        except FileNotFoundError:
+            continue
+    raise FileNotFoundError(f"no project {project_id!r} for {email}")
 
 
 def _subgenre_of_render(meta: dict) -> "str | None":

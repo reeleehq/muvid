@@ -49,6 +49,7 @@ from muvid.paths import safe_component
 #: Where a hosted project keeps each production kind's files.
 FOOTAGE_DIRNAME = "footage"
 LYRIC_DIRNAME = "lyric"
+VISUALIZER_DIRNAME = "visualizer"
 
 #: What a lyric-video source file is to the production.
 SOURCE_ROLES = ("lyrics", "treatment", "timings", "poem", "other")
@@ -93,6 +94,16 @@ class Project(nw.Project):
                 "canvas": params.get("canvas") or DEFAULT_CANVAS_NAME,
             },
         )
+
+    @cached_property
+    def visualizer(self):
+        """The visualizer bucket at ``<root>/visualizer`` — where a host-placed
+        ``music_visualizer`` project's renders land (muvid#296). The same
+        storage-only :class:`~muvid.mcp.workspace.VisualizerProject` muvid's own
+        workspace hands the visualizer tools; reading it creates nothing."""
+        from muvid.mcp.workspace import VisualizerProject
+
+        return VisualizerProject("", self.root.name, self.root / VISUALIZER_DIRNAME)
 
     @cached_property
     def lyric(self) -> "LyricVideoProduction":
@@ -151,8 +162,8 @@ def create_project_at(
     lister look (nw#84). ``project_id`` is a single traversal-safe component, so the
     result is always a direct child of ``projects_dir``.
 
-    The project RECORDS its genre (``genre``, ``music_video`` or ``lyric-video``, with
-    ``template`` — a music video's canvas, a lyric video's archetype) as the nw genre
+    The project RECORDS its genre (``genre``: ``music_video``, ``lyric-video`` or ``music_visualizer``, with
+    ``template`` — a music video's canvas, a lyric video's archetype, a visual) as the nw genre
     envelope, exactly as ``nw.create_genre_project`` does, because that envelope is how
     a host knows what a project is: reelee lists a project under its genre and opens it
     as ``muvid.Project`` by reading it (``project.resolved_genre()``). Created any other
