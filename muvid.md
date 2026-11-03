@@ -1,4 +1,4 @@
-> built 2026-11-03 15:51 UTC from 16a130c (main) · muvid 0.0.158. Details: build_info.json
+> built 2026-11-03 15:56 UTC from 477cd31 (main) · muvid 0.0.159. Details: build_info.json
 
 # index.html.md
 
@@ -9276,7 +9276,9 @@ Bring a video finished ELSEWHERE into the project as a render (the importer’s)
 Copied to `renders/<render_id>/final.mp4` with a meta that says it was imported:
 `edit_id` names the saved edit it was cut from (when known), and there are no
 `checks` — muvid did not make it and does not claim to have verified it.
-Idempotent: the same bytes under the same id change nothing.
+Idempotent: the same bytes under the same id change nothing. A re-import (even of
+different bytes) keeps what a caller set on the render — `organise`’s title, tags
+and note — and its ref, `cut N` (muvid#299).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -20496,7 +20498,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-03 15:51 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/16a130c68bcd160b81288c0974b9221202addb9f"><code>16a130c</code></a> on branch <code>main</code>, for **muvid 0.0.158** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-03 15:56 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/477cd316dbd4eef8e3201ca2b93db6ecebfcf40b"><code>477cd31</code></a> on branch <code>main</code>, for **muvid 0.0.159** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -20505,9 +20507,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/16a130c68bcd160b81288c0974b9221202addb9f"><code>16a130c68bcd160b81288c0974b9221202addb9f</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/477cd316dbd4eef8e3201ca2b93db6ecebfcf40b"><code>477cd316dbd4eef8e3201ca2b93db6ecebfcf40b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.158</code>                                                                                                                                  |
+| Tags at this commit | none                                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20516,9 +20518,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41659944118">41659944118</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41660820624">41660820624</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>3f4e820d06433ac296b258c4c2ab8bd9b5d86595</code> (in the history of the built commit) |
+| Event commit | <code>849ac3c468176df39f3cf88368ab0ad96b0c28c2</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20543,13 +20545,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.158/">0.0.158</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.159/">0.0.159</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 16a130c68bcd160b81288c0974b9221202addb9f
+git checkout 477cd316dbd4eef8e3201ca2b93db6ecebfcf40b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

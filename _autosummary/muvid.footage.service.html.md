@@ -584,7 +584,9 @@ Bring a video finished ELSEWHERE into the project as a render (the importer’s)
 Copied to `renders/<render_id>/final.mp4` with a meta that says it was imported:
 `edit_id` names the saved edit it was cut from (when known), and there are no
 `checks` — muvid did not make it and does not claim to have verified it.
-Idempotent: the same bytes under the same id change nothing.
+Idempotent: the same bytes under the same id change nothing. A re-import (even of
+different bytes) keeps what a caller set on the render — `organise`’s title, tags
+and note — and its ref, `cut N` (muvid#299).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
