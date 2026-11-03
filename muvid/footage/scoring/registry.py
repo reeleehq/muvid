@@ -216,7 +216,10 @@ class Scorer:
     def __post_init__(self) -> None:
         if not self.metrics:
             raise ValueError(f"scorer {self.name!r} declares no metrics")
-        for label, table in (("titles", self.titles), ("descriptions", self.descriptions)):
+        for label, table in (
+            ("titles", self.titles),
+            ("descriptions", self.descriptions),
+        ):
             stray = sorted(set(table) - set(self.metrics))
             if stray:
                 raise ValueError(

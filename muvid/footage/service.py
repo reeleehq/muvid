@@ -2397,7 +2397,9 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
         "project_id": fp.project_id,
         "metrics": tensor.metrics,
         # each metric in plain words, where its scorer gives them (muvid#291)
-        "metric_words": {m: w for m, w in metric_words().items() if m in tensor.metrics},
+        "metric_words": {
+            m: w for m, w in metric_words().items() if m in tensor.metrics
+        },
         "clips": [
             {
                 "clip_id": cid,
