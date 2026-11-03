@@ -250,6 +250,56 @@ def test_propose_edit_saves_a_named_edit(fp):
     assert "edit_id" not in unsaved and len(service.edits(fp)["edits"]) == 1
 
 
+def test_an_edit_summary_says_how_it_was_cut(fp):
+    """muvid#281: the row a screen lists carries the selection as data (strategy,
+    pace, style...), not only the how_made sentence; None for a hand-made edit."""
+    out = service.propose_edit(fp)
+    (row,) = service.edits(fp)["edits"]
+    assert row["selection"]["strategy"] == out["strategy"] == "best_confidence"
+    assert set(row["selection"]) <= set(service.EDIT_SUMMARY_SELECTION_KEYS)
+    service.save_edit(fp, edl=_edl_ab(), edit_id="byhand")
+    rows = {r["edit_id"]: r for r in service.edits(fp)["edits"]}
+    assert rows["byhand"]["selection"] is None
+    assert service.status(fp)["edits"][0].keys() >= {"selection"}
+
+
+def test_a_weighted_cut_that_fell_back_says_so_in_its_row(fp):
+    """A stored weighted selection that fell back: the row must not just say
+    "weighted" (muvid#19 on a chip), and replay inputs stay out of it."""
+    service.save_edit(fp, edl=_edl_ab(), edit_id="w")
+    record = fp.read_edit("w")
+    record["selection"] = {
+        "strategy": "weighted",
+        "fallback": "best_confidence",
+        "cause": "no_feasible_path",
+        "stale_metrics": ["motion_beat"],
+        "weights": {"sharpness": 1.0},
+        "config": {"l_min_s": 2.0},
+        "pace": "steady",
+    }
+    fp.write_edit("w", record)
+    (row,) = service.edits(fp)["edits"]
+    assert row["selection"] == {
+        "strategy": "weighted",
+        "fallback": "best_confidence",
+        "cause": "no_feasible_path",
+        "stale_metrics": ["motion_beat"],
+        "pace": "steady",
+    }
+
+
+def test_a_hand_recut_marks_the_selection(fp):
+    out = service.propose_edit(fp)
+    eid = out["edit_id"]
+    assert "recut_by_hand" not in service.get_edit(fp, edit_id=eid)["selection"]
+    service.rename_edit(fp, edit_id=eid, name="Renamed")  # not a recut
+    assert "recut_by_hand" not in service.get_edit(fp, edit_id=eid)["selection"]
+    service.split_cut(fp, edit_id=eid, at_s=5.0)
+    assert service.get_edit(fp, edit_id=eid)["selection"]["recut_by_hand"] is True
+    service.undo_edit(fp, edit_id=eid)
+    assert "recut_by_hand" not in service.get_edit(fp, edit_id=eid)["selection"]
+
+
 def test_status_names_the_next_step(fp):
     st = service.status(fp)
     assert st["next_step"]["op"] == "propose_edit"

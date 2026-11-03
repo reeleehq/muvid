@@ -260,6 +260,14 @@ def test_set_has_song_is_in_the_catalogue():
     assert "set_has_song" in {op.name for op in service.FOOTAGE_OP_SPECS}
 
 
+def test_a_saved_music_cut_lists_its_pace_and_order(bath):
+    """muvid#281: two cuts of one song are told apart from the listing alone."""
+    service.propose_edit(bath, pace="slow")
+    service.propose_edit(bath, pace="driving")
+    paces = [r["selection"].get("pace") for r in service.edits(bath)["edits"]]
+    assert sorted(paces) == ["driving", "slow"]
+
+
 def test_pace_changes_how_often_the_music_cuts_come(bath):
     slow = service.propose_edit(bath, pace="slow", save=False)["music"]["n_cuts"]
     driving = service.propose_edit(bath, pace="driving", save=False)["music"]["n_cuts"]
