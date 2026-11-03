@@ -465,11 +465,13 @@ def _word_timings_for_shot(
 
 
 #: The ``an`` entity kinds a synthesized ``scene.md`` names — the other half of the
-#: vocabulary this boundary emits, beside the camera moves. Since an genre-scoped its
-#: entity kinds, they exist only once ``an.genres.load()`` has run, which
-#: ``an.orchestrate`` does (through ``an.project.load``) before it validates; a test
-#: reading the markdown directly must do the same (muvid#277). Recorded, with the
-#: moves, in ``tests/data/an_camera_moves.json`` so CI checks them without ``an``.
+#: vocabulary this boundary emits, beside the camera moves. They are genre-scoped:
+#: registered only once ``an.genres.load()`` has run, which ``an.orchestrate`` does
+#: (through ``an.project.load``) before it validates, so a test reading the markdown
+#: directly must validate the same way (muvid#277). And they are not all ``an``'s:
+#: ``character`` is the ``cutout_animation`` genre's, from the separate ``cutan``
+#: distribution (``an[cutout]``) — without it a character shot is refused (muvid#306).
+#: Recorded per owner, with the moves, in ``tests/data/an_camera_moves.json``.
 AN_CHARACTER_KIND = "character"
 AN_ENVIRONMENT_KIND = "environment"
 AN_ENTITY_KINDS = (AN_CHARACTER_KIND, AN_ENVIRONMENT_KIND)

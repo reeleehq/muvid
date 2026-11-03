@@ -633,7 +633,7 @@ adding a bogus phrase→move pair kept the suite green. So `tests/data/an_camera
 **records** `an.ir.camera.CAMERA_MOVES` (generated, never hand-typed), the table is pinned
 against the recording in CI, and the imported-`an` tests are the recording's *freshness*
 check on a developer machine. Same shape as reelee-web's `schemas/destructive-tools.json`.
-Refresh with `tests.test_animation_camera._refresh_snapshot()`. The same recording holds `an`'s **entity kinds** (muvid#277): they are genre-scoped and exist only after `an.genres.load()`, which `an.orchestrate` runs (via `an.project.load`) before it validates — so a test that parses the synthesized `scene.md` directly must validate through `an.orchestrate.validate_project`, the renderer's own path, or every `character` reads as unregistered.
+Refresh with `tests.test_animation_camera._refresh_snapshot()`. The same recording holds `an`'s **entity kinds** (muvid#277): they are genre-scoped and exist only after `an.genres.load()`, which `an.orchestrate` runs (via `an.project.load`) before it validates — so a test that parses the synthesized `scene.md` directly must validate through `an.orchestrate.validate_project`, the renderer's own path, or every `character` reads as unregistered. `character` is not even `an`'s kind: it is the `cutout_animation` genre's, from the separate `cutan` distribution (`an[cutout]`), so the recording keys kinds by owner, and plain `an` without `cutan` refuses every character shot (muvid#306, open).
 
 ## The operations — one catalogue, every surface derived from it
 

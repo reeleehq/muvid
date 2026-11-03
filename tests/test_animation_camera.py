@@ -34,6 +34,7 @@ collected at all, which is invisible in both the pass and the skip counts.
 from __future__ import annotations
 
 import json
+import re
 import warnings
 from pathlib import Path
 
@@ -52,7 +53,12 @@ from muvid.schema import ShotSpec
 SNAPSHOT_PATH = Path(__file__).parent / "data" / "an_camera_moves.json"
 SNAPSHOT = json.loads(SNAPSHOT_PATH.read_text())
 RECORDED_AN_CAMERA_MOVES = frozenset(SNAPSHOT["moves"])
-RECORDED_AN_ENTITY_KINDS = frozenset(SNAPSHOT["entity_kinds"])
+#: ``{genre owner: [entity kinds]}`` — by owner, because the kinds are not all
+#: ``an``'s: ``character`` is the ``cutout_animation`` genre's, shipped by the
+#: separate ``cutan`` distribution (``an[cutout]``), muvid#277.
+RECORDED_AN_ENTITY_KINDS = {
+    owner: frozenset(kinds) for owner, kinds in SNAPSHOT["entity_kinds"].items()
+}
 
 try:  # `an` is a soft dependency — see the module docstring.
     from an.ir.camera import CAMERA_MOVES as AN_CAMERA_MOVES
@@ -292,29 +298,45 @@ def test_the_recorded_vocabulary_matches_the_installed_an():
     )
 
 
-@needs_an
-def test_the_recorded_entity_kinds_match_the_installed_an():
-    """The entity kinds' freshness check: the kinds ``an`` registers once its
-    genres are loaded (what ``an.orchestrate`` does before validating)."""
+def _installed_entity_kinds() -> dict:
+    """``{owner: kinds}`` the installed ``an`` registers once its genres are loaded
+    (what ``an.orchestrate`` does before it validates)."""
     import an.genres
-    from an.genres.registry import entity_kind_names
+    from an.genres.registry import CORE_OWNER, entity_kind_names
 
     an.genres.load()
-    assert RECORDED_AN_ENTITY_KINDS == frozenset(entity_kind_names()), (
-        "tests/data/an_camera_moves.json is stale against the installed `an`; "
-        "regenerate it (see _refresh_snapshot in this file)."
-    )
+    owners = (CORE_OWNER, *an.genres.installed())
+    found = {o: sorted(entity_kind_names(owner=o)) for o in owners}
+    return {o: kinds for o, kinds in found.items() if kinds}
+
+
+def _owner_of(kind: str) -> "str | None":
+    return next((o for o, ks in RECORDED_AN_ENTITY_KINDS.items() if kind in ks), None)
+
+
+@needs_an
+def test_the_recorded_entity_kinds_match_the_installed_an():
+    """The entity kinds' freshness check, per recorded owner. An owner recorded here
+    but not installed on this machine (``cutan`` absent) is not staleness — it is
+    a machine that cannot render that kind, which the skip names."""
+    installed = _installed_entity_kinds()
+    missing = sorted(set(RECORDED_AN_ENTITY_KINDS) - set(installed))
+    for owner in set(RECORDED_AN_ENTITY_KINDS) & set(installed):
+        assert RECORDED_AN_ENTITY_KINDS[owner] == frozenset(installed[owner]), (
+            f"tests/data/an_camera_moves.json is stale for genre {owner!r}; "
+            "regenerate it (see _refresh_snapshot in this file)."
+        )
+    if missing:
+        pytest.skip(f"genre(s) {missing} are recorded but not installed here")
 
 
 def test_every_entity_kind_the_scene_names_is_one_an_registers():
-    """CI's guard (no ``an`` there): the kinds the synthesized scene emits are in
-    the recording, and the scene emits no kind the renderer does not declare."""
-    assert set(AN_ENTITY_KINDS) <= RECORDED_AN_ENTITY_KINDS, (
-        f"the scene names {sorted(set(AN_ENTITY_KINDS) - RECORDED_AN_ENTITY_KINDS)}, "
-        "which `an` does not register (once its genres are loaded)"
+    """CI's guard (no ``an`` there): every kind the synthesized scene emits has a
+    recorded owner genre, and the scene emits no kind the renderer does not declare."""
+    unowned = [k for k in AN_ENTITY_KINDS if _owner_of(k) is None]
+    assert not unowned, (
+        f"the scene names {unowned}, which no recorded `an` genre registers"
     )
-    import re
-
     md = _scene_md("static", characters=("alice",), environment="park")
     assert set(re.findall(r"kind: (\w+)", md)) == set(AN_ENTITY_KINDS)
 
@@ -374,6 +396,15 @@ def _assert_validates_as_rendered(md: str, tmp_path) -> None:
     a missing asset is a warning, and these scenes name no real assets."""
     from an.orchestrate import validate_project
 
+    registered = {k for ks in _installed_entity_kinds().values() for k in ks}
+    absent = sorted(
+        set(re.findall(r"kind: (\w+)", md)) & set(AN_ENTITY_KINDS) - registered
+    )
+    if absent:  # a supported machine that cannot animate these (muvid#306)
+        pytest.skip(
+            f"{absent} need genre(s) {[_owner_of(k) for k in absent]}, not installed "
+            "(`pip install 'an[cutout]'`)"
+        )
     (tmp_path / "scene.md").write_text(md, encoding="utf-8")
     report = validate_project(tmp_path)
     errors = [f for f in report.findings if f.severity == "error"]
@@ -391,15 +422,16 @@ def _refresh_snapshot() -> None:  # pragma: no cover - a maintenance helper
     """
     from importlib.metadata import version
 
-    import an.genres
-    from an.genres.registry import entity_kind_names
     from an.ir.camera import CAMERA_MOVES
 
-    an.genres.load()  # entity kinds are genre-scoped (muvid#277)
     doc = dict(SNAPSHOT)
     doc["recorded_from_an_version"] = version("an")
     doc["moves"] = sorted(CAMERA_MOVES)
-    doc["entity_kinds"] = sorted(entity_kind_names())
+    # genre-scoped and owned (muvid#277): record only the owners the scene relies
+    # on, so a third-party genre installed on the recording machine stays out
+    installed = _installed_entity_kinds()
+    owners = {o for o, ks in installed.items() if set(ks) & set(AN_ENTITY_KINDS)}
+    doc["entity_kinds"] = {o: installed[o] for o in sorted(owners)}
     SNAPSHOT_PATH.write_text(json.dumps(doc, indent=2) + "\n")
 
 
