@@ -457,11 +457,21 @@ def composite_lane(tensor, weights: Mapping[str, float], clip_id: str) -> np.nda
     g, total = _composite_rows(tensor, weights, [clip_id])
     if total <= 0:
         return np.full(tensor.n, np.nan)
-    measured = (
-        tensor.M[tensor.clip_index(clip_id)].astype(float)
-        @ _weight_vector(tensor, weights)
-    ) > 0
-    return np.where(measured, g[0], np.nan)
+    return np.where(_measured_rows(tensor, weights, [clip_id])[0], g[0], np.nan)
+
+
+def _measured_rows(
+    tensor, weights: Mapping[str, float], clip_ids: Sequence[str]
+) -> np.ndarray:
+    """``measured[clip, frame]``: some WEIGHTED metric was measured there, so the
+    composite is a score and not :func:`_composite_rows`'s 0 for "nothing to go on"
+    (muvid#184, muvid#294). False for a clip absent from the tensor."""
+    w = _weight_vector(tensor, weights)
+    out = np.zeros((len(clip_ids), tensor.n), dtype=bool)
+    for ai, cid in enumerate(clip_ids):
+        if cid in tensor.clip_ids:
+            out[ai] = (tensor.M[tensor.clip_index(cid)].astype(float) @ w) > 0
+    return out
 
 
 #: Reward-seconds per second charged to a clip the aligner will not vouch for. The
@@ -790,13 +800,17 @@ def selection_margin(
     *,
     weights: Mapping[str, float] | None = None,
 ) -> np.ndarray:
-    """Per-frame ``best_composite − 2nd_best_composite`` over clips COVERING that frame.
+    """Per-frame ``best_composite − 2nd_best_composite`` over clips COVERING that frame
+    and MEASURED there.
 
     A LOCAL "where a human should decide" proxy (small margin = a toss-up), distinct from the
-    DP's global path optimality. ``NaN`` where fewer than 2 clips cover the frame.
+    DP's global path optimality. ``NaN`` where fewer than 2 covering clips were measured:
+    an unmeasured clip's composite is the DP's 0, not a score, so two unmeasured clips
+    are not a toss-up, and one measured beside one unmeasured is not a lead (muvid#294).
     """
     aligns = list(alignments)
-    g, W = _composite(tensor, weights or DEFAULT_WEIGHTS, aligns)
+    weights = weights or DEFAULT_WEIGHTS
+    g, W = _composite(tensor, weights, aligns)
     n = tensor.n
     hop = tensor.hop_s
     out = np.full(n, np.nan, dtype=np.float32)
@@ -806,6 +820,7 @@ def selection_margin(
     covered = np.zeros((len(aligns), n), dtype=bool)
     for ai, a in enumerate(aligns):
         covered[ai] = (times >= a.coverage[0] - _EPS) & (times < a.coverage[1] + _EPS)
+    covered &= _measured_rows(tensor, weights, [a.clip_id for a in aligns])
     for k in range(n):
         vals = g[covered[:, k], k]
         if vals.size >= 2:
