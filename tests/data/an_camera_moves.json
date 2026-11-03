@@ -1,10 +1,12 @@
 {
-  "_README": "A recorded snapshot of `an.ir.camera.CAMERA_MOVES` \u2014 the closed set of camera moves `an` implements. muvid does NOT depend on `an` (soft import, no extra, none installed in CI), so without this file the only guard against muvid/renderers/animation.AN_CAMERA_MOVE_PHRASES drifting out of `an`'s vocabulary skips on every CI run \u2014 which is muvid#44's exact failure class, un-guarded. Same pattern as reelee-web's schemas/destructive-tools.json. Refresh with: python -m tests.refresh_an_camera_moves (see tests/test_animation_camera.py).",
+  "_README": "A recorded snapshot of `an.ir.camera.CAMERA_MOVES` \u2014 the closed set of camera moves `an` implements. muvid does NOT depend on `an` (soft import, no extra, none installed in CI), so without this file the only guard against muvid/renderers/animation.AN_CAMERA_MOVE_PHRASES drifting out of `an`'s vocabulary skips on every CI run \u2014 which is muvid#44's exact failure class, un-guarded. Same pattern as reelee-web's schemas/destructive-tools.json. Refresh with: python -c \"import tests.test_animation_camera as t; t._refresh_snapshot()\" (never hand-edit). Since muvid#277 it also records, per owner genre, the entity kinds the synthesized scene.md names: they are registered only once `an.genres.load()` has run, and `character` belongs to the `cutout_animation` genre of the separate `cutan` distribution (`an[cutout]`), not to `an`.",
   "source": "an.ir.camera.CAMERA_MOVES",
-  "recorded_from_an_version": "0.1.66",
+  "recorded_from_an_version": "0.1.233",
   "min_an_version": "0.1.65",
   "min_an_version_note": "pan_left/pan_right/tilt_up/tilt_down arrived with an#109 (commit 061a155f, pyproject 0.1.64 at that commit, released as 0.1.65). At 0.1.64 and below `an` refuses them at validate and at compile.",
   "moves": [
+    "dolly_in",
+    "dolly_out",
     "hold",
     "pan_left",
     "pan_right",
@@ -14,5 +16,15 @@
     "tilt_up",
     "zoom_in",
     "zoom_out"
-  ]
+  ],
+  "entity_kinds": {
+    "an": [
+      "environment",
+      "prop",
+      "voice"
+    ],
+    "cutout_animation": [
+      "character"
+    ]
+  }
 }
