@@ -2181,6 +2181,9 @@ LOOKS_EFFECTS_NOT_OFFERED = {
     "`psfile=`, which reads one. Never allow it by name",
     "halation": "compiles to split/blend with pad labels, which the "
     "one-linear-chain rule refuses",
+    "ripple": "compiles to split/blend with pad labels around a `geq` (looks "
+    "0.0.38), which the one-linear-chain rule refuses; `geq` is a per-pixel "
+    "expression, not yet costed in the memory budget (muvid#302)",
     "gate_weave": "compiles to `crop=...:exact=1`, an option the geometry table "
     "does not classify, and to `setsar`, which is not offered; its "
     "`scale=w=iw+4` is a size expression the frame bound refuses besides",
