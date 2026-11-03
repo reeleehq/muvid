@@ -50,15 +50,16 @@ caller gives it a weight (`weights={"my_metric": 0.3}`) — registering changes 
 
 ### Functions
 
-| [`artifact`](#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.                                              |
-|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
-| [`default_metrics`](#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order.                                   |
-| [`metrics_of_tier`](#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                                                             |
-| [`metrics_reading`](#muvid.footage.scoring.registry.metrics_reading)(input_name)                | Every registered metric measured on `input_name` ([`Scorer.inputs`](#muvid.footage.scoring.registry.Scorer.inputs)). |
-| [`register_artifact`](#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.                                            |
-| [`register_scorer`](#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                                                      |
-| [`scorers`](#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.                                         |
-| [`unregister_scorer`](#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                                                          |
+| [`artifact`](#muvid.footage.scoring.registry.artifact)(name)                             | The registered artifact `name`; `KeyError` names the registered ones.                                                                                       |
+|---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`default_metrics`](#muvid.footage.scoring.registry.default_metrics)(\*[, include_lipsync])     | The metric axis order: every registered scorer's metrics, in registration order.                                                                            |
+| [`metric_words`](#muvid.footage.scoring.registry.metric_words)()                             | `{metric: {"title": ..., "description": ...}}` for every registered metric that declares either (muvid#291) — the words a screen shows instead of the name. |
+| [`metrics_of_tier`](#muvid.footage.scoring.registry.metrics_of_tier)(tier)                      | Every metric a tier's scorers produce.                                                                                                                      |
+| [`metrics_reading`](#muvid.footage.scoring.registry.metrics_reading)(input_name)                | Every registered metric measured on `input_name` ([`Scorer.inputs`](#muvid.footage.scoring.registry.Scorer.inputs)).                                          |
+| [`register_artifact`](#muvid.footage.scoring.registry.register_artifact)(artifact, \*[, replace]) | Add a shared master artifact; a taken name is refused unless `replace`.                                                                                     |
+| [`register_scorer`](#muvid.footage.scoring.registry.register_scorer)(scorer, \*[, replace])     | Add `scorer`.                                                                                                                                               |
+| [`scorers`](#muvid.footage.scoring.registry.scorers)(\*[, include_lipsync])             | Registered scorers in registration order; the opt-in tier only when asked.                                                                                  |
+| [`unregister_scorer`](#muvid.footage.scoring.registry.unregister_scorer)(name)                    | Remove a scorer (tests, plugin teardown).                                                                                                                   |
 
 ### Classes
 
@@ -162,7 +163,7 @@ From the estimator’s `mixing.audio.BeatGrid`.
 * **Return type:**
   [`MasterBeats`](#muvid.footage.scoring.registry.MasterBeats)
 
-### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=(), inputs=dict())
+### *class* muvid.footage.scoring.registry.Scorer(name, metrics, run, needs_frames=True, gated=True, tier='core', available=None, needs=(), inputs=dict(), titles=dict(), descriptions=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -173,6 +174,13 @@ One row of the registry. `run(ctx) -> tracks` is the whole behaviour.
 `() -> (ok, reason)`; `None` means always available. ENFORCED by the
 orchestrator: an unavailable scorer does not run and its reason is recorded in the
 run’s `skipped_scorers` (a missing dependency is a recorded reason, not a crash).
+
+#### descriptions *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]*
+
+what it measures, and what “unmeasured” means for it.
+
+* **Type:**
+  One line per metric
 
 #### inputs *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), ...]]*
 
@@ -192,6 +200,13 @@ The metrics of this scorer measured on `input_name`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
 
+#### titles *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]*
+
+Each metric’s name in plain words, for a screen to label it with (“Steadiness”),
+by metric (muvid#291). A metric with none is shown by its name. Words describe
+the SERVED value, which `grid.apply_norm` makes higher-is-better for every
+metric (a lower-is-better raw measure is flipped).
+
 ### muvid.footage.scoring.registry.VOCAL_STEM *= 'vocal_stem'*
 
 The master vocal stem (Demucs), the lip-sync tier’s shared artifact.
@@ -209,6 +224,14 @@ The metric axis order: every registered scorer’s metrics, in registration orde
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]
+
+### muvid.footage.scoring.registry.metric_words()
+
+`{metric: {"title": ..., "description": ...}}` for every registered metric
+that declares either (muvid#291) — the words a screen shows instead of the name.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)]]
 
 ### muvid.footage.scoring.registry.metrics_of_tier(tier)
 

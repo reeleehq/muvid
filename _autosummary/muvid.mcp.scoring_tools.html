@@ -156,13 +156,12 @@ to the stale run).</p></li>
 <li><p><strong>Bounded long-poll</strong> status so an agent needs ~1 poll, not ~15.</p></li>
 <li><p><strong>NaN never hits the wire</strong> — masked entries serialize as <code class="docutils literal notranslate"><span class="pre">null</span></code>; the <code class="docutils literal notranslate"><span class="pre">mask</span></code> array is
 authoritative.</p></li>
-<li><p>**The status without a <code class="docutils literal notranslate"><span class="pre">job_id</span></code> reads the job <code class="docutils literal notranslate"><span class="pre">score_footage</span></code> last started**, recorded
-in the project (<code class="docutils literal notranslate"><span class="pre">score_job.json</span></code>), through <code class="docutils literal notranslate"><span class="pre">nw.jobs.get_job</span></code>, which answers for an
-archived run. <code class="docutils literal notranslate"><span class="pre">list_jobs</span></code> alone stops listing a run 30 days after it ends (nw#169) and
-returns 50 jobs of every kind, so an old or busy project read “no scoring job found”
-(muvid#264). Its head is still a candidate, the newer of the two wins: it covers a
-project scored before the record existed and a job a build without it enqueued.
-nw#185 would make both the record and the scan nw’s.</p></li>
+<li><p>**The status without a <code class="docutils literal notranslate"><span class="pre">job_id</span></code> is nw’s newest scoring job**
+(<code class="docutils literal notranslate"><span class="pre">nw.jobs.latest_job(kind="footage.score")</span></code>, nw#185), live or archived. <code class="docutils literal notranslate"><span class="pre">list_jobs</span></code>
+alone stopped listing a run 30 days after it ended (nw#169) and returned 50 jobs of every
+kind, so an old or busy project read “no scoring job found” (muvid#264); muvid kept its
+own record of the last job (<code class="docutils literal notranslate"><span class="pre">score_job.json</span></code>) until nw answered it (muvid#297). A
+project’s old record is now ignored, never read.</p></li>
 </ul>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
@@ -182,7 +181,7 @@ nw#185 would make both the record and the scan nw’s.</p></li>
 <dt class="sig sig-object py" id="muvid.mcp.scoring_tools.footage_score_status">
 <span class="sig-prename descclassname"><span class="pre">muvid.mcp.scoring_tools.</span></span><span class="sig-name descname"><span class="pre">footage_score_status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_id</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">job_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wait_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/scoring_tools.html#footage_score_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.scoring_tools.footage_score_status" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.scoring_tools.footage_score_status'">¶</a></dt>
 <dd><p>The scoring job’s status (bounded long-poll). Free.</p>
-<p>Pass the <code class="docutils literal notranslate"><span class="pre">job_id</span></code> from <code class="docutils literal notranslate"><span class="pre">score_footage</span></code> (or omit for the one it last started — which
+<p>Pass the <code class="docutils literal notranslate"><span class="pre">job_id</span></code> from <code class="docutils literal notranslate"><span class="pre">score_footage</span></code> (or omit for the newest scoring job — which
 may predate a later <code class="docutils literal notranslate"><span class="pre">set_song</span></code>, which drops the scores that job made).
 With <code class="docutils literal notranslate"><span class="pre">wait_s</span></code> &gt; 0 this blocks up to ~``wait_s`` seconds (capped), returning early on
 a terminal state — so an agent needs ~1 poll, not many.</p>
@@ -246,7 +245,7 @@ off-prod).</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=d4a5b4c2"></script>
+<script src="../_static/documentation_options.js?v=e35d3ea8"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

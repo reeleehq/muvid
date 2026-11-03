@@ -41,6 +41,7 @@ numpy only (no cv2/torch): registered LAZILY in [`muvid.footage.strategy`](muvid
 | [`DEFAULT_WEIGHTS`](#muvid.footage.select_score.DEFAULT_WEIGHTS)           | Default per-metric weights.                                                                                                                                                                                                                                                                          |
 |----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`PRESETS`](#muvid.footage.select_score.PRESETS)                   | Named presets — a filled-in config.                                                                                                                                                                                                                                                                  |
+| [`PRESET_WORDS`](#muvid.footage.select_score.PRESET_WORDS)              | Each preset in plain words — what `strategies()` publishes so a screen can offer a feel without hard-coding the names (muvid#295).                                                                                                                                                                   |
 | [`UNVOUCHED_REWARD_PENALTY`](#muvid.footage.select_score.UNVOUCHED_REWARD_PENALTY)  | Reward-seconds per second charged to a clip the aligner will not vouch for.                                                                                                                                                                                                                          |
 | [`UNVERIFIED_REWARD_PENALTY`](#muvid.footage.select_score.UNVERIFIED_REWARD_PENALTY) | The charge per second of a clip's UNVERIFIED stretch — footage its measured spans say does not match the song there (muvid#16 slice 2): above the composite's whole range, so a confirmed clip always outranks it on any metric, and below the unvouched charge by more than that range (see above). |
 | [`FALLBACK_CAUSES`](#muvid.footage.select_score.FALLBACK_CAUSES)           | Why the `weighted` DP handed the edit to `best_confidence`, in words a person reads (`explain` says them) — every `cause` a fallback can carry, kept beside the code that emits them so a new cause is worded where it is written (muvid#217).                                                       |
@@ -82,6 +83,11 @@ it emits and fails on one that is in neither this table nor [`RUN_CAUSES`](#muvi
 
 Named presets — a filled-in config. “energetic” = many short cuts; “contemplative” = long
 dwells, few cuts.
+
+### muvid.footage.select_score.PRESET_WORDS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]]* *= {'contemplative': {'description': 'Long, sharp shots and few cuts, favouring large, central faces.', 'title': 'Contemplative'}, 'energetic': {'description': 'Many short shots, favouring footage that moves with the music.', 'title': 'Energetic'}}*
+
+Each preset in plain words — what `strategies()` publishes so a screen can offer a
+feel without hard-coding the names (muvid#295). Keys are exactly [`PRESETS`](#muvid.footage.select_score.PRESETS)’.
 
 ### muvid.footage.select_score.RUN_CAUSES *= {'dwell_relaxed': 'no cut could keep every shot at least the minimum length, so that minimum was dropped to find one', 'optimal': ''}*
 
