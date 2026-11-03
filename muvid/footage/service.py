@@ -179,6 +179,7 @@ def set_song(
     ext: str = "",
     filename: str = "",
     duration_s: Optional[float] = None,
+    notice: str = "",
 ) -> dict:
     """Set the project's song — the clean master every video is aligned to and whose
     audio the finished video uses. Replaces any previous song.
@@ -207,6 +208,7 @@ def set_song(
         ext=_ext_of(ext, filename, src),
         name=Path(filename).name if filename else "",
         duration_s=dur,
+        notice=notice,
     )
     _warm(song_analysis, fp)  # the beat and sections, while the person waits anyway
     return {
@@ -4997,7 +4999,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "set_song",
         "Set the song",
         "destroy",
-        hide=("duration_s", "ext"),
+        hide=("duration_s", "ext", "notice"),
         host_params=("path", "filename"),
         max_upload_bytes=SONG_MAX_BYTES,
     ),
