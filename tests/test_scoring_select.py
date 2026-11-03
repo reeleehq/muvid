@@ -342,6 +342,27 @@ def test_selection_margin_shape_and_nan_where_single_cover():
     assert not np.isnan(margin[35])  # ~3.5s: both cover → a real margin ≈ 0.3
 
 
+def test_selection_margin_counts_only_clips_measured_at_the_frame():
+    """muvid#294: an unmeasured frame is the DP's 0, not a score. Two covering clips
+    both unmeasured are not a toss-up (margin 0), and one measured beside one
+    unmeasured is not a lead (margin = the measured score): both are NaN."""
+    from muvid.footage.select_score import selection_margin
+
+    hop = 0.1
+    song = 6.0
+    n = int(np.ceil(song / hop)) + 1
+    t = np.arange(n) * hop
+    aligns = [_align("A", 0.0, 6.0, song), _align("B", 0.0, 6.0, song)]
+    # [0,2): both unmeasured; [2,4): A only; [4,6]: both measured, A 0.7 vs B 0.4
+    a = np.where(t >= 2, 0.7, np.nan)
+    b = np.where(t >= 4, 0.4, np.nan)
+    tensor = make_tensor(aligns, {"A": a, "B": b}, hop=hop, n=n)
+    margin = selection_margin(aligns, tensor, weights={"m": 1.0})
+    assert np.isnan(margin[10])  # 1.0 s: neither measured
+    assert np.isnan(margin[30])  # 3.0 s: only A measured
+    assert margin[50] == pytest.approx(0.3, abs=1e-6)  # 5.0 s: a real margin
+
+
 def test_determinism_same_input_same_output():
     from muvid.footage.select_score import weighted_selection
 

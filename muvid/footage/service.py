@@ -2143,7 +2143,8 @@ def scores(
     """The saved footage curves — for the lanes under each video, and for inspection.
 
     - no ``clip_id`` → a SUMMARY (metrics, per-clip coverage, beats, tempo, the decimated
-      ``selection_margin``, grid geometry) — bounded, safe as the default;
+      ``selection_margin`` — ``null`` where fewer than two covering videos were
+      measured — grid geometry) — bounded, safe as the default;
     - ``clip_id`` → that clip's curves (values as ``null``-masked arrays, decimated to
       ``max_points`` per metric) and its ``composite`` lane: the weighted blend the
       ``weighted`` strategy ranks by, ``null`` where no metric could be measured.
