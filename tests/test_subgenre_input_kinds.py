@@ -120,3 +120,35 @@ def test_a_misdeclared_kind_is_a_clean_refusal_before_any_folder(monkeypatch, tm
     with use_email("u@x.com"), pytest.raises(ToolError, match="misdeclared"):
         st.render_subgenre("p", subgenre="smelly", inputs={"song": "https://x/s"})
     assert not proj.renders_dir.exists() or not any(proj.renders_dir.iterdir())
+
+
+def test_the_conformance_kit_reports_a_misdeclared_kind_at_any_level():
+    from muvid.subgenres._schema import media_kind_problems
+
+    schema = _schema(
+        shots={
+            "type": "array",
+            "x-muvid-kind": "image",
+            "items": {"x-muvid-kind": "smell"},
+        },
+        flag=True,  # a boolean subschema is legal JSON Schema and declares nothing
+    )
+    problems = media_kind_problems(schema)
+    assert len(problems) == 1 and "smell" in problems[0]
+    assert declared_media_kind("flag", schema) is None
+
+
+def test_check_subgenre_conformance_carries_it(tmp_path):
+    from muvid.subgenres import Subgenre
+    from muvid.subgenres.testing import check_subgenre_conformance
+
+    bad = Subgenre(
+        slug="smelly",
+        title="Smelly",
+        description="a test plugin",
+        render="nowhere:render",
+        api_versions=("1",),
+        inputs={"type": "object", "properties": {"song": {"x-muvid-kind": "smell"}}},
+    )
+    report = check_subgenre_conformance(bad, workdir=tmp_path, render=False)
+    assert any("smell" in f for f in report.failures)

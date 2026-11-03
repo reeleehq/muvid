@@ -143,7 +143,9 @@ _MEDIA_TOPS = MEDIA_KINDS[:3]
 def _declarations(schema: Mapping[str, Any], name: str) -> "list[Mapping[str, Any]]":
     """Where input ``name`` may declare its kind: its property, then (for a list input)
     its ``items`` — a kind on the array itself means "every item is this"."""
-    prop = (schema.get("properties") or {}).get(name) or {}
+    prop = (schema.get("properties") or {}).get(name)
+    if not isinstance(prop, Mapping):  # absent, or a boolean subschema (`true`)
+        return []
     items = prop.get("items") if prop.get("type") == "array" else None
     return [prop, *([items] if isinstance(items, Mapping) else [])]
 
@@ -186,8 +188,10 @@ def media_kind_problems(schema: Mapping[str, Any]) -> "list[str]":
     check, so a plugin author learns it before a remote caller does)."""
     out = []
     for name in schema.get("properties") or {}:
-        try:
-            declared_media_kind(name, schema)
-        except SchemaError as e:
-            out.extend(e.errors)
+        for decl in _declarations(schema, name):  # every level, not only the first
+            kind = decl.get("x-muvid-kind")
+            if kind is not None and kind not in MEDIA_KINDS:
+                out.append(
+                    f"input {name!r} declares x-muvid-kind {kind!r}; one of {MEDIA_KINDS}"
+                )
     return out
