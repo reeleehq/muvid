@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import time
 import shutil
 import subprocess
 
@@ -233,9 +234,15 @@ def test_status_without_job_id_reads_the_newest_scoring_job(tmp_path, monkeypatc
         assert finished(first) == "succeeded"
         newer = st.score_footage("p", hop_s=0.2)["job_id"]
         assert newer != first and finished(newer) == "succeeded"
-        nw_jobs.enqueue(
+        other = nw_jobs.enqueue(
             proj, "other.kind", {}, dispatch={"other.kind": lambda *a, **k: {}}
-        )  # a newer job of another kind is not the scoring job
+        ).job_id  # a newer job of another kind is not the scoring job
+        # let it settle first: on Windows, reading a job record nw is replacing that
+        # instant is a sharing violation nw does not retry yet (reeleehq/nw#225)
+        deadline = time.monotonic() + 25
+        while nw_jobs.get_job(proj, other).status not in {"succeeded", "failed"}:
+            assert time.monotonic() < deadline
+            time.sleep(0.1)
         assert st.footage_score_status("p")["job_id"] == newer
         # an old build's record is ignored, even naming the older run
         (proj.root / "score_job.json").write_text(json.dumps({"job_id": first}))
