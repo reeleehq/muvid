@@ -26,7 +26,6 @@ This module imports ``nw`` (the ``mcp`` extra); ``import muvid`` does not import
 
 from __future__ import annotations
 
-import json
 import shutil
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -39,10 +38,11 @@ from muvid.catalog import HostArtifactCatalog, hash_file
 from muvid.footage.workspace import (
     DEFAULT_CANVAS_NAME,
     MusicVideoFootageProject,
-    atomic_write_text,
+    file_lock,
     fresh_output,
     read_json_dict,
     replace_file,
+    update_json_record,
 )
 from muvid.paths import safe_component
 
@@ -196,9 +196,34 @@ class LyricVideoProduction:
     def manifest(self) -> dict:
         return read_json_dict(self.manifest_path) or {"sources": [], "renders": []}
 
-    def _write_manifest(self, m: dict) -> None:
+    def update_manifest(self, change):
+        """Apply ``change(m)`` to the manifest under its lock and write it if it
+        changed; return what ``change`` returned (muvid#280: the read-modify-writes
+        below lost each other's updates without it). Strict, as
+        :func:`~muvid.footage.workspace.update_json_record` is: a manifest that is
+        not valid JSON raises rather than being overwritten.
+        """
+        from dol.atomic import InvalidJSONError
+
         self.root.mkdir(parents=True, exist_ok=True)
-        atomic_write_text(self.manifest_path, json.dumps(m, indent=2))
+        try:
+            return update_json_record(
+                self.manifest_path,
+                change,
+                default=lambda: {"sources": [], "renders": []},
+                lock=self.manifest_lock(),
+            )
+        except InvalidJSONError as e:
+            raise nw.GenreOpRefused(
+                "this lyric video's manifest.json is not valid JSON, so nothing can "
+                "be recorded in it without losing what it held; restore it from a "
+                "backup"
+            ) from e
+
+    def manifest_lock(self):
+        """Serialise a read-modify-write of ``manifest.json`` (:meth:`update_manifest`
+        takes it; nothing done under it takes another lock)."""
+        return file_lock(self.root / "locks" / "manifest.lock")
 
     def _register(self, path: Path, *, kind: str, **meta) -> Optional[str]:
         if self.media_catalog is None:
@@ -211,8 +236,8 @@ class LyricVideoProduction:
         src = Path(src)
         dest = self.root / "song" / f"song{src.suffix.lower()}"
         digest = hash_file(src)
-        m = self.manifest()
-        if (m.get("song") or {}).get("hash") != digest or not dest.exists():
+        stored = (self.manifest().get("song") or {}).get("hash")
+        if stored != digest or not dest.exists():
             for old in (self.root / "song").glob("song.*"):
                 old.unlink()
             replace_file(src, dest)
@@ -229,8 +254,7 @@ class LyricVideoProduction:
                 dest, kind="audio", artifact_id=digest, duration_s=record["duration"]
             ),
         )
-        m["song"] = record
-        self._write_manifest(m)
+        self.update_manifest(lambda m: m.update(song=record))
         return record
 
     def add_source(self, src, *, role: str, name: str = "") -> dict:
@@ -245,10 +269,12 @@ class LyricVideoProduction:
         record = {"file": fname, "role": role, "hash": hash_file(dest)}
         if dest.suffix.lower() == ".json":
             _set_or_drop(record, "artifact_id", self._register(dest, kind="json"))
-        m = self.manifest()
-        m["sources"] = [s for s in m.get("sources", []) if s.get("file") != fname]
-        m["sources"].append(record)
-        self._write_manifest(m)
+
+        def change(m):
+            rows = [s for s in m.get("sources", []) if s.get("file") != fname]
+            m["sources"] = [*rows, record]
+
+        self.update_manifest(change)
         return record
 
     def add_render(self, src, *, render_id: str, label: str = "") -> dict:
@@ -272,20 +298,18 @@ class LyricVideoProduction:
                 dest, kind="video", artifact_id=digest, duration_s=record["duration"]
             ),
         )
-        m = self.manifest()
-        rows = [r for r in m.get("renders", []) if r.get("render_id") != rid]
-        # Keep the position a re-import finds it at; a new render goes last.
-        position = next(
-            (
-                i
-                for i, r in enumerate(m.get("renders", []))
-                if r.get("render_id") == rid
-            ),
-            len(rows),
-        )
-        rows.insert(position, record)
-        m["renders"] = rows
-        self._write_manifest(m)
+
+        def change(m):
+            old = m.get("renders", [])
+            # Keep the position a re-import finds it at; a new render goes last.
+            at = next(
+                (i for i, r in enumerate(old) if r.get("render_id") == rid), len(old)
+            )
+            rows = [r for r in old if r.get("render_id") != rid]
+            rows.insert(at, record)
+            m["renders"] = rows
+
+        self.update_manifest(change)
         return record
 
     def refresh_cover(self) -> Optional[str]:
@@ -299,11 +323,9 @@ class LyricVideoProduction:
         with fresh_output(frame) as tmp:
             grab_cover_frame(self.root / renders[0]["file"], tmp)
         artifact_id = self._register(frame, kind="image")
-        m = self.manifest()
         cover = {"file": frame.name, "taken_from": f"render:{renders[0]['render_id']}"}
         _set_or_drop(cover, "artifact_id", artifact_id)
-        m["cover"] = cover
-        self._write_manifest(m)
+        self.update_manifest(lambda m: m.update(cover=cover))
         return artifact_id
 
     # -- reads ----------------------------------------------------------------

@@ -201,7 +201,8 @@ def file_lock(path):
     and the body still runs when the folder cannot be locked at all (read-only, a
     filesystem without lock support). ``path`` names the lock file itself, as before,
     so every existing lock file keeps its name. Not re-entrant: taking it again on the
-    same path from the same thread waits forever.
+    same path from the same thread raises ``RuntimeError`` (dol>=0.3.109) rather than
+    waiting on itself.
     """
     from dol.atomic import file_lock as _file_lock
 
@@ -260,6 +261,8 @@ class MusicVideoFootageProject:
             }
 
     def _write_manifest(self, m: dict) -> None:
+        """Overwrite the manifest, unlocked — a test fixture's setup step only; every
+        writer of a live project goes through :meth:`update_manifest`."""
         self.root.mkdir(parents=True, exist_ok=True)
         m.setdefault("created", time.time())
         atomic_write_text(self._manifest_path(), json.dumps(m, indent=2))
@@ -280,30 +283,38 @@ class MusicVideoFootageProject:
     def update_manifest(self, change):
         """Re-read the manifest under :meth:`manifest_lock`, apply ``change(m)`` (which
         mutates ``m`` in place and may raise to write nothing), and write it if it
-        changed; return what ``change`` returned.
+        changed; return what ``change`` returned (:func:`update_json_record`).
 
         The read is STRICT, unlike :meth:`manifest`'s: only an absent manifest reads as
         the defaults. A transient read failure written back as "defaults plus this
         change" would drop every clip. And a change that changes nothing writes
         nothing, so a no-op neither creates a manifest nor moves its mtime.
         """
-        with self.manifest_lock():
-            path = self._manifest_path()
-            try:
-                m = json.loads(path.read_text()) if path.exists() else self.manifest()
-            except ValueError as e:  # a manifest torn before writes were atomic
-                from muvid.footage.errors import FootageError
+        from dol.atomic import InvalidJSONError
 
-                raise FootageError(
-                    "this project's manifest.json is not valid JSON, so nothing can be "
-                    "recorded in it without losing what it held; restore it from a "
-                    "backup"
-                ) from e
-            before = json.dumps(m, sort_keys=True)
+        def stamped(m):  # "created" rides the first write, as update_json sees one
+            before = _record_dumps(m)
             out = change(m)
-            if json.dumps(m, sort_keys=True) != before:
-                self._write_manifest(m)
+            if _record_dumps(m) != before:
+                m.setdefault("created", time.time())
             return out
+
+        self.root.mkdir(parents=True, exist_ok=True)
+        try:
+            return update_json_record(
+                self._manifest_path(),
+                stamped,
+                default=self.manifest,
+                lock=self.manifest_lock(),
+            )
+        except InvalidJSONError as e:  # a manifest torn before writes were atomic
+            from muvid.footage.errors import FootageError
+
+            raise FootageError(
+                "this project's manifest.json is not valid JSON, so nothing can be "
+                "recorded in it without losing what it held; restore it from a "
+                "backup"
+            ) from e
 
     def canvas(self) -> tuple[int, int]:
         return CANVASES.get(
@@ -847,15 +858,20 @@ class MusicVideoFootageProject:
         for _, name, meta, meta_path in rows:
             if name in assigned:
                 continue
-            meta["ref_n"] = nxt
             try:
-                atomic_write_text(meta_path, json.dumps(meta, indent=2))
-            except OSError:
-                # A read-only or racing write must not break listing; the ref is
+                # Under the meta's lock, so a concurrent organise is not lost; and a
+                # ref another writer assigned meanwhile wins (refs never renumber).
+                n = update_json_record(
+                    meta_path,
+                    lambda m, n=nxt: _assign_ref(m, n),
+                    default=no_record,  # never re-create a removed render's record
+                )
+            except (OSError, ValueError):
+                # A read-only or unreadable meta must not break listing; the ref is
                 # still correct for THIS call, it just isn't durable yet.
-                pass
-            assigned[name] = nxt
-            nxt += 1
+                n = nxt
+            assigned[name] = n
+            nxt = max(nxt, n) + 1
         return assigned
 
     def next_render_ref(self) -> int:
@@ -887,6 +903,14 @@ class MusicVideoFootageProject:
             if n is not None:
                 row.setdefault("ref_n", n)
         return rows
+
+
+def _assign_ref(meta: dict, n: int) -> int:
+    """The render's ``ref_n``: the one it holds when that is an int (assigned once,
+    never renumbered — another writer may have got there first), else ``n``."""
+    if not isinstance(meta.get("ref_n"), int):
+        meta["ref_n"] = n
+    return meta["ref_n"]
 
 
 def _set_or_drop(d: dict, key: str, value) -> None:
@@ -996,6 +1020,61 @@ def atomic_write_text(path: Path, text: str) -> None:
     way it gets there.
     """
     atomic_write_bytes(path, text.encode("utf-8"))
+
+
+def update_json_record(path, change, *, default=dict, lock=None):
+    """Re-read the JSON record at ``path`` under its lock, apply ``change(record)``
+    (which mutates it in place and may raise to write nothing), and write it back only
+    if it changed; return what ``change`` returned.
+
+    The ONE locked read-modify-write of a muvid record (muvid#254, muvid#280), over the
+    fleet's :func:`dol.atomic.update_json`: the lock is ``lock`` (a context manager
+    yielding whether it is held, e.g. a project's ``manifest_lock()``; default
+    :func:`file_lock` of ``<path>.lock`` beside it), the write is dol's
+    :func:`~dol.atomic.atomic_write`, fsync'd and :data:`RECORD_PERMS` (as
+    :func:`atomic_write_bytes` writes; dol's also retries a Windows reader holding the
+    file), the format is ``indent=2`` as every record already is. The read is STRICT: only an absent file starts from
+    ``default()``; a file that is not valid JSON raises
+    :class:`dol.atomic.InvalidJSONError` (a ``ValueError``), because writing "default
+    plus this change" over a record that could not be read destroys what it held. A
+    change that changes nothing writes nothing — no file created, no mtime moved.
+
+    Do the slow work (copy, probe, hash) OUTSIDE, then call this: the lock is held
+    only for the read, the change and the write. ``path``'s folder must exist.
+    """
+    from functools import partial
+
+    from dol.atomic import atomic_write, update_json
+
+    path = Path(path)
+    if lock is None:
+        lock = file_lock(path.with_name(path.name + LOCK_SUFFIX))
+    return update_json(
+        path,
+        change,
+        default=default,
+        dumps=_record_dumps,
+        lock=lock,
+        warn_unlocked=False,  # file_lock warns, naming the lock
+        write=partial(atomic_write, fsync=True, perms=RECORD_PERMS),
+    )
+
+
+#: The mode of every record :func:`update_json_record` writes: owner-only, as
+#: :func:`atomic_write_bytes` (``mkstemp``) always made them.
+RECORD_PERMS = 0o600
+
+
+def _record_dumps(record) -> str:
+    """A record's on-disk form — and what "it changed" is measured on."""
+    return json.dumps(record, indent=2)
+
+
+def no_record():
+    """The ``default`` of an :func:`update_json_record` that must not CREATE its record
+    (a render's ``meta.json``): an absent one raises ``FileNotFoundError``, which the
+    caller turns into its own "no such thing"."""
+    raise FileNotFoundError("the record to update does not exist")
 
 
 def read_json_dict(path) -> "dict | None":

@@ -546,8 +546,6 @@ def organise(
     (no existence leaks), ``ValueError`` when the request itself is refused.
     A ``.thumbnail`` target is refused — the poster has no name of its own.
     """
-    import json
-
     from nw.delivery import check_title
 
     if title is None and tags is None and note is None:
@@ -602,38 +600,42 @@ def organise(
     if tags is not None and not isinstance(tags, (list, tuple)):
         raise ValueError("tags must be a list of strings (or [] to clear)")
 
-    meta = _read_render_meta(proj, render_id)
-    org = meta.get("organise") if isinstance(meta.get("organise"), dict) else {}
-    org = dict(org)
-    if title is not None:
-        if title == "":
-            org.pop("title", None)
-        else:
-            org["title"] = new_title
-    if tags is not None:
-        if len(tags) == 0:
-            org.pop("tags", None)
-        else:
-            org["tags"] = [str(t) for t in tags]
-    if note is not None:
-        if note == "":
-            org.pop("note", None)
-        else:
-            org["note"] = str(note)
-    if org:
-        meta["organise"] = org
-    else:
-        meta.pop("organise", None)
+    wanted = {
+        "title": new_title if title else title,  # "" clears, None leaves
+        "tags": None if tags is None else [str(t) for t in tags],
+        "note": None if note is None else str(note),
+    }
 
-    # Atomic replace: meta.json carries PIPELINE-critical keys (ref_n, edl,
-    # download, ...) — a truncate-then-write interrupted mid-write would
-    # corrupt refs and status for this render, so never write in place. The
-    # dance is the workspace's (muvid#17 item 4): this was its second copy.
-    from muvid.footage.workspace import atomic_write_text
+    def change(meta):
+        org = meta.get("organise")
+        org = dict(org) if isinstance(org, dict) else {}
+        for key, value in wanted.items():
+            if value is None:
+                continue  # unchanged
+            if len(value) == 0:
+                org.pop(key, None)  # "" / [] clears
+            else:
+                org[key] = value
+        if org:
+            meta["organise"] = org
+        else:
+            meta.pop("organise", None)
 
-    meta_path = proj.renders_dir / render_id / "meta.json"
-    meta_path.parent.mkdir(parents=True, exist_ok=True)
-    atomic_write_text(meta_path, json.dumps(meta, indent=2))
+    # A locked read-modify-write (muvid#280): meta.json carries PIPELINE-critical keys
+    # (ref_n, edl, download, ...) that another writer — the ref backfill of
+    # ensure_render_refs — may be setting at this moment, so it is re-read and changed
+    # under the meta's lock, and replaced atomically.
+    from muvid.footage.workspace import no_record, update_json_record
+
+    try:
+        update_json_record(
+            proj.renders_dir / render_id / "meta.json", change, default=no_record
+        )
+    except FileNotFoundError:  # a render still in flight, or one that crashed
+        raise KeyError(
+            f"render {render_id!r} has no record to organise yet; try again once "
+            "it has finished"
+        ) from None
 
     # The receipt: re-read from storage, never echo the request.
     return _deliverable(
