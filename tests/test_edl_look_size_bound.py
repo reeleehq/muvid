@@ -950,7 +950,7 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
         is not a link. `looks` emits exactly that (`gamma`'s lutrgb carries
         `pow(val/maxval\\,1.0)`), so a naive split would over-count a legitimate
         look and refuse it."""
-        from muvid.footage.edl import _look_filter_names
+        from muvid.footage.fflex import filter_names as _look_filter_names
 
         expr = "lutrgb=r='pow(val/maxval\\,1.0)':g='pow(val/maxval\\,1.0)'"
         assert _look_filter_names(expr) == ["lutrgb"]
@@ -958,7 +958,7 @@ class TestBoundingTheFrameDoesNotBoundTheMemory:
 
     def test_every_look_muvid_compiles_passes_both_caps(self):
         """The caps must not refuse the seam they exist to protect."""
-        from muvid.footage.edl import _look_filter_names
+        from muvid.footage.fflex import filter_names as _look_filter_names
         from muvid.footage.look import punch_in
 
         compiled = punch_in(canvas=self.CANVAS, fps=25, duration_s=3.0)

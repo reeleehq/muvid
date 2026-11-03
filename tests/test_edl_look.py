@@ -146,7 +146,8 @@ def test_an_escaped_bracket_inside_a_path_is_lexically_closed():
     # rather than of the whole gate since muvid#244: a lut3d file must now be a LUT
     # NAME in muvid's LUT folder (muvid#252, tests/test_look_lut.py), so the gate
     # refuses this fragment for its file, not its bracket.
-    from muvid.footage.edl import _LOOK_FORBIDDEN, _first_unescaped
+    from muvid.footage.edl import _LOOK_FORBIDDEN
+    from muvid.footage.fflex import first_unescaped as _first_unescaped
 
     look = r"lut3d=file=/luts/a\[b\].cube"
     assert _first_unescaped(look, _LOOK_FORBIDDEN) is None
@@ -159,7 +160,8 @@ def test_the_escape_rule_agrees_with_the_escaper_that_produces_it():
     # looks ever changes how it escapes, this fails here instead of at ffmpeg.
     from looks import escape_filter_value
 
-    from muvid.footage.edl import _LOOK_FORBIDDEN, _first_unescaped
+    from muvid.footage.edl import _LOOK_FORBIDDEN
+    from muvid.footage.fflex import first_unescaped as _first_unescaped
 
     for ch in _LOOK_FORBIDDEN:
         escaped = escape_filter_value(f"/luts/a{ch}b.cube")
@@ -1188,7 +1190,7 @@ def test_a_quoted_comma_is_not_a_filter_separator():
     splitter that treats every comma as a separator reads one ``crop`` as four
     filters with names like ``0)`` — and refuses a fragment muvid itself produced.
     """
-    from muvid.footage.edl import _look_filter_names
+    from muvid.footage.fflex import filter_names as _look_filter_names
 
     frag = motion(
         [(0.0, CropWindow(0.0, 0.0, 0.5, 0.5)), (2.0, CropWindow(0.5, 0.5, 0.5, 0.5))],
@@ -1395,7 +1397,7 @@ class TestTheNameResolvesTheWayFfmpegResolvesIt:
         ],
     )
     def test_it_matches(self, look, expected):
-        from muvid.footage.edl import _look_filter_names
+        from muvid.footage.fflex import filter_names as _look_filter_names
 
         assert _look_filter_names(look) == expected
 

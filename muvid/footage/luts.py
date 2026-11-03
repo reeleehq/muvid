@@ -142,15 +142,15 @@ def _checked(name: str) -> "tuple[Path, int]":
 def _lut3d_links(look: str):
     """``(link text, head, options)`` for each link of ``look``: ``head`` is the text up
     to and including the link's ``=`` (name and ``@label``) and ``options`` what ffmpeg
-    reads (:func:`muvid.footage.edl._link_options`, both escape levels resolved) — for
+    reads (:func:`muvid.footage.fflex.options`, both escape levels resolved) — for
     ``lut3d`` links only; ``(link, None, None)`` for every other link."""
-    from muvid.footage.edl import _link_options, _look_links, _split_significant
+    from muvid.footage import fflex
 
-    for link, (name, args) in zip(_split_significant(look, ","), _look_links(look)):
+    for link, (name, args) in zip(fflex.split_significant(look, ","), fflex.links(look)):
         if name != "lut3d":
             yield link, None, None
             continue
-        opts, _overflow = _link_options(args, ("file",))  # the gate refused overflow
+        opts, _overflow = fflex.options(args, ("file",))  # the gate refused overflow
         head = link[: len(link) - len(args)]
         head = head if head.endswith("=") else head + "="  # a bare `lut3d`
         yield link, head, opts
@@ -158,9 +158,9 @@ def _lut3d_links(look: str):
 
 def _value(text: str) -> str:
     """An option-level value as ffmpeg finally reads it (the second escape level)."""
-    from muvid.footage.edl import _strip_unescaped, _unquote
+    from muvid.footage import fflex
 
-    return _unquote(_strip_unescaped(text))
+    return fflex.unquote(fflex.strip_unescaped(text))
 
 
 def look_lut_names(look: "str | None") -> "list[str]":
