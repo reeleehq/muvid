@@ -146,7 +146,9 @@ def _lut3d_links(look: str):
     ``lut3d`` links only; ``(link, None, None)`` for every other link."""
     from muvid.footage import fflex
 
-    for link, (name, args) in zip(fflex.split_significant(look, ","), fflex.links(look)):
+    for link, (name, args) in zip(
+        fflex.split_significant(look, ","), fflex.links(look)
+    ):
         if name != "lut3d":
             yield link, None, None
             continue

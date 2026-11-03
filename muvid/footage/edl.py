@@ -2854,7 +2854,10 @@ def _validate_look_luts(i, look: str) -> None:
                 f"sets {extra}, which muvid does not offer (only {sorted(_LUT3D_OPTIONS)})"
             )
         text = opts.get("file")  # the last one, as ffmpeg keeps; none: the identity
-        if text is not None and lut_name(fflex.unquote(fflex.strip_unescaped(text))) is None:
+        if (
+            text is not None
+            and lut_name(fflex.unquote(fflex.strip_unescaped(text))) is None
+        ):
             refuse(f"file {text[:80]!r} is not a LUT name")
 
 
