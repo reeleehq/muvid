@@ -168,7 +168,9 @@ def declared_media_kind(name: str, schema: Mapping[str, Any]) -> "str | None":
         if kind is not None:
             if kind not in MEDIA_KINDS:
                 raise SchemaError(
-                    [f"input {name!r} declares x-muvid-kind {kind!r}; one of {MEDIA_KINDS}"]
+                    [
+                        f"input {name!r} declares x-muvid-kind {kind!r}; one of {MEDIA_KINDS}"
+                    ]
                 )
             return kind
         media = decl.get("contentMediaType")

@@ -150,7 +150,9 @@ _INPUT_KINDS = {
 }
 
 
-def _resolve_input(url: str, dest: Path, *, label: str, kind: "str | None" = None) -> Path:
+def _resolve_input(
+    url: str, dest: Path, *, label: str, kind: "str | None" = None
+) -> Path:
     """Fetch a caller-supplied media URL to ``dest`` through the one intake,
     ``_fetch.fetch_media`` (SSRF-guarded, size/time-bounded, share links normalised,
     a folder link refused). ``kind`` (``'audio'``, ``'image'``, ``'video'``) is asserted
