@@ -410,24 +410,25 @@
 </span><span id="line-212"><span class="w">    </span><span class="sd">"""The persisted score tracks — for the multichannel editor + inspection. Free.</span>
 </span><span id="line-213">
 </span><span id="line-214"><span class="sd">    - No ``clip_id`` → a SUMMARY (metrics, per-clip coverage %, beats, tempo, the decimated</span>
-</span><span id="line-215"><span class="sd">      ``selection_margin``, grid geometry) — bounded, safe as the default.</span>
-</span><span id="line-216"><span class="sd">    - ``clip_id`` → that clip's tracks (values as ``null``-masked arrays, decimated to</span>
-</span><span id="line-217"><span class="sd">      ``max_points`` per metric) plus its ``composite`` lane, for the editor's lanes.</span>
-</span><span id="line-218"><span class="sd">    - ``weights`` / ``preset`` pick the weighting the composite and ``selection_margin``</span>
-</span><span id="line-219"><span class="sd">      are computed under (the reply's ``weights`` says which applied); ``raw`` adds each</span>
-</span><span id="line-220"><span class="sd">      metric's un-normalised values.</span>
-</span><span id="line-221"><span class="sd">    """</span>
-</span><span id="line-222">    <span class="n">proj</span> <span class="o">=</span> <span class="n">_open</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-223">    <span class="k">with</span> <span class="n">_refusals</span><span class="p">():</span>
-</span><span id="line-224">        <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">scores</span><span class="p">(</span>
-</span><span id="line-225">            <span class="n">proj</span><span class="p">,</span>
-</span><span id="line-226">            <span class="n">clip_id</span><span class="o">=</span><span class="n">clip_id</span><span class="p">,</span>
-</span><span id="line-227">            <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
-</span><span id="line-228">            <span class="n">max_points</span><span class="o">=</span><span class="n">max_points</span><span class="p">,</span>
-</span><span id="line-229">            <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
-</span><span id="line-230">            <span class="n">preset</span><span class="o">=</span><span class="n">preset</span><span class="p">,</span>
-</span><span id="line-231">            <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">,</span>
-</span><span id="line-232">        <span class="p">)</span></div>
+</span><span id="line-215"><span class="sd">      ``selection_margin`` — ``null`` where fewer than two covering videos were</span>
+</span><span id="line-216"><span class="sd">      measured — grid geometry) — bounded, safe as the default.</span>
+</span><span id="line-217"><span class="sd">    - ``clip_id`` → that clip's tracks (values as ``null``-masked arrays, decimated to</span>
+</span><span id="line-218"><span class="sd">      ``max_points`` per metric) plus its ``composite`` lane, for the editor's lanes.</span>
+</span><span id="line-219"><span class="sd">    - ``weights`` / ``preset`` pick the weighting the composite and ``selection_margin``</span>
+</span><span id="line-220"><span class="sd">      are computed under (the reply's ``weights`` says which applied); ``raw`` adds each</span>
+</span><span id="line-221"><span class="sd">      metric's un-normalised values.</span>
+</span><span id="line-222"><span class="sd">    """</span>
+</span><span id="line-223">    <span class="n">proj</span> <span class="o">=</span> <span class="n">_open</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-224">    <span class="k">with</span> <span class="n">_refusals</span><span class="p">():</span>
+</span><span id="line-225">        <span class="k">return</span> <span class="n">service</span><span class="o">.</span><span class="n">scores</span><span class="p">(</span>
+</span><span id="line-226">            <span class="n">proj</span><span class="p">,</span>
+</span><span id="line-227">            <span class="n">clip_id</span><span class="o">=</span><span class="n">clip_id</span><span class="p">,</span>
+</span><span id="line-228">            <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">,</span>
+</span><span id="line-229">            <span class="n">max_points</span><span class="o">=</span><span class="n">max_points</span><span class="p">,</span>
+</span><span id="line-230">            <span class="n">weights</span><span class="o">=</span><span class="n">weights</span><span class="p">,</span>
+</span><span id="line-231">            <span class="n">preset</span><span class="o">=</span><span class="n">preset</span><span class="p">,</span>
+</span><span id="line-232">            <span class="n">raw</span><span class="o">=</span><span class="n">raw</span><span class="p">,</span>
+</span><span id="line-233">        <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -442,7 +443,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=70dd30db"></script>
+    <script src="../../../_static/documentation_options.js?v=d4a5b4c2"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

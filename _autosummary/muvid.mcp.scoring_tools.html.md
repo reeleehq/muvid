@@ -51,7 +51,8 @@ a terminal state — so an agent needs ~1 poll, not many.
 The persisted score tracks — for the multichannel editor + inspection. Free.
 
 - No `clip_id` → a SUMMARY (metrics, per-clip coverage %, beats, tempo, the decimated
-  `selection_margin`, grid geometry) — bounded, safe as the default.
+  `selection_margin` — `null` where fewer than two covering videos were
+  measured — grid geometry) — bounded, safe as the default.
 - `clip_id` → that clip’s tracks (values as `null`-masked arrays, decimated to
   `max_points` per metric) plus its `composite` lane, for the editor’s lanes.
 - `weights` / `preset` pick the weighting the composite and `selection_margin`
