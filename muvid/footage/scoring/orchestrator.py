@@ -183,7 +183,9 @@ def _clip_shots(strategy: str, a, *, path, frame_pass, keep) -> tuple:
     )
 
     if strategy != FRAMES_STRATEGY:
-        return shot_boundaries(str(path), offset_s=a.offset_s, strategy=strategy), strategy
+        return shot_boundaries(
+            str(path), offset_s=a.offset_s, strategy=strategy
+        ), strategy
     if frame_pass is not None:
         return shots_from_frame_pass(frame_pass, offset_s=a.offset_s), FRAMES_STRATEGY
     if keep is not None and a.clip_id in keep.shots:

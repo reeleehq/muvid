@@ -67,6 +67,8 @@ def default_shot_strategy() -> str:
     """``$MUVID_SCORING_SHOT_STRATEGY``, else :data:`FRAMES_STRATEGY` — read when a run
     starts, not when this module is imported, so a host may set it later."""
     return os.environ.get(SHOT_STRATEGY_ENV_VAR) or FRAMES_STRATEGY
+
+
 #: The ``mixing.video.shots`` strategy that needs an optional package, and that package
 #: (the ``scoring-shots`` extra): absent, it is ``[]``, never a fallback decode.
 PYSCENEDETECT_STRATEGY = "pyscenedetect"
