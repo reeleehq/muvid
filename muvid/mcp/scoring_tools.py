@@ -47,10 +47,10 @@ _LAST_JOB_FILE = "score_job.json"
 
 
 def _open(project_id: str):
-    from muvid.footage.workspace import FootageWorkspace
+    from muvid.downloads import open_caller_project
 
     try:
-        return FootageWorkspace.for_email(current_email()).open_project(project_id)
+        return open_caller_project(current_email(), project_id, kind="footage")
     except FileNotFoundError as e:
         raise _tool_error(f"no such project {project_id!r}") from e
 

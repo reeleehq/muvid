@@ -127,7 +127,8 @@ def test_the_workspace_is_per_subgenre_and_the_drawers_come_from_disk(data):
     (data / "subgenres" / "visualizer" / "projects").mkdir(parents=True)
     assert subgenre_slugs_on_disk() == ("lyric-video", "visualizer")
     kinds = [k for k, _w, _s in downloads._sources()]
-    assert kinds == ["footage", "visualizer", "lyric-video"]
+    # then the host's drawers, last (muvid#296): projects a host placed for the caller
+    assert kinds == ["footage", "visualizer", "lyric-video", "footage", "visualizer"]
 
 
 def test_project_status_reports_the_subgenre(data):

@@ -29,7 +29,6 @@ from pathlib import Path
 
 from muvid.genre import EXPOSED_VISUALS, _VISUAL_INFO
 from muvid.mcp.identity import current_email
-from muvid.mcp.workspace import VisualizerWorkspace
 
 #: Reject inputs longer than this many seconds — a long song is cheap to download but
 #: expensive to render synchronously (env ``MUVID_MAX_DURATION_S``; default 15 min).
@@ -41,10 +40,6 @@ RENDER_PRESET = os.environ.get("MUVID_RENDER_PRESET", "veryfast")
 
 #: Valid tool inputs for ``visual`` — the exposed looks plus the ``auto`` selector.
 _VALID_VISUALS = frozenset(EXPOSED_VISUALS) | {"auto"}
-
-
-def _workspace() -> VisualizerWorkspace:
-    return VisualizerWorkspace.for_email(current_email())
 
 
 def _tool_error(msg: str):
@@ -230,7 +225,10 @@ def render_visualizer(
         verify_video,
     )
 
-    proj = _workspace().open_project(project_id)
+    from muvid.downloads import open_caller_project
+
+    # muvid's own bucket, or a project a host placed for the caller (muvid#296)
+    proj = open_caller_project(current_email(), project_id, kind="visualizer")
 
     if visual not in _VALID_VISUALS:
         raise _tool_error(

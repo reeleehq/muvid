@@ -118,16 +118,13 @@ def _refusals():
         raise _tool_error(_as_tool_names(str(e))) from (e.__cause__ or e)
 
 
-def _workspace():
-    from muvid.footage.workspace import FootageWorkspace
-
-    return FootageWorkspace.for_email(current_email())
-
-
 def _open(project_id: str):
-    """Open the caller's project, surfacing a missing project as a clean ToolError."""
+    """Open the caller's project — in muvid's workspace or one a host placed for them
+    (muvid#296) — surfacing a missing project as a clean ToolError."""
+    from muvid.downloads import open_caller_project
+
     try:
-        return _workspace().open_project(project_id)
+        return open_caller_project(current_email(), project_id, kind="footage")
     except FileNotFoundError as e:
         raise _tool_error(f"no such project {project_id!r}") from e
 
@@ -721,13 +718,22 @@ def list_music_video_projects() -> dict:
     ``[]`` means you have no footage projects; a visualizer project is not one and
     shows up in ``list_projects`` instead.
     """
-    ws = _workspace()
+    from muvid.downloads import caller_workspaces
+
     rows = []
-    for r in ws.list_projects():
+    listed = set()  # an id in muvid's drawer AND the host's opens muvid's (muvid#296)
+    for ws, r in (
+        (ws, r)
+        for ws in caller_workspaces(current_email(), "footage")
+        for r in ws.list_projects()
+    ):
+        if r["project_id"] in listed:
+            continue
         try:
             proj = ws.open_project(r["project_id"])
         except (FileNotFoundError, ValueError):
             continue  # vanished mid-scan — genuinely absent
+        listed.add(r["project_id"])
         rows.append(
             {
                 "project_id": r["project_id"],
@@ -740,6 +746,7 @@ def list_music_video_projects() -> dict:
                 "modified": r.get("modified"),
             }
         )
+    rows.sort(key=lambda r: r.get("modified") or 0.0, reverse=True)
     return {"projects": rows}
 
 

@@ -142,26 +142,45 @@ MUSIC_VISUALIZER: Genre = register_genre(
 )
 
 
-def _music_visualizer_project_factory(caller, project_id, *, title, template, params):
-    """Create a ``music_visualizer`` output bucket in the CALLER's own muvid workspace.
+def _music_visualizer_project_factory(
+    caller, project_id, *, title, template, params, projects_dir=None
+):
+    """Create a ``music_visualizer`` project where the CALLER asks, else in muvid's
+    workspace.
 
-    The nw project-factory (thorwhalen/muvid#3) a host connector calls via
-    ``nw.create_genre_project`` so the unified reelee connector can create visualizer
-    projects it doesn't natively host. The visualizer is stateless — a "project" is just
-    a per-user bucket where its renders land — so this creates a lightweight
-    :class:`~muvid.mcp.workspace.VisualizerProject` (a folder + manifest), not a full nw
-    project. ``VisualizerWorkspace`` is imported **lazily** so ``import muvid.genre``
-    stays fastmcp-free. The chosen ``visual`` rides in the returned info + create's
-    envelope; there is no initializer (nothing to seed at create — render is on demand).
+    - ``projects_dir`` given — a :class:`muvid.Project` at ``projects_dir/<project_id>``
+      (the host that will serve it decides where; nw#84), its renders landing in
+      ``<project>/visualizer`` (muvid#296: without it, a host refused the create, and
+      a ``muvid_*`` tool could not find a project the host had placed).
+    - ``None`` — a lightweight output bucket in the caller's own muvid workspace
+      (:class:`~muvid.mcp.workspace.VisualizerProject`, a folder + manifest), as the MCP
+      connector has always done (thorwhalen/muvid#3).
+
+    Lazy-imported so ``import muvid.genre`` stays fastmcp-free. The chosen ``visual``
+    rides in the returned info + create's envelope; there is no initializer (render is
+    on demand).
     """
-    from muvid.mcp.workspace import VisualizerWorkspace
+    if projects_dir is not None:
+        from muvid.production import create_project_at
 
-    proj = VisualizerWorkspace.for_email(caller).create_project(project_id, title=title)
+        proj = create_project_at(
+            projects_dir,
+            project_id,
+            genre=MUSIC_VISUALIZER_SLUG,
+            title=title,
+            template=template,
+        )
+    else:
+        from muvid.mcp.workspace import VisualizerWorkspace
+
+        proj = VisualizerWorkspace.for_email(caller).create_project(
+            project_id, title=title
+        )
     return {
         "project": proj,
         "project_id": project_id,
         "title": title,
-        "visual": params.get("visual"),
+        "visual": (params or {}).get("visual"),
     }
 
 
