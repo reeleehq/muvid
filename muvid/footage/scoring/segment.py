@@ -47,23 +47,38 @@ def coverage_mask(
 
 #: The strategy that reads the scoring pass's own frames (:func:`shots_from_frame_pass`).
 FRAMES_STRATEGY = "frames"
-#: What ``score_project(shot_strategy=None)`` uses: ``MUVID_SCORING_SHOT_STRATEGY``, else
-#: :data:`FRAMES_STRATEGY`. Any other value names a ``mixing.video.shots`` strategy.
+#: The env var that picks the strategy ``score_project(shot_strategy=None)`` uses
+#: (:func:`default_shot_strategy`); any value but ``"frames"`` names a
+#: ``mixing.video.shots`` strategy.
 SHOT_STRATEGY_ENV_VAR = "MUVID_SCORING_SHOT_STRATEGY"
-DEFAULT_SHOT_STRATEGY = os.environ.get(SHOT_STRATEGY_ENV_VAR) or FRAMES_STRATEGY
 #: The frames strategy's ``mixing.shot_changes.cut_indices`` rule: for continuous
 #: footage (see the module docstring), not for edited video.
 FRAMES_CUT_RULE = "spike"
+#: The frames strategy's shortest shot (s). The spike rule reads a missing neighbour
+#: as no change, so a clip's first and last change need beat only ONE neighbour: a
+#: 0.25 s fade-in (a phone settling its exposure) read as a cut 0.2 s into the clip,
+#: a fade-out as one at its last sample (the #259 review, measured). Two sample
+#: intervals at 5 Hz is the floor; 0.5 s removed all three edge cuts measured and
+#: kept two real cuts 1 s apart.
+FRAMES_MIN_SHOT_S = 0.5
+
+
+def default_shot_strategy() -> str:
+    """``$MUVID_SCORING_SHOT_STRATEGY``, else :data:`FRAMES_STRATEGY` — read when a run
+    starts, not when this module is imported, so a host may set it later."""
+    return os.environ.get(SHOT_STRATEGY_ENV_VAR) or FRAMES_STRATEGY
 #: The ``mixing.video.shots`` strategy that needs an optional package, and that package
 #: (the ``scoring-shots`` extra): absent, it is ``[]``, never a fallback decode.
 PYSCENEDETECT_STRATEGY = "pyscenedetect"
 _PYSCENEDETECT_PACKAGE = "scenedetect"
 
 
-def shots_available(strategy: str = DEFAULT_SHOT_STRATEGY) -> bool:
-    """Whether ``strategy`` can detect anything here."""
+def shots_available(strategy: "str | None" = None) -> bool:
+    """Whether ``strategy`` (default :func:`default_shot_strategy`) can detect anything
+    here."""
     from importlib.util import find_spec
 
+    strategy = strategy or default_shot_strategy()
     return (
         strategy != PYSCENEDETECT_STRATEGY
         or find_spec(_PYSCENEDETECT_PACKAGE) is not None
@@ -71,24 +86,42 @@ def shots_available(strategy: str = DEFAULT_SHOT_STRATEGY) -> bool:
 
 
 def shots_from_frame_pass(
-    frame_pass, *, offset_s: float, rule: str = FRAMES_CUT_RULE
+    frame_pass,
+    *,
+    offset_s: float,
+    rule: str = FRAMES_CUT_RULE,
+    min_shot_s: float = FRAMES_MIN_SHOT_S,
 ) -> list[float]:
     """Song-times of the cuts in the scoring pass's own frames (``frames`` strategy).
 
-    ``frame_pass.shot_change[i]`` is the change between samples ``i`` and ``i + 1``, so
-    a cut there is at ``clip_times[i + 1]``; ``mixing.shot_changes.shots_from_changes``
-    picks the cuts (its adaptive threshold, ``rule``) and its spans tile the sampled
-    clip. The cuts are the span starts after the first, moved onto the song by
-    ``offset_s``. No changes (one sample, or none) → no cuts.
+    ``frame_pass.shot_change[i]`` is the change between samples ``i`` and ``i + 1``;
+    ``mixing.shot_changes.shots_from_changes`` picks the cuts (its adaptive threshold,
+    ``rule``; spans shorter than ``min_shot_s`` merged) and its spans tile the sampled
+    clip. The true cut lies somewhere in ``(t_i, t_{i+1}]``; this reports ``t_i``, the
+    LAST sample known to show the old shot, because the selector makes the time a hard
+    boundary of the segment before it, and ``t_{i+1}`` let that segment carry up to a
+    sample (0.2 s at 5 Hz) of the next shot — the within-clip jump the mode avoids.
+    So a cut is quantised to the sample rate, early by under one sample. Each cut is
+    moved onto the song by ``offset_s``. No changes (one sample, or none) → no cuts.
+
+    Raises ``ValueError`` when the pass's changes and times do not line up (one more
+    time than change): a malformed pass is a failure to record, not "no cuts".
     """
     from mixing.shot_changes import shots_from_changes  # numpy only
 
     changes = np.asarray(frame_pass.shot_change, dtype=np.float64)
     times = np.asarray(frame_pass.clip_times, dtype=np.float64)
-    if changes.size == 0 or times.size != changes.size + 1:
+    if changes.size == 0:
         return []
-    spans = shots_from_changes(changes, times=times, rule=rule)
-    return [float(start) + offset_s for start, _end in spans[1:]]
+    if times.size != changes.size + 1:
+        raise ValueError(
+            f"the frame pass has {changes.size} changes for {times.size} sample times; "
+            "it must have one change fewer than times"
+        )
+    spans = shots_from_changes(changes, times=times, rule=rule, min_shot_s=min_shot_s)
+    starts = np.array([start for start, _end in spans[1:]], dtype=np.float64)
+    before = times[np.maximum(np.searchsorted(times, starts - 1e-9) - 1, 0)]
+    return [float(t) + offset_s for t in before]
 
 
 def shot_boundaries(

@@ -585,8 +585,8 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
     spike = np.full(19, 3.0)
     spike[9] = 120.0  # one cut, at the 11th sample
     fake = SimpleNamespace(
-        shot_change=spike, clip_times=np.arange(20) * 0.2, truncated=False
-    )
+        shot_change=spike, clip_times=np.arange(20) * 0.2, truncated=True
+    )  # truncated: the cap stopped the pass, and the record must survive a re-score
     monkeypatch.setattr(
         F, "sample_clip_frames", lambda path, **kw: decodes.append(path) or fake
     )
@@ -631,6 +631,7 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
     assert manifest["shot_boundaries"] == shots
     assert manifest["shot_strategies"] == {"A": "frames"}
     assert out["shots_skipped"] == {}
+    assert manifest["shots_truncated"] == {"A": 3.8}
 
 
 def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(
@@ -823,9 +824,7 @@ def test_a_shot_detector_failure_is_recorded_per_clip_and_keeps_the_tracks(
         raise OSError("Video file not found.")
 
     # the named-detector path (a second decode through mixing.video.shots)
-    monkeypatch.setattr(
-        "muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY", "pyscenedetect"
-    )
+    monkeypatch.setenv("MUVID_SCORING_SHOT_STRATEGY", "pyscenedetect")
     monkeypatch.setattr("muvid.footage.scoring.segment.shot_boundaries", broken)
     out = service.run_scoring(proj, metrics=["beats_seen"])
     assert out["shots_skipped"] == {"A": "shot detection failed: Video file not found."}

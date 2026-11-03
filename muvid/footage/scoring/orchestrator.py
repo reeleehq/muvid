@@ -146,8 +146,10 @@ def score_project(
         shot_strategy: how the shot boundaries are found (muvid#259): ``"frames"``,
             from this pass's own decoded frames (no second decode), or a
             ``mixing.video.shots`` strategy by name (``"pyscenedetect"``,
-            ``"diff"``). Default :data:`~muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY`
-            (the ``MUVID_SCORING_SHOT_STRATEGY`` env var, else ``"frames"``).
+            ``"diff"``). Default :func:`~muvid.footage.scoring.segment.default_shot_strategy`
+            (the ``MUVID_SCORING_SHOT_STRATEGY`` env var, else ``"frames"``). Not a
+            parameter of the footage ``score`` op on purpose: which detector runs is an
+            operator's choice, not a caller's.
     """
     with _SCORING_SEMAPHORE:
         return _score(
@@ -164,10 +166,6 @@ def score_project(
         )
 
 
-#: The shot strategy that reads this pass's own frames (``segment.FRAMES_STRATEGY``).
-FRAMES = "frames"
-
-
 def _clip_shots(strategy: str, a, *, path, frame_pass, keep) -> tuple:
     """``(cuts, strategy that found them)`` for one clip, or ``(None, None)`` when the
     ``frames`` strategy has no frames to read and no earlier shots to keep.
@@ -178,12 +176,16 @@ def _clip_shots(strategy: str, a, *, path, frame_pass, keep) -> tuple:
     is ``mixing.video.shots`` by name, its own decode (a failure there raises; the
     caller records it per clip).
     """
-    from muvid.footage.scoring.segment import shot_boundaries, shots_from_frame_pass
+    from muvid.footage.scoring.segment import (
+        FRAMES_STRATEGY,
+        shot_boundaries,
+        shots_from_frame_pass,
+    )
 
-    if strategy != FRAMES:
+    if strategy != FRAMES_STRATEGY:
         return shot_boundaries(str(path), offset_s=a.offset_s, strategy=strategy), strategy
     if frame_pass is not None:
-        return shots_from_frame_pass(frame_pass, offset_s=a.offset_s), FRAMES
+        return shots_from_frame_pass(frame_pass, offset_s=a.offset_s), FRAMES_STRATEGY
     if keep is not None and a.clip_id in keep.shots:
         return list(keep.shots[a.clip_id]), keep.shot_strategies.get(a.clip_id, "")
     return None, None
@@ -205,6 +207,7 @@ class KeptScores:
     #: each: kept when this run decodes no frames for the ``frames`` strategy to read
     shots: Mapping[str, Sequence[float]] = field(default_factory=dict)
     shot_strategies: Mapping[str, str] = field(default_factory=dict)
+    shots_truncated: Mapping[str, float] = field(default_factory=dict)
 
 
 def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
@@ -371,9 +374,9 @@ def _score(
 ):
     from muvid.footage.scoring import frames as F
     from muvid.footage.scoring.quality import quality_gate_mask
-    from muvid.footage.scoring.segment import DEFAULT_SHOT_STRATEGY
+    from muvid.footage.scoring.segment import FRAMES_STRATEGY, default_shot_strategy
 
-    shot_strategy = shot_strategy or DEFAULT_SHOT_STRATEGY
+    shot_strategy = shot_strategy or default_shot_strategy()
 
     from muvid.footage.scoring.grid import align_fingerprint
 
@@ -513,9 +516,12 @@ def _score(
                 )
             else:
                 shots_by_clip[a.clip_id], shot_strategies[a.clip_id] = cuts, used
-        if fp is not None and fp.truncated and shot_strategy == FRAMES:
+        if fp is not None and fp.truncated and shot_strategy == FRAMES_STRATEGY:
             # the cap stopped the pass: no shot past this is detected (#259)
             shots_truncated[a.clip_id] = round(float(fp.clip_times[-1]), 3)
+        elif fp is None and keep is not None and a.clip_id in keep.shots_truncated:
+            # kept shots keep their truncation record with them
+            shots_truncated[a.clip_id] = keep.shots_truncated[a.clip_id]
 
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 

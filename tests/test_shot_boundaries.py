@@ -111,11 +111,14 @@ def _pass(changes, *, hop=0.2, truncated=False):
     return SimpleNamespace(shot_change=changes, clip_times=times, truncated=truncated)
 
 
-def test_the_frames_strategy_is_scorings_default():
-    assert segment.FRAMES_STRATEGY == "frames"
-    assert segment.shots_available("frames")
-    if not __import__("os").environ.get(segment.SHOT_STRATEGY_ENV_VAR):
-        assert segment.DEFAULT_SHOT_STRATEGY == "frames"
+def test_the_frames_strategy_is_scorings_default_and_the_env_is_read_per_run(
+    monkeypatch,
+):
+    monkeypatch.delenv(segment.SHOT_STRATEGY_ENV_VAR, raising=False)
+    assert segment.default_shot_strategy() == segment.FRAMES_STRATEGY == "frames"
+    assert segment.shots_available()
+    monkeypatch.setenv(segment.SHOT_STRATEGY_ENV_VAR, "diff")  # after import: honoured
+    assert segment.default_shot_strategy() == "diff"
 
 
 def test_sustained_motion_is_not_a_run_of_cuts_and_a_spike_is_one():
@@ -127,7 +130,9 @@ def test_sustained_motion_is_not_a_run_of_cuts_and_a_spike_is_one():
     with_cut = handheld.copy()
     with_cut[30] = 140.0
     cuts = segment.shots_from_frame_pass(_pass(with_cut), offset_s=10.0)
-    assert cuts == [pytest.approx(10.0 + 31 * 0.2)]
+    # change 30 is between samples 30 and 31: reported at sample 30, the last one known
+    # to show the old shot, so the segment before it never carries the next shot
+    assert cuts == [pytest.approx(10.0 + 30 * 0.2)]
 
 
 def test_a_flash_is_not_a_cut():
@@ -135,6 +140,23 @@ def test_a_flash_is_not_a_cut():
     changes = np.full(40, 3.0)
     changes[[20, 21]] = 120.0
     assert segment.shots_from_frame_pass(_pass(changes), offset_s=0.0) == []
+
+
+def test_a_change_at_either_end_is_not_a_cut():
+    """The #259 review: the spike rule reads a missing neighbour as no change, so a
+    fade at a clip's start or end beat its one neighbour and read as a cut."""
+    for at in (0, -1):
+        changes = np.full(40, 3.0)
+        changes[at] = 90.0
+        assert segment.shots_from_frame_pass(_pass(changes), offset_s=0.0) == [], at
+
+
+def test_a_malformed_pass_is_refused_not_read_as_no_cuts():
+    from types import SimpleNamespace
+
+    bad = SimpleNamespace(shot_change=np.ones(5), clip_times=np.arange(5) * 0.2)
+    with pytest.raises(ValueError, match="one change fewer"):
+        segment.shots_from_frame_pass(bad, offset_s=0.0)
 
 
 def test_no_changes_means_no_cuts():
