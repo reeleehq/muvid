@@ -355,3 +355,33 @@ def test_a_plugin_whose_check_cannot_import_is_a_recorded_reason(
     info = list_available_extractors()["scorers"]
     assert info["ok"]["available"] is True and "reason" not in info["ok"]
     assert info["fancy"]["available"] is False and "fancylib" in info["fancy"]["reason"]
+
+
+def test_every_registered_metric_has_plain_words():
+    """muvid#291: a screen labels each metric with the registry's words, so every
+    built-in metric carries a title and a one-line description."""
+    from muvid.footage.scoring.registry import default_metrics, metric_words
+
+    words = metric_words()
+    for metric in default_metrics(include_lipsync=True):
+        assert words[metric]["title"] and words[metric]["description"], metric
+
+
+def test_words_for_a_metric_the_scorer_does_not_produce_are_refused():
+    import pytest
+
+    from muvid.footage.scoring.registry import Scorer
+
+    with pytest.raises(ValueError, match="titles"):
+        Scorer("s", ("a",), lambda ctx: [], titles={"b": "B"})
+
+
+def test_every_preset_is_published_in_words():
+    """muvid#295: ``strategies()`` lists exactly the presets propose_edit accepts."""
+    from muvid.footage import service
+    from muvid.footage.select_score import PRESET_WORDS, PRESETS
+
+    assert set(PRESET_WORDS) == set(PRESETS)
+    rows = service.strategies()["presets"]
+    assert [r["name"] for r in rows] == list(PRESETS)
+    assert all(r["title"] and r["description"] for r in rows)

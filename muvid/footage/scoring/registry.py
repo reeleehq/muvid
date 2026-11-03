@@ -205,10 +205,22 @@ class Scorer:
     #: placement (which every metric reads), by metric: ``{"motion_beat_bas": (BEATS,)}``.
     #: A change to one stales only the metrics that declared it (muvid#206).
     inputs: Mapping[str, tuple[str, ...]] = field(default_factory=dict, compare=False)
+    #: Each metric's name in plain words, for a screen to label it with ("Steadiness"),
+    #: by metric (muvid#291). A metric with none is shown by its name.
+    titles: Mapping[str, str] = field(default_factory=dict, compare=False)
+    #: One line per metric: what it measures, and what "unmeasured" means for it.
+    descriptions: Mapping[str, str] = field(default_factory=dict, compare=False)
 
     def __post_init__(self) -> None:
         if not self.metrics:
             raise ValueError(f"scorer {self.name!r} declares no metrics")
+        for label, table in (("titles", self.titles), ("descriptions", self.descriptions)):
+            stray = sorted(set(table) - set(self.metrics))
+            if stray:
+                raise ValueError(
+                    f"scorer {self.name!r} declares {label} for {stray}, which it does "
+                    f"not produce ({list(self.metrics)})"
+                )
         if self.tier not in TIERS:
             raise ValueError(f"scorer tier must be one of {TIERS}, not {self.tier!r}")
         if not isinstance(self.inputs, Mapping):
@@ -280,6 +292,25 @@ def scorers(*, include_lipsync: bool = False) -> list[Scorer]:
 def default_metrics(*, include_lipsync: bool = False) -> list[str]:
     """The metric axis order: every registered scorer's metrics, in registration order."""
     return [m for s in scorers(include_lipsync=include_lipsync) for m in s.metrics]
+
+
+def metric_words() -> "dict[str, dict[str, str]]":
+    """``{metric: {"title": ..., "description": ...}}`` for every registered metric
+    that declares either (muvid#291) — the words a screen shows instead of the name."""
+    out: dict[str, dict[str, str]] = {}
+    for sc in _SCORERS.values():
+        for m in sc.metrics:
+            words = {
+                k: v
+                for k, v in (
+                    ("title", sc.titles.get(m)),
+                    ("description", sc.descriptions.get(m)),
+                )
+                if v
+            }
+            if words:
+                out[m] = words
+    return out
 
 
 def metrics_of_tier(tier: str) -> set[str]:
@@ -360,6 +391,19 @@ register_scorer(
         "quality",
         ("sharpness", "exposure", "stability_shake", "face_framing"),
         _run_quality,
+        titles={
+            "sharpness": "Sharpness",
+            "exposure": "Exposure",
+            "stability_shake": "Steadiness",
+            "face_framing": "Face framing",
+        },
+        descriptions={
+            "sharpness": "How in focus the picture is.",
+            "exposure": "How well lit the picture is: neither too dark nor blown out.",
+            "stability_shake": "How steady the camera is: the less shake, the higher.",
+            "face_framing": "How well a face is framed. Frames where no face is found "
+            "are unmeasured, not scored low.",
+        },
     )
 )
 register_scorer(
@@ -369,6 +413,16 @@ register_scorer(
         _run_motion_beat,
         # the onset envelope is the song's measurement, not the grid's
         inputs={"motion_beat_bas": (BEATS,)},
+        titles={
+            "motion_beat_bas": "Moves on the beat",
+            "motion_onset_xcorr": "Moves with the music",
+        },
+        descriptions={
+            "motion_beat_bas": "How close the picture's movement lands to each beat. "
+            "Where nothing moves it is unmeasured, not scored low.",
+            "motion_onset_xcorr": "How the video's movement follows the song's accents "
+            "overall: one value per video, held over the part of the song it covers.",
+        },
     )
 )
 register_scorer(
@@ -381,5 +435,12 @@ register_scorer(
         tier=LIPSYNC_TIER,
         available=_lipsync_available,
         needs=(VOCAL_STEM,),
+        titles={"lip_sync_lse_c": "Lip sync", "lse_d_offset": "Lip-sync distance"},
+        descriptions={
+            "lip_sync_lse_c": "How surely the singer's mouth matches the vocals (higher "
+            "is better). Unmeasured where no singing face is found.",
+            "lse_d_offset": "How far the mouth is from the vocals (lower is better). "
+            "Unmeasured where no singing face is found.",
+        },
     )
 )

@@ -121,6 +121,20 @@ PRESETS: dict[str, WeightedSelectionConfig] = {
 }
 
 
+#: Each preset in plain words — what ``strategies()`` publishes so a screen can offer a
+#: feel without hard-coding the names (muvid#295). Keys are exactly :data:`PRESETS`'.
+PRESET_WORDS: dict[str, dict[str, str]] = {
+    "energetic": {
+        "title": "Energetic",
+        "description": "Many short shots, cut on the movement and the beat.",
+    },
+    "contemplative": {
+        "title": "Contemplative",
+        "description": "Long, sharp shots and few cuts, favouring well-framed faces.",
+    },
+}
+
+
 def resolve_config(
     *,
     preset: str | None = None,
