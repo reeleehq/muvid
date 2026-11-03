@@ -250,6 +250,19 @@ def test_propose_edit_saves_a_named_edit(fp):
     assert "edit_id" not in unsaved and len(service.edits(fp)["edits"]) == 1
 
 
+def test_an_edit_summary_says_how_it_was_cut(fp):
+    """muvid#281: the row a screen lists carries the selection as data (strategy,
+    pace, style...), not only the how_made sentence; None for a hand-made edit."""
+    out = service.propose_edit(fp)
+    (row,) = service.edits(fp)["edits"]
+    assert row["selection"]["strategy"] == out["strategy"] == "best_confidence"
+    assert set(row["selection"]) <= set(service.EDIT_SUMMARY_SELECTION_KEYS)
+    service.save_edit(fp, edl=_edl_ab(), edit_id="byhand")
+    rows = {r["edit_id"]: r for r in service.edits(fp)["edits"]}
+    assert rows["byhand"]["selection"] is None
+    assert service.status(fp)["edits"][0].keys() >= {"selection"}
+
+
 def test_status_names_the_next_step(fp):
     st = service.status(fp)
     assert st["next_step"]["op"] == "propose_edit"

@@ -3163,7 +3163,9 @@ def save_edit(
 
 
 def edits(fp) -> dict:
-    """The saved edits, oldest first: each one's ``edit_id``, ``name``, how it was made,
+    """The saved edits, oldest first: each one's ``edit_id``, ``name``, how it was made
+    (``how_made``, a sentence, and ``selection`` — its ``strategy``, ``preset``,
+    ``pace``, ``order`` and ``style`` as data, ``null`` for one made by hand),
     how many cuts it has, and ``problem`` — why it would not validate against the
     current alignment (``null`` when it does). ``unreliable`` names clips it cuts to
     whose offsets rendering would refuse."""
@@ -4095,6 +4097,21 @@ def _edit_check(fp, record: dict) -> tuple[Optional[str], list, list]:
     return None, [], entries
 
 
+#: What of an edit's stored ``selection`` its summary row carries (muvid#281): how it
+#: was cut, in the words a screen shows ("63 cuts · steady · fades"). Not ``weights``
+#: or ``config``, which are inputs to replay, not a description.
+EDIT_SUMMARY_SELECTION_KEYS = ("strategy", "preset", "pace", "order", "style")
+
+
+def _summary_selection(record: dict) -> Optional[dict]:
+    """The edit's ``selection`` as its summary shows it; ``None`` for an edit nothing
+    selected (imported, hand-made)."""
+    selection = record.get("selection")
+    if not isinstance(selection, dict):
+        return None
+    return {k: selection[k] for k in EDIT_SUMMARY_SELECTION_KEYS if k in selection}
+
+
 def _edit_summary(fp, record: dict) -> dict:
     problem, unreliable, _ = _edit_check(fp, record)
     edl = record.get("edl") or []
@@ -4102,6 +4119,7 @@ def _edit_summary(fp, record: dict) -> dict:
         "edit_id": record["edit_id"],
         "name": record.get("name") or record["edit_id"],
         "how_made": record.get("how_made"),
+        "selection": _summary_selection(record),
         "created": record.get("created"),
         "modified": record.get("modified"),
         "n_cuts": sum(1 for e in edl if e.get("clip_id")),
