@@ -5101,7 +5101,11 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "rank_songs", "Find the song the videos fit best", "read", runs="job", mcp=False
     ),
     OpSpec(
-        "align", "Listen to the videos", "write", runs="job", invalidates=ALIGNMENT_READS
+        "align",
+        "Listen to the videos",
+        "write",
+        runs="job",
+        invalidates=ALIGNMENT_READS,
     ),
     OpSpec(
         "set_offset",
