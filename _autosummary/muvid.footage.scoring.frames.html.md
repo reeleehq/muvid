@@ -7,7 +7,9 @@ The design review flagged that quality.py and motionbeat.py must NOT each decode
 each estimate camera motion — that doubles IO/CPU on the memory-fragile box and makes the
 “camera-motion computed once” claim false. So a single sequential [`sample_clip_frames()`](#muvid.footage.scoring.frames.sample_clip_frames)
 pass computes, per sampled frame: sharpness, exposure, an (injected) face score, the
-camera-compensated motion residual, and the global-motion (shake) magnitude — in clip time.
+camera-compensated motion residual, the global-motion (shake) magnitude, and the picture
+change from the previous sample at mixing’s shot size — in clip time. That last one is
+what the default shot detector reads (muvid#259), so shots cost no second decode.
 The orchestrator maps clip time → song time via the clip’s offset and hands this
 [`FramePass`](#muvid.footage.scoring.frames.FramePass) to both extractors.
 
@@ -39,11 +41,28 @@ Default hard cap on sampled frames per clip (bounds CPU + memory regardless of d
 
 Default frame sample rate (Hz) — plenty for quality + a motion envelope onto a 10 Hz grid.
 
-### *class* muvid.footage.scoring.frames.FramePass(clip_times, sharpness, exposure, face, motion_residual, global_dx, global_dy, fps, n_sampled)
+### *class* muvid.footage.scoring.frames.FramePass(clip_times, sharpness, exposure, face, motion_residual, global_dx, global_dy, fps, n_sampled, shot_change=<factory>, truncated=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Per-sampled-frame metrics for one clip, in CLIP time (seconds from the clip start).
+
+#### shot_change *: ndarray*
+
+the mean absolute change from each sample to the next, on frames
+shrunk to `mixing.shot_changes.SHOT_FRAME_SIZE` (what mixing’s shot
+thresholds are calibrated on) — the input of the `frames` shot strategy.
+
+* **Type:**
+  [*float*](https://docs.python.org/3/builtins/functions.html#float)[k-1]
+
+#### truncated *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+every signal
+here then stops at `clip_times[-1]`, and a reader must say so.
+
+* **Type:**
+  Whether `max_frames` stopped the pass before the clip ended
 
 ### muvid.footage.scoring.frames.make_face_scorer()
 

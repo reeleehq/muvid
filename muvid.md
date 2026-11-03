@@ -1,4 +1,4 @@
-> built 2026-11-03 15:09 UTC from 849ac3c (main) · muvid 0.0.156. Details: build_info.json
+> built 2026-11-03 15:23 UTC from 01ebfc6 (main) · muvid 0.0.157. Details: build_info.json
 
 # index.html.md
 
@@ -6955,7 +6955,9 @@ The design review flagged that quality.py and motionbeat.py must NOT each decode
 each estimate camera motion — that doubles IO/CPU on the memory-fragile box and makes the
 “camera-motion computed once” claim false. So a single sequential [`sample_clip_frames()`](_autosummary/muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.sample_clip_frames)
 pass computes, per sampled frame: sharpness, exposure, an (injected) face score, the
-camera-compensated motion residual, and the global-motion (shake) magnitude — in clip time.
+camera-compensated motion residual, the global-motion (shake) magnitude, and the picture
+change from the previous sample at mixing’s shot size — in clip time. That last one is
+what the default shot detector reads (muvid#259), so shots cost no second decode.
 The orchestrator maps clip time → song time via the clip’s offset and hands this
 [`FramePass`](_autosummary/muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.FramePass) to both extractors.
 
@@ -6987,11 +6989,28 @@ Default hard cap on sampled frames per clip (bounds CPU + memory regardless of d
 
 Default frame sample rate (Hz) — plenty for quality + a motion envelope onto a 10 Hz grid.
 
-### *class* muvid.footage.scoring.frames.FramePass(clip_times, sharpness, exposure, face, motion_residual, global_dx, global_dy, fps, n_sampled)
+### *class* muvid.footage.scoring.frames.FramePass(clip_times, sharpness, exposure, face, motion_residual, global_dx, global_dy, fps, n_sampled, shot_change=<factory>, truncated=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 Per-sampled-frame metrics for one clip, in CLIP time (seconds from the clip start).
+
+#### shot_change *: ndarray*
+
+the mean absolute change from each sample to the next, on frames
+shrunk to `mixing.shot_changes.SHOT_FRAME_SIZE` (what mixing’s shot
+thresholds are calibrated on) — the input of the `frames` shot strategy.
+
+* **Type:**
+  [*float*](https://docs.python.org/3/builtins/functions.html#float)[k-1]
+
+#### truncated *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+every signal
+here then stops at `clip_times[-1]`, and a reader must say so.
+
+* **Type:**
+  Whether `max_frames` stopped the pass before the clip ended
 
 ### muvid.footage.scoring.frames.make_face_scorer()
 
@@ -7339,7 +7358,7 @@ OOM risk on the memory-fragile prod box).
 | [`orchestrator`](_autosummary/muvid.footage.scoring.orchestrator.html.md#module-muvid.footage.scoring.orchestrator) | The scoring orchestrator: a project (song + aligned clips) → the persisted score tensor.                                                   |
 | [`quality`](_autosummary/muvid.footage.scoring.quality.html.md#module-muvid.footage.scoring.quality)           | Quality tier: sharpness / exposure / stability_shake / face_framing → song-grid tracks.                                                    |
 | [`registry`](_autosummary/muvid.footage.scoring.registry.html.md#module-muvid.footage.scoring.registry)         | The scorer registry: what a metric IS, so adding one touches no orchestrator code (muvid#19).                                              |
-| [`segment`](_autosummary/muvid.footage.scoring.segment.html.md#module-muvid.footage.scoring.segment)           | Shot boundaries (via `mixing.video.shots`) + the per-clip coverage mask.                                                                   |
+| [`segment`](_autosummary/muvid.footage.scoring.segment.html.md#module-muvid.footage.scoring.segment)           | Shot boundaries + the per-clip coverage mask.                                                                                              |
 
 
 # _autosummary/muvid.footage.scoring.lipsync.html.md
@@ -7505,7 +7524,8 @@ review’s fix for the double-decode / camera-motion-sharing problem):
 2. (opt-in) **Master vocal stem** (Demucs) — ONCE, for the lip-sync tier.
 3. **Per clip: ONE decode pass** ([`sample_clip_frames()`](_autosummary/muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.sample_clip_frames))
    feeds BOTH quality and motion-beat (sharpness/exposure/face + the camera-compensated motion
-   envelope come out of the same loop). Plus shot boundaries (PySceneDetect) and, when enabled,
+   envelope come out of the same loop). Plus shot boundaries — by default from that same
+   pass’s frames (muvid#259), PySceneDetect on request — and, when enabled,
    the lip-sync tracks.
 4. Assemble + **persist** the tensor (per-metric-global normalization, atomic writes).
 
@@ -7550,7 +7570,7 @@ for callers that read the constant. A scorer registered later is picked up by th
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
 
-### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict())
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict(), shots=dict(), shot_strategies=dict(), shots_truncated=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -7562,6 +7582,11 @@ were measured under — re-checked under the scoring lock.
 
 the keyed inputs’ fingerprints the kept tracks were measured on, by name
 
+#### shots *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Sequence](https://docs.python.org/3/library/typing.html#typing.Sequence)[[float](https://docs.python.org/3/builtins/functions.html#float)]]*
+
+the shot boundaries already recorded, per clip, and the strategy that found
+each: kept when this run decodes no frames for the `frames` strategy to read
+
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 
 Which tiers can run here (import + weight availability) — for diagnostics / the tool.
@@ -7569,7 +7594,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, inputs=None, beat_source=None, keep=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, inputs=None, beat_source=None, keep=None, shot_strategy=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -7597,6 +7622,13 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
     beside the `keep.recompute` ones this run measures (`metrics` is then
     ignored). Re-checked against the song and alignments under the scoring lock:
     if either changed since they were read, the run scores in full instead.
+  * **shot_strategy** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – how the shot boundaries are found (muvid#259): `"frames"`,
+    from this pass’s own decoded frames (no second decode), or a
+    `mixing.video.shots` strategy by name (`"pyscenedetect"`,
+    `"diff"`). Default [`default_shot_strategy()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)
+    (the `MUVID_SCORING_SHOT_STRATEGY` env var, else `"frames"`). Not a
+    parameter of the footage `score` op on purpose: which detector runs is an
+    operator’s choice, not a caller’s.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
@@ -7939,37 +7971,76 @@ Remove a scorer (tests, plugin teardown). Unknown names raise `KeyError`.
 
 # muvid.footage.scoring.segment
 
-Shot boundaries (via `mixing.video.shots`) + the per-clip coverage mask.
+Shot boundaries + the per-clip coverage mask.
 
 - `coverage_mask` is dependency-free: the boolean of song-grid frames a clip actually
   covers (from its offset + duration). It is the base mask every metric ANDs with, and the
   authority for “does this clip exist at song time t”.
-- `shot_boundaries` returns song-times of within-clip scene cuts, detected by
-  `mixing.video.shots` (muvid#220 — the detector lives in mixing, muvid maps it onto the
-  song). Consumed by the selector ONLY when `boundary_mode="beats+shots"` (they become
-  *inter-clip* cut candidates at shot-boundary times — a within-clip jump cut is
-  unrepresentable in the single-offset EDL model). The default strategy is PySceneDetect
-  (BSD-3, the `scoring-shots` extra); absent → `[]` and the mode degrades to beats-only.
+- Shot boundaries are song-times of within-clip scene cuts. Consumed by the selector
+  ONLY when `boundary_mode="beats+shots"` (they become *inter-clip* cut candidates at
+  shot-boundary times — a within-clip jump cut is unrepresentable in the single-offset
+  EDL model). Two ways to find them, by `shot_strategy`:
+  - `"frames"` (the default since muvid#259): [`shots_from_frame_pass()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_from_frame_pass), from the
+    picture changes the scoring decode pass ALREADY measured (`FramePass.shot_change`),
+    through `mixing.shot_changes` with its `"spike"` rule. No second decode, no extra
+    dependency, and it sees what cv2 decodes. The `"spike"` rule is what makes it
+    usable on phone footage: mixing’s plain threshold reported a false cut about every
+    second on handheld clips (mixing#160: 473 false cuts at 5 Hz on 14 single-take clips;
+    the spike rule, 11; PySceneDetect, 16). Its price is recall (about 71 % of real cuts
+    at 5 Hz) and cuts on consecutive samples, which continuous footage does not have.
+  - any `mixing.video.shots` strategy by name (`"pyscenedetect"` — frame-accurate,
+    the `scoring-shots` extra — or `"diff"`): [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries), a second
+    decode at full rate (muvid#220). A missing optional package is `[]`.
 
 ### Module Attributes
 
-| [`DEFAULT_SHOT_STRATEGY`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY)   | The `mixing.video.shots` strategy [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) uses by default, and the package it needs (the `scoring-shots` extra).   |
-|--------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`FRAMES_STRATEGY`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.FRAMES_STRATEGY)        | The strategy that reads the scoring pass's own frames ([`shots_from_frame_pass()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_from_frame_pass)).                                                                                        |
+|-------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`SHOT_STRATEGY_ENV_VAR`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.SHOT_STRATEGY_ENV_VAR)  | The env var that picks the strategy `score_project(shot_strategy=None)` uses ([`default_shot_strategy()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)); any value but `"frames"` names a `mixing.video.shots` strategy. |
+| [`FRAMES_CUT_RULE`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.FRAMES_CUT_RULE)        | for continuous footage (see the module docstring), not for edited video.                                                                                                                                                 |
+| [`FRAMES_MIN_SHOT_S`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.FRAMES_MIN_SHOT_S)      | The frames strategy's shortest shot (s).                                                                                                                                                                                 |
+| [`PYSCENEDETECT_STRATEGY`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.PYSCENEDETECT_STRATEGY) | The `mixing.video.shots` strategy that needs an optional package, and that package (the `scoring-shots` extra): absent, it is `[]`, never a fallback decode.                                                             |
 
 ### Functions
 
-| [`coverage_mask`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.coverage_mask)(\*, offset_s, duration_s, ...)    | Grid frames (bool[n]) the clip covers — using its clamped `coverage` span.                                                          |
-|--------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| [`shot_boundaries`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries)(clip_path, \*, offset_s[, ...]) | Song-times of within-clip scene cuts, or `[]` when `strategy`'s package is not installed (so `beats+shots` degrades to beats-only). |
-| [`shots_available`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_available)([strategy])                     | Whether [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) can detect anything with `strategy` here.                |
+| [`coverage_mask`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.coverage_mask)(\*, offset_s, duration_s, ...)    | Grid frames (bool[n]) the clip covers — using its clamped `coverage` span.                                                                                                                    |
+|--------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`default_shot_strategy`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)()                         | `$MUVID_SCORING_SHOT_STRATEGY`, else [`FRAMES_STRATEGY`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.FRAMES_STRATEGY) — read when a run starts, not when this module is imported, so a host may set it later. |
+| [`shot_boundaries`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries)(clip_path, \*, offset_s[, ...]) | Song-times of within-clip scene cuts, or `[]` when `strategy`'s package is not installed (so `beats+shots` degrades to beats-only).                                                           |
+| [`shots_available`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_available)([strategy])                     | Whether `strategy` (default [`default_shot_strategy()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)) can detect anything here.                                                               |
+| [`shots_from_frame_pass`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_from_frame_pass)(frame_pass, \*, offset_s) | Song-times of the cuts in the scoring pass's own frames (`frames` strategy).                                                                                                                  |
 
-### muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY *= 'pyscenedetect'*
+### muvid.footage.scoring.segment.FRAMES_CUT_RULE *= 'spike'*
 
-The `mixing.video.shots` strategy [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) uses by default, and the
-package it needs (the `scoring-shots` extra). NOT mixing’s own default `"diff"` as a
-fallback when that package is absent: every install without it pays no shot decode
-today, and a fallback would add one per clip to every scoring run — paid even when the
-selector’s default `boundary_mode="beats"` never reads a shot.
+for continuous
+footage (see the module docstring), not for edited video.
+
+* **Type:**
+  The frames strategy’s `mixing.shot_changes.cut_indices` rule
+
+### muvid.footage.scoring.segment.FRAMES_MIN_SHOT_S *= 0.5*
+
+The frames strategy’s shortest shot (s). The spike rule reads a missing neighbour
+as no change, so a clip’s first and last change need beat only ONE neighbour: a
+0.25 s fade-in (a phone settling its exposure) read as a cut 0.2 s into the clip,
+a fade-out as one at its last sample (the #259 review, measured). Two sample
+intervals at 5 Hz is the floor; 0.5 s removed all three edge cuts measured and
+kept two real cuts 1 s apart.
+
+### muvid.footage.scoring.segment.FRAMES_STRATEGY *= 'frames'*
+
+The strategy that reads the scoring pass’s own frames ([`shots_from_frame_pass()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shots_from_frame_pass)).
+
+### muvid.footage.scoring.segment.PYSCENEDETECT_STRATEGY *= 'pyscenedetect'*
+
+The `mixing.video.shots` strategy that needs an optional package, and that package
+(the `scoring-shots` extra): absent, it is `[]`, never a fallback decode.
+
+### muvid.footage.scoring.segment.SHOT_STRATEGY_ENV_VAR *= 'MUVID_SCORING_SHOT_STRATEGY'*
+
+The env var that picks the strategy `score_project(shot_strategy=None)` uses
+([`default_shot_strategy()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)); any value but `"frames"` names a
+`mixing.video.shots` strategy.
 
 ### muvid.footage.scoring.segment.coverage_mask(, offset_s, duration_s, coverage, t0, hop_s, n)
 
@@ -7977,6 +8048,14 @@ Grid frames (bool[n]) the clip covers — using its clamped `coverage` span.
 
 * **Return type:**
   `ndarray`
+
+### muvid.footage.scoring.segment.default_shot_strategy()
+
+`$MUVID_SCORING_SHOT_STRATEGY`, else [`FRAMES_STRATEGY`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.FRAMES_STRATEGY) — read when a run
+starts, not when this module is imported, so a host may set it later.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.scoring.segment.shot_boundaries(clip_path, , offset_s, strategy='pyscenedetect')
 
@@ -7992,12 +8071,33 @@ records it per clip; only a missing optional package is a degrade here.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.scoring.segment.shots_available(strategy='pyscenedetect')
+### muvid.footage.scoring.segment.shots_available(strategy=None)
 
-Whether [`shot_boundaries()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.shot_boundaries) can detect anything with `strategy` here.
+Whether `strategy` (default [`default_shot_strategy()`](_autosummary/muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)) can detect anything
+here.
 
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
+### muvid.footage.scoring.segment.shots_from_frame_pass(frame_pass, , offset_s, rule='spike', min_shot_s=0.5)
+
+Song-times of the cuts in the scoring pass’s own frames (`frames` strategy).
+
+`frame_pass.shot_change[i]` is the change between samples `i` and `i + 1`;
+`mixing.shot_changes.shots_from_changes` picks the cuts (its adaptive threshold,
+`rule`; spans shorter than `min_shot_s` merged) and its spans tile the sampled
+clip. The true cut lies somewhere in `(t_i, t_{i+1}]`; this reports `t_i`, the
+LAST sample known to show the old shot, because the selector makes the time a hard
+boundary of the segment before it, and `t_{i+1}` let that segment carry up to a
+sample (0.2 s at 5 Hz) of the next shot — the within-clip jump the mode avoids.
+So a cut is quantised to the sample rate, early by under one sample. Each cut is
+moved onto the song by `offset_s`. No changes (one sample, or none) → no cuts.
+
+Raises `ValueError` when the pass’s changes and times do not line up (one more
+time than change): a malformed pass is a failure to record, not “no cuts”.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
 
 # _autosummary/muvid.footage.select_score.html.md
@@ -20088,7 +20188,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-03 15:09 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/849ac3c468176df39f3cf88368ab0ad96b0c28c2"><code>849ac3c</code></a> on branch <code>main</code>, for **muvid 0.0.156** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-03 15:23 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/01ebfc6daff657fa2a43f81ff3de01dc9565810b"><code>01ebfc6</code></a> on branch <code>main</code>, for **muvid 0.0.157** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -20097,7 +20197,7 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/849ac3c468176df39f3cf88368ab0ad96b0c28c2"><code>849ac3c468176df39f3cf88368ab0ad96b0c28c2</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/01ebfc6daff657fa2a43f81ff3de01dc9565810b"><code>01ebfc6daff657fa2a43f81ff3de01dc9565810b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
 | Tags at this commit | none                                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
@@ -20108,9 +20208,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41654994073">41654994073</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41657154709">41657154709</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>2c1b5d33a4c8dc4aed00dc7d654d8bea78e2f481</code> (in the history of the built commit) |
+| Event commit | <code>fc46d41d37d33e985bd0bde572bcd800d9dca294</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20135,13 +20235,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.156/">0.0.156</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.157/">0.0.157</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 849ac3c468176df39f3cf88368ab0ad96b0c28c2
+git checkout 01ebfc6daff657fa2a43f81ff3de01dc9565810b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

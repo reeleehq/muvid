@@ -8,13 +8,19 @@ muvid.footage.scoring.segment
 
    .. autosummary::
    
-      DEFAULT_SHOT_STRATEGY
+      FRAMES_STRATEGY
+      SHOT_STRATEGY_ENV_VAR
+      FRAMES_CUT_RULE
+      FRAMES_MIN_SHOT_S
+      PYSCENEDETECT_STRATEGY
    
    .. rubric:: Functions
 
    .. autosummary::
    
       coverage_mask
+      default_shot_strategy
       shot_boundaries
       shots_available
+      shots_from_frame_pass
    

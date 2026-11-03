@@ -11,7 +11,8 @@ review’s fix for the double-decode / camera-motion-sharing problem):
 2. (opt-in) **Master vocal stem** (Demucs) — ONCE, for the lip-sync tier.
 3. **Per clip: ONE decode pass** ([`sample_clip_frames()`](muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.sample_clip_frames))
    feeds BOTH quality and motion-beat (sharpness/exposure/face + the camera-compensated motion
-   envelope come out of the same loop). Plus shot boundaries (PySceneDetect) and, when enabled,
+   envelope come out of the same loop). Plus shot boundaries — by default from that same
+   pass’s frames (muvid#259), PySceneDetect on request — and, when enabled,
    the lip-sync tracks.
 4. Assemble + **persist** the tensor (per-metric-global normalization, atomic writes).
 
@@ -56,7 +57,7 @@ for callers that read the constant. A scorer registered later is picked up by th
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
 
-### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict())
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict(), shots=dict(), shot_strategies=dict(), shots_truncated=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -68,6 +69,11 @@ were measured under — re-checked under the scoring lock.
 
 the keyed inputs’ fingerprints the kept tracks were measured on, by name
 
+#### shots *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Sequence](https://docs.python.org/3/library/typing.html#typing.Sequence)[[float](https://docs.python.org/3/builtins/functions.html#float)]]*
+
+the shot boundaries already recorded, per clip, and the strategy that found
+each: kept when this run decodes no frames for the `frames` strategy to read
+
 ### muvid.footage.scoring.orchestrator.list_available_extractors()
 
 Which tiers can run here (import + weight availability) — for diagnostics / the tool.
@@ -75,7 +81,7 @@ Which tiers can run here (import + weight availability) — for diagnostics / th
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, inputs=None, beat_source=None, keep=None)
+### muvid.footage.scoring.orchestrator.score_project(project, , metrics=None, hop_s=0.1, sample_fps=None, enable_lipsync=None, progress_cb=None, should_cancel=None, inputs=None, beat_source=None, keep=None, shot_strategy=None)
 
 Score every aligned clip of `project` → persist the tensor; return a summary dict.
 
@@ -103,5 +109,12 @@ Score every aligned clip of `project` → persist the tensor; return a summary d
     beside the `keep.recompute` ones this run measures (`metrics` is then
     ignored). Re-checked against the song and alignments under the scoring lock:
     if either changed since they were read, the run scores in full instead.
+  * **shot_strategy** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – how the shot boundaries are found (muvid#259): `"frames"`,
+    from this pass’s own decoded frames (no second decode), or a
+    `mixing.video.shots` strategy by name (`"pyscenedetect"`,
+    `"diff"`). Default [`default_shot_strategy()`](muvid.footage.scoring.segment.html.md#muvid.footage.scoring.segment.default_shot_strategy)
+    (the `MUVID_SCORING_SHOT_STRATEGY` env var, else `"frames"`). Not a
+    parameter of the footage `score` op on purpose: which detector runs is an
+    operator’s choice, not a caller’s.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

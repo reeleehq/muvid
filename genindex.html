@@ -811,7 +811,7 @@
 </li>
       <li><a href="_autosummary/muvid.footage.scoring.frames.html#muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS">DEFAULT_SAMPLE_FPS (in module muvid.footage.scoring.frames)</a>
 </li>
-      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.DEFAULT_SHOT_STRATEGY">DEFAULT_SHOT_STRATEGY (in module muvid.footage.scoring.segment)</a>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.default_shot_strategy">default_shot_strategy() (in module muvid.footage.scoring.segment)</a>
 </li>
       <li><a href="_autosummary/muvid.visualize.canvas.html#muvid.visualize.canvas.DEFAULT_SIZE">DEFAULT_SIZE (in module muvid.visualize.canvas)</a>
 </li>
@@ -1147,12 +1147,12 @@
 </li>
       <li><a href="_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_peaks">footage_peaks() (in module muvid.mcp.footage_tools)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_redo_edit">footage_redo_edit() (in module muvid.mcp.footage_tools)</a>
 </li>
       <li><a href="_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_rename_edit">footage_rename_edit() (in module muvid.mcp.footage_tools)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_render">footage_render() (in module muvid.mcp.footage_tools)</a>
 </li>
       <li><a href="_autosummary/muvid.mcp.footage_tools.html#muvid.mcp.footage_tools.footage_renders">footage_renders() (in module muvid.mcp.footage_tools)</a>
@@ -1222,6 +1222,12 @@
 </li>
       </ul></li>
       <li><a href="_autosummary/muvid.footage.scoring.frames.html#muvid.footage.scoring.frames.FramePass">FramePass (class in muvid.footage.scoring.frames)</a>
+</li>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.FRAMES_CUT_RULE">FRAMES_CUT_RULE (in module muvid.footage.scoring.segment)</a>
+</li>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.FRAMES_MIN_SHOT_S">FRAMES_MIN_SHOT_S (in module muvid.footage.scoring.segment)</a>
+</li>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.FRAMES_STRATEGY">FRAMES_STRATEGY (in module muvid.footage.scoring.segment)</a>
 </li>
       <li><a href="_autosummary/muvid.mcp.html#muvid.mcp.FREE_TOOLS">FREE_TOOLS (in module muvid.mcp)</a>
 </li>
@@ -2959,6 +2965,8 @@
         <li><a href="_autosummary/muvid.footage.look.html#muvid.footage.look.punch_in_cuts">(in module muvid.footage.look)</a>
 </li>
       </ul></li>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.PYSCENEDETECT_STRATEGY">PYSCENEDETECT_STRATEGY (in module muvid.footage.scoring.segment)</a>
+</li>
   </ul></td>
   </tr>
       </table>
@@ -3430,9 +3438,17 @@
 </li>
       <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.shot_boundaries">shot_boundaries() (in module muvid.footage.scoring.segment)</a>
 </li>
+      <li><a href="_autosummary/muvid.footage.scoring.frames.html#muvid.footage.scoring.frames.FramePass.shot_change">shot_change (muvid.footage.scoring.frames.FramePass attribute)</a>
+</li>
       <li><a href="_autosummary/muvid.renderers.html#muvid.renderers.shot_is_rendered">shot_is_rendered() (in module muvid.renderers)</a>
 </li>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.SHOT_STRATEGY_ENV_VAR">SHOT_STRATEGY_ENV_VAR (in module muvid.footage.scoring.segment)</a>
+</li>
+      <li><a href="_autosummary/muvid.footage.scoring.orchestrator.html#muvid.footage.scoring.orchestrator.KeptScores.shots">shots (muvid.footage.scoring.orchestrator.KeptScores attribute)</a>
+</li>
       <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.shots_available">shots_available() (in module muvid.footage.scoring.segment)</a>
+</li>
+      <li><a href="_autosummary/muvid.footage.scoring.segment.html#muvid.footage.scoring.segment.shots_from_frame_pass">shots_from_frame_pass() (in module muvid.footage.scoring.segment)</a>
 </li>
       <li><a href="_autosummary/muvid.html#muvid.ShotSpec">ShotSpec (class in muvid)</a>
 
@@ -3450,12 +3466,12 @@
 </li>
       <li><a href="_autosummary/muvid.lyricvid.glyph_align.html#muvid.lyricvid.glyph_align.SILENT_GLYPH_MEDIAN_DB">SILENT_GLYPH_MEDIAN_DB (in module muvid.lyricvid.glyph_align)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="_autosummary/muvid.lyricvid.glyph_align.html#muvid.lyricvid.glyph_align.SILENT_GLYPH_PEAK_DB">SILENT_GLYPH_PEAK_DB (in module muvid.lyricvid.glyph_align)</a>
 </li>
       <li><a href="_autosummary/muvid.lyricvid.glyph_align.html#muvid.lyricvid.glyph_align.SILENT_GLYPH_WINDOW_S">SILENT_GLYPH_WINDOW_S (in module muvid.lyricvid.glyph_align)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul style="margin-left:0;list-style-type:none">
       <li><a href="_autosummary/muvid.visualize.html#muvid.visualize.RenderResult.size">size (muvid.visualize.RenderResult attribute)</a>
 
       <ul style="list-style-type:none">
@@ -3801,6 +3817,8 @@
         <li><a href="_autosummary/muvid.montage.spec.html#muvid.montage.spec.TreatmentSpec">(class in muvid.montage.spec)</a>
 </li>
       </ul></li>
+      <li><a href="_autosummary/muvid.footage.scoring.frames.html#muvid.footage.scoring.frames.FramePass.truncated">truncated (muvid.footage.scoring.frames.FramePass attribute)</a>
+</li>
       <li><a href="_autosummary/muvid.footage.trust.html#muvid.footage.trust.TRUST_TIERS">TRUST_TIERS (in module muvid.footage.trust)</a>
 </li>
       <li><a href="_autosummary/muvid.footage.edl.html#muvid.footage.edl.trusted_cover">trusted_cover() (in module muvid.footage.edl)</a>
@@ -4089,7 +4107,7 @@
 </footer>
     </div>
     
-    <script src="_static/documentation_options.js?v=e35d3ea8"></script>
+    <script src="_static/documentation_options.js?v=4725bab1"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>

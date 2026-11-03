@@ -147,7 +147,9 @@ both consume.</p>
 each estimate camera motion — that doubles IO/CPU on the memory-fragile box and makes the
 “camera-motion computed once” claim false. So a single sequential <a class="reference internal" href="#muvid.footage.scoring.frames.sample_clip_frames" title="muvid.footage.scoring.frames.sample_clip_frames"><code class="xref py py-func docutils literal notranslate"><span class="pre">sample_clip_frames()</span></code></a>
 pass computes, per sampled frame: sharpness, exposure, an (injected) face score, the
-camera-compensated motion residual, and the global-motion (shake) magnitude — in clip time.
+camera-compensated motion residual, the global-motion (shake) magnitude, and the picture
+change from the previous sample at mixing’s shot size — in clip time. That last one is
+what the default shot detector reads (muvid#259), so shots cost no second decode.
 The orchestrator maps clip time → song time via the clip’s offset and hands this
 <a class="reference internal" href="#muvid.footage.scoring.frames.FramePass" title="muvid.footage.scoring.frames.FramePass"><code class="xref py py-class docutils literal notranslate"><span class="pre">FramePass</span></code></a> to both extractors.</p>
 <p>cv2 is lazy-imported (<code class="docutils literal notranslate"><span class="pre">muvid[scoring]</span></code> extra). Hard caps (<code class="docutils literal notranslate"><span class="pre">max_frames</span></code>) bound the work;
@@ -194,11 +196,34 @@ The orchestrator maps clip time → song time via the clip’s offset and hands 
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="muvid.footage.scoring.frames.FramePass">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.frames.</span></span><span class="sig-name descname"><span class="pre">FramePass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clip_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharpness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">motion_residual</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_dx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_dy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_sampled</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/frames.html#FramePass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.frames.FramePass" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.frames.FramePass'">¶</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.frames.</span></span><span class="sig-name descname"><span class="pre">FramePass</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">clip_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sharpness</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">face</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">motion_residual</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_dx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">global_dy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_sampled</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shot_change</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncated</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/frames.html#FramePass"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.frames.FramePass" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.frames.FramePass'">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#object" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></p>
 <p>Per-sampled-frame metrics for one clip, in CLIP time (seconds from the clip start).</p>
 <dl class="field-list simple">
 </dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="muvid.footage.scoring.frames.FramePass.shot_change">
+<span class="sig-name descname"><span class="pre">shot_change</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ndarray</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.frames.FramePass.shot_change" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.frames.FramePass.shot_change'">¶</a></dt>
+<dd><p>the mean absolute change from each sample to the next, on frames
+shrunk to <code class="xref py py-data docutils literal notranslate"><span class="pre">mixing.shot_changes.SHOT_FRAME_SIZE</span></code> (what mixing’s shot
+thresholds are calibrated on) — the input of the <code class="docutils literal notranslate"><span class="pre">frames</span></code> shot strategy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><em>float</em><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>[k-1]</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="muvid.footage.scoring.frames.FramePass.truncated">
+<span class="sig-name descname"><span class="pre">truncated</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><span class="pre">bool</span><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.frames.FramePass.truncated" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.frames.FramePass.truncated'">¶</a></dt>
+<dd><p>every signal
+here then stops at <code class="docutils literal notranslate"><span class="pre">clip_times[-1]</span></code>, and a reader must say so.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Whether <code class="docutils literal notranslate"><span class="pre">max_frames</span></code> stopped the pass before the clip ended</p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.scoring.frames.make_face_scorer">
@@ -239,7 +264,11 @@ everywhere, i.e. <em>not measured</em> rather than <em>measured as worst</em>.</
 <ul>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES'" class="reference internal" href="#muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES"><code class="docutils literal notranslate"><span class="pre">DEFAULT_MAX_FRAMES</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS'" class="reference internal" href="#muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS"><code class="docutils literal notranslate"><span class="pre">DEFAULT_SAMPLE_FPS</span></code></a></li>
-<li><a :data-current="activeSection === '#muvid.footage.scoring.frames.FramePass'" class="reference internal" href="#muvid.footage.scoring.frames.FramePass"><code class="docutils literal notranslate"><span class="pre">FramePass</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.frames.FramePass'" class="reference internal" href="#muvid.footage.scoring.frames.FramePass"><code class="docutils literal notranslate"><span class="pre">FramePass</span></code></a><ul>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.frames.FramePass.shot_change'" class="reference internal" href="#muvid.footage.scoring.frames.FramePass.shot_change"><code class="docutils literal notranslate"><span class="pre">FramePass.shot_change</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.frames.FramePass.truncated'" class="reference internal" href="#muvid.footage.scoring.frames.FramePass.truncated"><code class="docutils literal notranslate"><span class="pre">FramePass.truncated</span></code></a></li>
+</ul>
+</li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.frames.make_face_scorer'" class="reference internal" href="#muvid.footage.scoring.frames.make_face_scorer"><code class="docutils literal notranslate"><span class="pre">make_face_scorer()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.frames.sample_clip_frames'" class="reference internal" href="#muvid.footage.scoring.frames.sample_clip_frames"><code class="docutils literal notranslate"><span class="pre">sample_clip_frames()</span></code></a></li>
 </ul>
@@ -255,7 +284,7 @@ everywhere, i.e. <em>not measured</em> rather than <em>measured as worst</em>.</
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=e35d3ea8"></script>
+<script src="../_static/documentation_options.js?v=4725bab1"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
