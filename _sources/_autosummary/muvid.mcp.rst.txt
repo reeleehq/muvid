@@ -36,6 +36,7 @@ muvid.mcp
    :recursive:
 
    footage_tools
+   host_workspace
    identity
    lyricvid_tools
    scoring_tools

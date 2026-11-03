@@ -1,4 +1,4 @@
-> built 2026-11-03 13:39 UTC from a339e5a (main) · muvid 0.0.153. Details: build_info.json
+> built 2026-11-03 14:09 UTC from edea6ef (main) · muvid 0.0.154. Details: build_info.json
 
 # index.html.md
 
@@ -14837,6 +14837,91 @@ video uses. Replaces any previous song. Duration/size-capped.
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
 
+# _autosummary/muvid.mcp.host_workspace.html.md
+
+# muvid.mcp.host_workspace
+
+The host’s drawer: muvid projects a HOST placed in the caller’s own tree (muvid#296).
+
+A host that serves muvid’s genres (reelee’s studio and its connector) creates a
+`music_video` or `music_visualizer` project where IT keeps the caller’s projects —
+`nw.create_genre_project(..., projects_dir=<the caller's bucket>)`, a
+`muvid.Project` there. muvid’s own tools looked only in muvid’s data home, so
+every `muvid_*` tool answered “no such project” for an id the host had just created.
+
+nw carries the host’s answer to “where are this caller’s projects?” —
+`nw.caller_projects_dir(caller)`, registered by the host (placement’s dual). This
+module turns it into one more DRAWER beside muvid’s own: [`HostDrawer`](_autosummary/muvid.mcp.host_workspace.html.md#muvid.mcp.host_workspace.HostDrawer) is shaped
+like a workspace class (`for_email`), and the workspace it returns opens and lists
+the host-placed projects of ONE genre, handing back the same production objects
+muvid’s own drawers do — a project’s `footage`
+([`MusicVideoFootageProject`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.MusicVideoFootageProject)) or `visualizer`
+([`VisualizerProject`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerProject)) — owned by the caller.
+
+Three refusals make it safe to put beside the email-scoped drawers, each one the
+same `FileNotFoundError` (“no such project”), so nothing tells an absent id from
+one that is not a muvid project of this genre:
+
+- the folder must be a DIRECT child of the caller’s directory (`safe_component`
+  plus a resolved-parent check, so a symlinked child cannot lead out of it);
+- it must be an nw project (its `project.json`);
+- it must have been created as THIS genre: a reelee `narrative_video` id handed to
+  a footage tool never sprouts a `footage/` folder inside someone’s story.
+
+No host registered (or an `nw` that predates the locator) means no drawer: an empty
+listing and “no such project”, exactly the behaviour before. Imports are lazy, so
+`import muvid.mcp.host_workspace` pulls nothing heavy.
+
+### Module Attributes
+
+| [`PRODUCTIONS`](_autosummary/muvid.mcp.host_workspace.html.md#muvid.mcp.host_workspace.PRODUCTIONS)   | How each genre's production is taken from a host-placed `muvid.Project`.   |
+|----------------------------------------------------------------|----------------------------------------------------------------------------|
+
+### Classes
+
+| [`HostDrawer`](_autosummary/muvid.mcp.host_workspace.html.md#muvid.mcp.host_workspace.HostDrawer)(genre[, locate])               | A drawer of host-placed projects of `genre`, shaped like a workspace class.   |
+|--------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------|
+| [`HostWorkspace`](_autosummary/muvid.mcp.host_workspace.html.md#muvid.mcp.host_workspace.HostWorkspace)(email, genre, projects_dir) | One caller's host-placed projects of one genre (see the module docstring).    |
+
+### *class* muvid.mcp.host_workspace.HostDrawer(genre, locate=<function \_nw_locator>)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+A drawer of host-placed projects of `genre`, shaped like a workspace class.
+
+`locate` is the seam: the caller’s projects directory, default the host’s
+registration in nw (`nw.caller_projects_dir`).
+
+#### locate()
+
+`nw.caller_projects_dir(email)`, or `None` when no host registered one or
+the installed nw predates it.
+
+* **Return type:**
+  [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)]
+
+### *class* muvid.mcp.host_workspace.HostWorkspace(email, genre, projects_dir)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One caller’s host-placed projects of one genre (see the module docstring).
+
+#### list_projects()
+
+`[{project_id, title, created, modified}]` of this genre, newest first.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
+
+#### open_project(project_id)
+
+The caller’s production in the host-placed project `project_id`.
+
+### muvid.mcp.host_workspace.PRODUCTIONS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Callable](https://docs.python.org/3/library/typing.html#typing.Callable)]* *= {'music_video': <function \_footage_of>, 'music_visualizer': <function \_visualizer_of>}*
+
+How each genre’s production is taken from a host-placed `muvid.Project`.
+
+
 # _autosummary/muvid.mcp.html.md
 
 # muvid.mcp
@@ -14979,6 +15064,7 @@ Bind the caller identity for the duration of the block (local/stdio/testing).
 
 | [`footage_tools`](_autosummary/muvid.mcp.footage_tools.html.md#module-muvid.mcp.footage_tools)   | MCP tools for the footage-aligned `music_video` genre (thorwhalen/reelee#229).        |
 |-------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| [`host_workspace`](_autosummary/muvid.mcp.host_workspace.html.md#module-muvid.mcp.host_workspace) | The host's drawer: muvid projects a HOST placed in the caller's own tree (muvid#296). |
 | [`identity`](_autosummary/muvid.mcp.identity.html.md#module-muvid.mcp.identity)             | Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed. |
 | [`scoring_tools`](_autosummary/muvid.mcp.scoring_tools.html.md#module-muvid.mcp.scoring_tools)   | MCP tools for the footage SCORING layer (thorwhalen/muvid#13).                        |
 | [`workspace`](_autosummary/muvid.mcp.workspace.html.md#module-muvid.mcp.workspace)           | Per-user output bucket for the muvid `music_visualizer` MCP genre.                    |
@@ -19966,20 +20052,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-03 13:39 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3"><code>a339e5a</code></a> on branch <code>main</code>, for **muvid 0.0.153** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-03 14:09 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68"><code>edea6ef</code></a> on branch <code>main</code>, for **muvid 0.0.154** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.153) is ahead of the latest release on PyPI (0.0.152): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3"><code>a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68"><code>edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.153</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.154</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -19988,9 +20072,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41641471322">41641471322</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41648020804">41648020804</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>5a7c5da3f18678876106478829f2ef35ec0209e6</code> (in the history of the built commit) |
+| Event commit | <code>346a602aace06cc00e6502d37ed2c0299f16bdeb</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20015,13 +20099,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.152/">0.0.152</a>, older than the documented version (0.0.153).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.154/">0.0.154</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3
+git checkout edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

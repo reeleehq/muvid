@@ -138,6 +138,7 @@ Bind the caller identity for the duration of the block (local/stdio/testing).
 
 | [`footage_tools`](muvid.mcp.footage_tools.html.md#module-muvid.mcp.footage_tools)   | MCP tools for the footage-aligned `music_video` genre (thorwhalen/reelee#229).        |
 |-------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
+| [`host_workspace`](muvid.mcp.host_workspace.html.md#module-muvid.mcp.host_workspace) | The host's drawer: muvid projects a HOST placed in the caller's own tree (muvid#296). |
 | [`identity`](muvid.mcp.identity.html.md#module-muvid.mcp.identity)             | Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed. |
 | [`scoring_tools`](muvid.mcp.scoring_tools.html.md#module-muvid.mcp.scoring_tools)   | MCP tools for the footage SCORING layer (thorwhalen/muvid#13).                        |
 | [`workspace`](muvid.mcp.workspace.html.md#module-muvid.mcp.workspace)           | Per-user output bucket for the muvid `music_visualizer` MCP genre.                    |

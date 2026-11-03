@@ -237,10 +237,10 @@
 </span><span id="line-47">
 </span><span id="line-48">
 </span><span id="line-49"><span class="k">def</span><span class="w"> </span><span class="nf">_open</span><span class="p">(</span><span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
-</span><span id="line-50">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.workspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">FootageWorkspace</span>
+</span><span id="line-50">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.downloads</span><span class="w"> </span><span class="kn">import</span> <span class="n">open_caller_project</span>
 </span><span id="line-51">
 </span><span id="line-52">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-53">        <span class="k">return</span> <span class="n">FootageWorkspace</span><span class="o">.</span><span class="n">for_email</span><span class="p">(</span><span class="n">current_email</span><span class="p">())</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-53">        <span class="k">return</span> <span class="n">open_caller_project</span><span class="p">(</span><span class="n">current_email</span><span class="p">(),</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"footage"</span><span class="p">)</span>
 </span><span id="line-54">    <span class="k">except</span> <span class="ne">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
 </span><span id="line-55">        <span class="k">raise</span> <span class="n">_tool_error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no such project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
 </span><span id="line-56">
@@ -442,7 +442,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=bb54a016"></script>
+    <script src="../../../_static/documentation_options.js?v=70dd30db"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

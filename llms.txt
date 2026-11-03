@@ -74,6 +74,7 @@
 - [muvid.lyricvid.tools](_autosummary/muvid.lyricvid.tools.html.md): The SSOT verbs for the lyric-video subgenre.
 - [muvid.mcp](_autosummary/muvid.mcp.html.md): muvid MCP server — the &#96;music_visualizer&#96; tool surface for a remote connector.
 - [muvid.mcp.footage_tools](_autosummary/muvid.mcp.footage_tools.html.md): MCP tools for the footage-aligned &#96;music_video&#96; genre (thorwhalen/reelee#229).
+- [muvid.mcp.host_workspace](_autosummary/muvid.mcp.host_workspace.html.md): The host’s drawer: muvid projects a HOST placed in the caller’s own tree (muvid#296).
 - [muvid.mcp.identity](_autosummary/muvid.mcp.identity.html.md): Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed.
 - [muvid.mcp.scoring_tools](_autosummary/muvid.mcp.scoring_tools.html.md): MCP tools for the footage SCORING layer (thorwhalen/muvid#13).
 - [muvid.mcp.workspace](_autosummary/muvid.mcp.workspace.html.md): Per-user output bucket for the muvid &#96;music_visualizer&#96; MCP genre.
@@ -106,7 +107,7 @@
 - [muvid.visualize.video](_autosummary/muvid.visualize.video.html.md): Render an audio file into a video: pick a visual, mux, normalize, encode.
 - [muvid.visualize.visuals](_autosummary/muvid.visualize.visuals.html.md): Visual strategies: how the &#42;picture&#42; of an audio-driven video is produced.
 - [For AI agents](ai-agents.html.md): &#96;muvid&#96; ships artifacts for coding agents alongside its code. This page lists
-- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-11-03 13:39 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
+- [About this build](about-this-build.html.md): This documentation was built on &#42;&#42;2026-11-03 14:09 UTC&#42;&#42; from commit &lt;a href="https://github.com/ree...
 
 ## Optional
 

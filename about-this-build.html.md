@@ -2,20 +2,18 @@
 
 # About this build
 
-This documentation was built on **2026-11-03 13:39 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3"><code>a339e5a</code></a> on branch <code>main</code>, for **muvid 0.0.153** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-03 14:09 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68"><code>edea6ef</code></a> on branch <code>main</code>, for **muvid 0.0.154** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.153) is ahead of the latest release on PyPI (0.0.152): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3"><code>a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68"><code>edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.153</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.154</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -24,9 +22,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41641471322">41641471322</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41648020804">41648020804</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>5a7c5da3f18678876106478829f2ef35ec0209e6</code> (in the history of the built commit) |
+| Event commit | <code>346a602aace06cc00e6502d37ed2c0299f16bdeb</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -51,13 +49,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.152/">0.0.152</a>, older than the documented version (0.0.153).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.154/">0.0.154</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout a339e5a80ddbf441ef3f1c89c1456c6b4a7b4df3
+git checkout edea6efd4ea4b3bef4c38cf9ad80007b5c42fc68
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

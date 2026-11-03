@@ -72,6 +72,7 @@
 - [muvid.lyricvid.tools](muvid.lyricvid.tools.html.md): The SSOT verbs for the lyric-video subgenre.
 - [muvid.mcp](muvid.mcp.html.md): muvid MCP server — the &#96;music_visualizer&#96; tool surface for a remote connector.
 - [muvid.mcp.footage_tools](muvid.mcp.footage_tools.html.md): MCP tools for the footage-aligned &#96;music_video&#96; genre (thorwhalen/reelee#229).
+- [muvid.mcp.host_workspace](muvid.mcp.host_workspace.html.md): The host’s drawer: muvid projects a HOST placed in the caller’s own tree (muvid#296).
 - [muvid.mcp.identity](muvid.mcp.identity.html.md): Caller identity for the muvid MCP tools — resolved from the OAuth token, fail-closed.
 - [muvid.mcp.scoring_tools](muvid.mcp.scoring_tools.html.md): MCP tools for the footage SCORING layer (thorwhalen/muvid#13).
 - [muvid.mcp.workspace](muvid.mcp.workspace.html.md): Per-user output bucket for the muvid &#96;music_visualizer&#96; MCP genre.

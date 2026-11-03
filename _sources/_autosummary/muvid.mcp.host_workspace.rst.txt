@@ -1,0 +1,19 @@
+muvid.mcp.host\_workspace
+=========================
+
+.. automodule:: muvid.mcp.host_workspace
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      PRODUCTIONS
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      HostDrawer
+      HostWorkspace
+   
