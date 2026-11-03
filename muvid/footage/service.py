@@ -4543,6 +4543,11 @@ def renders(fp) -> dict:
     return {"renders": rows}
 
 
+#: The render ``meta.json`` keys a CALLER owns (``downloads.organise``'s ``organise``:
+#: title, tags, note), which a re-import must carry over rather than reset (muvid#299).
+CALLER_OWNED_RENDER_KEYS = ("organise",)
+
+
 def import_render(
     fp, *, path: str, render_id: str, label: str = "", edit_id: str = ""
 ) -> dict:
@@ -4562,16 +4567,14 @@ def import_render(
     if not (dest.exists() and hash_file(dest) == hash_file(src)):
         replace_file(src, dest)  # a new inode: the old bytes' catalog blob stays intact
     meta_path = render_dir / "meta.json"
-    previous = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-    ref_n = previous.get("ref_n") or fp.next_render_ref()
+    # a candidate only: the ref the render already holds wins, under the lock below
+    candidate_ref = fp.next_render_ref()
     duration = _probe_duration(dest)
     # Where on the song the video sits: its edit's span when it names one, else the
     # opening of the song (a video made elsewhere starts where its song starts).
     span = _span_of(fp.read_edit(edit_id)) if edit_id and fp.has_edit(edit_id) else None
     meta = {
         "render_id": render_id,
-        "ref_n": ref_n,
-        **_ref_label(ref_n),
         "video": str(dest),
         "strategy": None,
         "canvas": frame_size(dest),
@@ -4590,8 +4593,30 @@ def import_render(
     artifact_id = _register_media(fp, dest, kind="video", duration_s=duration)
     if artifact_id:
         meta["artifact_id"] = artifact_id
-    fp.write_render_meta(render_id, meta)
-    return public_render(fp, meta)
+
+    def rewrite(record):
+        """The import's own fields replace the old ones; what a CALLER set on the
+        render (organise's title/tags/note) and the ref it already holds stay, under
+        the meta's lock against a concurrent organise or ref backfill (muvid#299)."""
+        kept = {k: record[k] for k in CALLER_OWNED_RENDER_KEYS if k in record}
+        held = record.get("ref_n")
+        ref_n = held if isinstance(held, int) else candidate_ref
+        record.clear()
+        record.update(meta, ref_n=ref_n, **_ref_label(ref_n), **kept)
+        return dict(record)
+
+    from dol.atomic import InvalidJSONError
+
+    from muvid.footage.workspace import update_json_record
+
+    try:
+        written = update_json_record(meta_path, rewrite)
+    except InvalidJSONError as e:
+        raise FootageError(
+            f"render {render_id!r} has a meta.json that is not valid JSON, so the "
+            "import would destroy what it held; restore it or import under a new id"
+        ) from e
+    return public_render(fp, written)
 
 
 def frame_rate(video) -> Optional[float]:
