@@ -761,7 +761,7 @@ bridge before muvid#37.
   MEANS, and only CI could see it.** `scale=w=8000:100` exits 234 on 9.0.1 ("No option
   name near '100'" — the shorthand is discarded) and renders **8000x100** on 6.1.6, which
   fills the next slot. Both measured; CI installs an ffmpeg 6, so a claim pinned only
-  against the local 9.0.1 went red there. Two consequences worth carrying: `_link_options`
+  against the local 9.0.1 went red there. Two consequences worth carrying: `fflex.options` (the lexer is `muvid/footage/fflex.py` since muvid#278 — every reader of a look goes through it)
   **refuses** such a fragment rather than reading it, because no single reading is right on
   both binaries; and dropping that rule is a **hole**, not an over-refusal — the trailing
   bare value refills slot 0 and *overwrites* the named `w`, so the gate reads 100 and

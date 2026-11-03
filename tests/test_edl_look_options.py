@@ -498,7 +498,7 @@ def test_the_positional_prefix_is_the_order_the_binary_really_uses(
 def test_a_bare_argument_after_a_named_one_is_refused_because_builds_DISAGREE(
     sweep_source,
 ):
-    """``_link_options``' ``named_seen`` rule, against the binaries that decide it.
+    """``fflex.options``' ``named_seen`` rule, against the binaries that decide it.
 
     **This test found that the rule is load-bearing, not cosmetic, and corrected
     what the code said about it.** The first version asserted ffmpeg refuses a
@@ -564,9 +564,10 @@ def test_zoompan_with_no_size_really_is_the_fixed_hd720_the_gate_ignores(sweep_s
 def test_the_edl_modules_own_doctests_actually_run():
     """`testpaths = ["tests"]` and no `--doctest-modules`, so nothing collects them.
 
-    Every `>>>` in `muvid/footage/edl.py` documents the lexer and the option
-    reader -- `_link_options`' positional rules, `_look_unclassified_options`'
-    three offences, `_significant`'s two escape mechanisms. Uncollected they are
+    Every `>>>` in `muvid/footage/edl.py` and `muvid/footage/fflex.py` documents the
+    lexer and the option
+    reader -- `fflex.options`' positional rules, `edl._look_unclassified_options`'
+    three offences, `fflex.significant`'s two escape mechanisms. Uncollected they are
     prose that happens to look executable, which is the "green tick over zero
     tests" shape (`an`'s CLAUDE.md names it; muvid's own CI canary exists for the
     same reason). Running them from a real test makes them a gate without
@@ -579,13 +580,17 @@ def test_the_edl_modules_own_doctests_actually_run():
     import doctest
 
     import muvid.footage.edl as E
+    import muvid.footage.fflex as L
 
-    result = doctest.testmod(E, verbose=False)
-    assert result.failed == 0, f"{result.failed} doctest failures in muvid.footage.edl"
-    assert result.attempted >= 20, (
-        f"only {result.attempted} doctest examples ran in muvid.footage.edl -- the "
-        "module's examples have been deleted or this call stopped finding them."
-    )
+    # the lexer's examples moved to fflex with it (muvid#278); the floor is per module
+    for module, floor in ((E, 40), (L, 20)):
+        result = doctest.testmod(module, verbose=False)
+        name = module.__name__
+        assert result.failed == 0, f"{result.failed} doctest failures in {name}"
+        assert result.attempted >= floor, (
+            f"only {result.attempted} doctest examples ran in {name} -- the "
+            "module's examples have been deleted or this call stopped finding them."
+        )
 
 
 def _refresh_snapshot() -> None:  # pragma: no cover - a maintenance helper

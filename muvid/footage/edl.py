@@ -37,6 +37,8 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, NamedTuple, Sequence
 
+from muvid.footage import fflex
+
 if TYPE_CHECKING:  # pragma: no cover
     from muvid.footage.colour import ToneMap
 
@@ -2394,340 +2396,6 @@ _LOOK_PIXELS = re.compile(r"^\d+$")
 _LOOK_PIXEL_SIZE = re.compile(r"^(\d+)x(\d+)$")
 
 
-class _LookSyntaxError(ValueError):
-    """A look fragment that is not lexically CLOSED. Carries the open character."""
-
-    def __init__(self, char: str):
-        self.char = char
-        super().__init__(char)
-
-
-def _significant(s: str):
-    r"""Yield ``(index, char)`` for each character ffmpeg reads as SYNTAX.
-
-    Models both of ffmpeg's escape mechanisms, because modelling only one is a
-    silent hole: ``av_get_token`` treats ``\`` as escaping the next character
-    **and** copies everything between single quotes literally — inside quotes a
-    backslash is an ordinary character and a terminator is swallowed. So
-    ``crop=x='min(a,b)'`` is ONE filter, not two, and a check that walks only
-    backslashes splits it in the middle.
-
-    Raises:
-        _LookSyntaxError: if the fragment ends inside a quote, or on a dangling
-            backslash. Neither is a character to refuse — it is the fragment
-            failing to be CLOSED, which is exactly what "one chain spliceable by
-            comma" requires: an open quote swallows the ``,format=yuv420p[a];[1:``
-            the transition site appends, and a trailing backslash escapes the
-            splice's own comma. Both render fine alone and restructure the graph
-            beside a transition (measured: ffmpeg exits 234 with
-            ``No option name near 'v]scale=...'``).
-
-    Yields every character whose syntactic role ffmpeg will honour — i.e. all of
-    them except the ones an escape or a quoted run hides:
-
-    >>> "".join(c for _, c in _significant("scale=2,hue=s=0"))
-    'scale=2,hue=s=0'
-    >>> "".join(c for _, c in _significant(r"lut3d=file=a\[b\].cube"))
-    'lut3d=file=ab.cube'
-    >>> "".join(c for _, c in _significant("crop=x='min(a,b)'"))
-    'crop=x='
-    """
-    i = 0
-    while i < len(s):
-        c = s[i]
-        if c == "\\":
-            if i + 1 >= len(s):
-                raise _LookSyntaxError("\\")
-            i += 2
-            continue
-        if c == "'":
-            j = s.find("'", i + 1)
-            if j < 0:
-                raise _LookSyntaxError("'")
-            i = j + 1
-            continue
-        yield i, c
-        i += 1
-
-
-def _unquote(s: str) -> str:
-    r"""``s`` as ffmpeg's tokenizer resolves it — escapes applied, quotes removed.
-
-    Needed for the *name* half of :func:`_look_filter_names`, and its role is to
-    **widen** what the allowlist accepts, not to secure it. An earlier version of
-    this docstring had that backwards — it claimed a raw-text compare "would be
-    bypassed" by ``'metadata'`` or ``\m\e\t\a\d\a\t\a``. Measured, it is not:
-    against an ALLOWLIST a raw compare fails **closed**, because neither spelling
-    is a member either. What a raw compare loses is the legitimate direction —
-    ``h\ue=s=0`` resolves to the allowed ``hue`` and would be refused.
-
-    ======================================  =============  ================
-    spelling                                raw compare    with ``_unquote``
-    ======================================  =============  ================
-    ``metadata=mode=print:file=…``          refused        refused
-    ``\m\e\t\a\d\a\t\a=…``                   refused        refused
-    ``h\ue=s=0``  (legitimate)              **refused**    accepted
-    ======================================  =============  ================
-
-    The security comes from :data:`LOOK_FILTERS` being a closed set. Stating that
-    correctly matters: a reader who believes this function is the guard could
-    "simplify" by dropping the allowlist and keeping the normalisation, which is
-    the one edit that would reopen the hole.
-
-    >>> _unquote(r"h\ue")
-    'hue'
-    >>> _unquote("'hue'")
-    'hue'
-    """
-    out, i = [], 0
-    while i < len(s):
-        c = s[i]
-        if c == "\\":
-            if i + 1 >= len(s):
-                raise _LookSyntaxError("\\")
-            out.append(s[i + 1])
-            i += 2
-            continue
-        if c == "'":
-            j = s.find("'", i + 1)
-            if j < 0:
-                raise _LookSyntaxError("'")
-            out.append(s[i + 1 : j])
-            i = j + 1
-            continue
-        out.append(c)
-        i += 1
-    return "".join(out)
-
-
-def _first_unescaped(s: str, chars: str) -> "str | None":
-    r"""The first character of ``chars`` in ``s`` that ffmpeg would read as syntax.
-
-    >>> _first_unescaped("scale=2,hue=s=0", "[];") is None
-    True
-    >>> _first_unescaped("[0:v]scale=2", "[];")
-    '['
-    >>> _first_unescaped(r"lut3d=file=a\[b\].cube", "[];") is None
-    True
-    >>> _first_unescaped("lut3d=file='a[b].cube'", "[];") is None
-    True
-    """
-    for _, c in _significant(s):
-        if c in chars:
-            return c
-    return None
-
-
-def _strip_unescaped(s: str) -> str:
-    r"""Trim whitespace from the ends — but only whitespace ffmpeg would trim.
-
-    A plain ``.strip()`` here removed an ESCAPED space and left the backslash
-    that escaped it, so ``hue\ =s=0`` became ``hue\`` and the lexer raised
-    ``_LookSyntaxError("\\")`` from outside the caller's try/except: a lexically
-    closed look refused with a message that was a single backslash, reaching an
-    MCP caller as the whole explanation.
-
-    >>> _strip_unescaped("  hue  ")
-    'hue'
-    >>> _strip_unescaped(r"hue\ ")
-    'hue\\ '
-    """
-    significant = {i for i, _ in _significant(s)}
-    lo, hi = 0, len(s)
-    while lo < hi and s[lo].isspace() and lo in significant:
-        lo += 1
-    while hi > lo and s[hi - 1].isspace() and hi - 1 in significant:
-        hi -= 1
-    return s[lo:hi]
-
-
-def _split_significant(s: str, sep: str) -> "list[str]":
-    r"""``s`` split on the ``sep`` characters ffmpeg reads as SEPARATORS.
-
-    The one splitter for both of a filter chain's levels — ``,`` between links,
-    ``:`` between one link's arguments — so a quoted expression survives both.
-    Written once rather than twice because the second copy is where the two stop
-    agreeing about what a fragment says.
-
-    >>> _split_significant("scale=2,hue=s=0", ",")
-    ['scale=2', 'hue=s=0']
-    >>> _split_significant("w='min(iw,2)':h=100", ":")
-    ["w='min(iw,2)'", 'h=100']
-    """
-    breaks = [i for i, c in _significant(s) if c == sep]
-    out, start = [], 0
-    for b in breaks + [len(s)]:
-        out.append(s[start:b])
-        start = b + 1
-    return out
-
-
-def _look_links(look: str) -> "list[tuple[str, str]]":
-    r"""Each link of the chain as ``(filter name, argument string)``.
-
-    >>> _look_links("scale=2,hue=s=0")
-    [('scale', '2'), ('hue', 's=0')]
-    >>> _look_links("null")
-    [('null', '')]
-    """
-    out = []
-    for link in _split_significant(look, ","):
-        eq = next((i for i, c in _significant(link) if c == "="), len(link))
-        raw = _strip_unescaped(link[:eq])
-        at = next((i for i, c in _significant(raw) if c == "@"), len(raw))
-        # No `.strip()` AFTER unescaping. `\ ` is an escaped space, so stripping
-        # the unescaped result removed the space and left the backslash that
-        # escaped it — `_unquote` then raised `_LookSyntaxError("\\")` from
-        # OUTSIDE `_validate_look`'s try/except, so a lexically CLOSED look was
-        # refused with a message that was a single backslash. Through the MCP
-        # tool that reached the caller as the whole explanation.
-        out.append((_unquote(raw[:at]), link[eq + 1 :]))
-    return out
-
-
-def _look_filter_names(look: str) -> "list[str]":
-    r"""The filter each link of the chain names, as ffmpeg will resolve it.
-
-    Splits on the commas ffmpeg reads as separators (not on the ones inside a
-    quoted expression), then takes each link's name token — everything before its
-    first significant ``=``, minus a ``@instance`` label — and resolves it through
-    :func:`_unquote`.
-
-    Only **unescaped** whitespace is trimmed, because that is the only kind
-    ffmpeg trims: ``hue =s=0`` works (rc=0), while ``\ hue=s=0`` names the
-    filter *space-h-u-e* and fails with "No such filter: ' hue'" (rc=8). Both
-    measured. A plain ``.strip()`` here resolved the second to ``hue`` and
-    accepted it — harmless, since ffmpeg then refused it, but it also meant the
-    gate and the binary disagreed about what a fragment says, which is the one
-    thing a gate must not do.
-
-    >>> _look_filter_names("scale=2,hue=s=0")
-    ['scale', 'hue']
-    >>> _look_filter_names("crop=x='min(a,b)':y=0,zoompan=d=1")
-    ['crop', 'zoompan']
-    >>> _look_filter_names(r"\m\e\t\a\d\a\t\a=mode=print")
-    ['metadata']
-    >>> _look_filter_names("hue@grade=s=0")
-    ['hue']
-    """
-    return [name for name, _ in _look_links(look)]
-
-
-def _link_options(
-    args: str, positional: "Sequence[str]"
-) -> "tuple[dict[str, str], list[tuple[str, bool]]]":
-    r"""One link's arguments as ``{option name: value}``, ffmpeg's way.
-
-    ``args`` is the link's text as it sits in the filtergraph, and ffmpeg reads it
-    at TWO levels: the graph parser (``av_get_token`` over the whole argument
-    string) resolves one level of escapes and quotes, and only THEN does the option
-    parser split on ``:`` and resolve a second level per value. So the graph level
-    is resolved here first, and each returned value is the OPTION-level text — what
-    ``av_get_token`` will unescape once more (callers that read a value
-    :func:`_unquote` it, which is that second level). Splitting the graph-level
-    text instead let a graph-escaped colon through as one value while ffmpeg read
-    it as a separator: ``lut3d=interp=nearest\:file=/elsewhere.cube`` passed the
-    gate as ``{interp: ...}`` and loaded a cube from outside the LUT folder, and
-    ``pad=w=1920:h=1080:color=black\:aspect=1/30`` reached ``pad``'s ``aspect``
-    past the geometry gate (both measured on ffmpeg 9.0.1 and 6.1.6; muvid#252
-    review).
-
-    Two rules taken from libavfilter's ``process_options`` rather than from
-    intuition, and both change the answer:
-
-    - an argument with no ``=`` is POSITIONAL, filling the next slot of
-      ``positional`` (the option list in declaration order, aliases collapsed);
-    - **positional slots stop being offered after the first named argument**, so
-      a bare argument after a ``key=value`` one goes to ``overflow`` and is
-      REFUSED rather than read as a later slot. **Not because ffmpeg agrees —
-      because the two builds this fleet runs do not agree with each other:**
-
-      ==========================  ==============  ================
-      fragment                    ffmpeg 9.0.1    ffmpeg 6.1.6
-      ==========================  ==============  ================
-      ``scale=w=100:8000``        rc=234          **100x8000**
-      ``scale=w=8000:100``        rc=234          **8000x100**
-      ``scale=100:h=8000``        100x8000        100x8000
-      ==========================  ==============  ================
-
-      9.0.1 discards the remaining shorthand ("No option name near '8000'"); 6.1.6
-      fills the next slot. A gate that picked either reading would be wrong on the
-      other binary, and on 6.1.6 it would be wrong in the dangerous direction —
-      reading ``scale=w=8000:100`` as ``{w: 100}`` accepts a fragment that renders
-      8000 px wide. So this is a hole where it is dropped, not merely an
-      over-refusal: without the rule the trailing bare argument refills slot 0 and
-      **overwrites** the named ``w``.
-
-    Later assignments win, as ``av_opt_set`` does.
-
-    Returns ``(options, overflow)``. ``overflow`` is one ``(value, after_named)``
-    per positional argument that found no slot — **reported rather than dropped**,
-    which is the half the first pass got wrong. ``positional`` stops at the slots
-    muvid classifies (see :data:`_LOOK_GEOMETRY_FILTERS`), so a bare argument past
-    the end is not a triviality: ``pad``'s ``aspect`` is its seventh slot, and
-    ``pad=1920:1080:0:0:black:init:1/30`` reaches it without naming it. Silently
-    dropping slot 7 is what let that fragment through.
-
-    An EMPTY argument string declares nothing, which is a case rather than a
-    triviality: ``scale`` and ``pad`` with no arguments at all are legal ffmpeg
-    (rc=0, frame unchanged — measured), and reading their absent ``w`` as the
-    empty string made the gate refuse a fragment the binary accepts. Note this is
-    the whole list being empty; an empty value *within* a list (``scale=:100``)
-    is left alone, because ffmpeg refuses that too ("Cannot parse expression for
-    width: ''", rc=234) and the gate agreeing is the point.
-
-    >>> _link_options("8000:8000", ("w", "h"))
-    ({'w': '8000', 'h': '8000'}, [])
-    >>> _link_options("w=8000:h=8000", ("w", "h"))
-    ({'w': '8000', 'h': '8000'}, [])
-    >>> _link_options("1:0:0:1:640x360:25", ("zoom", "x", "y", "d", "s", "fps"))[0]["s"]
-    '640x360'
-    >>> _link_options("", ("w", "h"))
-    ({}, [])
-    >>> _link_options("64:48:0:0:black", ("w", "h", "x", "y"))[1]
-    [('black', False)]
-    >>> _link_options("w=100:8000", ("w", "h"))
-    ({'w': '100'}, [('8000', True)])
-    >>> _link_options(r"interp=nearest\:file=/x.cube", ("file",))[0]
-    {'interp': 'nearest', 'file': '/x.cube'}
-    >>> _link_options("enable='between(t,0,1)'", ("file",))[0]
-    {'enable': 'between(t,0,1)'}
-    >>> _link_options(r"enable=between(t\,0\,1)", ("file",))[0]
-    {'enable': 'between(t,0,1)'}
-    """
-    out: "dict[str, str]" = {}
-    overflow: "list[tuple[str, bool]]" = []
-    raw = args
-    try:
-        args = _unquote(args)  # the graph level: what the option parser is handed
-        parts = _split_significant(args, ":") if args else []
-    except _LookSyntaxError as exc:  # closed at one level, open at the next
-        raise ValueError(
-            f"look options {raw!r} are not closed once ffmpeg resolves the "
-            "filtergraph level: they end "
-            + (
-                "inside a single-quoted run"
-                if exc.char == "'"
-                else "on a dangling backslash"
-            )
-            + ". ffmpeg unescapes an option value twice (the graph, then the option), "
-            "so an escaped quote or backslash must be escaped for both."
-        ) from None
-    slot, named_seen = 0, False
-    for arg in parts:
-        eq = next((j for j, c in _significant(arg) if c == "="), None)
-        if eq is None:
-            if named_seen or slot >= len(positional):
-                overflow.append((arg, named_seen))
-                continue
-            out[positional[slot]] = arg
-            slot += 1
-            continue
-        named_seen = True
-        out[_unquote(_strip_unescaped(arg[:eq]))] = arg[eq + 1 :]
-    return out, overflow
-
-
 def _look_output_sizes(look: str) -> "list[tuple[str, str, str, str, int | None]]":
     r"""Every output frame DIMENSION the chain declares.
 
@@ -2763,7 +2431,7 @@ def _look_output_sizes(look: str) -> "list[tuple[str, str, str, str, int | None]
     """
     return [
         (name, *size)
-        for name, args in _look_links(look)
+        for name, args in fflex.links(look)
         for size in _link_output_sizes(name, args)
     ]
 
@@ -2785,12 +2453,12 @@ def _link_output_sizes(
     if spec is None:
         return []
     out = []
-    opts, _overflow = _link_options(args, spec.positional)
+    opts, _overflow = fflex.options(args, spec.positional)
     for opt, value in opts.items():
         axis = spec.sizes.get(opt)
         if axis is None:
             continue
-        text = _unquote(_strip_unescaped(value))
+        text = fflex.unquote(fflex.strip_unescaped(value))
         if axis == "size":
             m = _LOOK_PIXEL_SIZE.match(text)
             for ax, group in (("width", 1), ("height", 2)):
@@ -2822,7 +2490,7 @@ def _look_frames(look: str, canvas) -> "list[tuple[str, str, tuple, tuple]]":
     """
     frame = (canvas[0], canvas[1])
     out = []
-    for name, args in _look_links(look):
+    for name, args in fflex.links(look):
         before = frame
         if name in _LOOK_GEOMETRY_FILTERS:
             w, h = frame
@@ -2857,7 +2525,7 @@ def look_may_resize(look: str) -> bool:
     """
     return any(
         name in ("crop", "zoompan") or _link_output_sizes(name, args)
-        for name, args in _look_links(look)
+        for name, args in fflex.links(look)
     )
 
 
@@ -2870,12 +2538,12 @@ def _crop_literal_size(args: str, frame) -> tuple:
     >>> _crop_literal_size("w='iw*0.9':h=1080", (1920, 1200))
     (1920, 1080)
     """
-    opts, _overflow = _link_options(args, _LOOK_GEOMETRY_FILTERS["crop"].positional)
+    opts, _overflow = fflex.options(args, _LOOK_GEOMETRY_FILTERS["crop"].positional)
     w, h = frame
 
     def literal(*keys):
         for k in keys:
-            text = _unquote(_strip_unescaped(opts[k])) if k in opts else ""
+            text = fflex.unquote(fflex.strip_unescaped(opts[k])) if k in opts else ""
             if _LOOK_PIXELS.match(text):  # read as _link_output_sizes reads it
                 return int(text)
         return None
@@ -2922,11 +2590,11 @@ def _look_unclassified_options(look: str) -> "list[tuple[str, str, str]]":
     [('pad', "the positional argument 'black'")]
     """
     out = []
-    for name, args in _look_links(look):
+    for name, args in fflex.links(look):
         spec = _LOOK_GEOMETRY_FILTERS.get(name)
         if spec is None:
             continue
-        opts, overflow = _link_options(args, spec.positional)
+        opts, overflow = fflex.options(args, spec.positional)
         for opt in opts:
             if opt in spec.sizes or opt in spec.free:
                 continue
@@ -2993,10 +2661,10 @@ def _validate_look_links(i, look: str, canvas) -> None:
     graph; the cost (:func:`_look_cost`, :data:`MAX_LOOK_COST`) bounds the memory — one
     budget where three counts each answered one version of the question (muvid#229).
 
-    Counted through :func:`_look_filter_names`, so the count is the one ffmpeg will
+    Counted through :func:`~muvid.footage.fflex.filter_names`, so the count is the one ffmpeg will
     make — escaped commas inside an expression are not separators.
     """
-    names = _look_filter_names(look)
+    names = fflex.filter_names(look)
     if len(names) > MAX_LOOK_LINKS:
         raise ValueError(
             f"EDL entry {i}: look chains {len(names)} filters, more than the "
@@ -3176,17 +2844,17 @@ def _validate_look_luts(i, look: str) -> None:
             "muvid's LUT folder — lut3d=file=warm.cube (``luts`` lists them)."
         )
 
-    for name, args in _look_links(look):
+    for name, args in fflex.links(look):
         if name != "lut3d":
             continue
-        opts, overflow = _link_options(args, _LUT3D_POSITIONAL)
+        opts, overflow = fflex.options(args, _LUT3D_POSITIONAL)
         if overflow or set(opts) - _LUT3D_OPTIONS:
             extra = sorted(set(opts) - _LUT3D_OPTIONS) + [v for v, _ in overflow]
             refuse(
                 f"sets {extra}, which muvid does not offer (only {sorted(_LUT3D_OPTIONS)})"
             )
         text = opts.get("file")  # the last one, as ffmpeg keeps; none: the identity
-        if text is not None and lut_name(_unquote(_strip_unescaped(text))) is None:
+        if text is not None and lut_name(fflex.unquote(fflex.strip_unescaped(text))) is None:
             refuse(f"file {text[:80]!r} is not a LUT name")
 
 
@@ -3247,8 +2915,8 @@ def _validate_look(i, e, canvas) -> None:
             "assembler supplies the separators; a stray one emits an empty filter."
         )
     try:
-        bad = _first_unescaped(look, _LOOK_FORBIDDEN)
-    except _LookSyntaxError as exc:
+        bad = fflex.first_unescaped(look, _LOOK_FORBIDDEN)
+    except fflex.FilterSyntaxError as exc:
         raise ValueError(
             f"EDL entry {i}: look is not lexically closed — it ends "
             + (
@@ -3272,7 +2940,7 @@ def _validate_look(i, e, canvas) -> None:
             f"literal {bad!r} inside a path with a backslash "
             "(looks.escape_filter_value does)."
         )
-    for name in _look_filter_names(look):
+    for name in fflex.filter_names(look):
         if name in LOOK_FILTERS:
             continue
         raise ValueError(

@@ -146,7 +146,8 @@ def test_an_escaped_bracket_inside_a_path_is_lexically_closed():
     # rather than of the whole gate since muvid#244: a lut3d file must now be a LUT
     # NAME in muvid's LUT folder (muvid#252, tests/test_look_lut.py), so the gate
     # refuses this fragment for its file, not its bracket.
-    from muvid.footage.edl import _LOOK_FORBIDDEN, _first_unescaped
+    from muvid.footage.edl import _LOOK_FORBIDDEN
+    from muvid.footage.fflex import first_unescaped as _first_unescaped
 
     look = r"lut3d=file=/luts/a\[b\].cube"
     assert _first_unescaped(look, _LOOK_FORBIDDEN) is None
@@ -159,7 +160,8 @@ def test_the_escape_rule_agrees_with_the_escaper_that_produces_it():
     # looks ever changes how it escapes, this fails here instead of at ffmpeg.
     from looks import escape_filter_value
 
-    from muvid.footage.edl import _LOOK_FORBIDDEN, _first_unescaped
+    from muvid.footage.edl import _LOOK_FORBIDDEN
+    from muvid.footage.fflex import first_unescaped as _first_unescaped
 
     for ch in _LOOK_FORBIDDEN:
         escaped = escape_filter_value(f"/luts/a{ch}b.cube")
@@ -854,7 +856,7 @@ def test_the_allowlist_resolves_a_name_the_way_ffmpeg_does(spelling):
     Each spelling here was measured against ffmpeg 9.0.1 *outside* muvid: every one
     resolves to ``metadata`` and truncated a canary file to 0 bytes on exit 0. So
     the check has to resolve the token, not grep the string — that is what
-    ``_unquote`` in the gate is for, and this test is the reason it exists.
+    ``fflex.unquote`` in the gate is for, and this test is the reason it exists.
     """
     with pytest.raises(ValueError, match="names the filter 'metadata'"):
         validate_edl([_entry(look=spelling)], [_A], 4.0)
@@ -1188,7 +1190,7 @@ def test_a_quoted_comma_is_not_a_filter_separator():
     splitter that treats every comma as a separator reads one ``crop`` as four
     filters with names like ``0)`` — and refuses a fragment muvid itself produced.
     """
-    from muvid.footage.edl import _look_filter_names
+    from muvid.footage.fflex import filter_names as _look_filter_names
 
     frag = motion(
         [(0.0, CropWindow(0.0, 0.0, 0.5, 0.5)), (2.0, CropWindow(0.5, 0.5, 0.5, 0.5))],
@@ -1395,7 +1397,7 @@ class TestTheNameResolvesTheWayFfmpegResolvesIt:
         ],
     )
     def test_it_matches(self, look, expected):
-        from muvid.footage.edl import _look_filter_names
+        from muvid.footage.fflex import filter_names as _look_filter_names
 
         assert _look_filter_names(look) == expected
 
@@ -1427,7 +1429,7 @@ class TestTheNameResolvesTheWayFfmpegResolvesIt:
         assert b"No such filter" in proc.stderr
 
     def test_an_escaped_space_is_refused_by_the_DESIGNED_message(self):
-        """It used to raise `_LookSyntaxError` whose whole message was a single
+        """It used to raise `_LookSyntaxError` (now `fflex.FilterSyntaxError`) whose whole message was a single
         backslash — `.strip()` removed the escaped space and left the backslash
         that escaped it, and the lexer then raised from OUTSIDE the try/except
         that produces the readable refusal. Through the MCP tool that backslash
