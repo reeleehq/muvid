@@ -118,7 +118,7 @@ def footage_score_status(
 ) -> dict:
     """The scoring job's status (bounded long-poll). Free.
 
-    Pass the ``job_id`` from ``score_footage`` (or omit for the one it last started — which
+    Pass the ``job_id`` from ``score_footage`` (or omit for the newest scoring job — which
     may predate a later ``set_song``, which drops the scores that job made).
     With ``wait_s`` > 0 this blocks up to ~``wait_s`` seconds (capped), returning early on
     a terminal state — so an agent needs ~1 poll, not many.
