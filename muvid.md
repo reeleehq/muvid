@@ -1,4 +1,4 @@
-> built 2026-11-03 16:40 UTC from ce3b22c (main) · muvid 0.0.163. Details: build_info.json
+> built 2026-11-04 04:21 UTC from b3cbddc (main) · muvid 0.0.164. Details: build_info.json
 
 # index.html.md
 
@@ -2349,7 +2349,7 @@ not accepted at all. Tuning the window is legitimate — it just has to move
 `MUVID_FOOTAGE_MIN_SUPPORT` with it, which is a decision someone has to make out
 loud rather than a side effect of a keyword.
 
-### muvid.footage.align.align_footage(song_path, clips, , song_duration=None, sample_rate=16000, \*\*estimator_kwargs)
+### muvid.footage.align.align_footage(song_path, clips, \*, song_duration=None, sample_rate=16000, song_matcher=<function fingerprint_matcher>, \*\*estimator_kwargs)
 
 Align `clips` (`[(clip_id, clip_path), ...]`) to the song at `song_path`.
 
@@ -2376,6 +2376,12 @@ genre stays light.
   * **clips** ([`Sequence`](https://docs.python.org/3/library/typing.html#typing.Sequence)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)]) – `(clip_id, clip_path)` pairs; a video path works directly.
   * **song_duration** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The song timeline length; probed from `song_path` when omitted.
   * **sample_rate** ([`int`](https://docs.python.org/3/builtins/functions.html#int)) – Analysis sample rate (mono).
+  * **song_matcher** – `song_path -> (clip_path -> song-match record)`, the
+    independent “is the song in this clip at all?” opinion beside the vote
+    (muvid#251; default `fingerprint_matcher()`). Its record rides on the
+    alignment (`song_match`), and an `"absent"` verdict refuses an offset
+    the vote vouched for ([`vouches_for()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)). `None`
+    skips it.
   * **\*\*estimator_kwargs** – 
 
     Passed straight to `mixing.audio.align_clips_to_reference`
@@ -2406,7 +2412,7 @@ failure is a traceback, never a quietly empty measurement.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`MeasuredSpan`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]], [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.align.vouches_for(, confidence, support, margin=None, window_s=None)
+### muvid.footage.align.vouches_for(, confidence, support, margin=None, window_s=None, song_verdict=None)
 
 Does the aligner vouch for this offset? The ONE place that verdict is reached.
 
@@ -2489,6 +2495,13 @@ of a shoot that it started as.
     every clip.
   * **window_s** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The window support was measured at. Recorded and reported as a
     diagnostic; it does **not** enter the verdict, for the reason above.
+  * **song_verdict** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – An INDEPENDENT second opinion (muvid#251): whether the clip’s
+    audio contains the song at all, from landmark hashes rather than
+    correlation (`mixing.audio.fingerprint`, judged under
+    `SONG_THRESHOLDS`). It can only REFUSE: `"absent"` refuses an
+    offset the vote vouched for, and `"contains"`, `"undecided"` and
+    `None` (not measured) change nothing. Whether a “contains” may also
+    rescue an offset the vote refuses is the user’s decision (muvid#330).
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 * **Returns:**
@@ -3440,6 +3453,8 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`MIN_CONFIDENCE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_CONFIDENCE)             | Below this, a whole-clip correlation coefficient does not vouch for its offset (env `MUVID_FOOTAGE_MIN_CONFIDENCE`).                                                                                                                                            |
 | [`MIN_SUPPORT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_SUPPORT)                | Support must EXCEED this for an offset to be vouched for (env `MUVID_FOOTAGE_MIN_SUPPORT`).                                                                                                                                                                     |
 | [`MIN_MARGIN`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MIN_MARGIN)                 | Margin must EXCEED this for an offset to be vouched for (env `MUVID_FOOTAGE_MIN_MARGIN`).                                                                                                                                                                       |
+| [`SONG_ABSENT`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SONG_ABSENT)                | The fingerprint verdict that refuses an offset (`mixing.audio.fingerprint`).                                                                                                                                                                                    |
+| [`SONG_THRESHOLDS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SONG_THRESHOLDS)            | The bars `mixing.audio.fingerprint.song_verdict` judges a clip's song match by, calibrated on the muvid#59 shoot (muvid#251): 9774 clip-song cases, phone recordings of one track against 19 songs, 10 s windows to whole files.                                |
 | [`MEASURED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.MEASURED)                   | the aligner found the offset, or a person set it.                                                                                                                                                                                                               |
 | [`UNPLACED`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNPLACED)                   | Two more `source` values, for records that are NEVER persisted.                                                                                                                                                                                                 |
 | [`STILL_DURATION_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.STILL_DURATION_S)           | it can be held for any span of song, so its duration is a bound rather than a measurement — longer than any song muvid takes.                                                                                                                                   |
@@ -3469,12 +3484,14 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`exclude_unvouched`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                                                                                                                                                                                   |
 | [`fill_gaps`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                                                                                                                                                                               |
 | [`in_point_bounds`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce.                                                                                                                                                                |
+| [`judge_song_match`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.judge_song_match)(song_match)                     | The verdict of [`song_opinion()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.song_opinion), or `None` when there is no record.                                                                                                                                                                                                                                                                                                                |
 | [`longest_span`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                                           |
 | [`look_may_resize`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.look_may_resize)(look)                            | Whether `look` can end at a frame size other than the one it is handed.                                                                                                                                                                                                                                                                                                                                                           |
 | [`looks_effects_offered`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.looks_effects_offered)()                          | The `looks` effects a look can reach through this gate, sorted.                                                                                                                                                                                                                                                                                                                                                                   |
 | [`only_weak_footage`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.only_weak_footage)(e, a, alternatives)            | The [`weak_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches) of cut `e` that no OTHER clip among `alternatives` could have shown in trustworthy sync ([`trusted_cover()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.trusted_cover), unioned — two cameras can cover one stretch between them): the cut is there only because nothing better covers that part of the song (muvid#20 clause b).                                        |
 | [`placed_as`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)(e, a)                                  | The placement cut `e` reads its clip `a` through — THE free-cut rule.                                                                                                                                                                                                                                                                                                                                                             |
 | [`selection_unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those at least [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
+| [`song_opinion`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.song_opinion)(song_match)                         | `(verdict, reason)` that `song_match` reaches under [`SONG_THRESHOLDS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SONG_THRESHOLDS) (`"contains"` / `"absent"` / `"undecided"`, and the evidence in words), or `None` when there is no record.                                                                                                                                                                                                   |
 | [`still_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                                 |
 | [`trusted_cover`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.trusted_cover)(a)                                 | The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement minus its unverified stretches, and nothing at all when the aligner does not vouch for it or it does not overlap the song.                                                                                                                                                                                                                         |
 | [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                                         |
@@ -3807,7 +3824,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
+### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3843,6 +3860,17 @@ and not to be cut to without the caller saying so” — see
 Defaults True for a record built in code; a record read from disk that predates
 the field gets its verdict DERIVED instead (see `from_dict()`), never
 assumed.
+
+#### song_match *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The fingerprint second opinion’s record (`SongMatch.to_dict()`, muvid#251) —
+whether the clip’s audio contains the song at all, and the evidence (votes,
+ratio, hashes, the bars it was judged under), kept so a report can say WHY a
+clip was refused. Its verdict was folded into `reliable` when it was measured;
+a stored `reliable` is never re-judged (re-aligning is how you re-judge, as
+for the vote). `None` when not measured (a declared offset, a record from
+before it existed); omitted from `to_dict()` then, so those records stay
+byte-identical.
 
 #### source *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)* *= 'measured'*
 
@@ -4192,6 +4220,25 @@ larger than a beat is a different alignment, which is `set_offset`’s job.
 * **Type:**
   The largest slip a cut may carry, either way (s)
 
+### muvid.footage.edl.SONG_ABSENT *= 'absent'*
+
+The fingerprint verdict that refuses an offset (`mixing.audio.fingerprint`).
+
+### muvid.footage.edl.SONG_THRESHOLDS *= {'max_absent_vote_rate': 0.0013, 'max_absent_votes': 19, 'min_query_hashes': 1500, 'min_ratio': 4.0, 'min_votes': 20}*
+
+The bars `mixing.audio.fingerprint.song_verdict` judges a clip’s song match by,
+calibrated on the muvid#59 shoot (muvid#251): 9774 clip-song cases, phone
+recordings of one track against 19 songs, 10 s windows to whole files. Under them,
+0 of 8953 negatives read “contains” and 0 of 561 positives read “absent”; negatives
+read “absent” 8 % of the time at 10 s, rising to 97 % at 60 s and 100 % on whole
+files. `max_absent_votes` caps chance coincidences; `max_absent_vote_rate` is
+the floor on hashes a PRESENT song keeps (0.15-2 % on those recordings), so a short
+clip under the cap is not called absent. Caveat, stated where the numbers are: one track,
+one shoot, so a second unrelated shoot should be measured before these are trusted
+further. A plain mapping (not `SongThresholds`) so this module stays numpy-free.
+Each bar is env-tunable (`MUVID_FOOTAGE_SONG_<NAME>`), the hedge against a false
+“absent” in production, as `MUVID_FOOTAGE_MIN_SUPPORT` is for the vote.
+
 ### muvid.footage.edl.SPAN_EDGE_ACCURACY_S *= 20.0*
 
 How accurate a measured span’s edges are, in seconds — `mixing`’s span window
@@ -4505,6 +4552,13 @@ True
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+### muvid.footage.edl.judge_song_match(song_match)
+
+The verdict of [`song_opinion()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.song_opinion), or `None` when there is no record.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### muvid.footage.edl.longest_span(clip_duration_s, , rate=1.0, transition=None, next_transition=None, edge_s=0.0)
 
 The longest span (song seconds) a free cut can take from a clip of
@@ -4618,6 +4672,16 @@ every stretch.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]]
+
+### muvid.footage.edl.song_opinion(song_match)
+
+`(verdict, reason)` that `song_match` reaches under [`SONG_THRESHOLDS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SONG_THRESHOLDS)
+(`"contains"` / `"absent"` / `"undecided"`, and the evidence in words), or
+`None` when there is no record. `mixing` is imported only when there IS one,
+so a record without one stays numpy-free.
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)] | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.edl.still_in_point(cut)
 
@@ -4761,7 +4825,7 @@ Returns the normalized list of [`EdlEntry`](_autosummary/muvid.footage.edl.html.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
-### muvid.footage.edl.vouches_for(, confidence, support, margin=None, window_s=None)
+### muvid.footage.edl.vouches_for(, confidence, support, margin=None, window_s=None, song_verdict=None)
 
 Does the aligner vouch for this offset? The ONE place that verdict is reached.
 
@@ -4844,6 +4908,13 @@ of a shoot that it started as.
     every clip.
   * **window_s** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The window support was measured at. Recorded and reported as a
     diagnostic; it does **not** enter the verdict, for the reason above.
+  * **song_verdict** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – An INDEPENDENT second opinion (muvid#251): whether the clip’s
+    audio contains the song at all, from landmark hashes rather than
+    correlation (`mixing.audio.fingerprint`, judged under
+    [`SONG_THRESHOLDS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SONG_THRESHOLDS)). It can only REFUSE: `"absent"` refuses an
+    offset the vote vouched for, and `"contains"`, `"undecided"` and
+    `None` (not measured) change nothing. Whether a “contains” may also
+    rescue an offset the vote refuses is the user’s decision (muvid#330).
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 * **Returns:**
@@ -5552,7 +5623,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
+### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -5588,6 +5659,17 @@ and not to be cut to without the caller saying so” — see
 Defaults True for a record built in code; a record read from disk that predates
 the field gets its verdict DERIVED instead (see `from_dict()`), never
 assumed.
+
+#### song_match *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The fingerprint second opinion’s record (`SongMatch.to_dict()`, muvid#251) —
+whether the clip’s audio contains the song at all, and the evidence (votes,
+ratio, hashes, the bars it was judged under), kept so a report can say WHY a
+clip was refused. Its verdict was folded into `reliable` when it was measured;
+a stored `reliable` is never re-judged (re-aligning is how you re-judge, as
+for the vote). `None` when not measured (a declared offset, a record from
+before it existed); omitted from `to_dict()` then, so those records stay
+byte-identical.
 
 #### source *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)* *= 'measured'*
 
@@ -20498,18 +20580,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-03 16:40 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/ce3b22c2322d396f47d153909f239eab1180b1d0"><code>ce3b22c</code></a> on branch <code>main</code>, for **muvid 0.0.163** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-04 04:21 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/b3cbddc990d4b2b5eb2ec45e35c9d98f8dba0056"><code>b3cbddc</code></a> on branch <code>main</code>, for **muvid 0.0.164** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.164) is ahead of the latest release on PyPI (0.0.163): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/ce3b22c2322d396f47d153909f239eab1180b1d0"><code>ce3b22c2322d396f47d153909f239eab1180b1d0</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/b3cbddc990d4b2b5eb2ec45e35c9d98f8dba0056"><code>b3cbddc990d4b2b5eb2ec45e35c9d98f8dba0056</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.163</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.164</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20518,9 +20602,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41671839254">41671839254</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/41770489488">41770489488</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>611596d0754a256c481895f707bd50b9a50368bc</code> (in the history of the built commit) |
+| Event commit | <code>af5f8e547d527fc36dc7e180893d1432f99bec2c</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20545,13 +20629,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.163/">0.0.163</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.163/">0.0.163</a>, older than the documented version (0.0.164).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout ce3b22c2322d396f47d153909f239eab1180b1d0
+git checkout b3cbddc990d4b2b5eb2ec45e35c9d98f8dba0056
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

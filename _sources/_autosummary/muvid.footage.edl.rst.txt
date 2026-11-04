@@ -20,6 +20,8 @@ muvid.footage.edl
       MIN_CONFIDENCE
       MIN_SUPPORT
       MIN_MARGIN
+      SONG_ABSENT
+      SONG_THRESHOLDS
       MEASURED
       UNPLACED
       STILL_DURATION_S
@@ -50,12 +52,14 @@ muvid.footage.edl
       exclude_unvouched
       fill_gaps
       in_point_bounds
+      judge_song_match
       longest_span
       look_may_resize
       looks_effects_offered
       only_weak_footage
       placed_as
       selection_unverified_stretches
+      song_opinion
       still_in_point
       trusted_cover
       unplaced

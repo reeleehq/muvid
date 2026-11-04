@@ -245,7 +245,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None)
+### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -281,6 +281,17 @@ and not to be cut to without the caller saying so” — see
 Defaults True for a record built in code; a record read from disk that predates
 the field gets its verdict DERIVED instead (see `from_dict()`), never
 assumed.
+
+#### song_match *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+The fingerprint second opinion’s record (`SongMatch.to_dict()`, muvid#251) —
+whether the clip’s audio contains the song at all, and the evidence (votes,
+ratio, hashes, the bars it was judged under), kept so a report can say WHY a
+clip was refused. Its verdict was folded into `reliable` when it was measured;
+a stored `reliable` is never re-judged (re-aligning is how you re-judge, as
+for the vote). `None` when not measured (a declared offset, a record from
+before it existed); omitted from `to_dict()` then, so those records stay
+byte-identical.
 
 #### source *: [str](https://docs.python.org/3/builtins/stdtypes.html#str)* *= 'measured'*
 

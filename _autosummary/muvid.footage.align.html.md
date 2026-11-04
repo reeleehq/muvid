@@ -60,7 +60,7 @@ not accepted at all. Tuning the window is legitimate — it just has to move
 `MUVID_FOOTAGE_MIN_SUPPORT` with it, which is a decision someone has to make out
 loud rather than a side effect of a keyword.
 
-### muvid.footage.align.align_footage(song_path, clips, , song_duration=None, sample_rate=16000, \*\*estimator_kwargs)
+### muvid.footage.align.align_footage(song_path, clips, \*, song_duration=None, sample_rate=16000, song_matcher=<function fingerprint_matcher>, \*\*estimator_kwargs)
 
 Align `clips` (`[(clip_id, clip_path), ...]`) to the song at `song_path`.
 
@@ -87,6 +87,12 @@ genre stays light.
   * **clips** ([`Sequence`](https://docs.python.org/3/library/typing.html#typing.Sequence)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)]) – `(clip_id, clip_path)` pairs; a video path works directly.
   * **song_duration** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The song timeline length; probed from `song_path` when omitted.
   * **sample_rate** ([`int`](https://docs.python.org/3/builtins/functions.html#int)) – Analysis sample rate (mono).
+  * **song_matcher** – `song_path -> (clip_path -> song-match record)`, the
+    independent “is the song in this clip at all?” opinion beside the vote
+    (muvid#251; default `fingerprint_matcher()`). Its record rides on the
+    alignment (`song_match`), and an `"absent"` verdict refuses an offset
+    the vote vouched for ([`vouches_for()`](muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)). `None`
+    skips it.
   * **\*\*estimator_kwargs** – 
 
     Passed straight to `mixing.audio.align_clips_to_reference`
@@ -117,7 +123,7 @@ failure is a traceback, never a quietly empty measurement.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)[[`str`](https://docs.python.org/3/builtins/stdtypes.html#str), [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`MeasuredSpan`](muvid.footage.edl.html.md#muvid.footage.edl.MeasuredSpan), [`...`](https://docs.python.org/3/builtins/constants.html#Ellipsis)]], [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.align.vouches_for(, confidence, support, margin=None, window_s=None)
+### muvid.footage.align.vouches_for(, confidence, support, margin=None, window_s=None, song_verdict=None)
 
 Does the aligner vouch for this offset? The ONE place that verdict is reached.
 
@@ -200,6 +206,13 @@ of a shoot that it started as.
     every clip.
   * **window_s** ([`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – The window support was measured at. Recorded and reported as a
     diagnostic; it does **not** enter the verdict, for the reason above.
+  * **song_verdict** ([`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)) – An INDEPENDENT second opinion (muvid#251): whether the clip’s
+    audio contains the song at all, from landmark hashes rather than
+    correlation (`mixing.audio.fingerprint`, judged under
+    `SONG_THRESHOLDS`). It can only REFUSE: `"absent"` refuses an
+    offset the vote vouched for, and `"contains"`, `"undecided"` and
+    `None` (not measured) change nothing. Whether a “contains” may also
+    rescue an offset the vote refuses is the user’s decision (muvid#330).
 * **Return type:**
   [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
 * **Returns:**
