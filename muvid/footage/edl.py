@@ -360,12 +360,41 @@ MIN_MARGIN = float(os.environ.get("MUVID_FOOTAGE_MIN_MARGIN", "0.0"))
 #: of the verdict.
 
 
+#: The fingerprint verdict that refuses an offset (``mixing.audio.fingerprint``).
+SONG_ABSENT = "absent"
+
+#: The bars ``mixing.audio.fingerprint.song_verdict`` judges a clip's song match by,
+#: calibrated on the muvid#59 shoot (muvid#251): 9774 clip-song cases, phone
+#: recordings of one track against 19 songs, 10 s windows to whole files. Under them,
+#: 0 of 8953 negatives read "contains" and 0 of 561 positives read "absent"; negatives
+#: read "absent" 8 % of the time at 10 s, rising to 97 % at 60 s and 100 % on whole
+#: files. ``max_absent_votes`` caps chance coincidences; ``max_absent_vote_rate`` is
+#: the floor on hashes a PRESENT song keeps (0.15-2 % on those recordings), so a short
+#: clip under the cap is not called absent. Caveat, stated where the numbers are: one track,
+#: one shoot, so a second unrelated shoot should be measured before these are trusted
+#: further. A plain mapping (not ``SongThresholds``) so this module stays numpy-free.
+#: Each bar is env-tunable (``MUVID_FOOTAGE_SONG_<NAME>``), the hedge against a false
+#: "absent" in production, as ``MUVID_FOOTAGE_MIN_SUPPORT`` is for the vote.
+SONG_THRESHOLDS = {
+    "min_votes": int(os.environ.get("MUVID_FOOTAGE_SONG_MIN_VOTES", "20")),
+    "min_ratio": float(os.environ.get("MUVID_FOOTAGE_SONG_MIN_RATIO", "4.0")),
+    "max_absent_votes": int(os.environ.get("MUVID_FOOTAGE_SONG_MAX_ABSENT_VOTES", "19")),
+    "min_query_hashes": int(
+        os.environ.get("MUVID_FOOTAGE_SONG_MIN_QUERY_HASHES", "1500")
+    ),
+    "max_absent_vote_rate": float(
+        os.environ.get("MUVID_FOOTAGE_SONG_MAX_ABSENT_VOTE_RATE", "0.0013")
+    ),
+}
+
+
 def vouches_for(
     *,
     confidence: float,
     support: float | None,
     margin: float | None = None,
     window_s: float | None = None,
+    song_verdict: str | None = None,
 ) -> bool:
     """Does the aligner vouch for this offset? The ONE place that verdict is reached.
 
@@ -448,10 +477,19 @@ def vouches_for(
             every clip.
         window_s: The window support was measured at. Recorded and reported as a
             diagnostic; it does **not** enter the verdict, for the reason above.
+        song_verdict: An INDEPENDENT second opinion (muvid#251): whether the clip's
+            audio contains the song at all, from landmark hashes rather than
+            correlation (``mixing.audio.fingerprint``, judged under
+            :data:`SONG_THRESHOLDS`). It can only REFUSE: ``"absent"`` refuses an
+            offset the vote vouched for, and ``"contains"``, ``"undecided"`` and
+            ``None`` (not measured) change nothing. Whether a "contains" may also
+            rescue an offset the vote refuses is the user's decision (muvid#330).
 
     Returns:
         True when the offset may be cut to without the caller opting in.
     """
+    if song_verdict == SONG_ABSENT:
+        return False
     if support is None:
         return confidence >= MIN_CONFIDENCE
     if margin is None:
@@ -679,6 +717,15 @@ class FootageAlignment:
     #: Omitted from :meth:`to_dict` when ``None``, so records without it stay
     #: byte-identical.
     spans: "tuple[MeasuredSpan, ...] | None" = None
+    #: The fingerprint second opinion's record (``SongMatch.to_dict()``, muvid#251) —
+    #: whether the clip's audio contains the song at all, and the evidence (votes,
+    #: ratio, hashes, the bars it was judged under), kept so a report can say WHY a
+    #: clip was refused. Its verdict was folded into ``reliable`` when it was measured;
+    #: a stored ``reliable`` is never re-judged (re-aligning is how you re-judge, as
+    #: for the vote). ``None`` when not measured (a declared offset, a record from
+    #: before it existed); omitted from :meth:`to_dict` then, so those records stay
+    #: byte-identical.
+    song_match: "dict | None" = field(default=None, compare=False)
 
     def to_dict(self) -> dict:
         out = {
@@ -697,6 +744,8 @@ class FootageAlignment:
         }
         if self.spans is not None:
             out["spans"] = [s.to_dict() for s in self.spans]
+        if self.song_match is not None:
+            out["song_match"] = self.song_match
         return out
 
     @classmethod
@@ -717,7 +766,10 @@ class FootageAlignment:
         margin = d.get("margin")
         margin = None if margin is None else float(margin)
         spans = d.get("spans")
+        song_match = d.get("song_match")
+        song_match = song_match if isinstance(song_match, dict) else None
         return cls(
+            song_match=song_match,
             # a malformed span is skipped, never the record: a placement is not
             # removed by a measurement that went wrong on disk
             spans=(_read_spans(spans) if isinstance(spans, list) else None),
@@ -747,6 +799,7 @@ class FootageAlignment:
                     support=support,
                     margin=margin,
                     window_s=window_s,
+                    song_verdict=judge_song_match(song_match),
                 )
                 if reliable is None
                 else bool(reliable)
@@ -758,6 +811,24 @@ class FootageAlignment:
             # came from `align_footage`, and nothing else wrote alignments.json.
             source=str(d.get("source") or MEASURED),
         )
+
+
+def song_opinion(song_match: "dict | None") -> "tuple[str, str] | None":
+    """``(verdict, reason)`` that ``song_match`` reaches under :data:`SONG_THRESHOLDS`
+    (``"contains"`` / ``"absent"`` / ``"undecided"``, and the evidence in words), or
+    ``None`` when there is no record. ``mixing`` is imported only when there IS one,
+    so a record without one stays numpy-free."""
+    if song_match is None:
+        return None
+    from mixing.audio.fingerprint import SongThresholds, song_verdict
+
+    return song_verdict(song_match, thresholds=SongThresholds(**SONG_THRESHOLDS))
+
+
+def judge_song_match(song_match: "dict | None") -> "str | None":
+    """The verdict of :func:`song_opinion`, or ``None`` when there is no record."""
+    opinion = song_opinion(song_match)
+    return None if opinion is None else opinion[0]
 
 
 def _read_spans(rows: list) -> "tuple[MeasuredSpan, ...]":

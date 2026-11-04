@@ -65,6 +65,7 @@ from muvid.footage.edl import (
     MIN_CONFIDENCE,
     MIN_MARGIN,
     MIN_SUPPORT,
+    SONG_THRESHOLDS,
     FootageAlignment,
     unverified_stretches,
 )
@@ -605,7 +606,13 @@ def heard_the_song(alignment) -> bool:
     aligner vouches for its place, and ALSO when it could not place it but enough of the
     clip agreed on some offset (:data:`HEARD_SUPPORT`) — the repetitive-song case of
     muvid#59, where the song is plainly there and its place is ambiguous. ``False`` is
-    "couldn't hear the song in it": the video is cut to the music."""
+    "couldn't hear the song in it": the video is cut to the music. A song fingerprint
+    that says the song is ABSENT (muvid#251) settles it the same way: that video is
+    b-roll, cut to the music, not a synced clip that failed to place."""
+    from muvid.footage.edl import SONG_ABSENT, judge_song_match
+
+    if judge_song_match(getattr(alignment, "song_match", None)) == SONG_ABSENT:
+        return False
     if alignment.reliable:
         return True
     # Both, because support alone is coarse on a short clip (a 6 s clip votes with two
@@ -1049,7 +1056,19 @@ def _alignment_row(a: FootageAlignment) -> dict:
         "overlaps": a.overlaps,
         "coverage": list(a.coverage),
         "duration_s": a.duration_s,
+        **_song_opinion_row(a),
     }
+
+
+def _song_opinion_row(a: FootageAlignment) -> dict:
+    """``{song_verdict, song_reason}`` from the clip's song fingerprint (muvid#251), or
+    ``{}`` when it was not measured (omit-when-absent: replies stay as they were)."""
+    from muvid.footage.edl import song_opinion
+
+    opinion = song_opinion(getattr(a, "song_match", None))
+    if opinion is None:
+        return {}
+    return {"song_verdict": opinion[0], "song_reason": opinion[1]}
 
 
 def _next_step(fp, aligns, edit_rows, render_rows) -> dict:
@@ -1229,6 +1248,10 @@ def align(fp) -> dict:
                 # own evidence prefers a DIFFERENT offset, which is why it was refused.
                 "margin": _round_opt(a.margin),
                 "window_s": _round_opt(a.window_s),
+                # the song fingerprint's verdict and why (muvid#251): "absent" refuses
+                # an offset the vote vouched for, so it is the reason when the vote
+                # above looks fine
+                **_song_opinion_row(a),
             }
             for a in aligns
             if not a.reliable
@@ -1243,6 +1266,8 @@ def align(fp) -> dict:
         ],
         "confidence_metric": "onset-envelope correlation at the waveform's lag",
         "confidence_threshold": _MIN_CONFIDENCE,
+        # the bars the song fingerprint was judged by (muvid#251)
+        "song_thresholds": dict(SONG_THRESHOLDS),
         # Support must EXCEED this: at exactly this value every window had the offset on
         # its ballot and none found it unaided. A FLOOR on how much evidence reached it...
         "support_threshold": MIN_SUPPORT,

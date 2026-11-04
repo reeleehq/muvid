@@ -194,7 +194,7 @@ Pipeline: `align → score → select → EDL → assemble`.
   Since the **`mixing>=0.0.51`** floor that fallback is narrow: the estimator fits its
   window per clip and GRADES each window's evidence, so a vote is held and readable for
   everything except a clip too short for two windows. `support is None` means only that.
-  **The gate is `support > 0.5` AND `margin > 0`, and it needs both.** `MIN_SUPPORT` is
+  **The gate is `support > 0.5` AND `margin > 0`, and it needs both** — plus, since muvid#251, a third term that can only REFUSE: the song fingerprint (`mixing.audio.fingerprint.contains_song`, judged under `edl.SONG_THRESHOLDS`, calibrated on this shoot; env `MUVID_FOOTAGE_SONG_*`) saying the song is **absent** refuses an offset the vote vouched for, and also makes the clip b-roll (`heard_the_song` False). "contains" and "undecided" change nothing; whether a "contains" may RESCUE a refused offset is the user's decision, muvid#330 — do not add it without that answer. The refusal is explained (`song_verdict`/`song_reason` on the `unreliable` and status rows). `MIN_SUPPORT` is
   a ceiling-of-ballot-only-evidence threshold (a window contributes 1.0 when its own
   argmax reached the offset, at most 0.5 when it was merely on the ballot, so at exactly
   0.5 nothing found it unaided). `MIN_MARGIN` is the SEPARATOR — the same tally minus
@@ -912,7 +912,7 @@ a declared grid as current once the grid is cleared; readers go through
 | `editor` | the lacing bridge | `lacing` |
 | `ui` | the local single-page UI | `fastapi`, `uvicorn`, `pydantic` |
 
-Core (`pip install muvid`) is `argh`, `mixing>=0.0.104` (0.0.51 for the alignment gate, below; 0.0.77 for `stream_loudness`, `verify_video`'s bounded-memory meter, muvid#219; 0.0.104 for `shot_changes`, the default shot strategy's stages, muvid#259), `numpy`, `graze>=0.1.44`, `looks`, and `dol>=0.3.110` (its `atomic.file_lock` is every project lock, muvid#254, and `atomic.update_json` under `workspace.update_json_record` every locked read-modify-write of a record, muvid#280).
+Core (`pip install muvid`) is `argh`, `mixing>=0.0.106` (0.0.51 for the alignment gate, below; 0.0.77 for `stream_loudness`, `verify_video`'s bounded-memory meter, muvid#219; 0.0.104 for `shot_changes`, the default shot strategy's stages, muvid#259; 0.0.106 for `SongThresholds.max_absent_vote_rate`, the song fingerprint's bars, muvid#251 — the 0.0.105 wheel lacks it), `numpy`, `graze>=0.1.44`, `looks`, and `dol>=0.3.110` (its `atomic.file_lock` is every project lock, muvid#254, and `atomic.update_json` under `workspace.update_json_record` every locked read-modify-write of a record, muvid#280).
 **`import muvid` must never pull any extra** — `muvid/__init__.py` is a PEP 562 lazy
 facade, `muvid.footage.scoring.__init__` is lazy the same way, and the genre modules
 import only `nw`. This is tested by subprocess import-safety checks that assert the
