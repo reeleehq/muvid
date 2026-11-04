@@ -378,7 +378,9 @@ SONG_ABSENT = "absent"
 SONG_THRESHOLDS = {
     "min_votes": int(os.environ.get("MUVID_FOOTAGE_SONG_MIN_VOTES", "20")),
     "min_ratio": float(os.environ.get("MUVID_FOOTAGE_SONG_MIN_RATIO", "4.0")),
-    "max_absent_votes": int(os.environ.get("MUVID_FOOTAGE_SONG_MAX_ABSENT_VOTES", "19")),
+    "max_absent_votes": int(
+        os.environ.get("MUVID_FOOTAGE_SONG_MAX_ABSENT_VOTES", "19")
+    ),
     "min_query_hashes": int(
         os.environ.get("MUVID_FOOTAGE_SONG_MIN_QUERY_HASHES", "1500")
     ),

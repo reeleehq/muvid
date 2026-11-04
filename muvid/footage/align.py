@@ -234,7 +234,9 @@ def _refuse_window_parameters(estimator_kwargs: dict) -> None:
     )
 
 
-def _as_alignment(clip_id: str, a, *, song_match: "dict | None" = None) -> FootageAlignment:
+def _as_alignment(
+    clip_id: str, a, *, song_match: "dict | None" = None
+) -> FootageAlignment:
     """One ``mixing.audio.ClipAlignment`` → muvid's record, verdict included.
 
     ``support``, ``window_s`` and ``hop_s`` are read BY NAME, and absence is ``None``
