@@ -61,9 +61,10 @@ dependencies = [
     # `verify_video`'s loudness check uses (muvid#219). The 0.0.51 reasons above hold.
     # 0.0.104: `mixing.shot_changes` (mixing#160), the numpy-only shot stages and
     # their `spike` rule that scoring's default `frames` shot strategy reads (muvid#259).
-    # 0.0.105: `SongThresholds.max_absent_vote_rate` (mixing#174), which `edl.SONG_THRESHOLDS`
+    # 0.0.106: `SongThresholds.max_absent_vote_rate` (mixing#174), which `edl.SONG_THRESHOLDS`
     # uses for the song-fingerprint second opinion (muvid#251); below it align fails.
-    "mixing[media]>=0.0.105",
+    # NOT 0.0.105: that wheel was published from a commit before #174 (a release race).
+    "mixing[media]>=0.0.106",
     "numpy",
     # 0.1.44 is where `graze.content_kind` exists alongside `graze.share_links`. muvid
     # needs both halves: normalise a pasted share link before fetching, then assert the
