@@ -536,7 +536,7 @@ branching on which drawer it is looking in.</p>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="muvid.footage.workspace.MusicVideoFootageProject.set_song">
-<span class="sig-name descname"><span class="pre">set_song</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ext</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#MusicVideoFootageProject.set_song"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.MusicVideoFootageProject.set_song" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.MusicVideoFootageProject.set_song'">¶</a></dt>
+<span class="sig-name descname"><span class="pre">set_song</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src_path</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">ext</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">notice</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/workspace.html#MusicVideoFootageProject.set_song"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.workspace.MusicVideoFootageProject.set_song" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.workspace.MusicVideoFootageProject.set_song'">¶</a></dt>
 <dd><p>Store (replacing) the project’s one clean song from a local file.</p>
 <p>The order of operations is the contract (muvid#17 item 4), in three phases:</p>
 <ol class="arabic simple">
@@ -557,6 +557,8 @@ file, so the file must exist before any reader can be pointed at it.</p></li>
 </ol>
 <p><code class="docutils literal notranslate"><span class="pre">name</span></code> is the display name (an uploaded file’s original name); <code class="docutils literal notranslate"><span class="pre">duration_s</span></code>
 is a duration the caller already probed, so a 100 MB song is not probed twice.
+<code class="docutils literal notranslate"><span class="pre">notice</span></code> is a copyright notice that travels with a song taken from a page link
+(muvid#274), recorded as <code class="docutils literal notranslate"><span class="pre">song_notice</span></code> only when given.
 With a host catalog the song is registered too, and its id recorded as
 <code class="docutils literal notranslate"><span class="pre">song_artifact_id</span></code> (it equals <code class="docutils literal notranslate"><span class="pre">song_hash</span></code>: both are the SHA-256 of the bytes).</p>
 <dl class="field-list simple">
@@ -900,7 +902,7 @@ only for the read, the change and the write. <code class="docutils literal notra
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=dd8d4017"></script>
+<script src="../_static/documentation_options.js?v=79f5c40e"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

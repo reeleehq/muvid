@@ -839,6 +839,9 @@ Set the project’s fixed clean song from an http(s) URL. Free.
 Accepts a **share link** (Google Drive / Dropbox / OneDrive) as well as a direct media
 URL — the link is normalised before fetching, and the downloaded bytes are checked to be
 media, so a private-file sign-in page is refused with that diagnosis rather than stored.
+A **page link** — a video or music page (YouTube, SoundCloud, Bandcamp, …) — has its
+audio taken as mp3 through `yb` when that is installed, and the song then carries the
+source’s copyright notice (`song.notice`): you must have the right to use it.
 
 This is the reference every uploaded clip is aligned to and whose audio the final
 video uses. Replaces any previous song. Duration/size-capped.

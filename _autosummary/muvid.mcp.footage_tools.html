@@ -1132,7 +1132,10 @@ and whether an alignment / score tracks were actually dropped.</p>
 <dd><p>Set the project’s fixed clean song from an http(s) URL. Free.</p>
 <p>Accepts a <strong>share link</strong> (Google Drive / Dropbox / OneDrive) as well as a direct media
 URL — the link is normalised before fetching, and the downloaded bytes are checked to be
-media, so a private-file sign-in page is refused with that diagnosis rather than stored.</p>
+media, so a private-file sign-in page is refused with that diagnosis rather than stored.
+A <strong>page link</strong> — a video or music page (YouTube, SoundCloud, Bandcamp, …) — has its
+audio taken as mp3 through <code class="docutils literal notranslate"><span class="pre">yb</span></code> when that is installed, and the song then carries the
+source’s copyright notice (<code class="docutils literal notranslate"><span class="pre">song.notice</span></code>): you must have the right to use it.</p>
 <p>This is the reference every uploaded clip is aligned to and whose audio the final
 video uses. Replaces any previous song. Duration/size-capped.</p>
 <dl class="field-list simple">
@@ -1200,7 +1203,7 @@ video uses. Replaces any previous song. Duration/size-capped.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=dd8d4017"></script>
+<script src="../_static/documentation_options.js?v=79f5c40e"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

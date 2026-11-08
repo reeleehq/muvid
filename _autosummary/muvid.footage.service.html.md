@@ -994,7 +994,7 @@ scores stale, so they are dropped.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None)
+### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='')
 
 Set the project’s song — the clean master every video is aligned to and whose
 audio the finished video uses. Replaces any previous song.
