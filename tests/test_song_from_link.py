@@ -129,6 +129,23 @@ def test_without_yb_the_refusal_says_what_to_install(project, page_answers_html,
         ft.set_song("p", url=PAGE)
 
 
+def test_an_older_yb_without_the_bounds_is_refused(project, page_answers_html, monkeypatch):
+    """yb before reeleehq/yb#56 fetches around muvid's SSRF guard; its absence of
+    ``AudioSourceError`` is how that is told, so it is treated as not installed."""
+    import types
+
+    import muvid.mcp.footage_tools as ft
+    import sys
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.identity import use_email
+
+    old = types.ModuleType("yb.download")
+    old.download_audio_bounded = lambda *a, **k: pytest.fail("old yb must not run")
+    monkeypatch.setitem(sys.modules, "yb.download", old)
+    with use_email("u@x.com"), pytest.raises(ToolError, match=r"yb\[download\]>=0\.1\.28"):
+        ft.set_song("p", url=PAGE)
+
+
 def test_a_share_links_sign_in_page_keeps_its_own_diagnosis(
     project, page_answers_html, monkeypatch
 ):

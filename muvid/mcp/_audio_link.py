@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 #: What to install for page links.
-INSTALL_HINT = "pip install 'yb[download]'"
+INSTALL_HINT = "pip install 'yb[download]>=0.1.28'"
 
 
 @dataclass(frozen=True)
@@ -59,6 +59,10 @@ def song_from_page_link(
 
     if download is None:
         try:
+            # AudioSourceError arrived with the SSRF and unknown-size bounds
+            # (reeleehq/yb#56, yb 0.1.28): asked for as a CAPABILITY, so an older yb
+            # that would fetch around muvid's guard is refused rather than trusted.
+            from yb.download import AudioSourceError  # noqa: F401
             from yb.download import download_audio_bounded as download
         except ImportError as exc:
             raise PageAudioUnavailable(
