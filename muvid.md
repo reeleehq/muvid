@@ -1,4 +1,4 @@
-> built 2026-11-08 22:02 UTC from 44d6c3e (main) · muvid 0.0.165. Details: build_info.json
+> built 2026-11-08 22:33 UTC from d72f216 (main) · muvid 0.0.166. Details: build_info.json
 
 # index.html.md
 
@@ -17301,8 +17301,10 @@ and not this module’s business — the rule is about where a *tool* writes by 
 
 ### Functions
 
-| [`data_home`](_autosummary/muvid.paths.html.md#muvid.paths.data_home)()                      | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.             |
+| [`caller_bucket`](_autosummary/muvid.paths.html.md#muvid.paths.caller_bucket)(parent, email)     | The directory under `parent` holding one caller's projects.                    |
 |-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| [`canonical_email`](_autosummary/muvid.paths.html.md#muvid.paths.canonical_email)(email)           | The one spelling of a caller's email that names their data (muvid#312).        |
+| [`data_home`](_autosummary/muvid.paths.html.md#muvid.paths.data_home)()                      | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.             |
 | [`lut_dir`](_autosummary/muvid.paths.html.md#muvid.paths.lut_dir)()                        | Where the LUTs a look may load live: `{data_home}/luts` (muvid#244).           |
 | [`project_root`](_autosummary/muvid.paths.html.md#muvid.paths.project_root)(name, \*[, kind])   | Where a local muvid project named `name` belongs: `{data_home}/{kind}/{name}`. |
 | [`safe_component`](_autosummary/muvid.paths.html.md#muvid.paths.safe_component)(value, \*, label) | A single, traversal-safe path component (no `/`, `\`, `..`, or empties).       |
@@ -17333,6 +17335,31 @@ still only *recommended* would pre-commit to it. The apparent collision is
 disambiguated by depth: `projects/` at depth 1 is local, `projects/` under a genre
 slug is the connector’s. If #4 decides otherwise, this is a one-word change plus a
 migration of whatever exists by then — which is why it is a named constant.
+
+### muvid.paths.caller_bucket(parent, email)
+
+The directory under `parent` holding one caller’s projects.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.paths.canonical_email(email)
+
+The one spelling of a caller’s email that names their data (muvid#312).
+
+Emails are case-insensitive in practice, but a bucket named by the raw spelling is one
+folder on a case-insensitive filesystem (macOS, Windows) and two on the Linux server.
+The OAuth boundary lowercased already (`identity.token_email`); `use_email` and
+every workspace now go through this too, so a host’s drawer, a script and a token
+agree. `lower()`, not `casefold()`, to match what the token boundary always did;
+Unicode normalisation (NFC/NFD) is a separate, older gap.
+
+No migration: hosted callers arrive through the token and were lowercase already. A
+mixed-case folder made locally on Linux by `use_email`/`for_email` with a raw
+spelling is no longer found under it; rename it to lowercase.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.paths.data_home()
 
@@ -20585,18 +20612,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-08 22:02 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/44d6c3e5b6b04fedc539bf3cfb5398ede27f912d"><code>44d6c3e</code></a> on branch <code>main</code>, for **muvid 0.0.165** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-08 22:33 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d72f21655bba4f0a5958e6f9341abf9a044f8e7a"><code>d72f216</code></a> on branch <code>main</code>, for **muvid 0.0.166** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.166) is ahead of the latest release on PyPI (0.0.165): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/44d6c3e5b6b04fedc539bf3cfb5398ede27f912d"><code>44d6c3e5b6b04fedc539bf3cfb5398ede27f912d</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d72f21655bba4f0a5958e6f9341abf9a044f8e7a"><code>d72f21655bba4f0a5958e6f9341abf9a044f8e7a</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.165</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.166</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20605,9 +20634,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42527208117">42527208117</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42529975221">42529975221</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>c467a0492b2ff7496727b8078e4f5f191948d830</code> (in the history of the built commit) |
+| Event commit | <code>b5fdb4d18510145e1a0e738bed9ecb7c591e98ca</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20632,13 +20661,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.165/">0.0.165</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.165/">0.0.165</a>, older than the documented version (0.0.166).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 44d6c3e5b6b04fedc539bf3cfb5398ede27f912d
+git checkout d72f21655bba4f0a5958e6f9341abf9a044f8e7a
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

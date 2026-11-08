@@ -301,36 +301,64 @@
 
 </span><span id="line-109">
 </span><span id="line-110">
+<div class="viewcode-block" id="canonical_email">
+<a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.canonical_email">[docs]</a>
+</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-112"><span class="w">    </span><span class="sd">"""The one spelling of a caller's email that names their data (muvid#312).</span>
+</span><span id="line-113">
+</span><span id="line-114"><span class="sd">    Emails are case-insensitive in practice, but a bucket named by the raw spelling is one</span>
+</span><span id="line-115"><span class="sd">    folder on a case-insensitive filesystem (macOS, Windows) and two on the Linux server.</span>
+</span><span id="line-116"><span class="sd">    The OAuth boundary lowercased already (``identity.token_email``); ``use_email`` and</span>
+</span><span id="line-117"><span class="sd">    every workspace now go through this too, so a host's drawer, a script and a token</span>
+</span><span id="line-118"><span class="sd">    agree. ``lower()``, not ``casefold()``, to match what the token boundary always did;</span>
+</span><span id="line-119"><span class="sd">    Unicode normalisation (NFC/NFD) is a separate, older gap.</span>
+</span><span id="line-120">
+</span><span id="line-121"><span class="sd">    No migration: hosted callers arrive through the token and were lowercase already. A</span>
+</span><span id="line-122"><span class="sd">    mixed-case folder made locally on Linux by ``use_email``/``for_email`` with a raw</span>
+</span><span id="line-123"><span class="sd">    spelling is no longer found under it; rename it to lowercase.</span>
+</span><span id="line-124"><span class="sd">    """</span>
+</span><span id="line-125">    <span class="k">return</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">email</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"email"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span></div>
+
+</span><span id="line-126">
+</span><span id="line-127">
+<div class="viewcode-block" id="caller_bucket">
+<a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.caller_bucket">[docs]</a>
+</span><span id="line-128"><span class="k">def</span><span class="w"> </span><span class="nf">caller_bucket</span><span class="p">(</span><span class="n">parent</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-129"><span class="w">    </span><span class="sd">"""The directory under ``parent`` holding one caller's projects."""</span>
+</span><span id="line-130">    <span class="k">return</span> <span class="n">parent</span> <span class="o">/</span> <span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">)</span></div>
+
+</span><span id="line-131">
+</span><span id="line-132">
 <div class="viewcode-block" id="project_root">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.project_root">[docs]</a>
-</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">PROJECTS_KIND</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-112"><span class="w">    </span><span class="sd">"""Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.</span>
-</span><span id="line-113">
-</span><span id="line-114"><span class="sd">    Returns the path without creating it — ``muvid init`` (or a subgenre's own renderer)</span>
-</span><span id="line-115"><span class="sd">    owns creation, and a resolver that made directories could not be used to *ask* where</span>
-</span><span id="line-116"><span class="sd">    a project would go.</span>
-</span><span id="line-117">
-</span><span id="line-118"><span class="sd">    ``kind`` is the seam for a surface that wants its own subtree rather than sharing</span>
-</span><span id="line-119"><span class="sd">    ``projects/``; the connector-facing genres already use their own (``music_video/``,</span>
-</span><span id="line-120"><span class="sd">    ``visualizer/``) through the workspace classes that own those layouts.</span>
-</span><span id="line-121"><span class="sd">    """</span>
-</span><span id="line-122">    <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-123">        <span class="n">data_home</span><span class="p">()</span>
-</span><span id="line-124">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"kind"</span><span class="p">)</span>
-</span><span id="line-125">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project name"</span><span class="p">)</span>
-</span><span id="line-126">    <span class="p">)</span></div>
+</span><span id="line-133"><span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">PROJECTS_KIND</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-134"><span class="w">    </span><span class="sd">"""Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.</span>
+</span><span id="line-135">
+</span><span id="line-136"><span class="sd">    Returns the path without creating it — ``muvid init`` (or a subgenre's own renderer)</span>
+</span><span id="line-137"><span class="sd">    owns creation, and a resolver that made directories could not be used to *ask* where</span>
+</span><span id="line-138"><span class="sd">    a project would go.</span>
+</span><span id="line-139">
+</span><span id="line-140"><span class="sd">    ``kind`` is the seam for a surface that wants its own subtree rather than sharing</span>
+</span><span id="line-141"><span class="sd">    ``projects/``; the connector-facing genres already use their own (``music_video/``,</span>
+</span><span id="line-142"><span class="sd">    ``visualizer/``) through the workspace classes that own those layouts.</span>
+</span><span id="line-143"><span class="sd">    """</span>
+</span><span id="line-144">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-145">        <span class="n">data_home</span><span class="p">()</span>
+</span><span id="line-146">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"kind"</span><span class="p">)</span>
+</span><span id="line-147">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project name"</span><span class="p">)</span>
+</span><span id="line-148">    <span class="p">)</span></div>
 
-</span><span id="line-127">
-</span><span id="line-128">
+</span><span id="line-149">
+</span><span id="line-150">
 <div class="viewcode-block" id="lut_dir">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.lut_dir">[docs]</a>
-</span><span id="line-129"><span class="k">def</span><span class="w"> </span><span class="nf">lut_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-130"><span class="w">    </span><span class="sd">"""Where the LUTs a look may load live: ``{data_home}/luts`` (muvid#244).</span>
-</span><span id="line-131">
-</span><span id="line-132"><span class="sd">    Not created here, for :func:`project_root`'s reason; an absent folder simply holds</span>
-</span><span id="line-133"><span class="sd">    no LUT a look can name.</span>
-</span><span id="line-134"><span class="sd">    """</span>
-</span><span id="line-135">    <span class="k">return</span> <span class="n">data_home</span><span class="p">()</span> <span class="o">/</span> <span class="n">LUTS_KIND</span></div>
+</span><span id="line-151"><span class="k">def</span><span class="w"> </span><span class="nf">lut_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-152"><span class="w">    </span><span class="sd">"""Where the LUTs a look may load live: ``{data_home}/luts`` (muvid#244).</span>
+</span><span id="line-153">
+</span><span id="line-154"><span class="sd">    Not created here, for :func:`project_root`'s reason; an absent folder simply holds</span>
+</span><span id="line-155"><span class="sd">    no LUT a look can name.</span>
+</span><span id="line-156"><span class="sd">    """</span>
+</span><span id="line-157">    <span class="k">return</span> <span class="n">data_home</span><span class="p">()</span> <span class="o">/</span> <span class="n">LUTS_KIND</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -345,7 +373,7 @@
 </footer>
     </div>
     
-    <script src="../../_static/documentation_options.js?v=79f5c40e"></script>
+    <script src="../../_static/documentation_options.js?v=4e0d4e64"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>

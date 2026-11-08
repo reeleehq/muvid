@@ -218,51 +218,55 @@
 </span><span id="line-26"><span class="nd">@contextmanager</span>
 </span><span id="line-27"><span class="k">def</span><span class="w"> </span><span class="nf">use_email</span><span class="p">(</span><span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 </span><span id="line-28"><span class="w">    </span><span class="sd">"""Bind the caller identity for the duration of the block (local/stdio/testing)."""</span>
-</span><span id="line-29">    <span class="n">token</span> <span class="o">=</span> <span class="n">_CURRENT_EMAIL</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">email</span><span class="p">)</span>
-</span><span id="line-30">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-31">        <span class="k">yield</span>
-</span><span id="line-32">    <span class="k">finally</span><span class="p">:</span>
-</span><span id="line-33">        <span class="n">_CURRENT_EMAIL</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span></div>
+</span><span id="line-29">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_email</span>
+</span><span id="line-30">
+</span><span id="line-31">    <span class="n">token</span> <span class="o">=</span> <span class="n">_CURRENT_EMAIL</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">))</span>
+</span><span id="line-32">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-33">        <span class="k">yield</span>
+</span><span id="line-34">    <span class="k">finally</span><span class="p">:</span>
+</span><span id="line-35">        <span class="n">_CURRENT_EMAIL</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span></div>
 
-</span><span id="line-34">
-</span><span id="line-35">
+</span><span id="line-36">
+</span><span id="line-37">
 <div class="viewcode-block" id="token_email">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.identity.html#muvid.mcp.token_email">[docs]</a>
-</span><span id="line-36"><span class="k">def</span><span class="w"> </span><span class="nf">token_email</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-37"><span class="w">    </span><span class="sd">"""The verified caller's email from the OAuth token (``email`` claim, else ``sub``).</span>
-</span><span id="line-38">
-</span><span id="line-39"><span class="sd">    Lowercased, or ``None`` when there is no request/token context — deliberately no</span>
-</span><span id="line-40"><span class="sd">    fallback, so a caller is failed closed rather than handed a shared identity.</span>
-</span><span id="line-41"><span class="sd">    """</span>
-</span><span id="line-42">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-43">        <span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp.server.dependencies</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_access_token</span>
-</span><span id="line-44">
-</span><span id="line-45">        <span class="n">token</span> <span class="o">=</span> <span class="n">get_access_token</span><span class="p">()</span>
-</span><span id="line-46">    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 — no active request/token context</span>
-</span><span id="line-47">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-48">    <span class="k">if</span> <span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-38"><span class="k">def</span><span class="w"> </span><span class="nf">token_email</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-39"><span class="w">    </span><span class="sd">"""The verified caller's email from the OAuth token (``email`` claim, else ``sub``).</span>
+</span><span id="line-40">
+</span><span id="line-41"><span class="sd">    Lowercased, or ``None`` when there is no request/token context — deliberately no</span>
+</span><span id="line-42"><span class="sd">    fallback, so a caller is failed closed rather than handed a shared identity.</span>
+</span><span id="line-43"><span class="sd">    """</span>
+</span><span id="line-44">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-45">        <span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp.server.dependencies</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_access_token</span>
+</span><span id="line-46">
+</span><span id="line-47">        <span class="n">token</span> <span class="o">=</span> <span class="n">get_access_token</span><span class="p">()</span>
+</span><span id="line-48">    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># noqa: BLE001 — no active request/token context</span>
 </span><span id="line-49">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-50">    <span class="n">claims</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="s2">"claims"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
-</span><span id="line-51">    <span class="n">ident</span> <span class="o">=</span> <span class="n">claims</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"email"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">claims</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sub"</span><span class="p">)</span>
-</span><span id="line-52">    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">ident</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="k">if</span> <span class="n">ident</span> <span class="k">else</span> <span class="kc">None</span></div>
+</span><span id="line-50">    <span class="k">if</span> <span class="n">token</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-51">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-52">    <span class="n">claims</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="s2">"claims"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}</span>
+</span><span id="line-53">    <span class="n">ident</span> <span class="o">=</span> <span class="n">claims</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"email"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">claims</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sub"</span><span class="p">)</span>
+</span><span id="line-54">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">canonical_email</span>
+</span><span id="line-55">
+</span><span id="line-56">    <span class="k">return</span> <span class="n">canonical_email</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">ident</span><span class="p">))</span> <span class="k">if</span> <span class="n">ident</span> <span class="k">else</span> <span class="kc">None</span></div>
 
-</span><span id="line-53">
-</span><span id="line-54">
+</span><span id="line-57">
+</span><span id="line-58">
 <div class="viewcode-block" id="current_email">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.identity.html#muvid.mcp.current_email">[docs]</a>
-</span><span id="line-55"><span class="k">def</span><span class="w"> </span><span class="nf">current_email</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-56"><span class="w">    </span><span class="sd">"""The caller's identity for the in-flight tool call (raises if unauthenticated).</span>
-</span><span id="line-57">
-</span><span id="line-58"><span class="sd">    Resolves from the explicit :func:`use_email` override when present (local/stdio/</span>
-</span><span id="line-59"><span class="sd">    tests), else the verified OAuth token — so tools work under any host middleware, and</span>
-</span><span id="line-60"><span class="sd">    an unauthenticated call is failed closed.</span>
-</span><span id="line-61"><span class="sd">    """</span>
-</span><span id="line-62">    <span class="n">email</span> <span class="o">=</span> <span class="n">_CURRENT_EMAIL</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">or</span> <span class="n">token_email</span><span class="p">()</span>
-</span><span id="line-63">    <span class="k">if</span> <span class="ow">not</span> <span class="n">email</span><span class="p">:</span>
-</span><span id="line-64">        <span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolError</span>
-</span><span id="line-65">
-</span><span id="line-66">        <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="s2">"no caller identity (authentication required)"</span><span class="p">)</span>
-</span><span id="line-67">    <span class="k">return</span> <span class="n">email</span></div>
+</span><span id="line-59"><span class="k">def</span><span class="w"> </span><span class="nf">current_email</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-60"><span class="w">    </span><span class="sd">"""The caller's identity for the in-flight tool call (raises if unauthenticated).</span>
+</span><span id="line-61">
+</span><span id="line-62"><span class="sd">    Resolves from the explicit :func:`use_email` override when present (local/stdio/</span>
+</span><span id="line-63"><span class="sd">    tests), else the verified OAuth token — so tools work under any host middleware, and</span>
+</span><span id="line-64"><span class="sd">    an unauthenticated call is failed closed.</span>
+</span><span id="line-65"><span class="sd">    """</span>
+</span><span id="line-66">    <span class="n">email</span> <span class="o">=</span> <span class="n">_CURRENT_EMAIL</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="ow">or</span> <span class="n">token_email</span><span class="p">()</span>
+</span><span id="line-67">    <span class="k">if</span> <span class="ow">not</span> <span class="n">email</span><span class="p">:</span>
+</span><span id="line-68">        <span class="kn">from</span><span class="w"> </span><span class="nn">fastmcp.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolError</span>
+</span><span id="line-69">
+</span><span id="line-70">        <span class="k">raise</span> <span class="n">ToolError</span><span class="p">(</span><span class="s2">"no caller identity (authentication required)"</span><span class="p">)</span>
+</span><span id="line-71">    <span class="k">return</span> <span class="n">email</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -277,7 +281,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=79f5c40e"></script>
+    <script src="../../../_static/documentation_options.js?v=4e0d4e64"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

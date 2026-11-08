@@ -47,8 +47,10 @@ and not this module’s business — the rule is about where a *tool* writes by 
 
 ### Functions
 
-| [`data_home`](#muvid.paths.data_home)()                      | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.             |
+| [`caller_bucket`](#muvid.paths.caller_bucket)(parent, email)     | The directory under `parent` holding one caller's projects.                    |
 |-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| [`canonical_email`](#muvid.paths.canonical_email)(email)           | The one spelling of a caller's email that names their data (muvid#312).        |
+| [`data_home`](#muvid.paths.data_home)()                      | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.             |
 | [`lut_dir`](#muvid.paths.lut_dir)()                        | Where the LUTs a look may load live: `{data_home}/luts` (muvid#244).           |
 | [`project_root`](#muvid.paths.project_root)(name, \*[, kind])   | Where a local muvid project named `name` belongs: `{data_home}/{kind}/{name}`. |
 | [`safe_component`](#muvid.paths.safe_component)(value, \*, label) | A single, traversal-safe path component (no `/`, `\`, `..`, or empties).       |
@@ -79,6 +81,31 @@ still only *recommended* would pre-commit to it. The apparent collision is
 disambiguated by depth: `projects/` at depth 1 is local, `projects/` under a genre
 slug is the connector’s. If #4 decides otherwise, this is a one-word change plus a
 migration of whatever exists by then — which is why it is a named constant.
+
+### muvid.paths.caller_bucket(parent, email)
+
+The directory under `parent` holding one caller’s projects.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.paths.canonical_email(email)
+
+The one spelling of a caller’s email that names their data (muvid#312).
+
+Emails are case-insensitive in practice, but a bucket named by the raw spelling is one
+folder on a case-insensitive filesystem (macOS, Windows) and two on the Linux server.
+The OAuth boundary lowercased already (`identity.token_email`); `use_email` and
+every workspace now go through this too, so a host’s drawer, a script and a token
+agree. `lower()`, not `casefold()`, to match what the token boundary always did;
+Unicode normalisation (NFC/NFD) is a separate, older gap.
+
+No migration: hosted callers arrive through the token and were lowercase already. A
+mixed-case folder made locally on Linux by `use_email`/`for_email` with a raw
+spelling is no longer found under it; rename it to lowercase.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.paths.data_home()
 

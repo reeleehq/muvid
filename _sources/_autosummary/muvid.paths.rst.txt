@@ -16,6 +16,8 @@ muvid.paths
 
    .. autosummary::
    
+      caller_bucket
+      canonical_email
       data_home
       lut_dir
       project_root
