@@ -311,27 +311,26 @@ def test_facade_verb_is_exported_like_its_siblings():
     assert callable(muvid.default_project_root)
 
 
-def test_a_callers_bucket_is_case_canonical_but_keeps_an_existing_spelling(tmp_path):
+def test_a_callers_bucket_is_case_canonical(tmp_path):
     """muvid#312: ``A@X.COM`` and ``a@x.com`` are one person, on every filesystem."""
-    from muvid.paths import caller_bucket
+    from muvid.paths import caller_bucket, canonical_email
 
     assert caller_bucket(tmp_path, "A@X.COM") == tmp_path / "a@x.com"
-    assert caller_bucket(tmp_path, " a@x.com ") == tmp_path / "a@x.com"
-    if (tmp_path / "PROBE").mkdir() or (tmp_path / "probe").exists():
-        return  # case-insensitive filesystem: one folder either way, nothing to keep apart
-    # a bucket made under the old raw spelling is still found, not orphaned
-    (tmp_path / "Old@X.com").mkdir()
-    assert caller_bucket(tmp_path, "Old@X.com") == tmp_path / "Old@X.com"
-    # ...unless the canonical one exists too: then it wins
-    (tmp_path / "old@x.com").mkdir()
-    assert caller_bucket(tmp_path, "Old@X.com") == tmp_path / "old@x.com"
+    assert canonical_email(" a@x.com ") == "a@x.com"
+    with pytest.raises(ValueError):
+        canonical_email("../x")
 
 
-def test_every_workspace_names_the_bucket_through_caller_bucket(tmp_path):
+def test_every_workspace_and_the_identity_name_one_caller_one_way(tmp_path):
     from muvid.footage.workspace import FootageWorkspace
-    from muvid.mcp.workspace import VisualizerWorkspace
+    from muvid.mcp.identity import current_email, use_email
+    from muvid.mcp.workspace import SubgenreWorkspace, VisualizerWorkspace
 
     for ws in (FootageWorkspace, VisualizerWorkspace):
-        a = ws.for_email("A@X.COM", root=tmp_path).projects_dir
-        b = ws.for_email("a@x.com", root=tmp_path).projects_dir
-        assert a == b and a.name == "a@x.com"
+        a = ws.for_email("A@X.COM", root=tmp_path)
+        b = ws.for_email("a@x.com", root=tmp_path)
+        assert a.projects_dir == b.projects_dir and a.email == "a@x.com"
+    s = SubgenreWorkspace.for_slug("lyric-video", "A@X.COM", root=tmp_path)
+    assert s.projects_dir.name == "a@x.com"
+    with use_email("A@X.COM"):
+        assert current_email() == "a@x.com"

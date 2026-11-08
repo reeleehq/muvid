@@ -39,6 +39,7 @@ from pathlib import Path
 from muvid.paths import (
     DATA_HOME_ENV_VAR as _DATA_HOME_ENV_VAR,
     caller_bucket,
+    canonical_email,
     data_home,
     safe_component,
 )
@@ -133,7 +134,7 @@ class VisualizerWorkspace:
     def for_email(
         cls, email: str, *, root: Path | None = None
     ) -> "VisualizerWorkspace":
-        return cls(email=email, root=root or data_root())
+        return cls(email=canonical_email(email), root=root or data_root())
 
     @property
     def projects_dir(self) -> Path:
@@ -226,7 +227,9 @@ class SubgenreWorkspace(VisualizerWorkspace):
             raise ValueError(
                 f"subgenre slug {slug!r} is reserved for a built-in muvid drawer"
             )
-        return cls(email=email, root=root or data_root(), slug=slug)
+        return cls(
+            email=canonical_email(email), root=root or data_root(), slug=slug
+        )
 
     def create_project(
         self, project_id: str, *, title: str = "", force: bool = False

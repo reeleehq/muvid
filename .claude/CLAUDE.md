@@ -840,6 +840,8 @@ five. The second version exempted every line at or below the cautionary paragrap
 holds is exempting the **single line** carrying the marker. A region-based exemption is a
 hole the size of the rest of the document.
 
+`{email}` is the caller's email **lowercased** (`paths.canonical_email`, muvid#312): the OAuth boundary always did, and `use_email` and every workspace now do too, so one person is one bucket on any filesystem. There is no fallback to a mixed-case folder.
+
 ```
 {root}/music_video/projects/{email}/{project_id}/manifest.json   title, canvas, song, song_hash, clips
                                               .../song/song.<ext>

@@ -26,7 +26,9 @@ _CURRENT_EMAIL: ContextVar[Optional[str]] = ContextVar(
 @contextmanager
 def use_email(email: str):
     """Bind the caller identity for the duration of the block (local/stdio/testing)."""
-    token = _CURRENT_EMAIL.set(email)
+    from muvid.paths import canonical_email
+
+    token = _CURRENT_EMAIL.set(canonical_email(email))
     try:
         yield
     finally:
@@ -49,7 +51,9 @@ def token_email() -> Optional[str]:
         return None
     claims = getattr(token, "claims", None) or {}
     ident = claims.get("email") or claims.get("sub")
-    return str(ident).lower() if ident else None
+    from muvid.paths import canonical_email
+
+    return canonical_email(str(ident)) if ident else None
 
 
 def current_email() -> str:

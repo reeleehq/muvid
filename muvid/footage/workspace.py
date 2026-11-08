@@ -66,6 +66,7 @@ from muvid.footage.edl import DECLARED, FootageAlignment
 from muvid.paths import (
     DATA_HOME_ENV_VAR as _DATA_HOME_ENV_VAR,
     caller_bucket,
+    canonical_email,
     data_home,
     safe_component,
 )
@@ -1138,7 +1139,7 @@ class FootageWorkspace:
 
     @classmethod
     def for_email(cls, email: str, *, root: Path | None = None) -> "FootageWorkspace":
-        return cls(email=email, root=root or data_root())
+        return cls(email=canonical_email(email), root=root or data_root())
 
     @property
     def projects_dir(self) -> Path:
