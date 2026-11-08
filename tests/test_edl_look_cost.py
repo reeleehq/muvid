@@ -38,10 +38,12 @@ _FRAME_MB = _LARGE[0] * _LARGE[1] * 1.5 / (1024 * 1024)
 _CONVERSION_SIGNAL_FRAMES = 3.0
 #: How far below the measurement the table may sit, in frames (RSS noise).
 _TOLERANCE_FRAMES = 0.35
-#: Samples per probe; the SMALLEST is kept. Contention (a busy machine, parallel tests)
-#: only ever ADDS resident memory, so the minimum is the least-contaminated estimate and
-#: one sample's noise (as large as :data:`_TOLERANCE_FRAMES`, muvid#304) stops failing a
-#: correct table. The check stays one-sided.
+#: Samples of the two probes whose DIFFERENCE prices a filter. Each probe string keeps
+#: the smallest reading it has ever had (:class:`_Rss`), and the price is computed once
+#: from those floors. Never a minimum of the price itself: a difference's noise runs both
+#: ways, so the lowest of several prices is biased low and would hide a real under-read
+#: (muvid#304's review). One run is enough for the family probes (a 3-frame threshold
+#: against a ~15-frame signal).
 _SAMPLES = 3
 #: Extra rounds, each over only the filters still reading too high for the table.
 _CONFIRMATIONS = 2
@@ -81,21 +83,36 @@ _PROBE = (
 )
 
 
-def _rss_mb(vf: str, *, samples: int = _SAMPLES) -> float:
-    """Peak resident MB of ffmpeg running ``vf``: the minimum of ``samples`` runs."""
+class _Rss:
+    """Peak resident MB of ffmpeg running a ``-vf``, floored per probe string.
 
-    def once() -> float:
+    Contention and scheduling add memory to a single reading, so the smallest reading of
+    a probe is its least-contaminated estimate; pooling across calls (and so across
+    confirmation rounds) can only tighten it.
+    """
+
+    def __init__(self):
+        self.floor: dict = {}
+
+    def _read(self, vf: str) -> float:
         out = subprocess.run(
-            [sys.executable, "-c", _PROBE, vf], capture_output=True, text=True, check=True
+            [sys.executable, "-c", _PROBE, vf],
+            capture_output=True,
+            text=True,
+            check=True,
         )
         return float(out.stdout.strip())
 
-    return min(once() for _ in range(samples))
+    def __call__(self, vf: str, *, samples: int = 1) -> float:
+        for _ in range(samples):
+            self.floor[vf] = min(self._read(vf), self.floor.get(vf, 1e18))
+        return self.floor[vf]
 
 
-def _measure(names=None) -> dict:
+def _measure(names=None, rss=None) -> dict:
     """``{filter: {"family": ..., "frames": ...}}`` measured on THIS binary (just
-    ``names`` when given)."""
+    ``names`` when given); ``rss`` carries the floors from an earlier call."""
+    rss = rss or _Rss()
     up = f"scale={_LARGE[0]}:{_LARGE[1]}"
     down = f"scale={_CANVAS[0]}:{_CANVAS[1]}"
     rgb, yuv = _PROBES["colorchannelmixer"], _PROBES["eq"]
@@ -103,15 +120,22 @@ def _measure(names=None) -> dict:
     def chain(*links):
         return ",".join([up, *links, down])
 
-    base = _rss_mb(chain())
-    eq_alloc = (_rss_mb(chain(yuv, yuv, yuv)) - _rss_mb(chain(yuv))) / 2
+    def alloc_of(f):
+        return max(
+            0.0,
+            (rss(chain(f, f, f), samples=_SAMPLES) - rss(chain(f), samples=_SAMPLES))
+            / 2,
+        )
+
+    base = rss(chain(), samples=_SAMPLES)
+    eq_alloc = alloc_of(yuv)
     out = {}
     for name, f in _PROBES.items():
         if names is not None and name not in names:
             continue
-        alloc = max(0.0, (_rss_mb(chain(f, f, f)) - _rss_mb(chain(f))) / 2)
-        with_rgb = _rss_mb(chain(*[rgb, f] * 3)) - (base + 3 * alloc)
-        with_yuv = _rss_mb(chain(*[yuv, f] * 3)) - (base + 3 * alloc + 3 * eq_alloc)
+        alloc = alloc_of(f)
+        with_rgb = rss(chain(*[rgb, f] * 3)) - (base + 3 * alloc)
+        with_yuv = rss(chain(*[yuv, f] * 3)) - (base + 3 * alloc + 3 * eq_alloc)
         signal = _CONVERSION_SIGNAL_FRAMES * _FRAME_MB
         family = "yuv" if with_rgb > signal else "rgb" if with_yuv > signal else "any"
         out[name] = {"family": family, "frames": round(alloc / _FRAME_MB, 2)}
@@ -121,6 +145,11 @@ def _measure(names=None) -> dict:
 def _refresh_census() -> None:  # pragma: no cover - a maintenance helper
     """Regenerate :data:`CENSUS_PATH` from THIS binary."""
     CENSUS_PATH.write_text(json.dumps(_measure(), indent=2, sort_keys=True) + "\n")
+
+
+def _suspects(wrong: "list[str]") -> "set[str]":
+    """The filter names in :func:`_check`'s findings (each reads ``"<name>: ..."``)."""
+    return {w.split(":", 1)[0] for w in wrong}
 
 
 def _check(table: dict, measured: dict) -> "list[str]":
@@ -157,17 +186,16 @@ def test_the_table_never_reads_cheaper_than_the_recorded_census():
 @pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
 def test_the_table_never_reads_cheaper_than_this_binary():
     """The census re-measured on the runner's own ffmpeg (6.x in CI)."""
-    measured = _measure()
-    # Contention only inflates a reading, so a filter the table seems to under-read is
-    # measured again, alone, and judged on its LOWEST reading: it fails only if every
-    # round says so (muvid#304; one sample's noise rivals the tolerance).
+    rss = _Rss()
+    measured = _measure(rss=rss)
+    # A filter the table seems to under-read is measured again, alone, into the SAME
+    # floors, and the price recomputed from them: it fails only if the tightest readings
+    # still say so (muvid#304; one reading's noise rivals the tolerance).
     for _ in range(_CONFIRMATIONS):
-        suspects = {w.split(":")[0] for w in _check(_LOOK_FILTER_COSTS, measured)}
+        suspects = _suspects(_check(_LOOK_FILTER_COSTS, measured))
         if not suspects:
             break
-        for name, again in _measure(suspects).items():
-            if again["frames"] < measured[name]["frames"]:
-                measured[name] = again
+        measured.update(_measure(suspects, rss))
     assert _check(_LOOK_FILTER_COSTS, measured) == []
 
 
@@ -192,3 +220,40 @@ def test_a_literal_crop_returns_the_frame_to_its_size():
     assert (
         _look_cost(upsized, canvas)[1][-1][1] < _look_cost(expression, canvas)[1][-1][1]
     )
+
+
+class _NoisyRss(_Rss):
+    """A stand-in binary: ``gblur`` truly costs 1.0 frame per link, the others 0.3, and
+    every reading carries two-sided noise (so the instrument, not the table, is tested)."""
+
+    def __init__(self, seed: int, sigma_frames: float = 0.2):
+        super().__init__()
+        import random
+
+        self._rng, self._sigma = random.Random(seed), sigma_frames
+
+    def _read(self, vf: str) -> float:
+        frames = sum(1.0 if "gblur" in link else 0.3 for link in vf.split(","))
+        return 100 + (frames + self._rng.gauss(0, self._sigma)) * _FRAME_MB
+
+
+def _verdict(table_frames: float, seed: int) -> "list[str]":
+    rss = _NoisyRss(seed)
+    measured = _measure({"gblur"}, rss)
+    table = {"gblur": ("any", table_frames)}
+    for _ in range(_CONFIRMATIONS):
+        suspects = _suspects(_check(table, measured))
+        if not suspects:
+            break
+        measured.update(_measure(suspects, rss))
+    return _check(table, measured)
+
+
+def test_confirmation_rounds_do_not_flake_a_correct_table():
+    assert sum(bool(_verdict(1.0, seed)) for seed in range(40)) <= 2
+
+
+def test_confirmation_rounds_do_not_hide_a_table_that_reads_too_cheap():
+    """The #304 review: taking the lowest PRICE over rounds is biased low and widened the
+    tolerance; pooling raw floors must still catch a table 0.6 frames under the truth."""
+    assert sum(not _verdict(0.4, seed) for seed in range(40)) <= 2
