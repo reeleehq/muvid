@@ -3277,6 +3277,7 @@ def set_cut(
     look_time_varying: Optional[bool] = None,
     slip_s: Optional[float] = None,
     rate: Optional[float] = None,
+    source_in_s: Optional[float] = None,
 ) -> dict:
     """Change one cut of a saved edit (``index`` is its position in ``get_edit``'s edl).
 
@@ -3302,6 +3303,12 @@ def set_cut(
       more footage over the same span, so the moves run 3 % faster (the song is never
       touched). Within ``1 +- RATE_MAX_DEV``; ``1`` removes it. The video must hold the
       footage the cut then reads. A new video starts at speed 1.
+    - ``source_in_s``: for a cut to the music, which part of its video it shows — the
+      second of the video it starts at (``40`` shows the part 40 s in). Moved as far as
+      the video allows (the cut's footage, and the blends around it, must stay inside the
+      video) and the reply's ``source_in_clamped`` says when it was. Resets ``slip_s``.
+      Refused for a video with the song in it (its moment is its place on the song: use
+      ``slip_s``) and for a photo, which is shown whole.
 
     Parameters left out are unchanged. The changed edit is checked and saved; returns it.
     """
@@ -3385,8 +3392,69 @@ def set_cut(
                 fp, clip_id or "", e, entries[i + 1] if i + 1 < len(entries) else None
             ),
         )
+    clamped = None
+    if source_in_s is not None:
+        following = entries[i + 1] if i + 1 < len(entries) else None
+        chosen, clamped = _chosen_in_point(fp, e, source_in_s, following)
+        e = replace(e, source_in=chosen, slip_s=0.0)
     entries[i] = e
-    return _store_changed(fp, record, entries, changed=i)
+    reply = _store_changed(fp, record, entries, changed=i)
+    if clamped:
+        reply["source_in_clamped"] = clamped
+    return reply
+
+
+def _chosen_in_point(fp, e, asked, following=None) -> tuple[float, Optional[dict]]:
+    """``(source_in, clamped)`` for a cut whose part of its video a person chose.
+
+    Only a free cut on a video has one to choose. The legal range is
+    :func:`muvid.footage.edl.in_point_bounds`' with no edge margin (the person chose the
+    spot; the gate's bounds are the only limit) and a reset slip, the very arithmetic
+    :func:`_swap_in_point` and the music cutter use. ``clamped`` is ``{asked, used}``
+    when the ask was moved into range, else ``None``.
+    """
+    from muvid.footage.edl import in_point_bounds
+
+    if e.is_gap:
+        raise FootageError("a gap has no picture to choose a part of")
+    try:
+        want = float(asked)
+    except (TypeError, ValueError) as err:
+        raise FootageError(
+            f"source_in_s must be a number of seconds, got {asked!r}"
+        ) from err
+    if not want >= 0.0 or want == float("inf"):
+        raise FootageError(
+            f"source_in_s={asked!r} must be a time in the video, 0 or more"
+        )
+    if e.source_in is None:
+        raise FootageError(
+            f"cut shows {e.clip_id!r} where it was filmed against the song, so its moment "
+            "is its place on the song — nudge it with slip_s, or fix the video's offset"
+        )
+    row = next(
+        (c for c in fp.manifest().get("clips", []) if c.get("clip_id") == e.clip_id),
+        None,
+    )
+    if row is not None and row.get("kind") == STILL_KIND:
+        raise FootageError(
+            f"{e.clip_id!r} is a photo: it is shown whole, with no part to choose"
+        )
+    aligns = {a.clip_id: a for a in fp.load_alignments()}
+    bounds = in_point_bounds(
+        replace(e, slip_s=0.0),
+        clip_duration_s=_free_length(fp, e.clip_id, aligns.get(e.clip_id)),
+        next_transition=following.transition if following is not None else None,
+    )
+    if bounds is None:
+        raise FootageError(
+            f"clip {e.clip_id!r} is too short to hold this cut and its blends"
+        )
+    used = min(max(want, bounds[0]), bounds[1])
+    clamped = (
+        None if abs(used - want) < _EPS else {"asked": want, "used": round(used, 4)}
+    )
+    return round(used, 4), clamped
 
 
 def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:

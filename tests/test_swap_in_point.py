@@ -153,3 +153,62 @@ def test_a_swap_with_a_slip_still_passes_the_gate(monkeypatch, slip):
     ]
     places = [unplaced("p", 60.0), unplaced("dog", 30.0), unplaced("b", 60.0)]
     validate_edl(entries, places, 30.0)  # must not raise
+
+
+def test_set_cut_chooses_which_part_of_a_free_cuts_video_it_shows(bath):
+    """muvid#315: ``source_in_s`` moves a cut to the music anywhere the video allows,
+    where ``slip_s`` could only nudge one beat; slip resets."""
+    edit_id = _edit(bath)
+    service.set_cut(bath, edit_id=edit_id, index=0, slip_s=0.2)
+    out = service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=4.0)
+    cut = out["edl"][0]
+    assert (
+        cut["source_in"] == 4.0
+        and "slip_s" not in cut
+        and "source_in_clamped" not in out
+    )
+
+
+def test_a_chosen_part_outside_the_video_is_moved_in_and_says_so(bath):
+    edit_id = _edit(bath)
+    out = service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=500.0)
+    clamped = out["source_in_clamped"]
+    assert (
+        clamped["asked"] == 500.0
+        and out["edl"][0]["source_in"] == clamped["used"] < 500.0
+    )
+
+
+def test_a_synced_cut_and_a_gap_and_a_bad_number_are_refused(bath):
+    from muvid.footage.errors import FootageError
+
+    edit_id = service.save_edit(
+        bath,
+        edl=[
+            {"song_start": 0.0, "song_end": 5.0, "clip_id": "abbey", "source_in": 1.0},
+            {"song_start": 5.0, "song_end": 10.0, "clip_id": None},
+        ],
+        name="g",
+    )["edit_id"]
+    with pytest.raises(FootageError, match="gap"):
+        service.set_cut(bath, edit_id=edit_id, index=1, source_in_s=1.0)
+    with pytest.raises(FootageError, match="0 or more"):
+        service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=-1.0)
+    with pytest.raises(FootageError, match="number"):
+        service.set_cut(bath, edit_id=edit_id, index=0, source_in_s="later")
+
+
+def test_a_synced_cut_and_a_photo_have_no_part_to_choose():
+    from types import SimpleNamespace
+
+    from muvid.footage.edl import EdlEntry
+    from muvid.footage.errors import FootageError
+
+    fp = SimpleNamespace(
+        manifest=lambda: {"clips": [{"clip_id": "pic", "kind": service.STILL_KIND}]},
+        load_alignments=lambda: [],
+    )
+    with pytest.raises(FootageError, match="slip_s"):
+        service._chosen_in_point(fp, EdlEntry(0.0, 2.0, "dog"), 1.0)
+    with pytest.raises(FootageError, match="photo"):
+        service._chosen_in_point(fp, EdlEntry(0.0, 2.0, "pic", source_in=0.0), 1.0)
