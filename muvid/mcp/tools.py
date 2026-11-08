@@ -310,7 +310,19 @@ def render_visualizer(
             )
         ),
     }
-    # a host-placed project registers the video/thumbnail so the studio can play them
-    meta = proj.register_render(meta)
     proj.write_render_meta(render_id, meta)
+    # A host-placed project also registers the video/thumbnail so the studio can play
+    # them, and retakes its cover. After the meta is written, so a catalog failure never
+    # leaves a finished render the listing cannot see (muvid#311 review).
+    if getattr(proj, "media_catalog", None) is not None:
+        from muvid.mcp._cover import refresh_cover
+
+        try:
+            meta = proj.register_render(meta)
+        except (OSError, ValueError) as e:
+            raise _tool_error(
+                f"the render was made but could not be registered: {e}"
+            ) from e
+        proj.write_render_meta(render_id, meta)
+        refresh_cover(proj, meta)
     return meta

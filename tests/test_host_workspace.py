@@ -10,6 +10,7 @@ nothing when no host is registered.
 from __future__ import annotations
 
 import json
+import shutil
 
 import pytest
 
@@ -222,6 +223,7 @@ def test_a_host_placed_visualizer_registers_its_render_and_has_a_cover_status_ti
 ):
     """muvid#311: the studio can play the render, the card has a cover, ``genre_status``
     speaks in muvid's terms, and the title is the project's, not its id."""
+    from muvid.mcp._cover import refresh_cover
     from muvid.production import Project
 
     root = _place(host, A, "viz", "music_visualizer")
@@ -243,16 +245,45 @@ def test_a_host_placed_visualizer_registers_its_render_and_has_a_cover_status_ti
     proj.write_render_meta("r1", meta)
     assert meta["artifact_id"] in project.media_catalog.registered_ids()
     assert "thumbnail_artifact_id" not in meta  # omit-when-absent
-    cover = project.cover_artifact_id()
-    assert cover and cover in project.media_catalog.registered_ids()
+    cover = refresh_cover(proj, meta)
+    assert cover and cover == project.cover_artifact_id()
+    assert cover in project.media_catalog.registered_ids()
     assert project.genre_status() == {"renders": 1, "renders_ok": 1, "has_cover": True}
-    # a second render keeps the first cover (not replaced after)
+    # the newest render retakes the cover (footage's rule)
     rdir2 = proj.new_render_dir("r2")
     _make_video(rdir2 / "video.mp4")
-    proj.register_render(
-        {"render_id": "r2", "video": str(rdir2 / "video.mp4"), "duration": 1.0}
+    meta2 = {"render_id": "r2", "video": str(rdir2 / "video.mp4"), "duration": 1.0}
+    assert refresh_cover(proj, meta2)
+    assert proj.cover()["taken_from"] == "render:r2"
+
+
+@needs_ffmpeg
+def test_the_render_tool_registers_on_a_host_placed_project(
+    host, tmp_path, monkeypatch
+):
+    """The wiring, not just the method: ``render_visualizer`` on a host-placed project."""
+    pytest.importorskip("fastmcp")
+    import subprocess
+
+    from muvid.mcp import tools
+    from muvid.mcp.identity import use_email
+    from muvid.production import Project
+
+    root = _place(host, A, "viz", "music_visualizer")
+    audio = tmp_path / "a.wav"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", str(audio)],
+        check=True,
     )
-    assert project.cover_artifact_id() == cover
+    monkeypatch.setattr(
+        tools, "_resolve_input", lambda url, dest, *, label: shutil.copy(audio, dest)
+    )
+    with use_email(A):
+        meta = tools.render_visualizer("viz", audio="https://x/a.wav", visual="cqt")
+    project = Project(root)
+    assert meta["artifact_id"] in project.media_catalog.registered_ids()
+    assert project.cover_artifact_id()
+    assert project.genre_status()["renders"] == 1
 
 
 def test_muvids_own_visualizer_bucket_registers_nothing(tmp_path, monkeypatch):

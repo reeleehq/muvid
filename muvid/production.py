@@ -42,6 +42,7 @@ from muvid.footage.workspace import (
     fresh_output,
     read_json_dict,
     replace_file,
+    store_cover,
     update_json_record,
 )
 from muvid.paths import safe_component
@@ -348,14 +349,15 @@ class LyricVideoProduction:
         renders = self.manifest().get("renders") or []
         if not renders or self.media_catalog is None:
             return None
-        frame = self.root / "cover.jpg"
-        with fresh_output(frame) as tmp:
+        with fresh_output(self.root / ".cover.frame.jpg") as tmp:
             grab_cover_frame(self.root / renders[0]["file"], tmp)
-        artifact_id = self._register(frame, kind="image")
-        cover = {"file": frame.name, "taken_from": f"render:{renders[0]['render_id']}"}
-        _set_or_drop(cover, "artifact_id", artifact_id)
-        self.update_manifest(lambda m: m.update(cover=cover))
-        return artifact_id
+            return store_cover(
+                self.root,
+                tmp,
+                taken_from=f"render:{renders[0]['render_id']}",
+                register=self._register,
+                update_manifest=self.update_manifest,
+            )
 
     # -- reads ----------------------------------------------------------------
     def status(self) -> dict:

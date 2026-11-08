@@ -160,6 +160,27 @@ def replace_file(src, dest) -> Path:
     return dest
 
 
+def store_cover(
+    root, image, *, taken_from: str, register, update_manifest
+) -> "str | None":
+    """Put ``image`` at ``<root>/cover.jpg`` (as a NEW file, so a blob the previous cover
+    was hardlinked into keeps its bytes), register it, and record
+    ``{file, taken_from[, artifact_id]}`` as the manifest's ``cover``; return the id.
+
+    The one cover primitive of every hosted production (footage, lyric video,
+    visualizer): ``register(path, kind=...)`` is the catalog seam (``None`` result with
+    no catalog), ``update_manifest(change)`` the production's own locked manifest write.
+    """
+    dest = Path(root) / "cover.jpg"
+    if Path(image) != dest:
+        replace_file(image, dest)
+    artifact_id = register(dest, kind="image")
+    cover = {"file": dest.name, "taken_from": taken_from}
+    _set_or_drop(cover, "artifact_id", artifact_id)
+    update_manifest(lambda m: m.update(cover=cover))
+    return artifact_id
+
+
 @contextmanager
 def fresh_output(dest):
     """A temp path beside ``dest`` for a writer that cannot be told to be careful
@@ -749,16 +770,13 @@ class MusicVideoFootageProject:
 
     def set_cover(self, image_path, *, taken_from: str) -> "str | None":
         """Store ``image_path`` as ``cover.jpg``, register it; return its artifact id."""
-        import shutil
-
-        dest = self.root / "cover.jpg"
-        if Path(image_path) != dest:
-            replace_file(image_path, dest)
-        artifact_id = self._register(dest, kind="image")
-        cover = {"file": dest.name, "taken_from": taken_from}
-        _set_or_drop(cover, "artifact_id", artifact_id)
-        self.update_manifest(lambda m: m.update(cover=cover))
-        return artifact_id
+        return store_cover(
+            self.root,
+            image_path,
+            taken_from=taken_from,
+            register=self._register,
+            update_manifest=self.update_manifest,
+        )
 
     # -- alignments ----------------------------------------------------------
     def alignments_lock(self):
