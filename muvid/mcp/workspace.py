@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from muvid.paths import (
@@ -69,12 +69,21 @@ class VisualizerProject:
 
     ``root`` is exposed so ``nw.create_genre_project``'s all-or-nothing rollback
     (``nw.genres._rollback_project`` removes ``project.root``) reverts a half-created
-    bucket. Kept storage-only: no nw graph, no asset library.
+    bucket. Storage-only: no nw graph, no asset library; a host-placed one also takes a
+    ``media_catalog`` (ids and a cover recorded when given, nothing otherwise) but holds
+    no policy about which picture is the cover.
     """
 
     email: str
     project_id: str
     root: Path
+    #: Where a HOST-placed project's media is registered for the host to serve it — a
+    #: :class:`muvid.catalog.HostArtifactCatalog` (anything with its ``register``), or
+    #: ``None`` for muvid's own workspace, whose records stay byte-identical (muvid#311).
+    media_catalog: object = field(default=None, compare=False, repr=False)
+    #: What :meth:`manifest` reads before anything is written (a host-placed project's
+    #: title comes from its nw project, so reading it creates nothing).
+    defaults: dict = field(default_factory=dict, compare=False, repr=False)
 
     @property
     def renders_dir(self) -> Path:
@@ -82,10 +91,11 @@ class VisualizerProject:
 
     def manifest(self) -> dict:
         spec = self.root / "manifest.json"
+        base = {"title": self.project_id, **self.defaults}
         try:
-            return json.loads(spec.read_text())
+            return {**base, **json.loads(spec.read_text())}
         except (OSError, ValueError):
-            return {"title": self.project_id}
+            return base
 
     def new_render_dir(self, render_id: str) -> Path:
         """Create + return a fresh directory for one render (traversal-checked id)."""
@@ -97,6 +107,61 @@ class VisualizerProject:
     def write_render_meta(self, render_id: str, meta: dict) -> None:
         rid = _safe_component(render_id, label="render_id")
         (self.renders_dir / rid / "meta.json").write_text(json.dumps(meta, indent=2))
+
+    def register_render(self, meta: dict) -> dict:
+        """``meta`` with the host catalog ids of the render's video (``artifact_id``) and
+        thumbnail (``thumbnail_artifact_id``).
+
+        A project with no ``media_catalog`` returns ``meta`` unchanged, so muvid's own
+        records carry no new key (omit-when-absent, muvid#311). A render that is later
+        deleted keeps its id valid: catalog blobs are hardlinks.
+        """
+        if self.media_catalog is None:
+            return meta
+        out = dict(meta)
+        for key, path, kind, extra in (
+            (
+                "artifact_id",
+                Path(meta["video"]),
+                "video",
+                {"duration_s": meta.get("duration")},
+            ),
+            ("thumbnail_artifact_id", Path(meta.get("thumbnail") or ""), "image", {}),
+        ):
+            if path.is_file():
+                out[key] = self.media_catalog.register(path, kind=kind, **extra)
+        return out
+
+    def cover(self) -> dict:
+        """The project's cover record (``{file, artifact_id, taken_from}``) or ``{}``."""
+        return (self.manifest().get("cover")) or {}
+
+    def set_cover(self, image, *, taken_from: str) -> "str | None":
+        """Store ``image`` as the project's cover and register it (host-placed only).
+
+        The shared :func:`~muvid.footage.workspace.store_cover` primitive; the policy of
+        WHICH picture is the cover lives with the caller (``muvid.mcp._cover``).
+        """
+        from muvid.footage.workspace import file_lock, store_cover, update_json_record
+
+        if self.media_catalog is None:
+            return None
+
+        def update_manifest(change):
+            return update_json_record(
+                self.root / "manifest.json",
+                change,
+                default=dict,
+                lock=file_lock(self.root / "locks" / "manifest.lock"),
+            )
+
+        return store_cover(
+            self.root,
+            image,
+            taken_from=taken_from,
+            register=self.media_catalog.register,
+            update_manifest=update_manifest,
+        )
 
     def list_renders(self) -> list[dict]:
         """This bucket's renders (newest-first), from each render's ``meta.json``."""

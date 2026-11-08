@@ -30,7 +30,13 @@ from nw.media_catalog import (
     hash_file,
 )
 
+#: What registering a file can raise beyond ``OSError``/``ValueError``: a blob whose bytes
+#: no longer match its id, and a host on an object-store backend. A tool turns these into
+#: a clean refusal after the work it already did.
+CATALOG_ERRORS = (CorruptBlob, CatalogBackendMismatch)
+
 __all__ = [
+    "CATALOG_ERRORS",
     "HostArtifactCatalog",
     "CorruptBlob",
     "CrossDeviceCatalog",
