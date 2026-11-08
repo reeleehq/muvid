@@ -144,6 +144,9 @@ class VisualizerProject:
         """
         from muvid.footage.workspace import file_lock, store_cover, update_json_record
 
+        if self.media_catalog is None:
+            return None
+
         def update_manifest(change):
             return update_json_record(
                 self.root / "manifest.json",

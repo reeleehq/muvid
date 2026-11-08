@@ -315,11 +315,12 @@ def render_visualizer(
     # them, and retakes its cover. After the meta is written, so a catalog failure never
     # leaves a finished render the listing cannot see (muvid#311 review).
     if getattr(proj, "media_catalog", None) is not None:
+        from muvid.catalog import CATALOG_ERRORS
         from muvid.mcp._cover import refresh_cover
 
         try:
             meta = proj.register_render(meta)
-        except (OSError, ValueError) as e:
+        except (OSError, ValueError, *CATALOG_ERRORS) as e:
             raise _tool_error(
                 f"the render was made but could not be registered: {e}"
             ) from e

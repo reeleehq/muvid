@@ -19,7 +19,7 @@ nw = pytest.importorskip("nw")
 from muvid import downloads  # noqa: E402
 from muvid.downloads import caller_workspaces, open_caller_project  # noqa: E402
 
-from tests.ffmpeg_support import needs_ffmpeg  # noqa: E402
+from tests.ffmpeg_support import needs_ffmpeg, needs_ffmpeg_filter  # noqa: E402
 
 A, B = "a@x.com", "b@x.com"
 
@@ -257,7 +257,7 @@ def test_a_host_placed_visualizer_registers_its_render_and_has_a_cover_status_ti
     assert proj.cover()["taken_from"] == "render:r2"
 
 
-@needs_ffmpeg
+@needs_ffmpeg_filter("showcqt")
 def test_the_render_tool_registers_on_a_host_placed_project(
     host, tmp_path, monkeypatch
 ):

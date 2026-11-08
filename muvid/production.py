@@ -150,7 +150,7 @@ class Project(nw.Project):
         """The artifact id of the frame that stands for this production on a card.
 
         The footage production's cover (its newest render, else its first clip), else
-        the lyric production's (its first render), else the visualizer's (its first
+        the lyric production's (its first render), else the visualizer's (its newest
         render's thumbnail or frame). ``None`` when there is no picture
         yet — a card with a placeholder is honest. Read-only.
         """
@@ -349,15 +349,16 @@ class LyricVideoProduction:
         renders = self.manifest().get("renders") or []
         if not renders or self.media_catalog is None:
             return None
-        with fresh_output(self.root / ".cover.frame.jpg") as tmp:
+        frame = self.root / "cover.jpg"
+        with fresh_output(frame) as tmp:
             grab_cover_frame(self.root / renders[0]["file"], tmp)
-            return store_cover(
-                self.root,
-                tmp,
-                taken_from=f"render:{renders[0]['render_id']}",
-                register=self._register,
-                update_manifest=self.update_manifest,
-            )
+        return store_cover(
+            self.root,
+            frame,
+            taken_from=f"render:{renders[0]['render_id']}",
+            register=self._register,
+            update_manifest=self.update_manifest,
+        )
 
     # -- reads ----------------------------------------------------------------
     def status(self) -> dict:

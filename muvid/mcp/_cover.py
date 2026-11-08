@@ -25,6 +25,7 @@ def refresh_cover(project, meta: dict) -> Optional[str]:
         return None
     from muvid.footage.service import grab_cover_frame
     from muvid.footage.workspace import fresh_output
+    from muvid.catalog import CATALOG_ERRORS
     from muvid.visualize.ffmpeg import FfmpegError
 
     taken_from = f"render:{meta.get('render_id')}"
@@ -32,8 +33,9 @@ def refresh_cover(project, meta: dict) -> Optional[str]:
         thumbnail = Path(meta.get("thumbnail") or "")
         if thumbnail.is_file():
             return project.set_cover(thumbnail, taken_from=taken_from)
-        with fresh_output(project.root / ".cover.frame.jpg") as tmp:
+        frame = project.root / "cover.jpg"
+        with fresh_output(frame) as tmp:
             grab_cover_frame(meta["video"], tmp)
-            return project.set_cover(tmp, taken_from=taken_from)
-    except (FfmpegError, OSError, ValueError):
+        return project.set_cover(frame, taken_from=taken_from)
+    except (FfmpegError, OSError, ValueError, *CATALOG_ERRORS):
         return None
