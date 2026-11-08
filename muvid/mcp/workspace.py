@@ -227,9 +227,7 @@ class SubgenreWorkspace(VisualizerWorkspace):
             raise ValueError(
                 f"subgenre slug {slug!r} is reserved for a built-in muvid drawer"
             )
-        return cls(
-            email=canonical_email(email), root=root or data_root(), slug=slug
-        )
+        return cls(email=canonical_email(email), root=root or data_root(), slug=slug)
 
     def create_project(
         self, project_id: str, *, title: str = "", force: bool = False
