@@ -1000,11 +1000,13 @@ def test_upload_ops_take_the_file_from_the_host_only(tmp_path):
 
     for name in ("set_song", "add_clip"):
         op = nw.genre_op("music_video", name)
-        assert op.host_params == ("path", "filename")
-        assert not {"path", "filename", "duration_s", "ext"} & set(
+        # set_song also takes the host's copyright ``notice`` (muvid#274)
+        want = ("path", "filename") + (("notice",) if name == "set_song" else ())
+        assert op.host_params == want
+        assert not {"path", "filename", "notice", "duration_s", "ext"} & set(
             op.params_schema["properties"]
         )
-        assert op.to_dict()["host_params"] == ["path", "filename"]
+        assert op.to_dict()["host_params"] == list(want)
     muvid.create_project_at(tmp_path, "mv")
     project = muvid.Project(tmp_path / "mv")
     set_song = nw.genre_op("music_video", "set_song")

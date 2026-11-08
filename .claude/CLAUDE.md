@@ -133,6 +133,7 @@ dependency, in any extra, and none should become one.
 |---|---|---|
 | **a song** — the user has a poem, lyrics or an idea, and no audio | [`arioso`](https://github.com/thorwhalen/arioso) (`$PP/t/arioso`) | none shipped; the working snippet is in `muvid-lyric-video`, under "You need a song first" |
 | **the geometry of a printed page** — per-word bounding boxes off a scan | [`ocracy`](https://github.com/thorwhalen/ocracy) (`$PP/t/ocracy`) | ships at `ocracy/data/skills/ocracy/`, so it may not appear in an enabled-skill list |
+| **a song from a video or music PAGE link** (`set_song(url)`, muvid#274) | [`yb`](https://github.com/thorwhalen/yb) `>=0.1.28` with `yb[download]` | soft import in `muvid/mcp/_audio_link.py`, in no extra; an older yb (no `AudioSourceError`) is refused — it fetches around muvid's SSRF guard |
 | **publishing the result to YouTube** | [`yb`](https://github.com/thorwhalen/yb) | ships at `yb/data/skills/music2video/`, ditto — reached from `muvid-visualize` |
 
 - **`arioso`** is a facade over 14 AI music-generation backends, Python library only —
