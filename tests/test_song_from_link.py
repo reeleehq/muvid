@@ -59,7 +59,10 @@ def page_answers_html(monkeypatch):
 
 
 def _fake_yb(calls):
-    def download(url, *, download_dir, max_bytes, max_duration_s, validate_target):
+    def download(
+        url, *, download_dir, max_bytes, max_duration_s, validate_target, timeout_s, cookies_file
+    ):
+        assert cookies_file is False and timeout_s > 0
         calls.append(
             dict(url=url, max_bytes=max_bytes, max_duration_s=max_duration_s,
                  validate_target=validate_target)
@@ -168,4 +171,74 @@ def test_a_song_set_without_a_notice_records_none(project, tmp_path):
     song.write_bytes(b"RIFF-song")
     service.set_song(project, path=str(song), duration_s=10.0)
     assert "song_notice" not in project.manifest()
+    assert "notice" not in project.song_info()
+
+
+def _with_yb_raising(monkeypatch, exc):
+    import muvid.mcp._audio_link as AL
+
+    real = AL.song_from_page_link
+
+    def boom(url, **kw):
+        def download(*a, **k):
+            raise exc
+
+        return real(url, download=download, **kw)
+
+    monkeypatch.setattr(AL, "song_from_page_link", boom)
+
+
+def test_a_rate_limited_source_is_a_clean_refusal_without_operator_advice(
+    project, page_answers_html, monkeypatch
+):
+    import muvid.mcp.footage_tools as ft
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.identity import use_email
+
+    _with_yb_raising(monkeypatch, RuntimeError("use pace='polite' and cookies_file="))
+    with use_email("u@x.com"), pytest.raises(ToolError, match="refusing this server") as e:
+        ft.set_song("p", url=PAGE)
+    assert "cookies_file" not in str(e.value)
+
+
+def test_yb_without_yt_dlp_is_unavailable_not_a_traceback(
+    project, page_answers_html, monkeypatch
+):
+    import muvid.mcp.footage_tools as ft
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.identity import use_email
+
+    _with_yb_raising(monkeypatch, ImportError("no yt_dlp"))
+    with use_email("u@x.com"), pytest.raises(ToolError, match=r"yb\[download\]"):
+        ft.set_song("p", url=PAGE)
+
+
+def test_whitespace_around_a_page_link_is_not_passed_to_yb(
+    project, page_answers_html, monkeypatch
+):
+    import muvid.mcp._audio_link as AL
+    import muvid.mcp.footage_tools as ft
+    from muvid.mcp.identity import use_email
+
+    calls = []
+    real = AL.song_from_page_link
+    monkeypatch.setattr(
+        AL, "song_from_page_link", lambda url, **kw: real(url, download=_fake_yb(calls), **kw)
+    )
+    monkeypatch.setattr("muvid.mcp._fetch._host_is_public", lambda host: True)
+    with use_email("u@x.com"):
+        ft.set_song("p", url=f"  {PAGE}\n")
+    assert calls[0]["url"] == PAGE
+
+
+def test_the_notice_is_the_hosts_to_supply_not_the_clients(project, tmp_path):
+    from muvid.footage import service
+
+    spec = next(s for s in service.FOOTAGE_OP_SPECS if s.name == "set_song")
+    assert "notice" in spec.host_params and "notice" not in spec.hide
+    song = tmp_path / "s.wav"
+    song.write_bytes(b"RIFF-song")
+    service.set_song(project, path=str(song), duration_s=10.0, notice="n")
+    assert project.song_info()["notice"] == "n"
+    service.set_song(project, path=str(song), duration_s=10.0)  # a plain re-set clears it
     assert "notice" not in project.song_info()

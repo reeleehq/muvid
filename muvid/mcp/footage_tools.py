@@ -216,7 +216,7 @@ def set_song(project_id: str, *, url: str) -> dict:
             # link (then the page is a sign-in page, and graze's diagnosis is the answer).
             if direct != url.strip() or not _answered_with_a_page(e):
                 raise _tool_error(f"could not fetch the song: {e}") from e
-            page = _song_from_page(url, Path(tmp))
+            page = _song_from_page(url.strip(), Path(tmp))
             tmp_song, ext, notice = page.path, "mp3", page.notice
             filename = f"{_display_name(page.title) or 'song'}.mp3"
         dur = _duration(tmp_song)
@@ -264,6 +264,13 @@ def _song_from_page(url: str, workdir: Path):
         ) from e
     except ValueError as e:  # muvid's target check, or yb's caps (AudioLimitError)
         raise _tool_error(f"could not take the song from that page: {e}") from e
+    except RuntimeError as e:
+        # yb's RateLimitedError: the source is refusing this server. Its message advises
+        # options only an operator has, so the caller gets the actionable half.
+        raise _tool_error(
+            "the source is refusing this server right now; try again later, or upload "
+            "the audio file instead"
+        ) from e
 
 
 def _display_name(title: str) -> str:

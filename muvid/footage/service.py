@@ -5168,8 +5168,10 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "set_song",
         "Set the song",
         "destroy",
-        hide=("duration_s", "ext", "notice"),
-        host_params=("path", "filename"),
+        hide=("duration_s", "ext"),
+        # ``notice`` is the host's: a page link's copyright notice (muvid#274) is
+        # stated by whoever fetched the page, never by the client.
+        host_params=("path", "filename", "notice"),
         max_upload_bytes=SONG_MAX_BYTES,
     ),
     OpSpec(

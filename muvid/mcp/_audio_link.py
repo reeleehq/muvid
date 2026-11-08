@@ -9,6 +9,10 @@ muvid's own SSRF check (:func:`muvid.mcp._fetch._validate_target`) and muvid's s
 and hands back the file for :func:`muvid.footage.service.set_song`. yb is called, not
 wrapped or re-exposed.
 
+**What the guard covers, honestly.** yb checks every URL yt-dlp *requests* and where a
+redirect chain *ends*; the hops in between are requested blind (yb's own docstring), so
+unlike muvid's fetcher this path does not re-check each hop. Closing that is yb's.
+
 ``yb`` with its ``download`` extra (yt-dlp) is an optional install, in no muvid extra
 — the same standing as the other sibling packages a caller brings (see the repo
 guide). Without it the refusal says what to install.
@@ -46,6 +50,7 @@ def song_from_page_link(
     max_bytes: int,
     max_duration_s: float,
     download: Optional[Callable] = None,
+    timeout_s: Optional[float] = None,
 ) -> PageAudio:
     """Download the audio of the page at ``url`` as mp3 into ``workdir`` through yb.
 
@@ -55,7 +60,7 @@ def song_from_page_link(
     bad cap, ``yb``'s ``AudioLimitError`` (a ``ValueError``) for a playlist, live stream,
     or over-long / over-large source. Raises :class:`PageAudioUnavailable` without yb.
     """
-    from muvid.mcp._fetch import _validate_target
+    from muvid.mcp._fetch import _validate_target, deadline_for
 
     if download is None:
         try:
@@ -68,13 +73,20 @@ def song_from_page_link(
             raise PageAudioUnavailable(
                 f"reading the song from a page link needs yb with yt-dlp: {INSTALL_HINT}"
             ) from exc
-    got = download(
-        url,
-        download_dir=workdir,
-        max_bytes=max_bytes,
-        max_duration_s=max_duration_s,
-        validate_target=_validate_target,
-    )
+    try:
+        got = download(
+            url,
+            download_dir=workdir,
+            max_bytes=max_bytes,
+            max_duration_s=max_duration_s,
+            validate_target=_validate_target,
+            timeout_s=deadline_for(max_bytes) if timeout_s is None else timeout_s,
+            cookies_file=False,  # a remote caller never fetches as the operator's account
+        )
+    except ImportError as exc:  # yb without yt-dlp: found at import, missing at call
+        raise PageAudioUnavailable(
+            f"reading the song from a page link needs yt-dlp: {INSTALL_HINT}"
+        ) from exc
     return PageAudio(
         path=Path(got.path),
         title=got.title or "",
