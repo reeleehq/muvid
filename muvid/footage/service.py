@@ -3062,13 +3062,16 @@ def propose_edit(
         selection = {"strategy": strat}
         if notice:
             selection.update({k: v for k, v in notice.items() if k != "message"})
+        # pace, order and style only act where a span was cut to the music
+        # (``_music_fill``); recorded for an edit made wholly of synced recordings they
+        # would describe something that did nothing (muvid#314).
         for key, value in (
             ("preset", preset),
             ("weights", weights),
             ("config", config),
-            ("pace", pace),
+            ("pace", pace if music else ""),
             ("order", (music or {}).get("order", "") if music else ""),
-            ("style", "" if style == "auto" else style),
+            ("style", "" if style == "auto" or not music else style),
         ):
             if value:
                 selection[key] = value

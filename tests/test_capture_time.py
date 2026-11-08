@@ -335,6 +335,10 @@ def test_the_saved_edit_records_the_order_that_was_used(bath, tmp_path):
         service.add_clip(bath, path=str(p), filename=p.name, clip_id=cid)
     out = service.propose_edit(bath)
     assert bath.read_edit(out["edit_id"])["selection"]["order"] == "taken"
+    # ...and pace/style are recorded here, where the music fill is what they act on (#314)
+    paced = service.propose_edit(bath, pace="driving", style="fades")
+    sel = bath.read_edit(paced["edit_id"])["selection"]
+    assert sel["pace"] == "driving" and sel["style"] == "fades"
 
 
 def test_a_project_with_no_dates_is_upload_order_and_the_reply_says_so(bath, tmp_path):

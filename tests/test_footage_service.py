@@ -250,6 +250,15 @@ def test_propose_edit_saves_a_named_edit(fp):
     assert "edit_id" not in unsaved and len(service.edits(fp)["edits"]) == 1
 
 
+def test_a_fully_synced_edit_does_not_record_music_only_settings(fp):
+    """muvid#314: pace and style act only where a span is cut to the music; stored for
+    an edit made of synced recordings they would describe something that did nothing."""
+    out = service.propose_edit(fp, pace="driving", style="fades")
+    assert not out.get("music")  # nothing was cut to the music
+    selection = service.get_edit(fp, edit_id=out["edit_id"])["selection"]
+    assert not {"pace", "style", "order"} & set(selection)
+
+
 def test_an_edit_summary_says_how_it_was_cut(fp):
     """muvid#281: the row a screen lists carries the selection as data (strategy,
     pace, style...), not only the how_made sentence; None for a hand-made edit."""
