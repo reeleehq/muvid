@@ -3062,18 +3062,23 @@ def propose_edit(
         selection = {"strategy": strat}
         if notice:
             selection.update({k: v for k, v in notice.items() if k != "message"})
+        # pace, order and style act only where a span was actually cut to the music
+        # (``_music_fill``); recorded for an edit made wholly of synced recordings, or
+        # whose music half could not run (a report with ``n_cuts`` 0), they would
+        # describe something that did nothing (muvid#314).
+        cut_to_music = bool(music and music.get("n_cuts"))
         for key, value in (
             ("preset", preset),
             ("weights", weights),
             ("config", config),
-            ("pace", pace),
-            ("order", (music or {}).get("order", "") if music else ""),
-            ("style", "" if style == "auto" else style),
+            ("pace", pace if cut_to_music else ""),
+            ("order", music.get("order", "") if cut_to_music else ""),
+            ("style", style if cut_to_music and style != "auto" else ""),
         ):
             if value:
                 selection[key] = value
         how = f"cut automatically ({strat}{', ' + preset if preset else ''}"
-        how += ", the rest cut to the music)" if music else ")"
+        how += ", the rest cut to the music)" if cut_to_music else ")"
         record = _new_edit_record(
             fp, out["edl"], name=name or _default_edit_name(fp), how_made=how, span=span
         )
