@@ -18,6 +18,8 @@ nw = pytest.importorskip("nw")
 from muvid import downloads  # noqa: E402
 from muvid.downloads import caller_workspaces, open_caller_project  # noqa: E402
 
+from tests.ffmpeg_support import needs_ffmpeg  # noqa: E402
+
 A, B = "a@x.com", "b@x.com"
 
 
@@ -191,3 +193,73 @@ def test_an_id_in_both_footage_drawers_lists_once(host):
     FootageWorkspace.for_email(A).create_project("mv")
     _place(host, A, "mv", "music_video")
     assert [p.project_id for p in downloads.list_projects(A)] == ["mv"]
+
+
+def _make_video(path):
+    import subprocess
+
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc2=size=64x48:rate=10:duration=1",
+            "-pix_fmt",
+            "yuv420p",
+            str(path),
+        ],
+        check=True,
+    )
+
+
+@needs_ffmpeg
+def test_a_host_placed_visualizer_registers_its_render_and_has_a_cover_status_title(
+    host,
+):
+    """muvid#311: the studio can play the render, the card has a cover, ``genre_status``
+    speaks in muvid's terms, and the title is the project's, not its id."""
+    from muvid.production import Project
+
+    root = _place(host, A, "viz", "music_visualizer")
+    project = Project(root)
+    assert project.genre_status() == {"renders": 0, "renders_ok": 0, "has_cover": False}
+    assert project.cover_artifact_id() is None
+    proj = open_caller_project(A, "viz", kind="visualizer")
+    assert proj.manifest()["title"] == project.title
+    rdir = proj.new_render_dir("r1")
+    _make_video(rdir / "video.mp4")
+    meta = {
+        "render_id": "r1",
+        "video": str(rdir / "video.mp4"),
+        "thumbnail": None,
+        "duration": 1.0,
+        "ok": True,
+    }
+    meta = proj.register_render(meta)
+    proj.write_render_meta("r1", meta)
+    assert meta["artifact_id"] in project.media_catalog.registered_ids()
+    assert "thumbnail_artifact_id" not in meta  # omit-when-absent
+    cover = project.cover_artifact_id()
+    assert cover and cover in project.media_catalog.registered_ids()
+    assert project.genre_status() == {"renders": 1, "renders_ok": 1, "has_cover": True}
+    # a second render keeps the first cover (not replaced after)
+    rdir2 = proj.new_render_dir("r2")
+    _make_video(rdir2 / "video.mp4")
+    proj.register_render(
+        {"render_id": "r2", "video": str(rdir2 / "video.mp4"), "duration": 1.0}
+    )
+    assert project.cover_artifact_id() == cover
+
+
+def test_muvids_own_visualizer_bucket_registers_nothing(tmp_path, monkeypatch):
+    from muvid.mcp.workspace import VisualizerWorkspace
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    proj = VisualizerWorkspace.for_email(A).create_project("v", title="T")
+    meta = {"render_id": "r", "video": str(tmp_path / "nope.mp4")}
+    assert proj.register_render(meta) is meta
+    assert proj.manifest()["title"] == "T" and "cover" not in proj.manifest()

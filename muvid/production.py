@@ -111,7 +111,13 @@ class Project(nw.Project):
         workspace hands the visualizer tools; reading it creates nothing."""
         from muvid.mcp.workspace import VisualizerProject
 
-        return VisualizerProject("", self.root.name, self.root / VISUALIZER_DIRNAME)
+        return VisualizerProject(
+            "",
+            self.root.name,
+            self.root / VISUALIZER_DIRNAME,
+            media_catalog=self.media_catalog,
+            defaults={"title": self.title},
+        )
 
     @cached_property
     def lyric(self) -> "LyricVideoProduction":
@@ -135,18 +141,22 @@ class Project(nw.Project):
             return status_summary(self.footage)
         if self.genre == "lyric-video":
             return _lyric_status_summary(self.lyric)
+        if self.genre == "music_visualizer":
+            return _visualizer_status_summary(self.visualizer)
         return None
 
     def cover_artifact_id(self) -> Optional[str]:
         """The artifact id of the frame that stands for this production on a card.
 
         The footage production's cover (its newest render, else its first clip), else
-        the lyric production's (its first render). ``None`` when there is no picture
+        the lyric production's (its first render), else the visualizer's (its first
+        render's thumbnail or frame). ``None`` when there is no picture
         yet — a card with a placeholder is honest. Read-only.
         """
         for manifest in (
             self.root / FOOTAGE_DIRNAME / "manifest.json",
             self.root / LYRIC_DIRNAME / "manifest.json",
+            self.root / VISUALIZER_DIRNAME / "manifest.json",
         ):
             cover = (read_json_dict(manifest) or {}).get("cover") or {}
             if cover.get("artifact_id"):
@@ -382,6 +392,16 @@ def _lyric_status_summary(production: "LyricVideoProduction") -> dict:
         "has_song": bool(m.get("song")),
         "sources": roles,
         "renders": len(m.get("renders", [])),
+    }
+
+
+def _visualizer_status_summary(visualizer) -> dict:
+    """``genre_status`` for a visualizer: its renders, counted (no path, no list)."""
+    renders = visualizer.list_renders()
+    return {
+        "renders": len(renders),
+        "renders_ok": sum(1 for r in renders if r.get("ok")),
+        "has_cover": bool(visualizer.cover().get("artifact_id")),
     }
 
 

@@ -310,5 +310,7 @@ def render_visualizer(
             )
         ),
     }
+    # a host-placed project registers the video/thumbnail so the studio can play them
+    meta = proj.register_render(meta)
     proj.write_render_meta(render_id, meta)
     return meta
