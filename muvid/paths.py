@@ -108,6 +108,28 @@ def safe_component(value: str, *, label: str) -> str:
     return v
 
 
+def canonical_email(email: str) -> str:
+    """The one spelling of a caller's email that names their data (muvid#312).
+
+    Emails are case-insensitive in practice, but a bucket named by the raw spelling is one
+    folder on a case-insensitive filesystem (macOS, Windows) and two on the Linux server.
+    The OAuth boundary lowercased already (``identity.token_email``); ``use_email`` and
+    every workspace now go through this too, so a host's drawer, a script and a token
+    agree. ``lower()``, not ``casefold()``, to match what the token boundary always did;
+    Unicode normalisation (NFC/NFD) is a separate, older gap.
+
+    No migration: hosted callers arrive through the token and were lowercase already. A
+    mixed-case folder made locally on Linux by ``use_email``/``for_email`` with a raw
+    spelling is no longer found under it; rename it to lowercase.
+    """
+    return safe_component(email, label="email").lower()
+
+
+def caller_bucket(parent: Path, email: str) -> Path:
+    """The directory under ``parent`` holding one caller's projects."""
+    return parent / canonical_email(email)
+
+
 def project_root(name: str, *, kind: str = PROJECTS_KIND) -> Path:
     """Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.
 
