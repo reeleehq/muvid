@@ -65,6 +65,7 @@ from pathlib import Path
 from muvid.footage.edl import DECLARED, FootageAlignment
 from muvid.paths import (
     DATA_HOME_ENV_VAR as _DATA_HOME_ENV_VAR,
+    caller_bucket,
     data_home,
     safe_component,
 )
@@ -1141,12 +1142,7 @@ class FootageWorkspace:
 
     @property
     def projects_dir(self) -> Path:
-        return (
-            self.root
-            / "music_video"
-            / "projects"
-            / safe_component(self.email, label="email")
-        )
+        return caller_bucket(self.root / "music_video" / "projects", self.email)
 
     def project_root(self, project_id: str) -> Path:
         return self.projects_dir / safe_component(project_id, label="project_id")

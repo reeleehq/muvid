@@ -38,6 +38,7 @@ from pathlib import Path
 
 from muvid.paths import (
     DATA_HOME_ENV_VAR as _DATA_HOME_ENV_VAR,
+    caller_bucket,
     data_home,
     safe_component,
 )
@@ -136,12 +137,7 @@ class VisualizerWorkspace:
 
     @property
     def projects_dir(self) -> Path:
-        return (
-            self.root
-            / "visualizer"
-            / "projects"
-            / _safe_component(self.email, label="email")
-        )
+        return caller_bucket(self.root / "visualizer" / "projects", self.email)
 
     def project_root(self, project_id: str) -> Path:
         pid = _safe_component(project_id, label="project_id")
@@ -265,12 +261,12 @@ class SubgenreWorkspace(VisualizerWorkspace):
 
     @property
     def projects_dir(self) -> Path:
-        return (
+        return caller_bucket(
             self.root
             / SUBGENRES_SEGMENT
             / _safe_component(self.slug, label="subgenre")
-            / "projects"
-            / _safe_component(self.email, label="email")
+            / "projects",
+            self.email,
         )
 
 
