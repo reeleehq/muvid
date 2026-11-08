@@ -38,6 +38,13 @@ _FRAME_MB = _LARGE[0] * _LARGE[1] * 1.5 / (1024 * 1024)
 _CONVERSION_SIGNAL_FRAMES = 3.0
 #: How far below the measurement the table may sit, in frames (RSS noise).
 _TOLERANCE_FRAMES = 0.35
+#: Samples per probe; the SMALLEST is kept. Contention (a busy machine, parallel tests)
+#: only ever ADDS resident memory, so the minimum is the least-contaminated estimate and
+#: one sample's noise (as large as :data:`_TOLERANCE_FRAMES`, muvid#304) stops failing a
+#: correct table. The check stays one-sided.
+_SAMPLES = 3
+#: Extra rounds, each over only the filters still reading too high for the table.
+_CONFIRMATIONS = 2
 #: Each filter as the measurement runs it, at the large size.
 _PROBES = {
     "null": "null",
@@ -74,15 +81,21 @@ _PROBE = (
 )
 
 
-def _rss_mb(vf: str) -> float:
-    out = subprocess.run(
-        [sys.executable, "-c", _PROBE, vf], capture_output=True, text=True, check=True
-    )
-    return float(out.stdout.strip())
+def _rss_mb(vf: str, *, samples: int = _SAMPLES) -> float:
+    """Peak resident MB of ffmpeg running ``vf``: the minimum of ``samples`` runs."""
+
+    def once() -> float:
+        out = subprocess.run(
+            [sys.executable, "-c", _PROBE, vf], capture_output=True, text=True, check=True
+        )
+        return float(out.stdout.strip())
+
+    return min(once() for _ in range(samples))
 
 
-def _measure() -> dict:
-    """``{filter: {"family": ..., "frames": ...}}`` measured on THIS binary."""
+def _measure(names=None) -> dict:
+    """``{filter: {"family": ..., "frames": ...}}`` measured on THIS binary (just
+    ``names`` when given)."""
     up = f"scale={_LARGE[0]}:{_LARGE[1]}"
     down = f"scale={_CANVAS[0]}:{_CANVAS[1]}"
     rgb, yuv = _PROBES["colorchannelmixer"], _PROBES["eq"]
@@ -94,6 +107,8 @@ def _measure() -> dict:
     eq_alloc = (_rss_mb(chain(yuv, yuv, yuv)) - _rss_mb(chain(yuv))) / 2
     out = {}
     for name, f in _PROBES.items():
+        if names is not None and name not in names:
+            continue
         alloc = max(0.0, (_rss_mb(chain(f, f, f)) - _rss_mb(chain(f))) / 2)
         with_rgb = _rss_mb(chain(*[rgb, f] * 3)) - (base + 3 * alloc)
         with_yuv = _rss_mb(chain(*[yuv, f] * 3)) - (base + 3 * alloc + 3 * eq_alloc)
@@ -142,7 +157,18 @@ def test_the_table_never_reads_cheaper_than_the_recorded_census():
 @pytest.mark.skipif(sys.platform == "win32", reason="no `resource` module on Windows")
 def test_the_table_never_reads_cheaper_than_this_binary():
     """The census re-measured on the runner's own ffmpeg (6.x in CI)."""
-    assert _check(_LOOK_FILTER_COSTS, _measure()) == []
+    measured = _measure()
+    # Contention only inflates a reading, so a filter the table seems to under-read is
+    # measured again, alone, and judged on its LOWEST reading: it fails only if every
+    # round says so (muvid#304; one sample's noise rivals the tolerance).
+    for _ in range(_CONFIRMATIONS):
+        suspects = {w.split(":")[0] for w in _check(_LOOK_FILTER_COSTS, measured)}
+        if not suspects:
+            break
+        for name, again in _measure(suspects).items():
+            if again["frames"] < measured[name]["frames"]:
+                measured[name] = again
+    assert _check(_LOOK_FILTER_COSTS, measured) == []
 
 
 def test_after_an_rgb_link_allocations_cost_double():
