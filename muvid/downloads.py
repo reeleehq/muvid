@@ -511,7 +511,10 @@ def list_projects(email: str) -> list:
     ``list[nw.delivery.ProjectSummary]``, newest-modified first. One
     registration spans both drawers, exactly as ``resolve`` does — a
     ``project_id`` present in both yields two rows, disambiguated by
-    ``meta["muvid_genre"]`` (the drawer split already bit once, muvid#23).
+    ``meta["muvid_genre"]`` (the drawer split already bit once, muvid#23). A project a
+    HOST placed carries ``meta[nw.delivery.PLACED_META_KEY]``, so the host drops its own
+    duplicate row; one whose id equals a project of muvid's own drawer is listed beside
+    it, and ``resolve`` / the tools still open muvid's own for that id (muvid#334).
 
     The seam's error contract applies: ``[]`` is a positive claim ("no
     projects under this caller"), an infrastructure failure raises, and this
@@ -521,15 +524,21 @@ def list_projects(email: str) -> list:
     Imported lazily so an environment carrying an older ``nw`` loses exactly
     this capability, never the module (and with it ``resolve``).
     """
-    from nw.delivery import ProjectSummary
+    from nw.delivery import PLACED_META_KEY, ProjectSummary
+
+    from muvid.mcp.host_workspace import HostDrawer
 
     rows = []
-    listed = set()  # an id muvid's drawer AND the host's hold lists once (muvid#296)
+    # A drawer's rows are keyed apart from the host's: a project the host placed under an
+    # id muvid's own drawer already holds is a DIFFERENT project, and was dropped from the
+    # listing as a duplicate (muvid#334). Within one side an id still lists once.
+    listed = set()
     for kind, workspace, _stem in _sources():
+        placed = isinstance(workspace, HostDrawer)
         ws = workspace.for_email(email)
         for r in ws.list_projects():
             pid = r["project_id"]
-            if (kind, pid) in listed:
+            if (kind, pid, placed) in listed:
                 continue
             try:
                 proj = ws.open_project(pid)
@@ -543,10 +552,14 @@ def list_projects(email: str) -> list:
                     created_at=r.get("created"),
                     modified_at=r.get("modified"),
                     deliverable_count=_count_renders(proj, kind),
-                    meta={"muvid_genre": _genre_label(proj, kind)},
+                    meta={
+                        "muvid_genre": _genre_label(proj, kind),
+                        # the host's own listing of this project is the duplicate to drop
+                        **({PLACED_META_KEY: True} if placed else {}),
+                    },
                 )
             )
-            listed.add((kind, pid))
+            listed.add((kind, pid, placed))
     rows.sort(key=lambda p: p.modified_at or 0.0, reverse=True)
     return rows
 
