@@ -36,6 +36,12 @@ cv2 is lazy-imported (`muvid[scoring]` extra). Hard caps (`max_frames`) bound th
 ### muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES *= 1200*
 
 Default hard cap on sampled frames per clip (bounds CPU + memory regardless of duration).
+1200 frames is 240 s at [`DEFAULT_SAMPLE_FPS`](#muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS), shorter than many full-song phone
+recordings, so a clip past it is cut off — and SAID to be: `FramePass.truncated`, and
+`sampled_to` in the scoring summary and manifest (muvid#326). It is an operator’s
+bound (`MUVID_SCORING_MAX_FRAMES`), not scaled down into a lower sample rate for a
+long clip: `mixing`’s shot thresholds are calibrated on the change between samples
+at THIS rate, and a slower one reads ordinary motion as a cut.
 
 ### muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS *= 5.0*
 

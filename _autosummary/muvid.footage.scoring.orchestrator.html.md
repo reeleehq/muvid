@@ -57,7 +57,7 @@ for callers that read the constant. A scorer registered later is picked up by th
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
 
-### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict(), shots=dict(), shot_strategies=dict(), shots_truncated=dict())
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict(), shots=dict(), shot_strategies=dict(), shots_truncated=dict(), sampled_to=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -68,6 +68,10 @@ were measured under — re-checked under the scoring lock.
 #### input_fingerprints *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]*
 
 the keyed inputs’ fingerprints the kept tracks were measured on, by name
+
+#### sampled_to *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [float](https://docs.python.org/3/builtins/functions.html#float)]*
+
+where each clip’s frame pass stopped, for the clips the frame cap cut short
 
 #### shots *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Sequence](https://docs.python.org/3/library/typing.html#typing.Sequence)[[float](https://docs.python.org/3/builtins/functions.html#float)]]*
 

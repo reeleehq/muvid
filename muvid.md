@@ -1,4 +1,4 @@
-> built 2026-11-09 03:18 UTC from 76168f3 (main) · muvid 0.0.172. Details: build_info.json
+> built 2026-11-09 03:44 UTC from aad3166 (main) · muvid 0.0.173. Details: build_info.json
 
 # index.html.md
 
@@ -7451,6 +7451,12 @@ cv2 is lazy-imported (`muvid[scoring]` extra). Hard caps (`max_frames`) bound th
 ### muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES *= 1200*
 
 Default hard cap on sampled frames per clip (bounds CPU + memory regardless of duration).
+1200 frames is 240 s at [`DEFAULT_SAMPLE_FPS`](_autosummary/muvid.footage.scoring.frames.html.md#muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS), shorter than many full-song phone
+recordings, so a clip past it is cut off — and SAID to be: `FramePass.truncated`, and
+`sampled_to` in the scoring summary and manifest (muvid#326). It is an operator’s
+bound (`MUVID_SCORING_MAX_FRAMES`), not scaled down into a lower sample rate for a
+long clip: `mixing`’s shot thresholds are calibrated on the change between samples
+at THIS rate, and a slower one reads ordinary motion as a cut.
 
 ### muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS *= 5.0*
 
@@ -8037,7 +8043,7 @@ for callers that read the constant. A scorer registered later is picked up by th
 orchestrator through `registry.default_metrics()`, which this does not shadow.
 Lip-sync metrics are added only when the opt-in tier is enabled.
 
-### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict(), shots=dict(), shot_strategies=dict(), shots_truncated=dict())
+### *class* muvid.footage.scoring.orchestrator.KeptScores(tracks, recompute, song_hash, align_fingerprint, input_fingerprints=dict(), shots=dict(), shot_strategies=dict(), shots_truncated=dict(), sampled_to=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -8048,6 +8054,10 @@ were measured under — re-checked under the scoring lock.
 #### input_fingerprints *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]*
 
 the keyed inputs’ fingerprints the kept tracks were measured on, by name
+
+#### sampled_to *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [float](https://docs.python.org/3/builtins/functions.html#float)]*
+
+where each clip’s frame pass stopped, for the clips the frame cap cut short
 
 #### shots *: [Mapping](https://docs.python.org/3/library/typing.html#typing.Mapping)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [Sequence](https://docs.python.org/3/library/typing.html#typing.Sequence)[[float](https://docs.python.org/3/builtins/functions.html#float)]]*
 
@@ -20785,7 +20795,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 03:18 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/76168f31d01416e4060f41d1bfe73df3312b7b0b"><code>76168f3</code></a> on branch <code>main</code>, for **muvid 0.0.172** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 03:44 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/aad3166b937a360da5f03083eb2e9d424693696e"><code>aad3166</code></a> on branch <code>main</code>, for **muvid 0.0.173** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -20794,9 +20804,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/76168f31d01416e4060f41d1bfe73df3312b7b0b"><code>76168f31d01416e4060f41d1bfe73df3312b7b0b</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/aad3166b937a360da5f03083eb2e9d424693696e"><code>aad3166b937a360da5f03083eb2e9d424693696e</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.172</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.173</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20805,9 +20815,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42554422002">42554422002</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42557054181">42557054181</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>fa31c44747def1bf715e340ba35c9b845e592ceb</code> (in the history of the built commit) |
+| Event commit | <code>e235b4dfb8ad8a769ecf078d37fff64fa0cf02ae</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20832,13 +20842,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.172/">0.0.172</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.173/">0.0.173</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 76168f31d01416e4060f41d1bfe73df3312b7b0b
+git checkout aad3166b937a360da5f03083eb2e9d424693696e
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

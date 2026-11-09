@@ -187,7 +187,13 @@ The orchestrator maps clip time → song time via the clip’s offset and hands 
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.frames.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_MAX_FRAMES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1200</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.frames.DEFAULT_MAX_FRAMES'">¶</a></dt>
-<dd><p>Default hard cap on sampled frames per clip (bounds CPU + memory regardless of duration).</p>
+<dd><p>Default hard cap on sampled frames per clip (bounds CPU + memory regardless of duration).
+1200 frames is 240 s at <a class="reference internal" href="#muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS" title="muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS"><code class="xref py py-data docutils literal notranslate"><span class="pre">DEFAULT_SAMPLE_FPS</span></code></a>, shorter than many full-song phone
+recordings, so a clip past it is cut off — and SAID to be: <code class="docutils literal notranslate"><span class="pre">FramePass.truncated</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">sampled_to</span></code> in the scoring summary and manifest (muvid#326). It is an operator’s
+bound (<code class="docutils literal notranslate"><span class="pre">MUVID_SCORING_MAX_FRAMES</span></code>), not scaled down into a lower sample rate for a
+long clip: <code class="docutils literal notranslate"><span class="pre">mixing</span></code>’s shot thresholds are calibrated on the change between samples
+at THIS rate, and a slower one reads ordinary motion as a cut.</p>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.scoring.frames.DEFAULT_SAMPLE_FPS">
@@ -284,7 +290,7 @@ everywhere, i.e. <em>not measured</em> rather than <em>measured as worst</em>.</
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=d6b38487"></script>
+<script src="../_static/documentation_options.js?v=72cb009e"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
