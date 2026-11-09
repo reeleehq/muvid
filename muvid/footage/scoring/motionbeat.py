@@ -100,6 +100,23 @@ def _proximity(sources: np.ndarray, targets: np.ndarray, sigma_s: float) -> np.n
     return np.exp(-0.5 * (d / sigma_s) ** 2)
 
 
+def interval_midpoints(times: np.ndarray) -> np.ndarray:
+    """The time each sample's measurement represents: the midpoint of the interval from
+    the previous sample to it (sample 0, which measures nothing, keeps its own time).
+    Each pair's own midpoint, not half a median spacing: on a variable-frame-rate clip
+    the spacing is not uniform (muvid#347).
+
+    >>> interval_midpoints(np.array([0.0, 0.2, 0.4])).round(6).tolist()
+    [0.0, 0.1, 0.3]
+    >>> interval_midpoints(np.array([0.0, 0.2, 1.0])).round(6).tolist()
+    [0.0, 0.1, 0.6]
+    """
+    times = np.asarray(times, dtype=float)
+    out = times.copy()
+    out[1:] = (times[1:] + times[:-1]) / 2.0
+    return out
+
+
 def motionbeat_tracks(
     frame_pass: "FramePass",
     *,
@@ -114,14 +131,9 @@ def motionbeat_tracks(
 ) -> list[ScoreTrack]:
     """The two motion-to-beat tracks for one clip."""
     # A motion sample measured between frames k-1 and k represents the INTERVAL midpoint, so
-    # shift the motion sample times back half a frame before gridding (else the envelope — and
-    # thus the on-beat BAS — reads ~half a sample late). Quality metrics keep clip_times as-is.
-    half = (
-        0.5 * float(np.median(np.diff(frame_pass.clip_times)))
-        if frame_pass.clip_times.size >= 2
-        else 0.0
-    )
-    song_t = frame_pass.clip_times + offset_s - half
+    # time it there before gridding (else the envelope — and thus the on-beat BAS — reads
+    # ~half a sample late). Quality metrics keep clip_times as-is.
+    song_t = interval_midpoints(frame_pass.clip_times) + offset_s
     # Motion envelope on the song grid (camera-compensated residual; NaN @ frame 0 dropped).
     motion, mmask = resample_to_grid(
         song_t, frame_pass.motion_residual, t0=t0, hop_s=hop_s, n=n
