@@ -59,7 +59,7 @@ import tempfile
 import time
 import warnings
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from muvid.footage.edl import DECLARED, FootageAlignment
@@ -804,9 +804,26 @@ class MusicVideoFootageProject:
         if not p.exists():
             return []
         try:
-            return [FootageAlignment.from_dict(d) for d in json.loads(p.read_text())]
+            aligns = [FootageAlignment.from_dict(d) for d in json.loads(p.read_text())]
         except (OSError, ValueError):
             return []
+        return self.with_pictures(aligns)
+
+    def with_pictures(self, aligns: list[FootageAlignment]) -> list[FootageAlignment]:
+        """``aligns`` with each video's recorded PICTURE length (``picture_s``, from the
+        manifest's ``picture_duration``) — what a free cut is bounded by (muvid#322).
+        A clip with none recorded is returned unchanged."""
+        recorded = {
+            c.get("clip_id"): c.get("picture_duration")
+            for c in self.manifest().get("clips", [])
+            if c.get("picture_duration") is not None
+        }
+        return [
+            replace(a, picture_s=float(recorded[a.clip_id]))
+            if a.clip_id in recorded
+            else a
+            for a in aligns
+        ]
 
     # -- renders -------------------------------------------------------------
     @property

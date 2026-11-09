@@ -207,6 +207,22 @@ def media_duration(media: PathLike) -> float:
     return float(duration)
 
 
+def picture_duration(media: PathLike) -> "float | None":
+    """Duration of ``media``'s first VIDEO stream in seconds, or ``None`` when it has
+    none to report (no video stream, or a container that gives the stream no duration of
+    its own — Matroska often does not).
+
+    Not :func:`media_duration`: that is the container's, normally its longest stream,
+    and a phone video's audio track is often shorter or longer than its picture. A cut
+    that reads only the picture (``-an``) is bounded by this one (muvid#322)."""
+    streams = probe(media).get("streams", [])
+    video = next((s for s in streams if s.get("codec_type") == "video"), None)
+    try:
+        return float(video["duration"]) if video and video.get("duration") else None
+    except (TypeError, ValueError):
+        return None
+
+
 #: Sample format the raw-PCM decode emits: little-endian 32-bit float, which is
 #: exactly ``numpy.float32``'s memory layout, so an analysis pass can read the
 #: bytes straight into an array with no conversion step.

@@ -468,6 +468,7 @@ def add_clip(
         taken_source=taken_source,
     )
     _record_clip_duration(fp, cid, dur)
+    _record_picture_duration(fp, cid, src)
     _record_clip_hash(fp, cid)
     _warm(_warm_activity, fp, cid)
     _ensure_cover(fp)
@@ -683,7 +684,7 @@ def _placements(fp, *, on_unreadable=None) -> list:
                 raise
             on_unreadable(cid, e)
             out.append(unplaced(cid, 0.0))
-    return out
+    return fp.with_pictures(out)
 
 
 def footage_roles(fp) -> dict:
@@ -698,14 +699,11 @@ def footage_roles(fp) -> dict:
 def _free_sources(fp, placements) -> list:
     """The clips and photos to cut to the music, as :class:`music_cut.FreeSource`.
 
-    A video's ``duration_s`` is the length the planner may read, so it must be no
-    longer than what the gate will check the cut against: its placement's
-    ``duration_s`` (measured from the clip's AUDIO when it was aligned), nor than the
-    file's probed length (the container's, normally its longest stream). A phone
-    video whose audio track is shorter than its picture otherwise got in-points the
-    gate then refused (muvid#290: "does not contain song span", on a 21.6 s video with
-    20 s of audio). The gate itself still bounds a free cut by the audio, not the
-    picture it actually renders — muvid#322."""
+    A video's ``duration_s`` is the length the planner may read, which is the length the
+    gate checks a free cut against (:func:`_free_length`, muvid#322: the picture's own).
+    A phone video whose audio track is shorter than its picture otherwise got in-points
+    the gate then refused (muvid#290: "does not contain song span", on a 21.6 s video
+    with 20 s of audio)."""
     from muvid.footage.music_cut import STILL, VIDEO, FreeSource
 
     by_id = {a.clip_id: a for a in fp.load_alignments()}
@@ -731,8 +729,16 @@ def _free_sources(fp, placements) -> list:
 
 
 def _free_length(fp, clip_id: str, placement) -> float:
-    """How much of a video a free cut may read (see :func:`_free_sources`): the length
-    the planner and the in-point swap both size a free cut's room by."""
+    """How much of a video a free cut may read: the length the planner and the in-point
+    swap size a free cut's room by, and the gate checks it against (muvid#322).
+
+    The video's own PICTURE length where it was recorded at ``add_clip`` — a free cut
+    reads only the picture. A clip added before that field existed has none, and keeps
+    the earlier bound: the container's duration, no longer than the placement's
+    audio-measured one (muvid#290)."""
+    for c in fp.manifest().get("clips", []):
+        if c.get("clip_id") == clip_id and c.get("picture_duration") is not None:
+            return float(c["picture_duration"])
     picture = _clip_duration(fp, clip_id)
     if placement is None or not placement.duration_s:
         return picture
@@ -5091,6 +5097,21 @@ def _warm_activity(fp, clip_id: str) -> None:
 
 def _record_clip_duration(fp, clip_id: str, duration_s: float) -> None:
     _set_clip_field(fp, clip_id, "duration", duration_s)
+
+
+def _record_picture_duration(fp, clip_id: str, path: Path) -> None:
+    """Record the length of a video's own PICTURE stream (muvid#322), omit-when-absent:
+    nothing is written when the file reports none (or cannot be probed: the caller may
+    have supplied ``duration_s`` for a file ffprobe will not read), and a clip without
+    the field keeps the container's duration as its bound."""
+    from muvid.visualize.ffmpeg import FfmpegError, picture_duration
+
+    try:
+        picture = picture_duration(path)
+    except FfmpegError:  # the bound is then the container's, as before this field
+        return
+    if picture is not None:
+        _set_clip_field(fp, clip_id, "picture_duration", picture)
 
 
 def _set_clip_field(fp, clip_id: str, key: str, value, *, measured=None) -> None:

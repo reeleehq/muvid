@@ -728,6 +728,12 @@ class FootageAlignment:
     #: before it existed); omitted from :meth:`to_dict` then, so those records stay
     #: byte-identical.
     song_match: "dict | None" = field(default=None, compare=False)
+    #: How long the clip's PICTURE runs, when that was probed (``None`` = not recorded:
+    #: the audio-measured ``duration_s`` stands). Derived from the manifest on load
+    #: (``FootageWorkspace.load_alignments``), never persisted here and never compared:
+    #: a free cut reads only the picture, so :func:`placed_as` bounds it by this
+    #: (muvid#322).
+    picture_s: "float | None" = field(default=None, compare=False)
 
     def to_dict(self) -> dict:
         out = {
@@ -1463,16 +1469,24 @@ def placed_as(e: "EdlEntry", a: "FootageAlignment") -> "FootageAlignment":
     >>> p = placed_as(e, a)
     >>> p.offset_s, p.reliable, p.source, p.duration_s
     (28.0, True, 'free', 10.0)
+
+    A clip whose picture is shorter than its audio bounds a free cut by the picture:
+
+    >>> placed_as(e, replace(a, picture_s=6.0)).duration_s
+    6.0
     >>> clip_in_of(e, a)
     2.0
     """
     if getattr(e, "source_in", None) is None:
         return a
     offset = e.song_start - e.source_in
+    # a free cut reads the picture alone (``-an``), so the picture's length bounds it
+    length = a.duration_s if a.picture_s is None else a.picture_s
     return replace(
         a,
         offset_s=offset,
-        coverage=(max(0.0, offset), offset + a.duration_s),
+        duration_s=length,
+        coverage=(max(0.0, offset), offset + length),
         overlaps=True,
         reliable=True,
         source=FREE,
