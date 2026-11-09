@@ -319,3 +319,18 @@ def test_score_then_weighted_select_end_to_end(tmp_path, monkeypatch):
     edl = S.select_edl("weighted", aligns, proj.song_duration(), context=ctx)
     validate_edl(edl, aligns, proj.song_duration())  # the real assertion: a valid edit
     assert edl[0].song_start == pytest.approx(0.0)
+
+
+def test_motion_samples_are_timed_at_their_own_interval_midpoints():
+    """muvid#347: a variable-frame-rate clip's spacing is not uniform, so half a MEDIAN
+    spacing mistimes every sample around a rate change; each pair's own midpoint does not."""
+    import numpy as np
+
+    from muvid.footage.scoring.motionbeat import interval_midpoints
+
+    t = np.array([0.0, 0.2, 0.4, 0.6, 2.6, 4.6])  # 5 Hz, then a slow stretch
+    mid = interval_midpoints(t)
+    assert mid[0] == 0.0  # sample 0 measures nothing; its own time
+    assert mid[1:].tolist() == pytest.approx([0.1, 0.3, 0.5, 1.6, 3.6])
+    # the old rule (half the median spacing, 0.2/2) would have said 3.5 for the last
+    assert abs(mid[-1] - (t[-1] - 0.5 * np.median(np.diff(t)))) > 0.05
