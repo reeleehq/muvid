@@ -214,7 +214,8 @@ def an_camera_move(
     silently — a dropped camera direction is the failure muvid#44 was:
 
     - the direction names no move this table knows ("handheld, drifting"), or
-    - it names one the *installed* ``an`` does not implement (``pan_left`` is
+    - it names one the *installed* ``an`` does not implement (a ``dolly`` first tries
+      its push/pull, :data:`AN_CAMERA_MOVE_FALLBACKS`, and still warns) (``pan_left`` is
       an#109, released in ``an`` 0.1.65; on 0.1.60 it is a hard refusal at
       validate and at compile).
 
@@ -245,7 +246,10 @@ def an_camera_move(
 
     A move with a close relative degrades to that, not to the no-op (muvid#307):
 
-    >>> an_camera_move("dolly in", known_moves={"hold", "push_in"})
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore")
+    ...     an_camera_move("dolly in", known_moves={"hold", "push_in"})
     'push_in'
     >>> an_camera_move("dolly in", known_moves={"hold", "push_in", "dolly_in"})
     'dolly_in'
@@ -277,19 +281,25 @@ def an_camera_move(
     move = hits[0][3]
     if known_moves is None:
         known_moves = _installed_an_camera_moves()
-    while (
-        known_moves is not None
-        and move not in known_moves
-        and move in AN_CAMERA_MOVE_FALLBACKS
-    ):
-        move = AN_CAMERA_MOVE_FALLBACKS[move]  # a close relative, said nothing of
+    asked = move
+    if known_moves is not None and move not in known_moves:
+        # one step, never a chain: a table cycle cannot loop
+        near = AN_CAMERA_MOVE_FALLBACKS.get(move)
+        if near is not None and near in known_moves:
+            warnings.warn(
+                f"camera direction {direction!r} asks for {asked!r}, which the "
+                f"installed `an` does not implement; rendering {near!r}, the move "
+                "it extends (`dolly_in`/`dolly_out` need a newer `an`, an#478).",
+                stacklevel=2,
+            )
+            return near
     if known_moves is not None and move not in known_moves:
         warnings.warn(
-            f"camera direction {direction!r} translates to {move!r}, which the "
+            f"camera direction {direction!r} translates to {asked!r}, which the "
             f"installed `an` does not implement (it has: {sorted(known_moves)}); "
             f"rendering the shot with {DFLT_AN_CAMERA_MOVE!r} instead. "
             "`pan_left`/`pan_right`/`tilt_up`/`tilt_down` need `an` >= 0.1.65 "
-            "(an#109).",
+            "(an#109); `dolly_in`/`dolly_out` need a release with an#478.",
             stacklevel=2,
         )
         return DFLT_AN_CAMERA_MOVE

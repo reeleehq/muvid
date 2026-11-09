@@ -480,8 +480,15 @@ def test_a_dolly_degrades_to_its_push_or_pull_on_an_older_an_not_to_hold():
 
     old = {"hold", "push_in", "pull_out"}
     new = old | {"dolly_in", "dolly_out"}
-    assert an_camera_move("dolly in", known_moves=old) == "push_in"
-    assert an_camera_move("dolly out", known_moves=old) == "pull_out"
+    with pytest.warns(UserWarning, match="dolly_in"):
+        assert an_camera_move("dolly in", known_moves=old) == "push_in"
+    with pytest.warns(UserWarning, match="dolly_out"):
+        assert an_camera_move("dolly out", known_moves=old) == "pull_out"
+    with pytest.warns(UserWarning, match="dolly_in"):
+        assert an_camera_move("dolly in", known_moves={"hold"}) == "hold"
     assert an_camera_move("dolly in", known_moves=new) == "dolly_in"
     assert an_camera_move("dolly out", known_moves=new) == "dolly_out"
     assert set(AN_CAMERA_MOVE_FALLBACKS.values()) <= old
+    fb = AN_CAMERA_MOVE_FALLBACKS
+    assert fb.keys() | set(fb.values()) <= RECORDED_AN_CAMERA_MOVES
+    assert not set(fb) & set(fb.values())  # no chain, so no cycle
