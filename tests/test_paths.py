@@ -334,3 +334,25 @@ def test_every_workspace_and_the_identity_name_one_caller_one_way(tmp_path):
     assert s.projects_dir.name == "a@x.com"
     with use_email("A@X.COM"):
         assert current_email() == "a@x.com"
+
+
+def test_safe_component_refuses_a_drive_prefix_and_agrees_with_nws_check():
+    """muvid#340: ``D:x`` joins to another drive on Windows. nw's own check is not
+    imported by the core (muvid#248), so the two are kept in step here, over a corpus."""
+    from muvid.paths import safe_component
+
+    corpus = ["ok", "a b", "ep_01", "u@x.com", "..", ".", "", "a/b", "a\\b", "a\x00b",
+              "D:x", "x:", ":", "../x", " pad "]  # fmt: skip
+    nw_paths = pytest.importorskip("nw.paths")
+    for value in corpus:
+        ours = True
+        try:
+            safe_component(value, label="x")
+        except ValueError:
+            ours = False
+        theirs = True
+        try:
+            nw_paths.check_path_segment(value.strip(), what="x")
+        except ValueError:
+            theirs = False
+        assert ours == theirs, value

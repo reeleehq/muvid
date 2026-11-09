@@ -93,17 +93,29 @@ def data_home() -> Path:
     return path
 
 
+#: What may not appear in a path component. ``:`` is a Windows drive prefix (``D:x`` joins
+#: to another drive); it was the one character the two copies this replaced missed
+#: (nw's ``check_path_segment`` refuses it too, nw#227, muvid#340).
+_NOT_IN_A_COMPONENT = ("/", "\\", "\x00", ":")
+
+
 def safe_component(value: str, *, label: str) -> str:
     """A single, traversal-safe path component (no ``/``, ``\\``, ``..``, or empties).
 
     Every caller-supplied name reaching the data root goes through this. On the footage
     MCP surface the names arrive from a remote OAuth caller, so there it is a trust
     boundary rather than a tidiness check; :func:`project_root` is CLI-only and not on
-    that surface. Behaviour is unchanged from the two copies this replaced — notably
-    there is no length cap and no unicode normalisation, both pre-existing.
+    that surface. Behaviour is that of the two copies this replaced, plus ``:`` (a drive
+    prefix) — there is still no length cap and no unicode normalisation, both
+    pre-existing.
+
+    **Why not ``nw.paths.check_path_segment``** (muvid#340): muvid's core never imports
+    ``nw`` (it is in the ``mcp`` extra, not the base dependencies, muvid#248), and this
+    is the core's one door for a caller-supplied name. The two stay in step by test
+    (``tests/test_paths.py``) rather than by import.
     """
     v = (value or "").strip()
-    if not v or v in (".", "..") or "/" in v or "\\" in v or "\x00" in v:
+    if not v or v in (".", "..") or any(c in v for c in _NOT_IN_A_COMPONENT):
         raise ValueError(f"invalid {label}: {value!r}")
     return v
 
