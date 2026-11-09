@@ -1699,20 +1699,19 @@ def test_a_reimport_over_a_torn_meta_is_refused_not_overwritten(
     assert (fp.renders_dir / ("r2" * 6) / "final.mp4").read_bytes() == b"video-bytes"
 
 
-def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(
-    fp, monkeypatch
-):
-    """muvid#316: ``sections`` with an honest ``sections_source``, and the spans where
-    the grid has no measured beat (before the first, through a hole, after the last)."""
+def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(fp, monkeypatch):
+    """muvid#316: ``sections`` with an honest ``sections_source`` and the spans where the
+    grid the cutter uses has no measured beat (before the first, through a hole, after
+    the last)."""
     from types import SimpleNamespace
 
     from muvid.montage.analysis import Section
 
-    beats = [2.0, 2.5, 3.0, 3.5, 4.0, 8.0, 8.5, 9.0, 9.5]  # a hole from 4 s to 8 s
+    beats = (2.0, 2.5, 3.0, 3.5, 4.0, 8.0, 8.5, 9.0, 9.5)  # a hole from 4 s to 8 s
     monkeypatch.setattr(
         "mixing.audio.beat_grid",
         lambda audio, **kw: SimpleNamespace(
-            beat_times=beats,
+            beat_times=list(beats),
             downbeat_times=[],
             tempo_bpm=120.0,
             onset_env=[],
@@ -1720,25 +1719,32 @@ def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(
         ),
     )
     monkeypatch.setattr(service, "_read_beat_grid_cache", lambda *a: None)
-    sections = (Section(label="verse", start=0.0, end=6.0),
-        Section(label="chorus", start=6.0, end=12.0),)
-    monkeypatch.setattr(
-        service, "song_analysis", lambda f: SimpleNamespace(sections=sections)
+    sections = (
+        Section(label="verse", start=0.0, end=6.0),
+        Section(label="chorus", start=6.0, end=12.0),
     )
+    shape = SimpleNamespace(sections=sections, beats=beats)
+    monkeypatch.setattr(service, "song_analysis", lambda f: shape)
     grid = service.beat_grid(fp)
     assert grid["sections"] == [
         {"label": "verse", "start_s": 0.0, "end_s": 6.0},
         {"label": "chorus", "start_s": 6.0, "end_s": 12.0},
     ]
     assert grid["sections_source"] == "measured"
-    assert grid["carried"][0] == [0.0, 2.0] and [4.0, 8.0] in grid["carried"]
-    # no sections found: said, not left to an empty list
-    monkeypatch.setattr(
-        service, "song_analysis", lambda f: SimpleNamespace(sections=())
-    )
-    none = service.beat_grid(fp)
-    assert none["sections"] == [] and none["sections_source"] == "none"
+    assert grid["carried"] == [[0.0, 2.0], [4.0, 8.0], [9.5, 30.0]]
+    # no section found: said, not left to an empty list
+    shape.sections = ()
+    assert service.beat_grid(fp)["sections_source"] == "none"
+    # a song that cannot be analysed here: said, and the beats are still served
+    from muvid.visualize.ffmpeg import FfmpegError
+
+    def unreadable(f):
+        raise FfmpegError("ffprobe could not read the song")
+
+    monkeypatch.setattr(service, "song_analysis", unreadable)
+    out = service.beat_grid(fp)
+    assert out["sections_source"] == "unavailable" and out["carried"] == []
+    assert out["beats"] == list(beats)
     # the connector's pinned reply neither measures nor carries the shape
-    assert not {"sections", "sections_source", "carried"} & set(
-        service.beat_grid(fp, shape=False)
-    )
+    pinned = service.beat_grid(fp, shape=False)
+    assert not {"sections", "sections_source", "carried"} & set(pinned)

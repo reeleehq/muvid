@@ -1569,13 +1569,12 @@ def beat_grid(fp, *, shape: bool = True) -> dict:
     bar number, 1 for the first bar, 0 for a pickup before it).
 
     And the song's shape (muvid#316): ``sections`` (``[{label, start_s, end_s}]`` — intro,
-    verse, chorus ... — from the song analysis, which a declared grid keeps), with
-    ``sections_source`` ``measured`` or ``none`` (none were found, or the analysis needs
-    a package that is not installed) so "one section" can be said rather than inferred
-    from an empty list; and ``carried`` (``[[start_s, end_s], ...]``), the spans where
-    this grid has no measured beat and the music cutter carries it on at the song's own
-    pace. A declared grid has none. ``shape=False`` leaves those three off and skips the
-    song analysis that measures them (the connector's pinned reply does not carry them).
+    verse, chorus ... — from the song analysis), with ``sections_source`` ``measured``,
+    ``none`` (the analysis found no section: "one section" can be said, not inferred from
+    an empty list) or ``unavailable`` (the song could not be analysed here); and
+    ``carried`` (``[[start_s, end_s], ...]``), the spans where the grid the music cutter
+    uses (a declared one included) has no measured beat and is carried on at the song's
+    own pace.
     """
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
@@ -1597,29 +1596,37 @@ def beat_grid(fp, *, shape: bool = True) -> dict:
     }
     reply.update(_bars(beats, record))
     if shape:
-        reply.update(_song_shape(fp, beats, declared=source == DECLARED))
+        reply.update(_song_shape(fp))
     return reply
 
 
-def _song_shape(fp, beats: list, *, declared: bool) -> dict:
+def _song_shape(fp) -> dict:
     """``beat_grid``'s ``sections``, ``sections_source`` and ``carried`` (muvid#316).
 
-    Sections come from :func:`song_analysis` (cached per song; a declared grid keeps the
-    estimate's sections). Only a missing package makes them ``none`` by refusal — any
-    other failure is a regression and propagates, as it does everywhere a sibling
-    package is called.
+    Both come from :func:`song_analysis` (cached per song, a declared grid swapped in
+    for the estimate) — the very grid :func:`~muvid.footage.music_cut.extend_grid`
+    carries, so ``carried`` is what the music cutter will actually carry (a test pins the
+    two against each other). Not computed for the connector's pinned reply
+    (``beat_grid(shape=False)``) nor for callers that only want the beats.
     """
     from muvid.footage.music_cut import carried_spans
+    from muvid.visualize.ffmpeg import FfmpegError
 
     try:
-        found = song_analysis(fp).sections
-    except ImportError:
-        found = ()
-    sections = [{"label": x.label, "start_s": x.start, "end_s": x.end} for x in found]
+        analysis = song_analysis(fp)
+    # an unreadable file or probe. A missing optional package is not among them: the
+    # analysis falls back to its numpy estimator rather than refusing, and anything else
+    # is a regression that propagates.
+    except (FfmpegError, OSError, ValueError):
+        return {"sections": [], "sections_source": "unavailable", "carried": []}
+    sections = [
+        {"label": x.label, "start_s": x.start, "end_s": x.end}
+        for x in analysis.sections
+    ]
     return {
         "sections": sections,
         "sections_source": "measured" if sections else "none",
-        "carried": [] if declared else carried_spans(beats, fp.song_duration()),
+        "carried": carried_spans(analysis.beats, fp.song_duration()),
     }
 
 
@@ -1801,7 +1808,7 @@ def set_beat_grid(
     changed = before is None or any(before.get(k) != v for k, v in record.items())
     if changed:
         _write_declared(fp, {**record, "declared_at": time.time()})
-    return {**beat_grid(fp), "changed": changed, **_stale_flag(fp)}
+    return {**beat_grid(fp, shape=False), "changed": changed, **_stale_flag(fp)}
 
 
 def _write_declared(fp, record: dict) -> None:
@@ -3849,7 +3856,7 @@ def fit_to_beat(
     from muvid.footage.edl import _clip_contains, placed_as
 
     record, entries = _edit_entries(fp, edit_id)
-    grid = BeatGrid.fitted(beat_grid(fp)["beats"])
+    grid = BeatGrid.fitted(beat_grid(fp, shape=False)["beats"])
     if grid is None:
         raise FootageError(
             "the song has no steady beat to fit to (too few beats found, or the tempo "

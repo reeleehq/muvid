@@ -397,13 +397,13 @@ def extend_grid(analysis, duration: Optional[float] = None):
     if found is None:
         return analysis, None
     period, head, filled, tail = found
-    holes = {a: b for a, b in filled}
+    wide = set(filled)
     out = []
-    for a in beats[:-1]:
+    for a, b in zip(beats, beats[1:]):
         out.append(a)
-        if a in holes:
-            n = int(round((holes[a] - a) / period))
-            step = (holes[a] - a) / n
+        if (a, b) in wide:
+            n = int(round((b - a) / period))
+            step = (b - a) / n
             out += [a + k * step for k in range(1, n)]
     out.append(beats[-1])
     if not head and not tail and not filled:
