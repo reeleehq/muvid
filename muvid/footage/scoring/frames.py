@@ -28,7 +28,18 @@ from muvid.footage.scoring import _frame_metrics as fm
 #: Default frame sample rate (Hz) — plenty for quality + a motion envelope onto a 10 Hz grid.
 DEFAULT_SAMPLE_FPS = 5.0
 #: Default hard cap on sampled frames per clip (bounds CPU + memory regardless of duration).
-DEFAULT_MAX_FRAMES = 1200
+#: 1200 frames is 240 s at :data:`DEFAULT_SAMPLE_FPS`, shorter than many full-song phone
+#: recordings, so a clip past it is cut off — and SAID to be: ``FramePass.truncated``, and
+#: ``sampled_to`` in the scoring summary and manifest (muvid#326). It is an operator's
+#: bound (``MUVID_SCORING_MAX_FRAMES``), not scaled down into a lower sample rate for a
+#: long clip: ``mixing``'s shot thresholds are calibrated on the change between samples
+#: at THIS rate, and a slower one reads ordinary motion as a cut.
+DEFAULT_MAX_FRAMES = int(os.environ.get("MUVID_SCORING_MAX_FRAMES", "1200"))
+
+
+#: Slack (s) when comparing a frame's time to the next sample time, so float error in
+#: ``0.04 * 5`` against ``0.2`` does not push a sample a whole frame late.
+_TIME_EPS_S = 1e-6
 
 
 @dataclass(frozen=True)
@@ -83,7 +94,12 @@ def sample_clip_frames(
     if not cap.isOpened():
         raise ValueError(f"cannot open clip: {clip_path}")
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    stride = max(1, int(round(fps / max(0.1, sample_fps))))
+    # sampled by CLIP TIME, not every Nth frame: on variable frame rate a fixed stride
+    # samples a 30 fps part at 7.5 Hz and a 12 fps part at 3 Hz, which is not the rate
+    # the shot thresholds are calibrated on, nor what ``max_frames`` is a duration of
+    period = 1.0 / max(0.1, sample_fps)
+    max_frames = max(1, int(max_frames))
+    next_t = 0.0
 
     times, sharp, expo, faces, motion, gxs, gys = [], [], [], [], [], [], []
     small = []  # each sample at the shot size, for the frames shot strategy
@@ -96,12 +112,14 @@ def sample_clip_frames(
             ok = cap.grab()
             if not ok:
                 break
-            if frame_idx % stride == 0:
+            t = _frame_time(cap, frame_idx, fps)
+            if t >= next_t - _TIME_EPS_S:
                 ok, frame = cap.retrieve()
                 if not ok:
                     break
+                next_t = t + period
                 gray = fm.to_gray(frame)
-                times.append(frame_idx / fps)
+                times.append(t)
                 sharp.append(fm.sharpness(gray))
                 expo.append(fm.exposure_quality(gray))
                 faces.append(_face_sample(face_fn, frame))
@@ -150,6 +168,22 @@ def sample_clip_frames(
         ),
         truncated=bool(truncated),
     )
+
+
+def _frame_time(cap, frame_idx: int, fps: float) -> float:
+    """The clip time (s) of the frame ``cap`` just grabbed: the DECODER's own timestamp,
+    else ``frame_idx / fps``.
+
+    The index clock is only right for a constant frame rate. A phone records variable
+    frame rate routinely, and a clip whose timestamps jump (a 25 fps part, then a 50 fps
+    part from 6.0 s) put its cut at ~3 s by the index (muvid#326) — every metric's time,
+    and every shot, off by the same error. The decoder reads 0 where it has no timestamp
+    (and for the first frame, where 0 is right), which is the one case the index clock
+    answers."""
+    import cv2  # lazy
+
+    msec = cap.get(cv2.CAP_PROP_POS_MSEC)
+    return float(msec) / 1000.0 if msec and msec > 0 else frame_idx / fps
 
 
 def _framing_score(width: float, height: float, xmin: float, ymin: float) -> float:

@@ -294,6 +294,7 @@ Pipeline: `align → score → select → EDL → assemble`.
   fingerprint (the declared grid's beats, `""` for the estimate — muvid#187) + metric set
   + hop. Weights enter at *assemble* time, so one tensor serves every preset. Every reader
   of the tensor asks `service._scores_current`; a stale tensor is never served.
+- **The decode pass is clocked by the decoder and says where the frame cap cut it** (muvid#326). A sample's time is `CAP_PROP_POS_MSEC` (the index clock `frame_idx / fps` is wrong on variable-frame-rate phone video, by seconds), and a clip longer than `MUVID_SCORING_MAX_FRAMES` (1200 samples = 240 s at 5 Hz) is cut off: `sampled_to` (`{clip_id: seconds}`, in the `score` reply and the score manifest) names where, for every frame-read metric and not only the shots (`shots_truncated`). The cap is not lowered into a slower sample rate for long clips, because `mixing`'s shot thresholds are calibrated at this rate.
 
 ## The slug trap (issue #4) — read before renaming anything
 

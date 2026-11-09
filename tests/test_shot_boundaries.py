@@ -190,3 +190,78 @@ def test_the_scoring_pass_records_changes_and_finds_a_real_cut(tmp_path):
     ]
     capped = sample_clip_frames(str(clip), max_frames=5)
     assert capped.truncated and capped.n_sampled == 5
+
+
+def test_a_variable_frame_rate_clip_is_clocked_by_its_decoder_not_its_frame_index(
+    tmp_path,
+):
+    """muvid#326: ``frame_idx / fps`` put a cut at 6.0 s down at ~3 s on a clip whose
+    frame rate changes (a 25 fps part, then a 50 fps part after a timestamp jump)."""
+    import subprocess
+
+    import numpy as np
+
+    from tests.ffmpeg_support import HAS_FFMPEG
+
+    if not HAS_FFMPEG:
+        pytest.skip("ffmpeg is not installed")
+    pytest.importorskip("cv2")
+    from muvid.footage.scoring.frames import sample_clip_frames
+
+    clip = tmp_path / "vfr.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "testsrc=s=160x120:r=25:d=3",
+         "-f", "lavfi", "-i", "mandelbrot=s=160x120:r=50",
+         "-filter_complex",
+         "[1:v]trim=duration=3,setpts=PTS-STARTPTS+3/TB[m];[0:v][m]concat=n=2:v=1[v]",
+         "-map", "[v]", "-fps_mode", "vfr", "-pix_fmt", "yuv420p", str(clip)],
+        check=True,
+    )  # fmt: skip
+    fp = sample_clip_frames(str(clip))
+    cut = int(np.argmax(fp.shot_change))  # between sample `cut` and `cut + 1`
+    assert fp.clip_times[cut + 1] == pytest.approx(6.0, abs=0.25)
+
+
+def test_the_frame_time_is_the_decoders_else_the_index_clock():
+    from types import SimpleNamespace
+
+    pytest.importorskip("cv2")
+    from muvid.footage.scoring.frames import _frame_time
+
+    def cap(msec):
+        return SimpleNamespace(get=lambda prop: msec)
+
+    assert _frame_time(cap(3000.0), 10, 25.0) == 3.0
+    assert _frame_time(cap(0.0), 10, 25.0) == 0.4  # no timestamp: the index clock
+    assert _frame_time(cap(-1.0), 10, 25.0) == 0.4
+
+
+def test_samples_are_taken_by_time_and_the_cap_cannot_be_zero(tmp_path):
+    """A fixed stride sampled a 30 fps part at 7.5 Hz and a 12 fps part at 3 Hz."""
+    import subprocess
+
+    import numpy as np
+
+    from tests.ffmpeg_support import HAS_FFMPEG
+
+    if not HAS_FFMPEG:
+        pytest.skip("ffmpeg is not installed")
+    pytest.importorskip("cv2")
+    from muvid.footage.scoring.frames import sample_clip_frames
+
+    clip = tmp_path / "rates.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "testsrc=s=160x120:r=30:d=4",
+         "-f", "lavfi", "-i", "mandelbrot=s=160x120:r=12",
+         "-filter_complex",
+         "[1:v]trim=duration=4,setpts=PTS-STARTPTS+4/TB[m];[0:v][m]concat=n=2:v=1[v]",
+         "-map", "[v]", "-fps_mode", "vfr", "-pix_fmt", "yuv420p", str(clip)],
+        check=True,
+    )  # fmt: skip
+    fp = sample_clip_frames(str(clip), sample_fps=5.0)
+    gaps = np.diff(fp.clip_times)
+    gaps = np.delete(gaps, gaps.argmax())  # the fixture's own timestamp jump
+    assert gaps.max() < 0.35 and gaps.min() > 0.15  # ~5 Hz either side of it
+    assert sample_clip_frames(str(clip), max_frames=0).n_sampled == 1

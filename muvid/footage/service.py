@@ -2063,6 +2063,7 @@ def _kept_scores(fp, *, hop_s: float):
         shots=manifest.get("shot_boundaries") or {},
         shot_strategies=manifest.get("shot_strategies") or {},
         shots_truncated=manifest.get("shots_truncated") or {},
+        sampled_to=manifest.get("sampled_to") or {},
     )
 
 
@@ -2454,6 +2455,13 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
 
     margin = selection_margin(fp.load_alignments(), tensor, weights=weights)
     beats = manifest.get("beats", {}).get("beat_times", [])
+    sampled_to = manifest.get("sampled_to") or {}
+    warnings = [
+        f"clip {cid!r} was read only up to {end:g} s of its own time (the frame cap): its "
+        "frame-based scores end there, so nothing is known about it past that point"
+        for cid, end in sampled_to.items()
+        if cid in tensor.clip_ids
+    ]
     return {
         "project_id": fp.project_id,
         "metrics": tensor.metrics,
@@ -2467,9 +2475,12 @@ def _scores_summary(fp, tensor, manifest, grid, max_points, weights) -> dict:
                 "coverage": round(
                     float(tensor.M[tensor.clip_index(cid)].any(axis=1).mean()), 4
                 ),
+                # omit-when-absent: the clip's own time its frame pass stopped at (#326)
+                **({"sampled_to": sampled_to[cid]} if cid in sampled_to else {}),
             }
             for cid in tensor.clip_ids
         ],
+        **({"warnings": warnings} if warnings else {}),
         "metric_coverage": manifest.get("coverage", {}),
         "beats": {
             "count": len(beats),
