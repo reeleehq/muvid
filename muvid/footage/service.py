@@ -5315,6 +5315,23 @@ PLACEMENT_READS: tuple[str, ...] = (
     "timeline",
 )
 
+#: The reads that show a placement's measured SPANS (the unverified stretches): what
+#: ``measure_spans`` makes stale (muvid#318). Not the score tensor's reads — spans are
+#: not a scoring input — but ``score_candidates`` is here: the planner's trust tiers
+#: demote a stretch the spans do not confirm (``select_score._demote_distrusted``), so
+#: a candidate's reward moves with them. Derived from the code by
+#: ``test_beat_grid_invalidations``.
+SPAN_READS: tuple[str, ...] = (
+    "editor_document",
+    "explain_edit",
+    "get_edit",
+    "score_candidates",
+)
+
+#: The reads that sort the videos into synced and to-the-music (``footage_roles``): what
+#: ``set_has_song`` makes stale (muvid#318).
+ROLE_READS: tuple[str, ...] = ("editor_document", "explain_edit", "get_edit", "status")
+
 #: What ``align`` / ``set_offset`` / ``clear_offset`` make stale (muvid#286): the
 #: placement reads, plus the score reads, since moving a video makes the scores
 #: measured on it stale (and the score reads answer from the placements too).
@@ -5392,12 +5409,18 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "Check which parts of each video match the song",
         "write",
         runs="job",
+        invalidates=SPAN_READS,
         # minutes per project (about align's cost): a host runs it as a job; the MCP
         # transport would block a request on it, so it waits for a job-backed tool
         # (muvid#16's latency decision)
         mcp=False,
     ),
-    OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
+    OpSpec(
+        "set_has_song",
+        "Say whether a video has the song in it",
+        "write",
+        invalidates=ROLE_READS,
+    ),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
     OpSpec("beat_grid", "Find the beat", "read", hide=("shape",)),
     OpSpec(
