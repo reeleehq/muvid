@@ -51,10 +51,11 @@ enforced at the only place that can see which `an` is actually there.
 
 ### Module Attributes
 
-| [`DFLT_AN_CAMERA_MOVE`](#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)    | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                               |
-|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| [`AN_CAMERA_MOVE_PHRASES`](#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES) | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".           |
-| [`AN_CHARACTER_KIND`](#muvid.renderers.animation.AN_CHARACTER_KIND)      | The `an` entity kinds a synthesized `scene.md` names — the other half of the vocabulary this boundary emits, beside the camera moves. |
+| [`DFLT_AN_CAMERA_MOVE`](#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)      | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                                                                                                                                                                        |
+|---------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`AN_CAMERA_MOVE_PHRASES`](#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES)   | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".                                                                                                                                                    |
+| [`AN_CAMERA_MOVE_FALLBACKS`](#muvid.renderers.animation.AN_CAMERA_MOVE_FALLBACKS) | The nearest move an OLDER `an` has for one it lacks, tried before the no-op `hold` (muvid#307): `dolly_in`/`dolly_out` (an#478) add depth parallax to the push/pull they extend, so a machine without them still gets the same direction of travel instead of a locked camera. |
+| [`AN_CHARACTER_KIND`](#muvid.renderers.animation.AN_CHARACTER_KIND)        | The `an` entity kinds a synthesized `scene.md` names — the other half of the vocabulary this boundary emits, beside the camera moves.                                                                                                                                          |
 
 ### Functions
 
@@ -62,7 +63,14 @@ enforced at the only place that can see which `an` is actually there.
 |-------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | [`render_animation`](#muvid.renderers.animation.render_animation)(ctx, \*[, quality])           | Synthesize a tiny `an` scene for this shot and orchestrate it.        |
 
-### muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)], ...]* *= (('push in', 'push_in'), ('push into', 'push_in'), ('dolly in', 'push_in'), ('zoom in', 'zoom_in'), ('pull out', 'pull_out'), ('pull back', 'pull_out'), ('dolly out', 'pull_out'), ('zoom out', 'zoom_out'), ('pan left', 'pan_left'), ('pan right', 'pan_right'), ('tilt up', 'tilt_up'), ('tilt down', 'tilt_down'), ('crane up', 'tilt_up'), ('crane down', 'tilt_down'), ('static', 'hold'), ('hold', 'hold'), ('locked', 'hold'), ('locked off', 'hold'), ('lock off', 'hold'), ('no movement', 'hold'))*
+### muvid.renderers.animation.AN_CAMERA_MOVE_FALLBACKS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= {'dolly_in': 'push_in', 'dolly_out': 'pull_out'}*
+
+The nearest move an OLDER `an` has for one it lacks, tried before the no-op `hold`
+(muvid#307): `dolly_in`/`dolly_out` (an#478) add depth parallax to the push/pull
+they extend, so a machine without them still gets the same direction of travel instead
+of a locked camera. A move with no entry degrades to `hold` with a warning.
+
+### muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)], ...]* *= (('push in', 'push_in'), ('push into', 'push_in'), ('dolly in', 'dolly_in'), ('zoom in', 'zoom_in'), ('pull out', 'pull_out'), ('pull back', 'pull_out'), ('dolly out', 'dolly_out'), ('zoom out', 'zoom_out'), ('pan left', 'pan_left'), ('pan right', 'pan_right'), ('tilt up', 'tilt_up'), ('tilt down', 'tilt_down'), ('crane up', 'tilt_up'), ('crane down', 'tilt_down'), ('static', 'hold'), ('hold', 'hold'), ('locked', 'hold'), ('locked off', 'hold'), ('lock off', 'hold'), ('no movement', 'hold'))*
 
 muvid prose -> `an` move name — the WHOLE recognised vocabulary, including
 the several ways a director spells “don’t move”. A direction that matches
@@ -113,7 +121,8 @@ independent ways that can happen, and each one WARNS rather than passing
 silently — a dropped camera direction is the failure muvid#44 was:
 
 - the direction names no move this table knows (“handheld, drifting”), or
-- it names one the *installed* `an` does not implement (`pan_left` is
+- it names one the *installed* `an` does not implement (a `dolly` first tries
+  its push/pull, [`AN_CAMERA_MOVE_FALLBACKS`](#muvid.renderers.animation.AN_CAMERA_MOVE_FALLBACKS), and still warns) (`pan_left` is
   an#109, released in `an` 0.1.65; on 0.1.60 it is a hard refusal at
   validate and at compile).
 
@@ -146,6 +155,18 @@ An `an` that cannot do the move gets the no-op instead of a refusal:
 ```pycon
 >>> an_camera_move("pan left", known_moves={"hold", "push_in"})
 'hold'
+```
+
+A move with a close relative degrades to that, not to the no-op (muvid#307):
+
+```pycon
+>>> import warnings
+>>> with warnings.catch_warnings():
+...     warnings.simplefilter("ignore")
+...     an_camera_move("dolly in", known_moves={"hold", "push_in"})
+'push_in'
+>>> an_camera_move("dolly in", known_moves={"hold", "push_in", "dolly_in"})
+'dolly_in'
 ```
 
 A direction naming nothing is not silently dropped:

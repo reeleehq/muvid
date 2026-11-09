@@ -1,4 +1,4 @@
-> built 2026-11-09 08:34 UTC from d714f9d (main) · muvid 0.0.186. Details: build_info.json
+> built 2026-11-09 13:32 UTC from 1f82d6e (main) · muvid 0.0.187. Details: build_info.json
 
 # index.html.md
 
@@ -17915,10 +17915,11 @@ enforced at the only place that can see which `an` is actually there.
 
 ### Module Attributes
 
-| [`DFLT_AN_CAMERA_MOVE`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)    | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                               |
-|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|
-| [`AN_CAMERA_MOVE_PHRASES`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES) | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".           |
-| [`AN_CHARACTER_KIND`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CHARACTER_KIND)      | The `an` entity kinds a synthesized `scene.md` names — the other half of the vocabulary this boundary emits, beside the camera moves. |
+| [`DFLT_AN_CAMERA_MOVE`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.DFLT_AN_CAMERA_MOVE)      | `an`'s spelling of "the camera does not move", and what a direction this table cannot name resolves to.                                                                                                                                                                        |
+|---------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`AN_CAMERA_MOVE_PHRASES`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES)   | muvid prose -> `an` move name — the WHOLE recognised vocabulary, including the several ways a director spells "don't move".                                                                                                                                                    |
+| [`AN_CAMERA_MOVE_FALLBACKS`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CAMERA_MOVE_FALLBACKS) | The nearest move an OLDER `an` has for one it lacks, tried before the no-op `hold` (muvid#307): `dolly_in`/`dolly_out` (an#478) add depth parallax to the push/pull they extend, so a machine without them still gets the same direction of travel instead of a locked camera. |
+| [`AN_CHARACTER_KIND`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CHARACTER_KIND)        | The `an` entity kinds a synthesized `scene.md` names — the other half of the vocabulary this boundary emits, beside the camera moves.                                                                                                                                          |
 
 ### Functions
 
@@ -17926,7 +17927,14 @@ enforced at the only place that can see which `an` is actually there.
 |-------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
 | [`render_animation`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.render_animation)(ctx, \*[, quality])           | Synthesize a tiny `an` scene for this shot and orchestrate it.        |
 
-### muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)], ...]* *= (('push in', 'push_in'), ('push into', 'push_in'), ('dolly in', 'push_in'), ('zoom in', 'zoom_in'), ('pull out', 'pull_out'), ('pull back', 'pull_out'), ('dolly out', 'pull_out'), ('zoom out', 'zoom_out'), ('pan left', 'pan_left'), ('pan right', 'pan_right'), ('tilt up', 'tilt_up'), ('tilt down', 'tilt_down'), ('crane up', 'tilt_up'), ('crane down', 'tilt_down'), ('static', 'hold'), ('hold', 'hold'), ('locked', 'hold'), ('locked off', 'hold'), ('lock off', 'hold'), ('no movement', 'hold'))*
+### muvid.renderers.animation.AN_CAMERA_MOVE_FALLBACKS *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)]* *= {'dolly_in': 'push_in', 'dolly_out': 'pull_out'}*
+
+The nearest move an OLDER `an` has for one it lacks, tried before the no-op `hold`
+(muvid#307): `dolly_in`/`dolly_out` (an#478) add depth parallax to the push/pull
+they extend, so a machine without them still gets the same direction of travel instead
+of a locked camera. A move with no entry degrades to `hold` with a warning.
+
+### muvid.renderers.animation.AN_CAMERA_MOVE_PHRASES *: [tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[tuple](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[str](https://docs.python.org/3/builtins/stdtypes.html#str), [str](https://docs.python.org/3/builtins/stdtypes.html#str)], ...]* *= (('push in', 'push_in'), ('push into', 'push_in'), ('dolly in', 'dolly_in'), ('zoom in', 'zoom_in'), ('pull out', 'pull_out'), ('pull back', 'pull_out'), ('dolly out', 'dolly_out'), ('zoom out', 'zoom_out'), ('pan left', 'pan_left'), ('pan right', 'pan_right'), ('tilt up', 'tilt_up'), ('tilt down', 'tilt_down'), ('crane up', 'tilt_up'), ('crane down', 'tilt_down'), ('static', 'hold'), ('hold', 'hold'), ('locked', 'hold'), ('locked off', 'hold'), ('lock off', 'hold'), ('no movement', 'hold'))*
 
 muvid prose -> `an` move name — the WHOLE recognised vocabulary, including
 the several ways a director spells “don’t move”. A direction that matches
@@ -17977,7 +17985,8 @@ independent ways that can happen, and each one WARNS rather than passing
 silently — a dropped camera direction is the failure muvid#44 was:
 
 - the direction names no move this table knows (“handheld, drifting”), or
-- it names one the *installed* `an` does not implement (`pan_left` is
+- it names one the *installed* `an` does not implement (a `dolly` first tries
+  its push/pull, [`AN_CAMERA_MOVE_FALLBACKS`](_autosummary/muvid.renderers.animation.html.md#muvid.renderers.animation.AN_CAMERA_MOVE_FALLBACKS), and still warns) (`pan_left` is
   an#109, released in `an` 0.1.65; on 0.1.60 it is a hard refusal at
   validate and at compile).
 
@@ -18010,6 +18019,18 @@ An `an` that cannot do the move gets the no-op instead of a refusal:
 ```pycon
 >>> an_camera_move("pan left", known_moves={"hold", "push_in"})
 'hold'
+```
+
+A move with a close relative degrades to that, not to the no-op (muvid#307):
+
+```pycon
+>>> import warnings
+>>> with warnings.catch_warnings():
+...     warnings.simplefilter("ignore")
+...     an_camera_move("dolly in", known_moves={"hold", "push_in"})
+'push_in'
+>>> an_camera_move("dolly in", known_moves={"hold", "push_in", "dolly_in"})
+'dolly_in'
 ```
 
 A direction naming nothing is not silently dropped:
@@ -21007,18 +21028,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 08:34 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d714f9d57c38c387c10118f630b7d5de5f466186"><code>d714f9d</code></a> on branch <code>main</code>, for **muvid 0.0.186** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 13:32 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/1f82d6ed22e257cd5a6fdd56d2ee9c8b6dc1c355"><code>1f82d6e</code></a> on branch <code>main</code>, for **muvid 0.0.187** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.187) is ahead of the latest release on PyPI (0.0.186): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d714f9d57c38c387c10118f630b7d5de5f466186"><code>d714f9d57c38c387c10118f630b7d5de5f466186</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/1f82d6ed22e257cd5a6fdd56d2ee9c8b6dc1c355"><code>1f82d6ed22e257cd5a6fdd56d2ee9c8b6dc1c355</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.186</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.187</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21027,9 +21050,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42585537598">42585537598</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42624269571">42624269571</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>e90fec5acb9f19e0a1329a1a9fc199d741f2db2c</code> (in the history of the built commit) |
+| Event commit | <code>8d9345023a68ac106d07b055d5ff6a853280b12f</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21054,13 +21077,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.186/">0.0.186</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.186/">0.0.186</a>, older than the documented version (0.0.187).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout d714f9d57c38c387c10118f630b7d5de5f466186
+git checkout 1f82d6ed22e257cd5a6fdd56d2ee9c8b6dc1c355
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
