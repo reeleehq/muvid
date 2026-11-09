@@ -117,7 +117,7 @@ def test_the_lock_files_keep_their_names(fp):
         pass
     assert (fp.root / "locks" / "alignments.lock").exists()
     assert (fp.root / "locks" / "manifest.lock").exists()
-    assert (fp.root / "edits" / ".lock").exists()
+    assert (fp.root / "locks" / "edits.lock").exists()
 
 
 def test_file_lock_refuses_a_name_that_is_not_a_lock_file(tmp_path):
