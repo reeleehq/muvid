@@ -181,19 +181,22 @@ substrate under <a class="reference internal" href="muvid.visualize.canvas.html#
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.media_duration" title="muvid.visualize.ffmpeg.media_duration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">media_duration</span></code></a>(media)</p></td>
 <td><p>Duration of <code class="docutils literal notranslate"><span class="pre">media</span></code> in seconds.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.probe" title="muvid.visualize.ffmpeg.probe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">probe</span></code></a>(media)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.picture_duration" title="muvid.visualize.ffmpeg.picture_duration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">picture_duration</span></code></a>(media)</p></td>
+<td><p>Duration of <code class="docutils literal notranslate"><span class="pre">media</span></code>'s first VIDEO stream in seconds, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when none can be told.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.probe" title="muvid.visualize.ffmpeg.probe"><code class="xref py py-obj docutils literal notranslate"><span class="pre">probe</span></code></a>(media)</p></td>
 <td><p>Return <code class="docutils literal notranslate"><span class="pre">ffprobe</span></code>'s <code class="docutils literal notranslate"><span class="pre">format</span></code> + <code class="docutils literal notranslate"><span class="pre">streams</span></code> JSON for <code class="docutils literal notranslate"><span class="pre">media</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.require_ffmpeg" title="muvid.visualize.ffmpeg.require_ffmpeg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">require_ffmpeg</span></code></a>(*tools)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.require_ffmpeg" title="muvid.visualize.ffmpeg.require_ffmpeg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">require_ffmpeg</span></code></a>(*tools)</p></td>
 <td><p>Raise a helpful <a class="reference internal" href="#muvid.visualize.ffmpeg.FfmpegError" title="muvid.visualize.ffmpeg.FfmpegError"><code class="xref py py-class docutils literal notranslate"><span class="pre">FfmpegError</span></code></a> if any of <code class="docutils literal notranslate"><span class="pre">tools</span></code> is not on PATH.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.require_filter" title="muvid.visualize.ffmpeg.require_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">require_filter</span></code></a>(name, *, needed_for)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.require_filter" title="muvid.visualize.ffmpeg.require_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">require_filter</span></code></a>(name, *, needed_for)</p></td>
 <td><p>Raise unless this ffmpeg build has the <code class="docutils literal notranslate"><span class="pre">name</span></code> filter.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.run_ffmpeg" title="muvid.visualize.ffmpeg.run_ffmpeg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_ffmpeg</span></code></a>(args, *[, overwrite])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.run_ffmpeg" title="muvid.visualize.ffmpeg.run_ffmpeg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">run_ffmpeg</span></code></a>(args, *[, overwrite])</p></td>
 <td><p>Run <code class="docutils literal notranslate"><span class="pre">ffmpeg</span></code> with <code class="docutils literal notranslate"><span class="pre">args</span></code>, raising a readable error on failure.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.stream_pcm" title="muvid.visualize.ffmpeg.stream_pcm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stream_pcm</span></code></a>(audio, *, sample_rate, channels)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.visualize.ffmpeg.stream_pcm" title="muvid.visualize.ffmpeg.stream_pcm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stream_pcm</span></code></a>(audio, *, sample_rate, channels)</p></td>
 <td><p>Decode <code class="docutils literal notranslate"><span class="pre">audio</span></code> to raw <a class="reference internal" href="#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT" title="muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT"><code class="xref py py-data docutils literal notranslate"><span class="pre">PCM_SAMPLE_FORMAT</span></code></a> samples, yielded <code class="docutils literal notranslate"><span class="pre">chunk_s</span></code> at a time — <a class="reference internal" href="#muvid.visualize.ffmpeg.decode_pcm" title="muvid.visualize.ffmpeg.decode_pcm"><code class="xref py py-func docutils literal notranslate"><span class="pre">decode_pcm()</span></code></a>'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219).</p></td>
 </tr>
 </tbody>
@@ -349,6 +352,23 @@ both miss the target and squash the dynamics of music.</p>
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.visualize.ffmpeg.picture_duration">
+<span class="sig-prename descclassname"><span class="pre">muvid.visualize.ffmpeg.</span></span><span class="sig-name descname"><span class="pre">picture_duration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">media</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/visualize/ffmpeg.html#picture_duration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.visualize.ffmpeg.picture_duration" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.visualize.ffmpeg.picture_duration'">¶</a></dt>
+<dd><p>Duration of <code class="docutils literal notranslate"><span class="pre">media</span></code>’s first VIDEO stream in seconds, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when none can
+be told.</p>
+<p>Not <a class="reference internal" href="#muvid.visualize.ffmpeg.media_duration" title="muvid.visualize.ffmpeg.media_duration"><code class="xref py py-func docutils literal notranslate"><span class="pre">media_duration()</span></code></a>: that is the container’s, normally its longest stream,
+and a phone video’s audio track is often shorter or longer than its picture. A cut
+that reads only the picture (<code class="docutils literal notranslate"><span class="pre">-an</span></code>) is bounded by this one (muvid#322). Matroska
+and WebM give a stream no <code class="docutils literal notranslate"><span class="pre">duration</span></code> of its own, so the stream’s <code class="docutils literal notranslate"><span class="pre">DURATION</span></code> tag
+(<code class="docutils literal notranslate"><span class="pre">HH:MM:SS.ffffff</span></code>) and then <code class="docutils literal notranslate"><span class="pre">nb_frames</span> <span class="pre">/</span> <span class="pre">r_frame_rate</span></code> stand in; cover art
+(<code class="docutils literal notranslate"><span class="pre">attached_pic</span></code>) is not a picture track.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a> | <span class="highlight sphinx_autodoc_typehints-value"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-obj docutils literal notranslate"><span class="kc"><span class="pre">None</span></span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.visualize.ffmpeg.probe">
 <span class="sig-prename descclassname"><span class="pre">muvid.visualize.ffmpeg.</span></span><span class="sig-name descname"><span class="pre">probe</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">media</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/visualize/ffmpeg.html#probe"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.visualize.ffmpeg.probe" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.visualize.ffmpeg.probe'">¶</a></dt>
 <dd><p>Return <code class="docutils literal notranslate"><span class="pre">ffprobe</span></code>’s <code class="docutils literal notranslate"><span class="pre">format</span></code> + <code class="docutils literal notranslate"><span class="pre">streams</span></code> JSON for <code class="docutils literal notranslate"><span class="pre">media</span></code>.</p>
@@ -448,6 +468,7 @@ the generator early stops ffmpeg.</p>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.has_filter'" class="reference internal" href="#muvid.visualize.ffmpeg.has_filter"><code class="docutils literal notranslate"><span class="pre">has_filter()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.measure_loudness'" class="reference internal" href="#muvid.visualize.ffmpeg.measure_loudness"><code class="docutils literal notranslate"><span class="pre">measure_loudness()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.media_duration'" class="reference internal" href="#muvid.visualize.ffmpeg.media_duration"><code class="docutils literal notranslate"><span class="pre">media_duration()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.picture_duration'" class="reference internal" href="#muvid.visualize.ffmpeg.picture_duration"><code class="docutils literal notranslate"><span class="pre">picture_duration()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.probe'" class="reference internal" href="#muvid.visualize.ffmpeg.probe"><code class="docutils literal notranslate"><span class="pre">probe()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.require_ffmpeg'" class="reference internal" href="#muvid.visualize.ffmpeg.require_ffmpeg"><code class="docutils literal notranslate"><span class="pre">require_ffmpeg()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.visualize.ffmpeg.require_filter'" class="reference internal" href="#muvid.visualize.ffmpeg.require_filter"><code class="docutils literal notranslate"><span class="pre">require_filter()</span></code></a></li>
@@ -466,7 +487,7 @@ the generator early stops ffmpeg.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=e14b0eed"></script>
+<script src="../_static/documentation_options.js?v=d6b38487"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

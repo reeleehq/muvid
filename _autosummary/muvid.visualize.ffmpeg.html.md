@@ -27,6 +27,7 @@ substrate under [`muvid.visualize.canvas`](muvid.visualize.canvas.html.md#module
 | [`has_filter`](#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
 | [`measure_loudness`](#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
 | [`media_duration`](#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
+| [`picture_duration`](#muvid.visualize.ffmpeg.picture_duration)(media)                          | Duration of `media`'s first VIDEO stream in seconds, or `None` when none can be told.                                                                                                                                                                                                      |
 | [`probe`](#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
 | [`require_ffmpeg`](#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
 | [`require_filter`](#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
@@ -148,6 +149,21 @@ Falls back to the longest stream duration when the container has none.
   [**FfmpegError**](#muvid.visualize.ffmpeg.FfmpegError) – The duration could not be determined.
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.visualize.ffmpeg.picture_duration(media)
+
+Duration of `media`’s first VIDEO stream in seconds, or `None` when none can
+be told.
+
+Not [`media_duration()`](#muvid.visualize.ffmpeg.media_duration): that is the container’s, normally its longest stream,
+and a phone video’s audio track is often shorter or longer than its picture. A cut
+that reads only the picture (`-an`) is bounded by this one (muvid#322). Matroska
+and WebM give a stream no `duration` of its own, so the stream’s `DURATION` tag
+(`HH:MM:SS.ffffff`) and then `nb_frames / r_frame_rate` stand in; cover art
+(`attached_pic`) is not a picture track.
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.visualize.ffmpeg.probe(media)
 

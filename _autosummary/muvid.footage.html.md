@@ -245,7 +245,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
+### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None, picture_s=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -271,6 +271,14 @@ fraction that does not look at the runner-up.
 Whether the clip intersects the song timeline at all. A clip that does NOT is
 still recorded — a source must never leave the addressable set as a side effect
 of being measured. Selection filters on this; reporting shows it with a reason.
+
+#### picture_s *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
+the audio-measured `duration_s` stands). Derived from the manifest on load
+(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+a free cut reads only the picture, so `placed_as()` bounds it by this
+(muvid#322).
 
 #### reliable *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= True*
 

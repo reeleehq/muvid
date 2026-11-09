@@ -415,230 +415,273 @@
 
 </span><span id="line-208">
 </span><span id="line-209">
-</span><span id="line-210"><span class="c1">#: Sample format the raw-PCM decode emits: little-endian 32-bit float, which is</span>
-</span><span id="line-211"><span class="c1">#: exactly ``numpy.float32``'s memory layout, so an analysis pass can read the</span>
-</span><span id="line-212"><span class="c1">#: bytes straight into an array with no conversion step.</span>
-</span><span id="line-213"><span class="n">PCM_SAMPLE_FORMAT</span> <span class="o">=</span> <span class="s2">"f32le"</span>
-</span><span id="line-214">
-</span><span id="line-215">
+<div class="viewcode-block" id="picture_duration">
+<a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.picture_duration">[docs]</a>
+</span><span id="line-210"><span class="k">def</span><span class="w"> </span><span class="nf">picture_duration</span><span class="p">(</span><span class="n">media</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"float | None"</span><span class="p">:</span>
+</span><span id="line-211"><span class="w">    </span><span class="sd">"""Duration of ``media``'s first VIDEO stream in seconds, or ``None`` when none can</span>
+</span><span id="line-212"><span class="sd">    be told.</span>
+</span><span id="line-213">
+</span><span id="line-214"><span class="sd">    Not :func:`media_duration`: that is the container's, normally its longest stream,</span>
+</span><span id="line-215"><span class="sd">    and a phone video's audio track is often shorter or longer than its picture. A cut</span>
+</span><span id="line-216"><span class="sd">    that reads only the picture (``-an``) is bounded by this one (muvid#322). Matroska</span>
+</span><span id="line-217"><span class="sd">    and WebM give a stream no ``duration`` of its own, so the stream's ``DURATION`` tag</span>
+</span><span id="line-218"><span class="sd">    (``HH:MM:SS.ffffff``) and then ``nb_frames / r_frame_rate`` stand in; cover art</span>
+</span><span id="line-219"><span class="sd">    (``attached_pic``) is not a picture track."""</span>
+</span><span id="line-220">    <span class="n">streams</span> <span class="o">=</span> <span class="n">probe</span><span class="p">(</span><span class="n">media</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"streams"</span><span class="p">,</span> <span class="p">[])</span>
+</span><span id="line-221">    <span class="n">video</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+</span><span id="line-222">        <span class="p">(</span>
+</span><span id="line-223">            <span class="n">s</span>
+</span><span id="line-224">            <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">streams</span>
+</span><span id="line-225">            <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"codec_type"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"video"</span>
+</span><span id="line-226">            <span class="ow">and</span> <span class="ow">not</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"disposition"</span><span class="p">,</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"attached_pic"</span><span class="p">)</span>
+</span><span id="line-227">        <span class="p">),</span>
+</span><span id="line-228">        <span class="kc">None</span><span class="p">,</span>
+</span><span id="line-229">    <span class="p">)</span>
+</span><span id="line-230">    <span class="k">return</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">video</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">_stream_seconds</span><span class="p">(</span><span class="n">video</span><span class="p">)</span></div>
+
+</span><span id="line-231">
+</span><span id="line-232">
+</span><span id="line-233"><span class="k">def</span><span class="w"> </span><span class="nf">_stream_seconds</span><span class="p">(</span><span class="n">stream</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"float | None"</span><span class="p">:</span>
+</span><span id="line-234"><span class="w">    </span><span class="sd">"""A stream's length in seconds from whichever field this container fills in."""</span>
+</span><span id="line-235">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-236">        <span class="k">if</span> <span class="n">stream</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"duration"</span><span class="p">):</span>
+</span><span id="line-237">            <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">stream</span><span class="p">[</span><span class="s2">"duration"</span><span class="p">])</span>
+</span><span id="line-238">        <span class="n">tag</span> <span class="o">=</span> <span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"tags"</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"DURATION"</span><span class="p">)</span>
+</span><span id="line-239">        <span class="k">if</span> <span class="n">tag</span><span class="p">:</span>
+</span><span id="line-240">            <span class="n">h</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">sec</span> <span class="o">=</span> <span class="n">tag</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-241">            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">*</span> <span class="mi">3600</span> <span class="o">+</span> <span class="nb">int</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="o">*</span> <span class="mi">60</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">sec</span><span class="p">)</span>
+</span><span id="line-242">        <span class="n">num</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">den</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"r_frame_rate"</span><span class="p">,</span> <span class="s2">""</span><span class="p">))</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+</span><span id="line-243">        <span class="k">if</span> <span class="n">stream</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"nb_frames"</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">float</span><span class="p">(</span><span class="n">num</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-244">            <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">stream</span><span class="p">[</span><span class="s2">"nb_frames"</span><span class="p">])</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">den</span> <span class="ow">or</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">num</span><span class="p">)</span>
+</span><span id="line-245">    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">,</span> <span class="ne">ZeroDivisionError</span><span class="p">):</span>
+</span><span id="line-246">        <span class="k">pass</span>
+</span><span id="line-247">    <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-248">
+</span><span id="line-249">
+</span><span id="line-250"><span class="c1">#: Sample format the raw-PCM decode emits: little-endian 32-bit float, which is</span>
+</span><span id="line-251"><span class="c1">#: exactly ``numpy.float32``'s memory layout, so an analysis pass can read the</span>
+</span><span id="line-252"><span class="c1">#: bytes straight into an array with no conversion step.</span>
+</span><span id="line-253"><span class="n">PCM_SAMPLE_FORMAT</span> <span class="o">=</span> <span class="s2">"f32le"</span>
+</span><span id="line-254">
+</span><span id="line-255">
 <div class="viewcode-block" id="decode_pcm">
 <a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.decode_pcm">[docs]</a>
-</span><span id="line-216"><span class="k">def</span><span class="w"> </span><span class="nf">decode_pcm</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">channels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
-</span><span id="line-217"><span class="w">    </span><span class="sd">"""Decode ``audio`` to raw :data:`PCM_SAMPLE_FORMAT` samples on stdout.</span>
-</span><span id="line-218">
-</span><span id="line-219"><span class="sd">    Analysis passes (loudness envelopes, onset detection) want *samples*, not a</span>
-</span><span id="line-220"><span class="sd">    container. This is the single place muvid turns a media file into raw PCM,</span>
-</span><span id="line-221"><span class="sd">    so ``$MUVID_FFMPEG_TIMEOUT_S`` bounds that decode like every other one.</span>
-</span><span id="line-222">
-</span><span id="line-223"><span class="sd">    Args:</span>
-</span><span id="line-224"><span class="sd">        audio: The media file to decode.</span>
-</span><span id="line-225"><span class="sd">        sample_rate: Resample to this rate. Analysis rarely needs full quality,</span>
-</span><span id="line-226"><span class="sd">            and a low rate keeps a long track's decode cheap.</span>
-</span><span id="line-227"><span class="sd">        channels: Downmix to this many channels (1 = mono).</span>
-</span><span id="line-228">
-</span><span id="line-229"><span class="sd">    Returns:</span>
-</span><span id="line-230"><span class="sd">        The raw PCM bytes — empty when ffmpeg could not decode ``audio``.</span>
-</span><span id="line-231"><span class="sd">        Returning empty rather than raising lets a caller treat "no usable</span>
-</span><span id="line-232"><span class="sd">        audio" as "no effect" (see :func:`muvid.visualize.reactive.flash_filter`).</span>
-</span><span id="line-233"><span class="sd">    """</span>
-</span><span id="line-234">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
-</span><span id="line-235">    <span class="n">proc</span> <span class="o">=</span> <span class="n">_run_bounded</span><span class="p">(</span>
-</span><span id="line-236">        <span class="p">[</span>
-</span><span id="line-237">            <span class="s2">"ffmpeg"</span><span class="p">,</span>
-</span><span id="line-238">            <span class="s2">"-v"</span><span class="p">,</span>
-</span><span id="line-239">            <span class="s2">"error"</span><span class="p">,</span>
-</span><span id="line-240">            <span class="s2">"-i"</span><span class="p">,</span>
-</span><span id="line-241">            <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
-</span><span id="line-242">            <span class="s2">"-ac"</span><span class="p">,</span>
-</span><span id="line-243">            <span class="nb">str</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span>
-</span><span id="line-244">            <span class="s2">"-ar"</span><span class="p">,</span>
-</span><span id="line-245">            <span class="nb">str</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">),</span>
-</span><span id="line-246">            <span class="s2">"-f"</span><span class="p">,</span>
-</span><span id="line-247">            <span class="n">PCM_SAMPLE_FORMAT</span><span class="p">,</span>
-</span><span id="line-248">            <span class="s2">"-"</span><span class="p">,</span>
-</span><span id="line-249">        <span class="p">],</span>
-</span><span id="line-250">        <span class="n">text</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-251">    <span class="p">)</span>
-</span><span id="line-252">    <span class="k">return</span> <span class="n">proc</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="sa">b</span><span class="s2">""</span></div>
+</span><span id="line-256"><span class="k">def</span><span class="w"> </span><span class="nf">decode_pcm</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">channels</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span><span class="p">:</span>
+</span><span id="line-257"><span class="w">    </span><span class="sd">"""Decode ``audio`` to raw :data:`PCM_SAMPLE_FORMAT` samples on stdout.</span>
+</span><span id="line-258">
+</span><span id="line-259"><span class="sd">    Analysis passes (loudness envelopes, onset detection) want *samples*, not a</span>
+</span><span id="line-260"><span class="sd">    container. This is the single place muvid turns a media file into raw PCM,</span>
+</span><span id="line-261"><span class="sd">    so ``$MUVID_FFMPEG_TIMEOUT_S`` bounds that decode like every other one.</span>
+</span><span id="line-262">
+</span><span id="line-263"><span class="sd">    Args:</span>
+</span><span id="line-264"><span class="sd">        audio: The media file to decode.</span>
+</span><span id="line-265"><span class="sd">        sample_rate: Resample to this rate. Analysis rarely needs full quality,</span>
+</span><span id="line-266"><span class="sd">            and a low rate keeps a long track's decode cheap.</span>
+</span><span id="line-267"><span class="sd">        channels: Downmix to this many channels (1 = mono).</span>
+</span><span id="line-268">
+</span><span id="line-269"><span class="sd">    Returns:</span>
+</span><span id="line-270"><span class="sd">        The raw PCM bytes — empty when ffmpeg could not decode ``audio``.</span>
+</span><span id="line-271"><span class="sd">        Returning empty rather than raising lets a caller treat "no usable</span>
+</span><span id="line-272"><span class="sd">        audio" as "no effect" (see :func:`muvid.visualize.reactive.flash_filter`).</span>
+</span><span id="line-273"><span class="sd">    """</span>
+</span><span id="line-274">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
+</span><span id="line-275">    <span class="n">proc</span> <span class="o">=</span> <span class="n">_run_bounded</span><span class="p">(</span>
+</span><span id="line-276">        <span class="p">[</span>
+</span><span id="line-277">            <span class="s2">"ffmpeg"</span><span class="p">,</span>
+</span><span id="line-278">            <span class="s2">"-v"</span><span class="p">,</span>
+</span><span id="line-279">            <span class="s2">"error"</span><span class="p">,</span>
+</span><span id="line-280">            <span class="s2">"-i"</span><span class="p">,</span>
+</span><span id="line-281">            <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
+</span><span id="line-282">            <span class="s2">"-ac"</span><span class="p">,</span>
+</span><span id="line-283">            <span class="nb">str</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span>
+</span><span id="line-284">            <span class="s2">"-ar"</span><span class="p">,</span>
+</span><span id="line-285">            <span class="nb">str</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">),</span>
+</span><span id="line-286">            <span class="s2">"-f"</span><span class="p">,</span>
+</span><span id="line-287">            <span class="n">PCM_SAMPLE_FORMAT</span><span class="p">,</span>
+</span><span id="line-288">            <span class="s2">"-"</span><span class="p">,</span>
+</span><span id="line-289">        <span class="p">],</span>
+</span><span id="line-290">        <span class="n">text</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-291">    <span class="p">)</span>
+</span><span id="line-292">    <span class="k">return</span> <span class="n">proc</span><span class="o">.</span><span class="n">stdout</span> <span class="ow">or</span> <span class="sa">b</span><span class="s2">""</span></div>
 
-</span><span id="line-253">
-</span><span id="line-254">
-</span><span id="line-255"><span class="c1">#: Seconds of raw PCM each chunk of :func:`stream_pcm` holds.</span>
-</span><span id="line-256"><span class="n">PCM_STREAM_CHUNK_S</span> <span class="o">=</span> <span class="mf">10.0</span>
-</span><span id="line-257"><span class="c1">#: How much of a failed decode's stderr an error quotes.</span>
-</span><span id="line-258"><span class="n">_STDERR_TAIL_BYTES</span> <span class="o">=</span> <span class="mi">2000</span>
-</span><span id="line-259">
-</span><span id="line-260">
+</span><span id="line-293">
+</span><span id="line-294">
+</span><span id="line-295"><span class="c1">#: Seconds of raw PCM each chunk of :func:`stream_pcm` holds.</span>
+</span><span id="line-296"><span class="n">PCM_STREAM_CHUNK_S</span> <span class="o">=</span> <span class="mf">10.0</span>
+</span><span id="line-297"><span class="c1">#: How much of a failed decode's stderr an error quotes.</span>
+</span><span id="line-298"><span class="n">_STDERR_TAIL_BYTES</span> <span class="o">=</span> <span class="mi">2000</span>
+</span><span id="line-299">
+</span><span id="line-300">
 <div class="viewcode-block" id="stream_pcm">
 <a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.stream_pcm">[docs]</a>
-</span><span id="line-261"><span class="k">def</span><span class="w"> </span><span class="nf">stream_pcm</span><span class="p">(</span>
-</span><span id="line-262">    <span class="n">audio</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span>
-</span><span id="line-263">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-264">    <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-</span><span id="line-265">    <span class="n">channels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-</span><span id="line-266">    <span class="n">chunk_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">PCM_STREAM_CHUNK_S</span><span class="p">,</span>
-</span><span id="line-267"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]:</span>
-</span><span id="line-268"><span class="w">    </span><span class="sd">"""Decode ``audio`` to raw :data:`PCM_SAMPLE_FORMAT` samples, yielded ``chunk_s`` at</span>
-</span><span id="line-269"><span class="sd">    a time — :func:`decode_pcm`'s streaming twin, for a pass that must not hold a whole</span>
-</span><span id="line-270"><span class="sd">    track (a loudness meter, muvid#219).</span>
-</span><span id="line-271">
-</span><span id="line-272"><span class="sd">    Bounded by ``$MUVID_FFMPEG_TIMEOUT_S`` like every other decode (:func:`_run_bounded`):</span>
-</span><span id="line-273"><span class="sd">    the whole decode, not each read — a watchdog kills ffmpeg when it runs out, and the</span>
-</span><span id="line-274"><span class="sd">    generator raises :class:`FfmpegError`. A failed decode raises too, with ffmpeg's</span>
-</span><span id="line-275"><span class="sd">    message; unlike :func:`decode_pcm` there is no "no effect" to fall back on. Closing</span>
-</span><span id="line-276"><span class="sd">    the generator early stops ffmpeg.</span>
-</span><span id="line-277"><span class="sd">    """</span>
-</span><span id="line-278">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
-</span><span id="line-279">    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-280">        <span class="s2">"ffmpeg"</span><span class="p">,</span> <span class="s2">"-v"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">,</span> <span class="s2">"-nostdin"</span><span class="p">,</span> <span class="s2">"-i"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
-</span><span id="line-281">        <span class="s2">"-ac"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span> <span class="s2">"-ar"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">),</span> <span class="s2">"-f"</span><span class="p">,</span> <span class="n">PCM_SAMPLE_FORMAT</span><span class="p">,</span> <span class="s2">"-"</span><span class="p">,</span>
-</span><span id="line-282">    <span class="p">]</span>  <span class="c1"># fmt: skip</span>
-</span><span id="line-283">    <span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
-</span><span id="line-284">    <span class="n">stderr</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
-</span><span id="line-285">
-</span><span id="line-286">    <span class="k">def</span><span class="w"> </span><span class="nf">drain</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># a full stderr pipe would stall ffmpeg, and the read with it</span>
-</span><span id="line-287">        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">proc</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
-</span><span id="line-288">            <span class="n">stderr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-</span><span id="line-289">            <span class="k">del</span> <span class="n">stderr</span><span class="p">[:</span><span class="o">-</span><span class="n">_STDERR_TAIL_BYTES</span><span class="p">]</span>
-</span><span id="line-290">
-</span><span id="line-291">    <span class="n">timeout</span> <span class="o">=</span> <span class="n">_ffmpeg_timeout</span><span class="p">()</span>
-</span><span id="line-292">    <span class="n">timed_out</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
-</span><span id="line-293">    <span class="n">watchdog</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="n">timeout</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="p">(</span><span class="n">timed_out</span><span class="o">.</span><span class="n">set</span><span class="p">(),</span> <span class="n">proc</span><span class="o">.</span><span class="n">kill</span><span class="p">()))</span>
-</span><span id="line-294">    <span class="n">reader</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">drain</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-295">    <span class="n">reader</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-</span><span id="line-296">    <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
-</span><span id="line-297">        <span class="n">watchdog</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-</span><span id="line-298">    <span class="n">frame</span> <span class="o">=</span> <span class="n">channels</span> <span class="o">*</span> <span class="mi">4</span>
-</span><span id="line-299">    <span class="n">step</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">chunk_s</span> <span class="o">*</span> <span class="n">sample_rate</span><span class="p">))</span> <span class="o">*</span> <span class="n">frame</span>
-</span><span id="line-300">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-301">        <span class="k">while</span> <span class="n">data</span> <span class="o">:=</span> <span class="n">proc</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">step</span><span class="p">):</span>
-</span><span id="line-302">            <span class="n">usable</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="n">frame</span>  <span class="c1"># a decode killed mid-sample</span>
-</span><span id="line-303">            <span class="k">if</span> <span class="n">usable</span><span class="p">:</span>
-</span><span id="line-304">                <span class="k">yield</span> <span class="n">data</span><span class="p">[:</span><span class="n">usable</span><span class="p">]</span>
-</span><span id="line-305">        <span class="n">returncode</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-</span><span id="line-306">    <span class="k">finally</span><span class="p">:</span>
-</span><span id="line-307">        <span class="n">watchdog</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
-</span><span id="line-308">        <span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-309">            <span class="n">proc</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
-</span><span id="line-310">            <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-</span><span id="line-311">        <span class="n">reader</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-</span><span id="line-312">    <span class="k">if</span> <span class="n">timed_out</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># fired after a clean finish: no</span>
-</span><span id="line-313">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
-</span><span id="line-314">            <span class="sa">f</span><span class="s2">"ffmpeg timed out after </span><span class="si">{</span><span class="n">timeout</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">s decoding </span><span class="si">{</span><span class="n">audio</span><span class="si">!s}</span><span class="s2"> "</span>
-</span><span id="line-315">            <span class="sa">f</span><span class="s2">"(bound by $</span><span class="si">{</span><span class="n">FFMPEG_TIMEOUT_ENV_VAR</span><span class="si">}</span><span class="s2">).</span><span class="se">\n\n</span><span class="s2">command: </span><span class="si">{</span><span class="n">shlex</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-316">        <span class="p">)</span>
-</span><span id="line-317">    <span class="k">if</span> <span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-</span><span id="line-318">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
-</span><span id="line-319">            <span class="sa">f</span><span class="s2">"ffmpeg could not decode </span><span class="si">{</span><span class="n">audio</span><span class="si">!s}</span><span class="s2"> (exit </span><span class="si">{</span><span class="n">returncode</span><span class="si">}</span><span class="s2">).</span><span class="se">\n</span><span class="s2">"</span>
-</span><span id="line-320">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">errors</span><span class="o">=</span><span class="s1">'replace'</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-321">        <span class="p">)</span></div>
-
-</span><span id="line-322">
-</span><span id="line-323">
-</span><span id="line-324"><span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-</span><span id="line-325"><span class="k">def</span><span class="w"> </span><span class="nf">_available_filters</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
-</span><span id="line-326">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
-</span><span id="line-327">    <span class="n">proc</span> <span class="o">=</span> <span class="n">_run_bounded</span><span class="p">([</span><span class="s2">"ffmpeg"</span><span class="p">,</span> <span class="s2">"-hide_banner"</span><span class="p">,</span> <span class="s2">"-filters"</span><span class="p">])</span>
-</span><span id="line-328">    <span class="n">names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="line-329">    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">proc</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
-</span><span id="line-330">        <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
-</span><span id="line-331">        <span class="c1"># Lines look like: " T.. showcqt   A-&gt;V   Convert input audio to a CQT..."</span>
-</span><span id="line-332">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Filters:"</span><span class="p">):</span>
-</span><span id="line-333">            <span class="n">names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
-</span><span id="line-334">    <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
-</span><span id="line-335">
-</span><span id="line-336">
-<div class="viewcode-block" id="has_filter">
-<a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.has_filter">[docs]</a>
-</span><span id="line-337"><span class="k">def</span><span class="w"> </span><span class="nf">has_filter</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-</span><span id="line-338"><span class="w">    </span><span class="sd">"""Whether this ffmpeg build has the ``name`` filter compiled in."""</span>
-</span><span id="line-339">    <span class="k">return</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_available_filters</span><span class="p">()</span></div>
-
-</span><span id="line-340">
-</span><span id="line-341">
-<div class="viewcode-block" id="require_filter">
-<a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.require_filter">[docs]</a>
-</span><span id="line-342"><span class="k">def</span><span class="w"> </span><span class="nf">require_filter</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">needed_for</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-343"><span class="w">    </span><span class="sd">"""Raise unless this ffmpeg build has the ``name`` filter.</span>
-</span><span id="line-344">
-</span><span id="line-345"><span class="sd">    Filters like ``drawtext`` (libfreetype) and ``showcqt`` (libfftw/avfilter</span>
-</span><span id="line-346"><span class="sd">    extras) are build-time options, so a working ffmpeg is not enough — the</span>
-</span><span id="line-347"><span class="sd">    specific filter has to be there.</span>
-</span><span id="line-348">
-</span><span id="line-349"><span class="sd">    Raises:</span>
-</span><span id="line-350"><span class="sd">        FfmpegError: Naming the filter, the feature that needs it, and the fix.</span>
-</span><span id="line-351"><span class="sd">    """</span>
-</span><span id="line-352">    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_filter</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+</span><span id="line-301"><span class="k">def</span><span class="w"> </span><span class="nf">stream_pcm</span><span class="p">(</span>
+</span><span id="line-302">    <span class="n">audio</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span>
+</span><span id="line-303">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-304">    <span class="n">sample_rate</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="line-305">    <span class="n">channels</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+</span><span id="line-306">    <span class="n">chunk_s</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">PCM_STREAM_CHUNK_S</span><span class="p">,</span>
+</span><span id="line-307"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterator</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]:</span>
+</span><span id="line-308"><span class="w">    </span><span class="sd">"""Decode ``audio`` to raw :data:`PCM_SAMPLE_FORMAT` samples, yielded ``chunk_s`` at</span>
+</span><span id="line-309"><span class="sd">    a time — :func:`decode_pcm`'s streaming twin, for a pass that must not hold a whole</span>
+</span><span id="line-310"><span class="sd">    track (a loudness meter, muvid#219).</span>
+</span><span id="line-311">
+</span><span id="line-312"><span class="sd">    Bounded by ``$MUVID_FFMPEG_TIMEOUT_S`` like every other decode (:func:`_run_bounded`):</span>
+</span><span id="line-313"><span class="sd">    the whole decode, not each read — a watchdog kills ffmpeg when it runs out, and the</span>
+</span><span id="line-314"><span class="sd">    generator raises :class:`FfmpegError`. A failed decode raises too, with ffmpeg's</span>
+</span><span id="line-315"><span class="sd">    message; unlike :func:`decode_pcm` there is no "no effect" to fall back on. Closing</span>
+</span><span id="line-316"><span class="sd">    the generator early stops ffmpeg.</span>
+</span><span id="line-317"><span class="sd">    """</span>
+</span><span id="line-318">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
+</span><span id="line-319">    <span class="n">cmd</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-320">        <span class="s2">"ffmpeg"</span><span class="p">,</span> <span class="s2">"-v"</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">,</span> <span class="s2">"-nostdin"</span><span class="p">,</span> <span class="s2">"-i"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
+</span><span id="line-321">        <span class="s2">"-ac"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">channels</span><span class="p">),</span> <span class="s2">"-ar"</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">sample_rate</span><span class="p">),</span> <span class="s2">"-f"</span><span class="p">,</span> <span class="n">PCM_SAMPLE_FORMAT</span><span class="p">,</span> <span class="s2">"-"</span><span class="p">,</span>
+</span><span id="line-322">    <span class="p">]</span>  <span class="c1"># fmt: skip</span>
+</span><span id="line-323">    <span class="n">proc</span> <span class="o">=</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">Popen</span><span class="p">(</span><span class="n">cmd</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">,</span> <span class="n">stderr</span><span class="o">=</span><span class="n">subprocess</span><span class="o">.</span><span class="n">PIPE</span><span class="p">)</span>
+</span><span id="line-324">    <span class="n">stderr</span> <span class="o">=</span> <span class="nb">bytearray</span><span class="p">()</span>
+</span><span id="line-325">
+</span><span id="line-326">    <span class="k">def</span><span class="w"> </span><span class="nf">drain</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># a full stderr pipe would stall ffmpeg, and the read with it</span>
+</span><span id="line-327">        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">proc</span><span class="o">.</span><span class="n">stderr</span><span class="p">:</span>
+</span><span id="line-328">            <span class="n">stderr</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+</span><span id="line-329">            <span class="k">del</span> <span class="n">stderr</span><span class="p">[:</span><span class="o">-</span><span class="n">_STDERR_TAIL_BYTES</span><span class="p">]</span>
+</span><span id="line-330">
+</span><span id="line-331">    <span class="n">timeout</span> <span class="o">=</span> <span class="n">_ffmpeg_timeout</span><span class="p">()</span>
+</span><span id="line-332">    <span class="n">timed_out</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+</span><span id="line-333">    <span class="n">watchdog</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Timer</span><span class="p">(</span><span class="n">timeout</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="p">(</span><span class="n">timed_out</span><span class="o">.</span><span class="n">set</span><span class="p">(),</span> <span class="n">proc</span><span class="o">.</span><span class="n">kill</span><span class="p">()))</span>
+</span><span id="line-334">    <span class="n">reader</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">drain</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-335">    <span class="n">reader</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span><span id="line-336">    <span class="k">if</span> <span class="n">timeout</span><span class="p">:</span>
+</span><span id="line-337">        <span class="n">watchdog</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</span><span id="line-338">    <span class="n">frame</span> <span class="o">=</span> <span class="n">channels</span> <span class="o">*</span> <span class="mi">4</span>
+</span><span id="line-339">    <span class="n">step</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">chunk_s</span> <span class="o">*</span> <span class="n">sample_rate</span><span class="p">))</span> <span class="o">*</span> <span class="n">frame</span>
+</span><span id="line-340">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-341">        <span class="k">while</span> <span class="n">data</span> <span class="o">:=</span> <span class="n">proc</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">step</span><span class="p">):</span>
+</span><span id="line-342">            <span class="n">usable</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">%</span> <span class="n">frame</span>  <span class="c1"># a decode killed mid-sample</span>
+</span><span id="line-343">            <span class="k">if</span> <span class="n">usable</span><span class="p">:</span>
+</span><span id="line-344">                <span class="k">yield</span> <span class="n">data</span><span class="p">[:</span><span class="n">usable</span><span class="p">]</span>
+</span><span id="line-345">        <span class="n">returncode</span> <span class="o">=</span> <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</span><span id="line-346">    <span class="k">finally</span><span class="p">:</span>
+</span><span id="line-347">        <span class="n">watchdog</span><span class="o">.</span><span class="n">cancel</span><span class="p">()</span>
+</span><span id="line-348">        <span class="k">if</span> <span class="n">proc</span><span class="o">.</span><span class="n">poll</span><span class="p">()</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-349">            <span class="n">proc</span><span class="o">.</span><span class="n">kill</span><span class="p">()</span>
+</span><span id="line-350">            <span class="n">proc</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+</span><span id="line-351">        <span class="n">reader</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="line-352">    <span class="k">if</span> <span class="n">timed_out</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># fired after a clean finish: no</span>
 </span><span id="line-353">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
-</span><span id="line-354">            <span class="sa">f</span><span class="s2">"This ffmpeg build has no </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> filter, which </span><span class="si">{</span><span class="n">needed_for</span><span class="si">}</span><span class="s2"> needs. "</span>
-</span><span id="line-355">            <span class="s2">"Install a full-featured build. Debian/Ubuntu: 'sudo apt-get install "</span>
-</span><span id="line-356">            <span class="s2">"ffmpeg' (its package pulls in libass and libfreetype). macOS: Homebrew "</span>
-</span><span id="line-357">            <span class="s2">"slimmed 'ffmpeg' in Jan 2026 — it no longer has libass or drawtext; "</span>
-</span><span id="line-358">            <span class="s2">"use 'brew install ffmpeg-full' (keg-only: prepend "</span>
-</span><span id="line-359">            <span class="s2">"/opt/homebrew/opt/ffmpeg-full/bin to PATH) or 'ffmpeg@6'. "</span>
-</span><span id="line-360">            <span class="s2">"Run 'ffmpeg -filters' to see what your build supports."</span>
+</span><span id="line-354">            <span class="sa">f</span><span class="s2">"ffmpeg timed out after </span><span class="si">{</span><span class="n">timeout</span><span class="si">:</span><span class="s2">g</span><span class="si">}</span><span class="s2">s decoding </span><span class="si">{</span><span class="n">audio</span><span class="si">!s}</span><span class="s2"> "</span>
+</span><span id="line-355">            <span class="sa">f</span><span class="s2">"(bound by $</span><span class="si">{</span><span class="n">FFMPEG_TIMEOUT_ENV_VAR</span><span class="si">}</span><span class="s2">).</span><span class="se">\n\n</span><span class="s2">command: </span><span class="si">{</span><span class="n">shlex</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-356">        <span class="p">)</span>
+</span><span id="line-357">    <span class="k">if</span> <span class="n">returncode</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+</span><span id="line-358">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
+</span><span id="line-359">            <span class="sa">f</span><span class="s2">"ffmpeg could not decode </span><span class="si">{</span><span class="n">audio</span><span class="si">!s}</span><span class="s2"> (exit </span><span class="si">{</span><span class="n">returncode</span><span class="si">}</span><span class="s2">).</span><span class="se">\n</span><span class="s2">"</span>
+</span><span id="line-360">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">stderr</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">errors</span><span class="o">=</span><span class="s1">'replace'</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span>
 </span><span id="line-361">        <span class="p">)</span></div>
 
 </span><span id="line-362">
 </span><span id="line-363">
+</span><span id="line-364"><span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</span><span id="line-365"><span class="k">def</span><span class="w"> </span><span class="nf">_available_filters</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">frozenset</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+</span><span id="line-366">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
+</span><span id="line-367">    <span class="n">proc</span> <span class="o">=</span> <span class="n">_run_bounded</span><span class="p">([</span><span class="s2">"ffmpeg"</span><span class="p">,</span> <span class="s2">"-hide_banner"</span><span class="p">,</span> <span class="s2">"-filters"</span><span class="p">])</span>
+</span><span id="line-368">    <span class="n">names</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-369">    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">proc</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">splitlines</span><span class="p">():</span>
+</span><span id="line-370">        <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+</span><span id="line-371">        <span class="c1"># Lines look like: " T.. showcqt   A-&gt;V   Convert input audio to a CQT..."</span>
+</span><span id="line-372">        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Filters:"</span><span class="p">):</span>
+</span><span id="line-373">            <span class="n">names</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+</span><span id="line-374">    <span class="k">return</span> <span class="nb">frozenset</span><span class="p">(</span><span class="n">names</span><span class="p">)</span>
+</span><span id="line-375">
+</span><span id="line-376">
+<div class="viewcode-block" id="has_filter">
+<a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.has_filter">[docs]</a>
+</span><span id="line-377"><span class="k">def</span><span class="w"> </span><span class="nf">has_filter</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+</span><span id="line-378"><span class="w">    </span><span class="sd">"""Whether this ffmpeg build has the ``name`` filter compiled in."""</span>
+</span><span id="line-379">    <span class="k">return</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">_available_filters</span><span class="p">()</span></div>
+
+</span><span id="line-380">
+</span><span id="line-381">
+<div class="viewcode-block" id="require_filter">
+<a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.require_filter">[docs]</a>
+</span><span id="line-382"><span class="k">def</span><span class="w"> </span><span class="nf">require_filter</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">needed_for</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-383"><span class="w">    </span><span class="sd">"""Raise unless this ffmpeg build has the ``name`` filter.</span>
+</span><span id="line-384">
+</span><span id="line-385"><span class="sd">    Filters like ``drawtext`` (libfreetype) and ``showcqt`` (libfftw/avfilter</span>
+</span><span id="line-386"><span class="sd">    extras) are build-time options, so a working ffmpeg is not enough — the</span>
+</span><span id="line-387"><span class="sd">    specific filter has to be there.</span>
+</span><span id="line-388">
+</span><span id="line-389"><span class="sd">    Raises:</span>
+</span><span id="line-390"><span class="sd">        FfmpegError: Naming the filter, the feature that needs it, and the fix.</span>
+</span><span id="line-391"><span class="sd">    """</span>
+</span><span id="line-392">    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_filter</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+</span><span id="line-393">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
+</span><span id="line-394">            <span class="sa">f</span><span class="s2">"This ffmpeg build has no </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> filter, which </span><span class="si">{</span><span class="n">needed_for</span><span class="si">}</span><span class="s2"> needs. "</span>
+</span><span id="line-395">            <span class="s2">"Install a full-featured build. Debian/Ubuntu: 'sudo apt-get install "</span>
+</span><span id="line-396">            <span class="s2">"ffmpeg' (its package pulls in libass and libfreetype). macOS: Homebrew "</span>
+</span><span id="line-397">            <span class="s2">"slimmed 'ffmpeg' in Jan 2026 — it no longer has libass or drawtext; "</span>
+</span><span id="line-398">            <span class="s2">"use 'brew install ffmpeg-full' (keg-only: prepend "</span>
+</span><span id="line-399">            <span class="s2">"/opt/homebrew/opt/ffmpeg-full/bin to PATH) or 'ffmpeg@6'. "</span>
+</span><span id="line-400">            <span class="s2">"Run 'ffmpeg -filters' to see what your build supports."</span>
+</span><span id="line-401">        <span class="p">)</span></div>
+
+</span><span id="line-402">
+</span><span id="line-403">
 <div class="viewcode-block" id="measure_loudness">
 <a class="viewcode-back" href="../../../_autosummary/muvid.visualize.ffmpeg.html#muvid.visualize.measure_loudness">[docs]</a>
-</span><span id="line-364"><span class="k">def</span><span class="w"> </span><span class="nf">measure_loudness</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Loudness</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Loudness</span><span class="p">:</span>
-</span><span id="line-365"><span class="w">    </span><span class="sd">"""Analyse ``audio`` (loudnorm pass 1) and return ``target`` with the result.</span>
-</span><span id="line-366">
-</span><span id="line-367"><span class="sd">    Two-pass ``loudnorm`` is the only accurate way to hit a loudness target:</span>
-</span><span id="line-368"><span class="sd">    pass 1 measures the program loudness, pass 2 applies a *linear* gain from</span>
-</span><span id="line-369"><span class="sd">    that measurement. Single-pass loudnorm is a dynamic normalizer and will</span>
-</span><span id="line-370"><span class="sd">    both miss the target and squash the dynamics of music.</span>
-</span><span id="line-371">
-</span><span id="line-372"><span class="sd">    Args:</span>
-</span><span id="line-373"><span class="sd">        audio: The audio (or video) file to measure.</span>
-</span><span id="line-374"><span class="sd">        target: The loudness target; a default one is used when omitted.</span>
-</span><span id="line-375">
-</span><span id="line-376"><span class="sd">    Returns:</span>
-</span><span id="line-377"><span class="sd">        A new :class:`Loudness` with ``measured`` populated.</span>
-</span><span id="line-378"><span class="sd">    """</span>
-</span><span id="line-379">    <span class="n">target</span> <span class="o">=</span> <span class="n">target</span> <span class="ow">or</span> <span class="n">Loudness</span><span class="p">()</span>
-</span><span id="line-380">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
-</span><span id="line-381">    <span class="n">proc</span> <span class="o">=</span> <span class="n">_run_bounded</span><span class="p">(</span>
-</span><span id="line-382">        <span class="p">[</span>
-</span><span id="line-383">            <span class="s2">"ffmpeg"</span><span class="p">,</span>
-</span><span id="line-384">            <span class="s2">"-hide_banner"</span><span class="p">,</span>
-</span><span id="line-385">            <span class="s2">"-i"</span><span class="p">,</span>
-</span><span id="line-386">            <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
-</span><span id="line-387">            <span class="s2">"-af"</span><span class="p">,</span>
-</span><span id="line-388">            <span class="sa">f</span><span class="s2">"loudnorm=I=</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">integrated</span><span class="si">}</span><span class="s2">:TP=</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">true_peak</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-389">            <span class="sa">f</span><span class="s2">":LRA=</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">lra</span><span class="si">}</span><span class="s2">:print_format=json"</span><span class="p">,</span>
-</span><span id="line-390">            <span class="s2">"-f"</span><span class="p">,</span>
-</span><span id="line-391">            <span class="s2">"null"</span><span class="p">,</span>
-</span><span id="line-392">            <span class="s2">"-"</span><span class="p">,</span>
-</span><span id="line-393">        <span class="p">]</span>
-</span><span id="line-394">    <span class="p">)</span>
-</span><span id="line-395">    <span class="n">measured</span> <span class="o">=</span> <span class="n">_last_json_object</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">stderr</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
-</span><span id="line-396">    <span class="k">if</span> <span class="n">measured</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-397">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
-</span><span id="line-398">            <span class="sa">f</span><span class="s2">"Could not measure the loudness of </span><span class="si">{</span><span class="n">audio</span><span class="si">!s}</span><span class="s2">.</span><span class="se">\n</span><span class="s2">"</span>
-</span><span id="line-399">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">stderr</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()[</span><span class="o">-</span><span class="mi">500</span><span class="p">:]</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-400">        <span class="p">)</span>
-</span><span id="line-401">    <span class="k">return</span> <span class="n">Loudness</span><span class="p">(</span>
-</span><span id="line-402">        <span class="n">integrated</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">integrated</span><span class="p">,</span>
-</span><span id="line-403">        <span class="n">true_peak</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">true_peak</span><span class="p">,</span>
-</span><span id="line-404">        <span class="n">lra</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">lra</span><span class="p">,</span>
-</span><span id="line-405">        <span class="n">measured</span><span class="o">=</span><span class="n">measured</span><span class="p">,</span>
-</span><span id="line-406">    <span class="p">)</span></div>
+</span><span id="line-404"><span class="k">def</span><span class="w"> </span><span class="nf">measure_loudness</span><span class="p">(</span><span class="n">audio</span><span class="p">:</span> <span class="n">PathLike</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">Loudness</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Loudness</span><span class="p">:</span>
+</span><span id="line-405"><span class="w">    </span><span class="sd">"""Analyse ``audio`` (loudnorm pass 1) and return ``target`` with the result.</span>
+</span><span id="line-406">
+</span><span id="line-407"><span class="sd">    Two-pass ``loudnorm`` is the only accurate way to hit a loudness target:</span>
+</span><span id="line-408"><span class="sd">    pass 1 measures the program loudness, pass 2 applies a *linear* gain from</span>
+</span><span id="line-409"><span class="sd">    that measurement. Single-pass loudnorm is a dynamic normalizer and will</span>
+</span><span id="line-410"><span class="sd">    both miss the target and squash the dynamics of music.</span>
+</span><span id="line-411">
+</span><span id="line-412"><span class="sd">    Args:</span>
+</span><span id="line-413"><span class="sd">        audio: The audio (or video) file to measure.</span>
+</span><span id="line-414"><span class="sd">        target: The loudness target; a default one is used when omitted.</span>
+</span><span id="line-415">
+</span><span id="line-416"><span class="sd">    Returns:</span>
+</span><span id="line-417"><span class="sd">        A new :class:`Loudness` with ``measured`` populated.</span>
+</span><span id="line-418"><span class="sd">    """</span>
+</span><span id="line-419">    <span class="n">target</span> <span class="o">=</span> <span class="n">target</span> <span class="ow">or</span> <span class="n">Loudness</span><span class="p">()</span>
+</span><span id="line-420">    <span class="n">require_ffmpeg</span><span class="p">(</span><span class="s2">"ffmpeg"</span><span class="p">)</span>
+</span><span id="line-421">    <span class="n">proc</span> <span class="o">=</span> <span class="n">_run_bounded</span><span class="p">(</span>
+</span><span id="line-422">        <span class="p">[</span>
+</span><span id="line-423">            <span class="s2">"ffmpeg"</span><span class="p">,</span>
+</span><span id="line-424">            <span class="s2">"-hide_banner"</span><span class="p">,</span>
+</span><span id="line-425">            <span class="s2">"-i"</span><span class="p">,</span>
+</span><span id="line-426">            <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
+</span><span id="line-427">            <span class="s2">"-af"</span><span class="p">,</span>
+</span><span id="line-428">            <span class="sa">f</span><span class="s2">"loudnorm=I=</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">integrated</span><span class="si">}</span><span class="s2">:TP=</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">true_peak</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-429">            <span class="sa">f</span><span class="s2">":LRA=</span><span class="si">{</span><span class="n">target</span><span class="o">.</span><span class="n">lra</span><span class="si">}</span><span class="s2">:print_format=json"</span><span class="p">,</span>
+</span><span id="line-430">            <span class="s2">"-f"</span><span class="p">,</span>
+</span><span id="line-431">            <span class="s2">"null"</span><span class="p">,</span>
+</span><span id="line-432">            <span class="s2">"-"</span><span class="p">,</span>
+</span><span id="line-433">        <span class="p">]</span>
+</span><span id="line-434">    <span class="p">)</span>
+</span><span id="line-435">    <span class="n">measured</span> <span class="o">=</span> <span class="n">_last_json_object</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">stderr</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span>
+</span><span id="line-436">    <span class="k">if</span> <span class="n">measured</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-437">        <span class="k">raise</span> <span class="n">FfmpegError</span><span class="p">(</span>
+</span><span id="line-438">            <span class="sa">f</span><span class="s2">"Could not measure the loudness of </span><span class="si">{</span><span class="n">audio</span><span class="si">!s}</span><span class="s2">.</span><span class="se">\n</span><span class="s2">"</span>
+</span><span id="line-439">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="p">(</span><span class="n">proc</span><span class="o">.</span><span class="n">stderr</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">''</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()[</span><span class="o">-</span><span class="mi">500</span><span class="p">:]</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-440">        <span class="p">)</span>
+</span><span id="line-441">    <span class="k">return</span> <span class="n">Loudness</span><span class="p">(</span>
+</span><span id="line-442">        <span class="n">integrated</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">integrated</span><span class="p">,</span>
+</span><span id="line-443">        <span class="n">true_peak</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">true_peak</span><span class="p">,</span>
+</span><span id="line-444">        <span class="n">lra</span><span class="o">=</span><span class="n">target</span><span class="o">.</span><span class="n">lra</span><span class="p">,</span>
+</span><span id="line-445">        <span class="n">measured</span><span class="o">=</span><span class="n">measured</span><span class="p">,</span>
+</span><span id="line-446">    <span class="p">)</span></div>
 
-</span><span id="line-407">
-</span><span id="line-408">
-</span><span id="line-409"><span class="k">def</span><span class="w"> </span><span class="nf">_last_json_object</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-410"><span class="w">    </span><span class="sd">"""Extract the last ``{...}`` block from ffmpeg's stderr (loudnorm's report)."""</span>
-</span><span id="line-411">    <span class="n">start</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s2">"{"</span><span class="p">)</span>
-</span><span id="line-412">    <span class="n">end</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s2">"}"</span><span class="p">)</span>
-</span><span id="line-413">    <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">end</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="n">start</span><span class="p">:</span>
-</span><span id="line-414">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-415">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-416">        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">text</span><span class="p">[</span><span class="n">start</span> <span class="p">:</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
-</span><span id="line-417">    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
-</span><span id="line-418">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-447">
+</span><span id="line-448">
+</span><span id="line-449"><span class="k">def</span><span class="w"> </span><span class="nf">_last_json_object</span><span class="p">(</span><span class="n">text</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-450"><span class="w">    </span><span class="sd">"""Extract the last ``{...}`` block from ffmpeg's stderr (loudnorm's report)."""</span>
+</span><span id="line-451">    <span class="n">start</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s2">"{"</span><span class="p">)</span>
+</span><span id="line-452">    <span class="n">end</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rfind</span><span class="p">(</span><span class="s2">"}"</span><span class="p">)</span>
+</span><span id="line-453">    <span class="k">if</span> <span class="n">start</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">end</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span> <span class="ow">or</span> <span class="n">end</span> <span class="o">&lt;</span> <span class="n">start</span><span class="p">:</span>
+</span><span id="line-454">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-455">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-456">        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">text</span><span class="p">[</span><span class="n">start</span> <span class="p">:</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+</span><span id="line-457">    <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+</span><span id="line-458">        <span class="k">return</span> <span class="kc">None</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -652,7 +695,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=e14b0eed"></script>
+    <script src="../../../_static/documentation_options.js?v=d6b38487"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

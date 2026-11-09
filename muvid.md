@@ -1,4 +1,4 @@
-> built 2026-11-09 02:41 UTC from 560ee71 (main) · muvid 0.0.171. Details: build_info.json
+> built 2026-11-09 03:18 UTC from 76168f3 (main) · muvid 0.0.172. Details: build_info.json
 
 # index.html.md
 
@@ -3484,6 +3484,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`derive_cuts`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                                                               |
 | [`exclude_unvouched`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                                                                                                                                                                                   |
 | [`fill_gaps`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                                                                                                                                                                               |
+| [`free_length`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.free_length)(a)                                   | How much of clip `a` a FREE cut may read: its picture's own length where that is recorded, else the placement's `duration_s`.                                                                                                                                                                                                                                                                                                     |
 | [`in_point_bounds`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce.                                                                                                                                                                |
 | [`judge_song_match`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.judge_song_match)(song_match)                     | The verdict of [`song_opinion()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.song_opinion), or `None` when there is no record.                                                                                                                                                                                                                                                                                                                |
 | [`longest_span`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                                           |
@@ -3502,6 +3503,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`validate_edl`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                                                                  |
 | [`vouches_for`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                                                                    |
 | [`weak_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.weak_stretches)(e, a)                             | Where synced cut `e` shows its clip `a` with sync nobody can vouch for: the whole cut when `a` is not [`reliable`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment.reliable), else its unverified stretches ([`unverified_in_cut()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_in_cut)) longer than `_weak_floor()`.                                                                                                                                |
+| [`with_pictures`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_pictures)(aligns, clips)                     | `aligns` with each video's recorded PICTURE length (`picture_s`, from its manifest row's `picture_duration`) — what a free cut is bounded by (muvid#322).                                                                                                                                                                                                                                                                         |
 | [`with_start`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                                                                  |
 
 ### Classes
@@ -3825,7 +3827,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
+### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None, picture_s=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3851,6 +3853,14 @@ fraction that does not look at the runner-up.
 Whether the clip intersects the song timeline at all. A clip that does NOT is
 still recorded — a source must never leave the addressable set as a side effect
 of being measured. Selection filters on this; reporting shows it with a reason.
+
+#### picture_s *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
+the audio-measured `duration_s` stands). Derived from the manifest on load
+(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+a free cut reads only the picture, so [`placed_as()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as) bounds it by this
+(muvid#322).
 
 #### reliable *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= True*
 
@@ -4534,6 +4544,23 @@ rule; the tests pin both so the coherence stays deliberate.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry)]
 
+### muvid.footage.edl.free_length(a)
+
+How much of clip `a` a FREE cut may read: its picture’s own length where that
+is recorded, else the placement’s `duration_s`. A free cut reads the picture alone
+(`-an`), so the audio-measured length is the wrong bound for it (muvid#322) — and
+the ONE rule the gate ([`placed_as()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)), the planner and the in-point swap share.
+
+```pycon
+>>> free_length(unplaced('c1', 10.0))
+10.0
+>>> free_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+6.0
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 ### muvid.footage.edl.in_point_bounds(cut, , clip_duration_s, next_transition=None, edge_s=0.0)
 
 The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of
@@ -4665,6 +4692,13 @@ nothing to refuse.
 >>> p = placed_as(e, a)
 >>> p.offset_s, p.reliable, p.source, p.duration_s
 (28.0, True, 'free', 10.0)
+```
+
+A clip whose picture is shorter than its audio bounds a free cut by the picture:
+
+```pycon
+>>> placed_as(e, replace(a, picture_s=6.0)).duration_s
+6.0
 >>> clip_in_of(e, a)
 2.0
 ```
@@ -4954,6 +4988,23 @@ gap and a free cut (cut to the music, it claims no sync).
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WeakStretch`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.WeakStretch)]
+
+### muvid.footage.edl.with_pictures(aligns, clips)
+
+`aligns` with each video’s recorded PICTURE length (`picture_s`, from its
+manifest row’s `picture_duration`) — what a free cut is bounded by (muvid#322).
+A clip with none recorded is returned unchanged.
+
+```pycon
+>>> a = unplaced('c1', 10.0)
+>>> with_pictures([a], [{'clip_id': 'c1', 'picture_duration': 6.0}])[0].picture_s
+6.0
+>>> with_pictures([a], [{'clip_id': 'c1'}])[0].picture_s is None
+True
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`FootageAlignment`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.FootageAlignment)]
 
 ### muvid.footage.edl.with_start(e, start, , bounded=True)
 
@@ -5641,7 +5692,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
+### *class* muvid.footage.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None, picture_s=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -5667,6 +5718,14 @@ fraction that does not look at the runner-up.
 Whether the clip intersects the song timeline at all. A clip that does NOT is
 still recorded — a source must never leave the addressable set as a side effect
 of being measured. Selection filters on this; reporting shows it with a reason.
+
+#### picture_s *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
+the audio-measured `duration_s` stands). Derived from the manifest on load
+(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+a free cut reads only the picture, so `placed_as()` bounds it by this
+(muvid#322).
 
 #### reliable *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= True*
 
@@ -18878,6 +18937,7 @@ substrate under [`muvid.visualize.canvas`](_autosummary/muvid.visualize.canvas.h
 | [`has_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
 | [`measure_loudness`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
 | [`media_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
+| [`picture_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.picture_duration)(media)                          | Duration of `media`'s first VIDEO stream in seconds, or `None` when none can be told.                                                                                                                                                                                                      |
 | [`probe`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
 | [`require_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
 | [`require_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
@@ -18999,6 +19059,21 @@ Falls back to the longest stream duration when the container has none.
   [**FfmpegError**](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) – The duration could not be determined.
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.visualize.ffmpeg.picture_duration(media)
+
+Duration of `media`’s first VIDEO stream in seconds, or `None` when none can
+be told.
+
+Not [`media_duration()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.media_duration): that is the container’s, normally its longest stream,
+and a phone video’s audio track is often shorter or longer than its picture. A cut
+that reads only the picture (`-an`) is bounded by this one (muvid#322). Matroska
+and WebM give a stream no `duration` of its own, so the stream’s `DURATION` tag
+(`HH:MM:SS.ffffff`) and then `nb_frames / r_frame_rate` stand in; cover art
+(`attached_pic`) is not a picture track.
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.visualize.ffmpeg.probe(media)
 
@@ -20710,20 +20785,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 02:41 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/560ee71b5660016ec70bd8cb4a5ffcd69ed67f30"><code>560ee71</code></a> on branch <code>main</code>, for **muvid 0.0.171** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 03:18 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/76168f31d01416e4060f41d1bfe73df3312b7b0b"><code>76168f3</code></a> on branch <code>main</code>, for **muvid 0.0.172** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.171) is ahead of the latest release on PyPI (0.0.170): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/560ee71b5660016ec70bd8cb4a5ffcd69ed67f30"><code>560ee71b5660016ec70bd8cb4a5ffcd69ed67f30</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/76168f31d01416e4060f41d1bfe73df3312b7b0b"><code>76168f31d01416e4060f41d1bfe73df3312b7b0b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.171</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.172</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20732,9 +20805,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42550963117">42550963117</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42554422002">42554422002</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>6a2346092c5d81564ad5dc1d9219c94301d3c6d3</code> (in the history of the built commit) |
+| Event commit | <code>fa31c44747def1bf715e340ba35c9b845e592ceb</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20759,13 +20832,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.170/">0.0.170</a>, older than the documented version (0.0.171).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.172/">0.0.172</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 560ee71b5660016ec70bd8cb4a5ffcd69ed67f30
+git checkout 76168f31d01416e4060f41d1bfe73df3312b7b0b
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

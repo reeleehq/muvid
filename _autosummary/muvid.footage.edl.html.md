@@ -76,6 +76,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`derive_cuts`](#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                                                               |
 | [`exclude_unvouched`](#muvid.footage.edl.exclude_unvouched)(edl, alignments)               | Set aside the spans of an AUTO edit whose only footage is unvouched (muvid#88).                                                                                                                                                                                                                                                                                                                                                   |
 | [`fill_gaps`](#muvid.footage.edl.fill_gaps)(entries, song_duration, \*[, start])   | Make an edit span the WHOLE song by inserting explicit gap entries.                                                                                                                                                                                                                                                                                                                                                               |
+| [`free_length`](#muvid.footage.edl.free_length)(a)                                   | How much of clip `a` a FREE cut may read: its picture's own length where that is recorded, else the placement's `duration_s`.                                                                                                                                                                                                                                                                                                     |
 | [`in_point_bounds`](#muvid.footage.edl.in_point_bounds)(cut, \*, clip_duration_s[, ...]) | The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of `clip_duration_s` seconds — THE owner of that arithmetic (muvid#192), so every writer that picks an in-point asks the question `_validate_transition()` and the containment check enforce.                                                                                                                                                                |
 | [`judge_song_match`](#muvid.footage.edl.judge_song_match)(song_match)                     | The verdict of [`song_opinion()`](#muvid.footage.edl.song_opinion), or `None` when there is no record.                                                                                                                                                                                                                                                                                                                |
 | [`longest_span`](#muvid.footage.edl.longest_span)(clip_duration_s, \*[, rate, ...])   | The longest span (song seconds) a free cut can take from a clip of `clip_duration_s` seconds with these blends and `edge_s` kept at BOTH ends — the question "can this clip hold this piece" asked in [`in_point_bounds()`](#muvid.footage.edl.in_point_bounds)' own terms (muvid#203), so a planner deciding to split a piece and the in-point it then picks cannot disagree.                                           |
@@ -94,6 +95,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`validate_edl`](#muvid.footage.edl.validate_edl)(edl, alignments, song_duration, \*) | Validate an EDL (from a strategy OR a caller) — the ONE gate before any cutting.                                                                                                                                                                                                                                                                                                                                                  |
 | [`vouches_for`](#muvid.footage.edl.vouches_for)(\*, confidence, support[, ...])      | Does the aligner vouch for this offset? The ONE place that verdict is reached.                                                                                                                                                                                                                                                                                                                                                    |
 | [`weak_stretches`](#muvid.footage.edl.weak_stretches)(e, a)                             | Where synced cut `e` shows its clip `a` with sync nobody can vouch for: the whole cut when `a` is not [`reliable`](#muvid.footage.edl.FootageAlignment.reliable), else its unverified stretches ([`unverified_in_cut()`](#muvid.footage.edl.unverified_in_cut)) longer than `_weak_floor()`.                                                                                                                                |
+| [`with_pictures`](#muvid.footage.edl.with_pictures)(aligns, clips)                     | `aligns` with each video's recorded PICTURE length (`picture_s`, from its manifest row's `picture_duration`) — what a free cut is bounded by (muvid#322).                                                                                                                                                                                                                                                                         |
 | [`with_start`](#muvid.footage.edl.with_start)(e, start, \*[, bounded])              | `e` starting at song time `start` and showing, at every moment it still covers, exactly the footage it showed before — its map from song time to clip time kept.                                                                                                                                                                                                                                                                  |
 
 ### Classes
@@ -417,7 +419,7 @@ JSON-ready. `support`/`margin` stay `None` — “not measured” is not zero.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None)
+### *class* muvid.footage.edl.FootageAlignment(clip_id, offset_s, confidence, duration_s, coverage, overlaps=True, support=None, reliable=True, window_s=None, hop_s=None, margin=None, source='measured', spans=None, song_match=None, picture_s=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -443,6 +445,14 @@ fraction that does not look at the runner-up.
 Whether the clip intersects the song timeline at all. A clip that does NOT is
 still recorded — a source must never leave the addressable set as a side effect
 of being measured. Selection filters on this; reporting shows it with a reason.
+
+#### picture_s *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
+the audio-measured `duration_s` stands). Derived from the manifest on load
+(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+a free cut reads only the picture, so [`placed_as()`](#muvid.footage.edl.placed_as) bounds it by this
+(muvid#322).
 
 #### reliable *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= True*
 
@@ -1126,6 +1136,23 @@ rule; the tests pin both so the coherence stays deliberate.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`EdlEntry`](#muvid.footage.edl.EdlEntry)]
 
+### muvid.footage.edl.free_length(a)
+
+How much of clip `a` a FREE cut may read: its picture’s own length where that
+is recorded, else the placement’s `duration_s`. A free cut reads the picture alone
+(`-an`), so the audio-measured length is the wrong bound for it (muvid#322) — and
+the ONE rule the gate ([`placed_as()`](#muvid.footage.edl.placed_as)), the planner and the in-point swap share.
+
+```pycon
+>>> free_length(unplaced('c1', 10.0))
+10.0
+>>> free_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+6.0
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
 ### muvid.footage.edl.in_point_bounds(cut, , clip_duration_s, next_transition=None, edge_s=0.0)
 
 The legal `source_in` values `(lo, hi)` for free cut `cut` in a clip of
@@ -1257,6 +1284,13 @@ nothing to refuse.
 >>> p = placed_as(e, a)
 >>> p.offset_s, p.reliable, p.source, p.duration_s
 (28.0, True, 'free', 10.0)
+```
+
+A clip whose picture is shorter than its audio bounds a free cut by the picture:
+
+```pycon
+>>> placed_as(e, replace(a, picture_s=6.0)).duration_s
+6.0
 >>> clip_in_of(e, a)
 2.0
 ```
@@ -1546,6 +1580,23 @@ gap and a free cut (cut to the music, it claims no sync).
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`WeakStretch`](#muvid.footage.edl.WeakStretch)]
+
+### muvid.footage.edl.with_pictures(aligns, clips)
+
+`aligns` with each video’s recorded PICTURE length (`picture_s`, from its
+manifest row’s `picture_duration`) — what a free cut is bounded by (muvid#322).
+A clip with none recorded is returned unchanged.
+
+```pycon
+>>> a = unplaced('c1', 10.0)
+>>> with_pictures([a], [{'clip_id': 'c1', 'picture_duration': 6.0}])[0].picture_s
+6.0
+>>> with_pictures([a], [{'clip_id': 'c1'}])[0].picture_s is None
+True
+```
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`FootageAlignment`](#muvid.footage.edl.FootageAlignment)]
 
 ### muvid.footage.edl.with_start(e, start, , bounded=True)
 

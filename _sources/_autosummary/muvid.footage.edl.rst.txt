@@ -52,6 +52,7 @@ muvid.footage.edl
       derive_cuts
       exclude_unvouched
       fill_gaps
+      free_length
       in_point_bounds
       judge_song_match
       longest_span
@@ -70,6 +71,7 @@ muvid.footage.edl
       validate_edl
       vouches_for
       weak_stretches
+      with_pictures
       with_start
    
    .. rubric:: Classes

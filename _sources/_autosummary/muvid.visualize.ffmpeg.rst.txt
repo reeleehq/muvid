@@ -21,6 +21,7 @@ muvid.visualize.ffmpeg
       has_filter
       measure_loudness
       media_duration
+      picture_duration
       probe
       require_ffmpeg
       require_filter
