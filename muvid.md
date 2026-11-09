@@ -1,4 +1,4 @@
-> built 2026-11-09 06:26 UTC from d21348b (main) · muvid 0.0.179. Details: build_info.json
+> built 2026-11-09 06:41 UTC from 42a0699 (main) · muvid 0.0.180. Details: build_info.json
 
 # index.html.md
 
@@ -8056,6 +8056,7 @@ Commercial-clean (librosa beats via `mixing[beats]`, numpy motion). See the desi
 
 | [`beat_alignment_score`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.beat_alignment_score)(event_times, beat_times, \*)   | The Beat Alignment Score of motion `event_times` (kinematic beats, seconds) against music `beat_times`: the mean of `exp(-(d/σ)²/2)`, `d` the distance to the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).   |
 |------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`interval_midpoints`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.interval_midpoints)(times)                           | The time each sample's measurement represents: the midpoint of the interval from the previous sample to it (sample 0, which measures nothing, keeps its own time).                                                                   |
 | [`motionbeat_tracks`](_autosummary/muvid.footage.scoring.motionbeat.html.md#muvid.footage.scoring.motionbeat.motionbeat_tracks)(frame_pass, \*, clip_id, ...)     | The two motion-to-beat tracks for one clip.                                                                                                                                                                                          |
 
 ### muvid.footage.scoring.motionbeat.BAS_DIRECTIONS *= ('motion_to_music', 'music_to_motion')*
@@ -8091,6 +8092,23 @@ either list is empty: no evidence is not a score of 0. A non-finite time or a
 
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.scoring.motionbeat.interval_midpoints(times)
+
+The time each sample’s measurement represents: the midpoint of the interval from
+the previous sample to it (sample 0, which measures nothing, keeps its own time).
+Each pair’s own midpoint, not half a median spacing: on a variable-frame-rate clip
+the spacing is not uniform (muvid#347).
+
+```pycon
+>>> interval_midpoints(np.array([0.0, 0.2, 0.4])).round(6).tolist()
+[0.0, 0.1, 0.3]
+>>> interval_midpoints(np.array([0.0, 0.2, 1.0])).round(6).tolist()
+[0.0, 0.1, 0.6]
+```
+
+* **Return type:**
+  `ndarray`
 
 ### muvid.footage.scoring.motionbeat.motionbeat_tracks(frame_pass, , clip_id, offset_s, beat_times, onset_env, onset_hop_s, t0, hop_s, n)
 
@@ -16162,6 +16180,15 @@ WHICH picture is the cover lives with the caller (`muvid.mcp._cover`).
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+#### update_render_meta(render_id, changes)
+
+Merge `changes` into a render’s existing `meta.json` under its lock, so a
+key another writer set meanwhile (an `organise` title, the ref backfill) is kept
+rather than replaced by a whole-record rewrite (muvid#348).
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### *class* muvid.mcp.workspace.VisualizerWorkspace(email, root)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
@@ -20948,7 +20975,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 06:26 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d21348b5d1a94bb7d33124bdf8532f6f7531debe"><code>d21348b</code></a> on branch <code>main</code>, for **muvid 0.0.179** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 06:41 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/42a0699f357bde658544b8f6d7cf0dfc01188337"><code>42a0699</code></a> on branch <code>main</code>, for **muvid 0.0.180** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -20957,9 +20984,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d21348b5d1a94bb7d33124bdf8532f6f7531debe"><code>d21348b5d1a94bb7d33124bdf8532f6f7531debe</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/42a0699f357bde658544b8f6d7cf0dfc01188337"><code>42a0699f357bde658544b8f6d7cf0dfc01188337</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.179</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.180</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20968,9 +20995,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42571732444">42571732444</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42573125591">42573125591</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>5a174e4d423e4a36b4305550f0eaa5d754214baa</code> (in the history of the built commit) |
+| Event commit | <code>7242159cb2893222e5ef5477dd5a506ee1adec00</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20995,13 +21022,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.179/">0.0.179</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.180/">0.0.180</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout d21348b5d1a94bb7d33124bdf8532f6f7531debe
+git checkout 42a0699f357bde658544b8f6d7cf0dfc01188337
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

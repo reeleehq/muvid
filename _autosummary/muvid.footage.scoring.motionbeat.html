@@ -179,7 +179,10 @@ public one belongs beside mixing’s overlap-normalised cross-correlation.)</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.beat_alignment_score" title="muvid.footage.scoring.motionbeat.beat_alignment_score"><code class="xref py py-obj docutils literal notranslate"><span class="pre">beat_alignment_score</span></code></a>(event_times, beat_times, *)</p></td>
 <td><p>The Beat Alignment Score of motion <code class="docutils literal notranslate"><span class="pre">event_times</span></code> (kinematic beats, seconds) against music <code class="docutils literal notranslate"><span class="pre">beat_times</span></code>: the mean of <code class="docutils literal notranslate"><span class="pre">exp(-(d/σ)²/2)</span></code>, <code class="docutils literal notranslate"><span class="pre">d</span></code> the distance to the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks" title="muvid.footage.scoring.motionbeat.motionbeat_tracks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">motionbeat_tracks</span></code></a>(frame_pass, *, clip_id, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.interval_midpoints" title="muvid.footage.scoring.motionbeat.interval_midpoints"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interval_midpoints</span></code></a>(times)</p></td>
+<td><p>The time each sample's measurement represents: the midpoint of the interval from the previous sample to it (sample 0, which measures nothing, keeps its own time).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks" title="muvid.footage.scoring.motionbeat.motionbeat_tracks"><code class="xref py py-obj docutils literal notranslate"><span class="pre">motionbeat_tracks</span></code></a>(frame_pass, *, clip_id, ...)</p></td>
 <td><p>The two motion-to-beat tracks for one clip.</p></td>
 </tr>
 </tbody>
@@ -224,6 +227,25 @@ either list is empty: no evidence is not a score of 0. A non-finite time or a
 </dl>
 </dd></dl>
 <dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.scoring.motionbeat.interval_midpoints">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.motionbeat.</span></span><span class="sig-name descname"><span class="pre">interval_midpoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">times</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/motionbeat.html#interval_midpoints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.motionbeat.interval_midpoints" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.motionbeat.interval_midpoints'">¶</a></dt>
+<dd><p>The time each sample’s measurement represents: the midpoint of the interval from
+the previous sample to it (sample 0, which measures nothing, keeps its own time).
+Each pair’s own midpoint, not half a median spacing: on a variable-frame-rate clip
+the spacing is not uniform (muvid#347).</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="gp">&gt;&gt;&gt; </span><span class="n">interval_midpoints</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+</span><span id="line-2"><span class="go">[0.0, 0.1, 0.3]</span>
+</span><span id="line-3"><span class="gp">&gt;&gt;&gt; </span><span class="n">interval_midpoints</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]))</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="mi">6</span><span class="p">)</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+</span><span id="line-4"><span class="go">[0.0, 0.1, 0.6]</span>
+</span></code></pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><code class="xref py py-class docutils literal notranslate"><span class="pre">ndarray</span></code></span></p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.scoring.motionbeat.motionbeat_tracks">
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.scoring.motionbeat.</span></span><span class="sig-name descname"><span class="pre">motionbeat_tracks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">frame_pass</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">clip_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beat_times</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_env</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">onset_hop_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hop_s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/scoring/motionbeat.html#motionbeat_tracks"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.scoring.motionbeat.motionbeat_tracks'">¶</a></dt>
 <dd><p>The two motion-to-beat tracks for one clip.</p>
@@ -240,6 +262,7 @@ either list is empty: no evidence is not a score of 0. A non-finite time or a
 <li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS'" class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_DIRECTIONS"><code class="docutils literal notranslate"><span class="pre">BAS_DIRECTIONS</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.BAS_SIGMA_S'" class="reference internal" href="#muvid.footage.scoring.motionbeat.BAS_SIGMA_S"><code class="docutils literal notranslate"><span class="pre">BAS_SIGMA_S</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.beat_alignment_score'" class="reference internal" href="#muvid.footage.scoring.motionbeat.beat_alignment_score"><code class="docutils literal notranslate"><span class="pre">beat_alignment_score()</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.interval_midpoints'" class="reference internal" href="#muvid.footage.scoring.motionbeat.interval_midpoints"><code class="docutils literal notranslate"><span class="pre">interval_midpoints()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.scoring.motionbeat.motionbeat_tracks'" class="reference internal" href="#muvid.footage.scoring.motionbeat.motionbeat_tracks"><code class="docutils literal notranslate"><span class="pre">motionbeat_tracks()</span></code></a></li>
 </ul>
 </div>
@@ -254,7 +277,7 @@ either list is empty: no evidence is not a score of 0. A non-finite time or a
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=c2d83de2"></script>
+<script src="../_static/documentation_options.js?v=30b133cb"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -152,6 +152,15 @@ WHICH picture is the cover lives with the caller (`muvid.mcp._cover`).
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+#### update_render_meta(render_id, changes)
+
+Merge `changes` into a render’s existing `meta.json` under its lock, so a
+key another writer set meanwhile (an `organise` title, the ref backfill) is kept
+rather than replaced by a whole-record rewrite (muvid#348).
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### *class* muvid.mcp.workspace.VisualizerWorkspace(email, root)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)

@@ -34,6 +34,7 @@ Commercial-clean (librosa beats via `mixing[beats]`, numpy motion). See the desi
 
 | [`beat_alignment_score`](#muvid.footage.scoring.motionbeat.beat_alignment_score)(event_times, beat_times, \*)   | The Beat Alignment Score of motion `event_times` (kinematic beats, seconds) against music `beat_times`: the mean of `exp(-(d/σ)²/2)`, `d` the distance to the nearest beat of the other kind (AIST++, Li et al. 2021, §BeatAlign).   |
 |------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`interval_midpoints`](#muvid.footage.scoring.motionbeat.interval_midpoints)(times)                           | The time each sample's measurement represents: the midpoint of the interval from the previous sample to it (sample 0, which measures nothing, keeps its own time).                                                                   |
 | [`motionbeat_tracks`](#muvid.footage.scoring.motionbeat.motionbeat_tracks)(frame_pass, \*, clip_id, ...)     | The two motion-to-beat tracks for one clip.                                                                                                                                                                                          |
 
 ### muvid.footage.scoring.motionbeat.BAS_DIRECTIONS *= ('motion_to_music', 'music_to_motion')*
@@ -69,6 +70,23 @@ either list is empty: no evidence is not a score of 0. A non-finite time or a
 
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.scoring.motionbeat.interval_midpoints(times)
+
+The time each sample’s measurement represents: the midpoint of the interval from
+the previous sample to it (sample 0, which measures nothing, keeps its own time).
+Each pair’s own midpoint, not half a median spacing: on a variable-frame-rate clip
+the spacing is not uniform (muvid#347).
+
+```pycon
+>>> interval_midpoints(np.array([0.0, 0.2, 0.4])).round(6).tolist()
+[0.0, 0.1, 0.3]
+>>> interval_midpoints(np.array([0.0, 0.2, 1.0])).round(6).tolist()
+[0.0, 0.1, 0.6]
+```
+
+* **Return type:**
+  `ndarray`
 
 ### muvid.footage.scoring.motionbeat.motionbeat_tracks(frame_pass, , clip_id, offset_s, beat_times, onset_env, onset_hop_s, t0, hop_s, n)
 

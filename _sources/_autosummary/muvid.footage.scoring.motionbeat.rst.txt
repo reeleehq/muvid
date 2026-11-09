@@ -16,5 +16,6 @@ muvid.footage.scoring.motionbeat
    .. autosummary::
    
       beat_alignment_score
+      interval_midpoints
       motionbeat_tracks
    

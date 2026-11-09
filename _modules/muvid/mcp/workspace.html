@@ -312,369 +312,385 @@
 </span><span id="line-114">            <span class="bp">self</span><span class="o">.</span><span class="n">renders_dir</span> <span class="o">/</span> <span class="n">rid</span> <span class="o">/</span> <span class="s2">"meta.json"</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </span><span id="line-115">        <span class="p">)</span>
 </span><span id="line-116">
+<div class="viewcode-block" id="VisualizerProject.update_render_meta">
+<a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerProject.update_render_meta">[docs]</a>
+</span><span id="line-117">    <span class="k">def</span><span class="w"> </span><span class="nf">update_render_meta</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">render_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">changes</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-118"><span class="w">        </span><span class="sd">"""Merge ``changes`` into a render's existing ``meta.json`` under its lock, so a</span>
+</span><span id="line-119"><span class="sd">        key another writer set meanwhile (an ``organise`` title, the ref backfill) is kept</span>
+</span><span id="line-120"><span class="sd">        rather than replaced by a whole-record rewrite (muvid#348)."""</span>
+</span><span id="line-121">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.workspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">no_record</span><span class="p">,</span> <span class="n">update_json_record</span>
+</span><span id="line-122">
+</span><span id="line-123">        <span class="n">rid</span> <span class="o">=</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">render_id</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"render_id"</span><span class="p">)</span>
+</span><span id="line-124">        <span class="n">update_json_record</span><span class="p">(</span>
+</span><span id="line-125">            <span class="bp">self</span><span class="o">.</span><span class="n">renders_dir</span> <span class="o">/</span> <span class="n">rid</span> <span class="o">/</span> <span class="s2">"meta.json"</span><span class="p">,</span>
+</span><span id="line-126">            <span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">m</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">changes</span><span class="p">),</span>
+</span><span id="line-127">            <span class="n">default</span><span class="o">=</span><span class="n">no_record</span><span class="p">,</span>
+</span><span id="line-128">        <span class="p">)</span></div>
+
+</span><span id="line-129">
 <div class="viewcode-block" id="VisualizerProject.register_render">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerProject.register_render">[docs]</a>
-</span><span id="line-117">    <span class="k">def</span><span class="w"> </span><span class="nf">register_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-118"><span class="w">        </span><span class="sd">"""``meta`` with the host catalog ids of the render's video (``artifact_id``) and</span>
-</span><span id="line-119"><span class="sd">        thumbnail (``thumbnail_artifact_id``).</span>
-</span><span id="line-120">
-</span><span id="line-121"><span class="sd">        A project with no ``media_catalog`` returns ``meta`` unchanged, so muvid's own</span>
-</span><span id="line-122"><span class="sd">        records carry no new key (omit-when-absent, muvid#311). A render that is later</span>
-</span><span id="line-123"><span class="sd">        deleted keeps its id valid: catalog blobs are hardlinks.</span>
-</span><span id="line-124"><span class="sd">        """</span>
-</span><span id="line-125">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-126">            <span class="k">return</span> <span class="n">meta</span>
-</span><span id="line-127">        <span class="n">out</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
-</span><span id="line-128">        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">extra</span> <span class="ow">in</span> <span class="p">(</span>
-</span><span id="line-129">            <span class="p">(</span>
-</span><span id="line-130">                <span class="s2">"artifact_id"</span><span class="p">,</span>
-</span><span id="line-131">                <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">"video"</span><span class="p">]),</span>
-</span><span id="line-132">                <span class="s2">"video"</span><span class="p">,</span>
-</span><span id="line-133">                <span class="p">{</span><span class="s2">"duration_s"</span><span class="p">:</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"duration"</span><span class="p">)},</span>
-</span><span id="line-134">            <span class="p">),</span>
-</span><span id="line-135">            <span class="p">(</span><span class="s2">"thumbnail_artifact_id"</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thumbnail"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span> <span class="s2">"image"</span><span class="p">,</span> <span class="p">{}),</span>
-</span><span id="line-136">        <span class="p">):</span>
-</span><span id="line-137">            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
-</span><span id="line-138">                <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">)</span>
-</span><span id="line-139">        <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-130">    <span class="k">def</span><span class="w"> </span><span class="nf">register_render</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-131"><span class="w">        </span><span class="sd">"""``meta`` with the host catalog ids of the render's video (``artifact_id``) and</span>
+</span><span id="line-132"><span class="sd">        thumbnail (``thumbnail_artifact_id``).</span>
+</span><span id="line-133">
+</span><span id="line-134"><span class="sd">        A project with no ``media_catalog`` returns ``meta`` unchanged, so muvid's own</span>
+</span><span id="line-135"><span class="sd">        records carry no new key (omit-when-absent, muvid#311). A render that is later</span>
+</span><span id="line-136"><span class="sd">        deleted keeps its id valid: catalog blobs are hardlinks.</span>
+</span><span id="line-137"><span class="sd">        """</span>
+</span><span id="line-138">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-139">            <span class="k">return</span> <span class="n">meta</span>
+</span><span id="line-140">        <span class="n">out</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">meta</span><span class="p">)</span>
+</span><span id="line-141">        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">extra</span> <span class="ow">in</span> <span class="p">(</span>
+</span><span id="line-142">            <span class="p">(</span>
+</span><span id="line-143">                <span class="s2">"artifact_id"</span><span class="p">,</span>
+</span><span id="line-144">                <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="p">[</span><span class="s2">"video"</span><span class="p">]),</span>
+</span><span id="line-145">                <span class="s2">"video"</span><span class="p">,</span>
+</span><span id="line-146">                <span class="p">{</span><span class="s2">"duration_s"</span><span class="p">:</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"duration"</span><span class="p">)},</span>
+</span><span id="line-147">            <span class="p">),</span>
+</span><span id="line-148">            <span class="p">(</span><span class="s2">"thumbnail_artifact_id"</span><span class="p">,</span> <span class="n">Path</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"thumbnail"</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">),</span> <span class="s2">"image"</span><span class="p">,</span> <span class="p">{}),</span>
+</span><span id="line-149">        <span class="p">):</span>
+</span><span id="line-150">            <span class="k">if</span> <span class="n">path</span><span class="o">.</span><span class="n">is_file</span><span class="p">():</span>
+</span><span id="line-151">                <span class="n">out</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="n">kind</span><span class="p">,</span> <span class="o">**</span><span class="n">extra</span><span class="p">)</span>
+</span><span id="line-152">        <span class="k">return</span> <span class="n">out</span></div>
 
-</span><span id="line-140">
+</span><span id="line-153">
 <div class="viewcode-block" id="VisualizerProject.cover">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerProject.cover">[docs]</a>
-</span><span id="line-141">    <span class="k">def</span><span class="w"> </span><span class="nf">cover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-142"><span class="w">        </span><span class="sd">"""The project's cover record (``{file, artifact_id, taken_from}``) or ``{}``."""</span>
-</span><span id="line-143">        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cover"</span><span class="p">))</span> <span class="ow">or</span> <span class="p">{}</span></div>
+</span><span id="line-154">    <span class="k">def</span><span class="w"> </span><span class="nf">cover</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-155"><span class="w">        </span><span class="sd">"""The project's cover record (``{file, artifact_id, taken_from}``) or ``{}``."""</span>
+</span><span id="line-156">        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">manifest</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"cover"</span><span class="p">))</span> <span class="ow">or</span> <span class="p">{}</span></div>
 
-</span><span id="line-144">
+</span><span id="line-157">
 <div class="viewcode-block" id="VisualizerProject.set_cover">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerProject.set_cover">[docs]</a>
-</span><span id="line-145">    <span class="k">def</span><span class="w"> </span><span class="nf">set_cover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">taken_from</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"str | None"</span><span class="p">:</span>
-</span><span id="line-146"><span class="w">        </span><span class="sd">"""Store ``image`` as the project's cover and register it (host-placed only).</span>
-</span><span id="line-147">
-</span><span id="line-148"><span class="sd">        The shared :func:`~muvid.footage.workspace.store_cover` primitive; the policy of</span>
-</span><span id="line-149"><span class="sd">        WHICH picture is the cover lives with the caller (``muvid.mcp._cover``).</span>
-</span><span id="line-150"><span class="sd">        """</span>
-</span><span id="line-151">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.workspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">file_lock</span><span class="p">,</span> <span class="n">store_cover</span><span class="p">,</span> <span class="n">update_json_record</span>
-</span><span id="line-152">
-</span><span id="line-153">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-154">            <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-155">
-</span><span id="line-156">        <span class="k">def</span><span class="w"> </span><span class="nf">update_manifest</span><span class="p">(</span><span class="n">change</span><span class="p">):</span>
-</span><span id="line-157">            <span class="k">return</span> <span class="n">update_json_record</span><span class="p">(</span>
-</span><span id="line-158">                <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">,</span>
-</span><span id="line-159">                <span class="n">change</span><span class="p">,</span>
-</span><span id="line-160">                <span class="n">default</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
-</span><span id="line-161">                <span class="n">lock</span><span class="o">=</span><span class="n">file_lock</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"locks"</span> <span class="o">/</span> <span class="s2">"manifest.lock"</span><span class="p">),</span>
-</span><span id="line-162">            <span class="p">)</span>
-</span><span id="line-163">
-</span><span id="line-164">        <span class="k">return</span> <span class="n">store_cover</span><span class="p">(</span>
-</span><span id="line-165">            <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
-</span><span id="line-166">            <span class="n">image</span><span class="p">,</span>
-</span><span id="line-167">            <span class="n">taken_from</span><span class="o">=</span><span class="n">taken_from</span><span class="p">,</span>
-</span><span id="line-168">            <span class="n">register</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span><span class="o">.</span><span class="n">register</span><span class="p">,</span>
-</span><span id="line-169">            <span class="n">update_manifest</span><span class="o">=</span><span class="n">update_manifest</span><span class="p">,</span>
-</span><span id="line-170">        <span class="p">)</span></div>
+</span><span id="line-158">    <span class="k">def</span><span class="w"> </span><span class="nf">set_cover</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">taken_from</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"str | None"</span><span class="p">:</span>
+</span><span id="line-159"><span class="w">        </span><span class="sd">"""Store ``image`` as the project's cover and register it (host-placed only).</span>
+</span><span id="line-160">
+</span><span id="line-161"><span class="sd">        The shared :func:`~muvid.footage.workspace.store_cover` primitive; the policy of</span>
+</span><span id="line-162"><span class="sd">        WHICH picture is the cover lives with the caller (``muvid.mcp._cover``).</span>
+</span><span id="line-163"><span class="sd">        """</span>
+</span><span id="line-164">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.workspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">file_lock</span><span class="p">,</span> <span class="n">store_cover</span><span class="p">,</span> <span class="n">update_json_record</span>
+</span><span id="line-165">
+</span><span id="line-166">        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-167">            <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-168">
+</span><span id="line-169">        <span class="k">def</span><span class="w"> </span><span class="nf">update_manifest</span><span class="p">(</span><span class="n">change</span><span class="p">):</span>
+</span><span id="line-170">            <span class="k">return</span> <span class="n">update_json_record</span><span class="p">(</span>
+</span><span id="line-171">                <span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">,</span>
+</span><span id="line-172">                <span class="n">change</span><span class="p">,</span>
+</span><span id="line-173">                <span class="n">default</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span>
+</span><span id="line-174">                <span class="n">lock</span><span class="o">=</span><span class="n">file_lock</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"locks"</span> <span class="o">/</span> <span class="s2">"manifest.lock"</span><span class="p">),</span>
+</span><span id="line-175">            <span class="p">)</span>
+</span><span id="line-176">
+</span><span id="line-177">        <span class="k">return</span> <span class="n">store_cover</span><span class="p">(</span>
+</span><span id="line-178">            <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
+</span><span id="line-179">            <span class="n">image</span><span class="p">,</span>
+</span><span id="line-180">            <span class="n">taken_from</span><span class="o">=</span><span class="n">taken_from</span><span class="p">,</span>
+</span><span id="line-181">            <span class="n">register</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">media_catalog</span><span class="o">.</span><span class="n">register</span><span class="p">,</span>
+</span><span id="line-182">            <span class="n">update_manifest</span><span class="o">=</span><span class="n">update_manifest</span><span class="p">,</span>
+</span><span id="line-183">        <span class="p">)</span></div>
 
-</span><span id="line-171">
+</span><span id="line-184">
 <div class="viewcode-block" id="VisualizerProject.list_renders">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerProject.list_renders">[docs]</a>
-</span><span id="line-172">    <span class="k">def</span><span class="w"> </span><span class="nf">list_renders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-</span><span id="line-173"><span class="w">        </span><span class="sd">"""This bucket's renders (newest-first), from each render's ``meta.json``."""</span>
-</span><span id="line-174">        <span class="n">rdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">renders_dir</span>
-</span><span id="line-175">        <span class="k">if</span> <span class="ow">not</span> <span class="n">rdir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-176">            <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-177">        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-178">        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">rdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
-</span><span id="line-179">            <span class="n">meta</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"meta.json"</span>
-</span><span id="line-180">            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">meta</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
-</span><span id="line-181">                <span class="k">continue</span>
-</span><span id="line-182">            <span class="k">try</span><span class="p">:</span>
-</span><span id="line-183">                <span class="n">row</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-184">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-185">                <span class="n">row</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"render_id"</span><span class="p">:</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
-</span><span id="line-186">            <span class="n">row</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"render_id"</span><span class="p">,</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-187">            <span class="n">row</span><span class="p">[</span><span class="s2">"_mtime"</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
-</span><span id="line-188">            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
-</span><span id="line-189">        <span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"_mtime"</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-190">        <span class="k">return</span> <span class="n">rows</span></div>
+</span><span id="line-185">    <span class="k">def</span><span class="w"> </span><span class="nf">list_renders</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+</span><span id="line-186"><span class="w">        </span><span class="sd">"""This bucket's renders (newest-first), from each render's ``meta.json``."""</span>
+</span><span id="line-187">        <span class="n">rdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">renders_dir</span>
+</span><span id="line-188">        <span class="k">if</span> <span class="ow">not</span> <span class="n">rdir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-189">            <span class="k">return</span> <span class="p">[]</span>
+</span><span id="line-190">        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-191">        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">rdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()):</span>
+</span><span id="line-192">            <span class="n">meta</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"meta.json"</span>
+</span><span id="line-193">            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">meta</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
+</span><span id="line-194">                <span class="k">continue</span>
+</span><span id="line-195">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-196">                <span class="n">row</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-197">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-198">                <span class="n">row</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"render_id"</span><span class="p">:</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">}</span>
+</span><span id="line-199">            <span class="n">row</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">"render_id"</span><span class="p">,</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-200">            <span class="n">row</span><span class="p">[</span><span class="s2">"_mtime"</span><span class="p">]</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
+</span><span id="line-201">            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+</span><span id="line-202">        <span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"_mtime"</span><span class="p">),</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-203">        <span class="k">return</span> <span class="n">rows</span></div>
 </div>
 
-</span><span id="line-191">
-</span><span id="line-192">
+</span><span id="line-204">
+</span><span id="line-205">
 <div class="viewcode-block" id="VisualizerWorkspace">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerWorkspace">[docs]</a>
-</span><span id="line-193"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-194"><span class="k">class</span><span class="w"> </span><span class="nc">VisualizerWorkspace</span><span class="p">:</span>
-</span><span id="line-195"><span class="w">    </span><span class="sd">"""A single caller's private visualizer area, addressed by ``email``.</span>
-</span><span id="line-196">
-</span><span id="line-197"><span class="sd">    ``email`` and every ``project_id`` are validated as single path components, so a</span>
-</span><span id="line-198"><span class="sd">    caller can never escape their own subtree.</span>
-</span><span id="line-199"><span class="sd">    """</span>
-</span><span id="line-200">
-</span><span id="line-201">    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="line-202">    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span>
-</span><span id="line-203">
-</span><span id="line-204">    <span class="nd">@classmethod</span>
-</span><span id="line-205">    <span class="k">def</span><span class="w"> </span><span class="nf">for_email</span><span class="p">(</span>
-</span><span id="line-206">        <span class="bp">cls</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-207">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"VisualizerWorkspace"</span><span class="p">:</span>
-</span><span id="line-208">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">),</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">())</span>
+</span><span id="line-206"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-207"><span class="k">class</span><span class="w"> </span><span class="nc">VisualizerWorkspace</span><span class="p">:</span>
+</span><span id="line-208"><span class="w">    </span><span class="sd">"""A single caller's private visualizer area, addressed by ``email``.</span>
 </span><span id="line-209">
-</span><span id="line-210">    <span class="nd">@property</span>
-</span><span id="line-211">    <span class="k">def</span><span class="w"> </span><span class="nf">projects_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-212">        <span class="k">return</span> <span class="n">caller_bucket</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"visualizer"</span> <span class="o">/</span> <span class="s2">"projects"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+</span><span id="line-210"><span class="sd">    ``email`` and every ``project_id`` are validated as single path components, so a</span>
+</span><span id="line-211"><span class="sd">    caller can never escape their own subtree.</span>
+</span><span id="line-212"><span class="sd">    """</span>
 </span><span id="line-213">
-</span><span id="line-214">    <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-215">        <span class="n">pid</span> <span class="o">=</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project_id"</span><span class="p">)</span>
-</span><span id="line-216">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span> <span class="o">/</span> <span class="n">pid</span>
-</span><span id="line-217">
+</span><span id="line-214">    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="line-215">    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span>
+</span><span id="line-216">
+</span><span id="line-217">    <span class="nd">@classmethod</span>
+</span><span id="line-218">    <span class="k">def</span><span class="w"> </span><span class="nf">for_email</span><span class="p">(</span>
+</span><span id="line-219">        <span class="bp">cls</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-220">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"VisualizerWorkspace"</span><span class="p">:</span>
+</span><span id="line-221">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">),</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">())</span>
+</span><span id="line-222">
+</span><span id="line-223">    <span class="nd">@property</span>
+</span><span id="line-224">    <span class="k">def</span><span class="w"> </span><span class="nf">projects_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-225">        <span class="k">return</span> <span class="n">caller_bucket</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"visualizer"</span> <span class="o">/</span> <span class="s2">"projects"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+</span><span id="line-226">
+</span><span id="line-227">    <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-228">        <span class="n">pid</span> <span class="o">=</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project_id"</span><span class="p">)</span>
+</span><span id="line-229">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span> <span class="o">/</span> <span class="n">pid</span>
+</span><span id="line-230">
 <div class="viewcode-block" id="VisualizerWorkspace.create_project">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerWorkspace.create_project">[docs]</a>
-</span><span id="line-218">    <span class="k">def</span><span class="w"> </span><span class="nf">create_project</span><span class="p">(</span>
-</span><span id="line-219">        <span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="line-220">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
-</span><span id="line-221"><span class="w">        </span><span class="sd">"""Create (and return) a new visualizer bucket under this user."""</span>
-</span><span id="line-222">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-223">        <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
-</span><span id="line-224">            <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
-</span><span id="line-225">                <span class="sa">f</span><span class="s2">"project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> already exists for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-226">            <span class="p">)</span>
-</span><span id="line-227">        <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"renders"</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-228">        <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
-</span><span id="line-229">            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">"title"</span><span class="p">:</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">project_id</span><span class="p">,</span> <span class="s2">"created"</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()},</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-</span><span id="line-230">        <span class="p">)</span>
-</span><span id="line-231">        <span class="k">return</span> <span class="n">VisualizerProject</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span></div>
+</span><span id="line-231">    <span class="k">def</span><span class="w"> </span><span class="nf">create_project</span><span class="p">(</span>
+</span><span id="line-232">        <span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-233">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
+</span><span id="line-234"><span class="w">        </span><span class="sd">"""Create (and return) a new visualizer bucket under this user."""</span>
+</span><span id="line-235">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-236">        <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+</span><span id="line-237">            <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
+</span><span id="line-238">                <span class="sa">f</span><span class="s2">"project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> already exists for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-239">            <span class="p">)</span>
+</span><span id="line-240">        <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"renders"</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-241">        <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span>
+</span><span id="line-242">            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">"title"</span><span class="p">:</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">project_id</span><span class="p">,</span> <span class="s2">"created"</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()},</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+</span><span id="line-243">        <span class="p">)</span>
+</span><span id="line-244">        <span class="k">return</span> <span class="n">VisualizerProject</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span></div>
 
-</span><span id="line-232">
+</span><span id="line-245">
 <div class="viewcode-block" id="VisualizerWorkspace.open_project">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerWorkspace.open_project">[docs]</a>
-</span><span id="line-233">    <span class="k">def</span><span class="w"> </span><span class="nf">open_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
-</span><span id="line-234"><span class="w">        </span><span class="sd">"""Open an existing visualizer bucket (raises if it doesn't exist)."""</span>
-</span><span id="line-235">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-236">        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-237">            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-238">        <span class="k">return</span> <span class="n">VisualizerProject</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span></div>
+</span><span id="line-246">    <span class="k">def</span><span class="w"> </span><span class="nf">open_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
+</span><span id="line-247"><span class="w">        </span><span class="sd">"""Open an existing visualizer bucket (raises if it doesn't exist)."""</span>
+</span><span id="line-248">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-249">        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-250">            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-251">        <span class="k">return</span> <span class="n">VisualizerProject</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span></div>
 
-</span><span id="line-239">
+</span><span id="line-252">
 <div class="viewcode-block" id="VisualizerWorkspace.list_projects">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.VisualizerWorkspace.list_projects">[docs]</a>
-</span><span id="line-240">    <span class="k">def</span><span class="w"> </span><span class="nf">list_projects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-</span><span id="line-241"><span class="w">        </span><span class="sd">"""This user's buckets: ``[{project_id, title}]`` (newest-modified first)."""</span>
-</span><span id="line-242">        <span class="n">pdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span>
-</span><span id="line-243">        <span class="k">if</span> <span class="ow">not</span> <span class="n">pdir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-244">            <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-245">        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-246">        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">pdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
-</span><span id="line-247">            <span class="n">spec</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"manifest.json"</span>
-</span><span id="line-248">            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
-</span><span id="line-249">                <span class="k">continue</span>
-</span><span id="line-250">            <span class="k">try</span><span class="p">:</span>
-</span><span id="line-251">                <span class="n">manifest</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-252">                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-</span><span id="line-253">                    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-254">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-255">                <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-256">            <span class="k">try</span><span class="p">:</span>
-</span><span id="line-257">                <span class="n">mtime</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
-</span><span id="line-258">            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-</span><span id="line-259">                <span class="k">continue</span>  <span class="c1"># vanished mid-scan</span>
-</span><span id="line-260">            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-261">                <span class="p">{</span>
-</span><span id="line-262">                    <span class="s2">"project_id"</span><span class="p">:</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-</span><span id="line-263">                    <span class="s2">"title"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-</span><span id="line-264">                    <span class="s2">"created"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"created"</span><span class="p">),</span>
-</span><span id="line-265">                    <span class="s2">"modified"</span><span class="p">:</span> <span class="n">mtime</span><span class="p">,</span>
-</span><span id="line-266">                <span class="p">}</span>
-</span><span id="line-267">            <span class="p">)</span>
-</span><span id="line-268">        <span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"modified"</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-269">        <span class="k">return</span> <span class="n">rows</span></div>
+</span><span id="line-253">    <span class="k">def</span><span class="w"> </span><span class="nf">list_projects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+</span><span id="line-254"><span class="w">        </span><span class="sd">"""This user's buckets: ``[{project_id, title}]`` (newest-modified first)."""</span>
+</span><span id="line-255">        <span class="n">pdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span>
+</span><span id="line-256">        <span class="k">if</span> <span class="ow">not</span> <span class="n">pdir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-257">            <span class="k">return</span> <span class="p">[]</span>
+</span><span id="line-258">        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-259">        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">pdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+</span><span id="line-260">            <span class="n">spec</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"manifest.json"</span>
+</span><span id="line-261">            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
+</span><span id="line-262">                <span class="k">continue</span>
+</span><span id="line-263">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-264">                <span class="n">manifest</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-265">                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+</span><span id="line-266">                    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-267">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-268">                <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-269">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-270">                <span class="n">mtime</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
+</span><span id="line-271">            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+</span><span id="line-272">                <span class="k">continue</span>  <span class="c1"># vanished mid-scan</span>
+</span><span id="line-273">            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-274">                <span class="p">{</span>
+</span><span id="line-275">                    <span class="s2">"project_id"</span><span class="p">:</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="line-276">                    <span class="s2">"title"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="line-277">                    <span class="s2">"created"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"created"</span><span class="p">),</span>
+</span><span id="line-278">                    <span class="s2">"modified"</span><span class="p">:</span> <span class="n">mtime</span><span class="p">,</span>
+</span><span id="line-279">                <span class="p">}</span>
+</span><span id="line-280">            <span class="p">)</span>
+</span><span id="line-281">        <span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"modified"</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-282">        <span class="k">return</span> <span class="n">rows</span></div>
 </div>
 
-</span><span id="line-270">
-</span><span id="line-271">
-</span><span id="line-272"><span class="c1">#: The path segment under the data root that holds one directory per subgenre (muvid#103).</span>
-</span><span id="line-273"><span class="n">SUBGENRES_SEGMENT</span> <span class="o">=</span> <span class="s2">"subgenres"</span>
-</span><span id="line-274">
-</span><span id="line-275"><span class="c1"># Drawer names a subgenre slug may not take. The set is defined beside the</span>
-</span><span id="line-276"><span class="c1"># manifest (muvid#167) so a plugin is refused before it reaches a project; the</span>
-</span><span id="line-277"><span class="c1"># name stays importable from here.</span>
-</span><span id="line-278"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">RESERVED_SLUGS</span>  <span class="c1"># noqa: E402</span>
-</span><span id="line-279">
-</span><span id="line-280">
+</span><span id="line-283">
+</span><span id="line-284">
+</span><span id="line-285"><span class="c1">#: The path segment under the data root that holds one directory per subgenre (muvid#103).</span>
+</span><span id="line-286"><span class="n">SUBGENRES_SEGMENT</span> <span class="o">=</span> <span class="s2">"subgenres"</span>
+</span><span id="line-287">
+</span><span id="line-288"><span class="c1"># Drawer names a subgenre slug may not take. The set is defined beside the</span>
+</span><span id="line-289"><span class="c1"># manifest (muvid#167) so a plugin is refused before it reaches a project; the</span>
+</span><span id="line-290"><span class="c1"># name stays importable from here.</span>
+</span><span id="line-291"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres._manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">RESERVED_SLUGS</span>  <span class="c1"># noqa: E402</span>
+</span><span id="line-292">
+</span><span id="line-293">
 <div class="viewcode-block" id="SubgenreWorkspace">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.SubgenreWorkspace">[docs]</a>
-</span><span id="line-281"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-282"><span class="k">class</span><span class="w"> </span><span class="nc">SubgenreWorkspace</span><span class="p">(</span><span class="n">VisualizerWorkspace</span><span class="p">):</span>
-</span><span id="line-283"><span class="w">    </span><span class="sd">"""A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.</span>
-</span><span id="line-284">
-</span><span id="line-285"><span class="sd">    A subgenre is stateless the way the visualizer is (a "project" is where renders</span>
-</span><span id="line-286"><span class="sd">    land), so the bucket is the same :class:`VisualizerProject`; only the directory</span>
-</span><span id="line-287"><span class="sd">    differs, which gives each subgenre its own project-id space and a path that names</span>
-</span><span id="line-288"><span class="sd">    it (muvid#103). Built with :meth:`for_slug`, never :meth:`for_email`.</span>
-</span><span id="line-289"><span class="sd">    """</span>
-</span><span id="line-290">
-</span><span id="line-291">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="line-292">
-</span><span id="line-293">    <span class="nd">@classmethod</span>
-</span><span id="line-294">    <span class="k">def</span><span class="w"> </span><span class="nf">for_slug</span><span class="p">(</span>
-</span><span id="line-295">        <span class="bp">cls</span><span class="p">,</span> <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-296">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"SubgenreWorkspace"</span><span class="p">:</span>
-</span><span id="line-297">        <span class="k">if</span> <span class="n">slug</span> <span class="ow">in</span> <span class="n">RESERVED_SLUGS</span><span class="p">:</span>
-</span><span id="line-298">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-</span><span id="line-299">                <span class="sa">f</span><span class="s2">"subgenre slug </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is reserved for a built-in muvid drawer"</span>
-</span><span id="line-300">            <span class="p">)</span>
-</span><span id="line-301">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">),</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">(),</span> <span class="n">slug</span><span class="o">=</span><span class="n">slug</span><span class="p">)</span>
-</span><span id="line-302">
+</span><span id="line-294"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-295"><span class="k">class</span><span class="w"> </span><span class="nc">SubgenreWorkspace</span><span class="p">(</span><span class="n">VisualizerWorkspace</span><span class="p">):</span>
+</span><span id="line-296"><span class="w">    </span><span class="sd">"""A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.</span>
+</span><span id="line-297">
+</span><span id="line-298"><span class="sd">    A subgenre is stateless the way the visualizer is (a "project" is where renders</span>
+</span><span id="line-299"><span class="sd">    land), so the bucket is the same :class:`VisualizerProject`; only the directory</span>
+</span><span id="line-300"><span class="sd">    differs, which gives each subgenre its own project-id space and a path that names</span>
+</span><span id="line-301"><span class="sd">    it (muvid#103). Built with :meth:`for_slug`, never :meth:`for_email`.</span>
+</span><span id="line-302"><span class="sd">    """</span>
+</span><span id="line-303">
+</span><span id="line-304">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="line-305">
+</span><span id="line-306">    <span class="nd">@classmethod</span>
+</span><span id="line-307">    <span class="k">def</span><span class="w"> </span><span class="nf">for_slug</span><span class="p">(</span>
+</span><span id="line-308">        <span class="bp">cls</span><span class="p">,</span> <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-309">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"SubgenreWorkspace"</span><span class="p">:</span>
+</span><span id="line-310">        <span class="k">if</span> <span class="n">slug</span> <span class="ow">in</span> <span class="n">RESERVED_SLUGS</span><span class="p">:</span>
+</span><span id="line-311">            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+</span><span id="line-312">                <span class="sa">f</span><span class="s2">"subgenre slug </span><span class="si">{</span><span class="n">slug</span><span class="si">!r}</span><span class="s2"> is reserved for a built-in muvid drawer"</span>
+</span><span id="line-313">            <span class="p">)</span>
+</span><span id="line-314">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">),</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">(),</span> <span class="n">slug</span><span class="o">=</span><span class="n">slug</span><span class="p">)</span>
+</span><span id="line-315">
 <div class="viewcode-block" id="SubgenreWorkspace.create_project">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.SubgenreWorkspace.create_project">[docs]</a>
-</span><span id="line-303">    <span class="k">def</span><span class="w"> </span><span class="nf">create_project</span><span class="p">(</span>
-</span><span id="line-304">        <span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="line-305">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
-</span><span id="line-306"><span class="w">        </span><span class="sd">"""Create a bucket, refusing to fork one this subgenre already made.</span>
-</span><span id="line-307">
-</span><span id="line-308"><span class="sd">        Before muvid#103 this subgenre's projects were made in the visualizer</span>
-</span><span id="line-309"><span class="sd">        drawer. Creating the same id here would succeed and shadow it: the</span>
-</span><span id="line-310"><span class="sd">        subgenre's tools would open the new, empty bucket, and the old renders</span>
-</span><span id="line-311"><span class="sd">        would drop out of their reach. So an id whose visualizer bucket holds</span>
-</span><span id="line-312"><span class="sd">        only this subgenre's renders is refused, as it was before.</span>
-</span><span id="line-313"><span class="sd">        """</span>
-</span><span id="line-314">        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
-</span><span id="line-315">            <span class="k">try</span><span class="p">:</span>
-</span><span id="line-316">                <span class="n">old</span> <span class="o">=</span> <span class="n">VisualizerWorkspace</span><span class="o">.</span><span class="n">for_email</span><span class="p">(</span>
-</span><span id="line-317">                    <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span>
-</span><span id="line-318">                <span class="p">)</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-319">            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
-</span><span id="line-320">                <span class="n">old</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-321">            <span class="k">if</span> <span class="n">old</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">bucket_label</span><span class="p">(</span><span class="n">old</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">slug</span><span class="p">:</span>
-</span><span id="line-322">                <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
-</span><span id="line-323">                    <span class="sa">f</span><span class="s2">"project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> already exists for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-324">                <span class="p">)</span>
-</span><span id="line-325">        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">)</span></div>
+</span><span id="line-316">    <span class="k">def</span><span class="w"> </span><span class="nf">create_project</span><span class="p">(</span>
+</span><span id="line-317">        <span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-318">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
+</span><span id="line-319"><span class="w">        </span><span class="sd">"""Create a bucket, refusing to fork one this subgenre already made.</span>
+</span><span id="line-320">
+</span><span id="line-321"><span class="sd">        Before muvid#103 this subgenre's projects were made in the visualizer</span>
+</span><span id="line-322"><span class="sd">        drawer. Creating the same id here would succeed and shadow it: the</span>
+</span><span id="line-323"><span class="sd">        subgenre's tools would open the new, empty bucket, and the old renders</span>
+</span><span id="line-324"><span class="sd">        would drop out of their reach. So an id whose visualizer bucket holds</span>
+</span><span id="line-325"><span class="sd">        only this subgenre's renders is refused, as it was before.</span>
+</span><span id="line-326"><span class="sd">        """</span>
+</span><span id="line-327">        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+</span><span id="line-328">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-329">                <span class="n">old</span> <span class="o">=</span> <span class="n">VisualizerWorkspace</span><span class="o">.</span><span class="n">for_email</span><span class="p">(</span>
+</span><span id="line-330">                    <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span>
+</span><span id="line-331">                <span class="p">)</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-332">            <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+</span><span id="line-333">                <span class="n">old</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-334">            <span class="k">if</span> <span class="n">old</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">bucket_label</span><span class="p">(</span><span class="n">old</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">slug</span><span class="p">:</span>
+</span><span id="line-335">                <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
+</span><span id="line-336">                    <span class="sa">f</span><span class="s2">"project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> already exists for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-337">                <span class="p">)</span>
+</span><span id="line-338">        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">create_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="n">force</span><span class="p">)</span></div>
 
-</span><span id="line-326">
-</span><span id="line-327">    <span class="nd">@classmethod</span>
-</span><span id="line-328">    <span class="k">def</span><span class="w"> </span><span class="nf">for_email</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-</span><span id="line-329">        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
-</span><span id="line-330">            <span class="s2">"a SubgenreWorkspace belongs to one subgenre: use "</span>
-</span><span id="line-331">            <span class="s2">"SubgenreWorkspace.for_slug(slug, email)"</span>
-</span><span id="line-332">        <span class="p">)</span>
-</span><span id="line-333">
-</span><span id="line-334">    <span class="nd">@property</span>
-</span><span id="line-335">    <span class="k">def</span><span class="w"> </span><span class="nf">projects_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-336">        <span class="k">return</span> <span class="n">caller_bucket</span><span class="p">(</span>
-</span><span id="line-337">            <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
-</span><span id="line-338">            <span class="o">/</span> <span class="n">SUBGENRES_SEGMENT</span>
-</span><span id="line-339">            <span class="o">/</span> <span class="n">_safe_component</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"subgenre"</span><span class="p">)</span>
-</span><span id="line-340">            <span class="o">/</span> <span class="s2">"projects"</span><span class="p">,</span>
-</span><span id="line-341">            <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span>
-</span><span id="line-342">        <span class="p">)</span></div>
+</span><span id="line-339">
+</span><span id="line-340">    <span class="nd">@classmethod</span>
+</span><span id="line-341">    <span class="k">def</span><span class="w"> </span><span class="nf">for_email</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+</span><span id="line-342">        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+</span><span id="line-343">            <span class="s2">"a SubgenreWorkspace belongs to one subgenre: use "</span>
+</span><span id="line-344">            <span class="s2">"SubgenreWorkspace.for_slug(slug, email)"</span>
+</span><span id="line-345">        <span class="p">)</span>
+</span><span id="line-346">
+</span><span id="line-347">    <span class="nd">@property</span>
+</span><span id="line-348">    <span class="k">def</span><span class="w"> </span><span class="nf">projects_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-349">        <span class="k">return</span> <span class="n">caller_bucket</span><span class="p">(</span>
+</span><span id="line-350">            <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
+</span><span id="line-351">            <span class="o">/</span> <span class="n">SUBGENRES_SEGMENT</span>
+</span><span id="line-352">            <span class="o">/</span> <span class="n">_safe_component</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slug</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"subgenre"</span><span class="p">)</span>
+</span><span id="line-353">            <span class="o">/</span> <span class="s2">"projects"</span><span class="p">,</span>
+</span><span id="line-354">            <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span>
+</span><span id="line-355">        <span class="p">)</span></div>
 
-</span><span id="line-343">
-</span><span id="line-344">
+</span><span id="line-356">
+</span><span id="line-357">
 <div class="viewcode-block" id="subgenre_slugs_on_disk">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.subgenre_slugs_on_disk">[docs]</a>
-</span><span id="line-345"><span class="k">def</span><span class="w"> </span><span class="nf">subgenre_slugs_on_disk</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-</span><span id="line-346"><span class="w">    </span><span class="sd">"""The subgenres that have a directory under the data root, sorted.</span>
-</span><span id="line-347">
-</span><span id="line-348"><span class="sd">    Read from disk rather than from the installed plugins, so a project made by a</span>
-</span><span id="line-349"><span class="sd">    subgenre that has since been uninstalled is still listed and downloadable.</span>
-</span><span id="line-350"><span class="sd">    """</span>
-</span><span id="line-351">    <span class="n">base</span> <span class="o">=</span> <span class="p">(</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">())</span> <span class="o">/</span> <span class="n">SUBGENRES_SEGMENT</span>
-</span><span id="line-352">    <span class="k">if</span> <span class="ow">not</span> <span class="n">base</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-</span><span id="line-353">        <span class="k">return</span> <span class="p">()</span>
-</span><span id="line-354">    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-355">    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
-</span><span id="line-356">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-357">            <span class="k">if</span> <span class="p">(</span>
-</span><span id="line-358">                <span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
-</span><span id="line-359">                <span class="ow">and</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"subgenre"</span><span class="p">)</span> <span class="o">==</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span>
-</span><span id="line-360">            <span class="p">):</span>
-</span><span id="line-361">                <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-362">        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-</span><span id="line-363">            <span class="k">continue</span>
-</span><span id="line-364">    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">out</span><span class="p">))</span></div>
+</span><span id="line-358"><span class="k">def</span><span class="w"> </span><span class="nf">subgenre_slugs_on_disk</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+</span><span id="line-359"><span class="w">    </span><span class="sd">"""The subgenres that have a directory under the data root, sorted.</span>
+</span><span id="line-360">
+</span><span id="line-361"><span class="sd">    Read from disk rather than from the installed plugins, so a project made by a</span>
+</span><span id="line-362"><span class="sd">    subgenre that has since been uninstalled is still listed and downloadable.</span>
+</span><span id="line-363"><span class="sd">    """</span>
+</span><span id="line-364">    <span class="n">base</span> <span class="o">=</span> <span class="p">(</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">())</span> <span class="o">/</span> <span class="n">SUBGENRES_SEGMENT</span>
+</span><span id="line-365">    <span class="k">if</span> <span class="ow">not</span> <span class="n">base</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+</span><span id="line-366">        <span class="k">return</span> <span class="p">()</span>
+</span><span id="line-367">    <span class="n">out</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-368">    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">base</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+</span><span id="line-369">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-370">            <span class="k">if</span> <span class="p">(</span>
+</span><span id="line-371">                <span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span>
+</span><span id="line-372">                <span class="ow">and</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"subgenre"</span><span class="p">)</span> <span class="o">==</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span>
+</span><span id="line-373">            <span class="p">):</span>
+</span><span id="line-374">                <span class="n">out</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-375">        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+</span><span id="line-376">            <span class="k">continue</span>
+</span><span id="line-377">    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">(</span><span class="n">out</span><span class="p">))</span></div>
 
-</span><span id="line-365">
-</span><span id="line-366">
+</span><span id="line-378">
+</span><span id="line-379">
 <div class="viewcode-block" id="open_subgenre_project">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.open_subgenre_project">[docs]</a>
-</span><span id="line-367"><span class="k">def</span><span class="w"> </span><span class="nf">open_subgenre_project</span><span class="p">(</span>
-</span><span id="line-368">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
-</span><span id="line-369"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
-</span><span id="line-370"><span class="w">    </span><span class="sd">"""The bucket a subgenre renders into: its own, else a visualizer bucket of that id.</span>
-</span><span id="line-371">
-</span><span id="line-372"><span class="sd">    The fallback is what keeps every project made before muvid#103 (and every</span>
-</span><span id="line-373"><span class="sd">    visualizer project a caller already rendered a lyric video into) working: those</span>
-</span><span id="line-374"><span class="sd">    live in the visualizer workspace and are read in place, never moved.</span>
-</span><span id="line-375"><span class="sd">    """</span>
-</span><span id="line-376">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-377">        <span class="k">return</span> <span class="n">SubgenreWorkspace</span><span class="o">.</span><span class="n">for_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span>
-</span><span id="line-378">            <span class="n">project_id</span>
-</span><span id="line-379">        <span class="p">)</span>
-</span><span id="line-380">    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
-</span><span id="line-381">        <span class="k">return</span> <span class="n">VisualizerWorkspace</span><span class="o">.</span><span class="n">for_email</span><span class="p">(</span><span class="n">email</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span></div>
+</span><span id="line-380"><span class="k">def</span><span class="w"> </span><span class="nf">open_subgenre_project</span><span class="p">(</span>
+</span><span id="line-381">    <span class="n">slug</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-382"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">VisualizerProject</span><span class="p">:</span>
+</span><span id="line-383"><span class="w">    </span><span class="sd">"""The bucket a subgenre renders into: its own, else a visualizer bucket of that id.</span>
+</span><span id="line-384">
+</span><span id="line-385"><span class="sd">    The fallback is what keeps every project made before muvid#103 (and every</span>
+</span><span id="line-386"><span class="sd">    visualizer project a caller already rendered a lyric video into) working: those</span>
+</span><span id="line-387"><span class="sd">    live in the visualizer workspace and are read in place, never moved.</span>
+</span><span id="line-388"><span class="sd">    """</span>
+</span><span id="line-389">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-390">        <span class="k">return</span> <span class="n">SubgenreWorkspace</span><span class="o">.</span><span class="n">for_slug</span><span class="p">(</span><span class="n">slug</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span>
+</span><span id="line-391">            <span class="n">project_id</span>
+</span><span id="line-392">        <span class="p">)</span>
+</span><span id="line-393">    <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
+</span><span id="line-394">        <span class="k">return</span> <span class="n">VisualizerWorkspace</span><span class="o">.</span><span class="n">for_email</span><span class="p">(</span><span class="n">email</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">open_project</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span></div>
 
-</span><span id="line-382">
-</span><span id="line-383">
+</span><span id="line-395">
+</span><span id="line-396">
 <div class="viewcode-block" id="subgenre_of_render">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.subgenre_of_render">[docs]</a>
-</span><span id="line-384"><span class="k">def</span><span class="w"> </span><span class="nf">subgenre_of_render</span><span class="p">(</span><span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-385"><span class="w">    </span><span class="sd">"""The subgenre a render's ``meta.json`` says made it, if it says.</span>
-</span><span id="line-386">
-</span><span id="line-387"><span class="sd">    ``render_subgenre`` records ``subgenre`` (checked first, so a choreo or montage</span>
-</span><span id="line-388"><span class="sd">    render, whose own meta also carries ``treatment_source``, is named correctly).</span>
-</span><span id="line-389"><span class="sd">    ``render_lyric_video`` records no ``subgenre``; its nested pipeline meta has</span>
-</span><span id="line-390"><span class="sd">    ``treatment_source``, which no visualizer render carries.</span>
-</span><span id="line-391"><span class="sd">    """</span>
-</span><span id="line-392">    <span class="n">named</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subgenre"</span><span class="p">)</span>
-</span><span id="line-393">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">named</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">named</span><span class="p">:</span>
-</span><span id="line-394">        <span class="c1"># A name that could not be a subgenre drawer is not evidence of one.</span>
-</span><span id="line-395">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-396">            <span class="n">ok</span> <span class="o">=</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">named</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"subgenre"</span><span class="p">)</span> <span class="o">==</span> <span class="n">named</span>
-</span><span id="line-397">        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
-</span><span id="line-398">            <span class="n">ok</span> <span class="o">=</span> <span class="kc">False</span>
-</span><span id="line-399">        <span class="k">return</span> <span class="n">named</span> <span class="k">if</span> <span class="n">ok</span> <span class="ow">and</span> <span class="n">named</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">RESERVED_SLUGS</span> <span class="k">else</span> <span class="kc">None</span>
-</span><span id="line-400">    <span class="n">inner</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"meta"</span><span class="p">)</span>
-</span><span id="line-401">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inner</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"treatment_source"</span> <span class="ow">in</span> <span class="n">inner</span><span class="p">:</span>
-</span><span id="line-402">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLUG</span>
-</span><span id="line-403">
-</span><span id="line-404">        <span class="k">return</span> <span class="n">SLUG</span>
-</span><span id="line-405">    <span class="k">return</span> <span class="kc">None</span></div>
+</span><span id="line-397"><span class="k">def</span><span class="w"> </span><span class="nf">subgenre_of_render</span><span class="p">(</span><span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-398"><span class="w">    </span><span class="sd">"""The subgenre a render's ``meta.json`` says made it, if it says.</span>
+</span><span id="line-399">
+</span><span id="line-400"><span class="sd">    ``render_subgenre`` records ``subgenre`` (checked first, so a choreo or montage</span>
+</span><span id="line-401"><span class="sd">    render, whose own meta also carries ``treatment_source``, is named correctly).</span>
+</span><span id="line-402"><span class="sd">    ``render_lyric_video`` records no ``subgenre``; its nested pipeline meta has</span>
+</span><span id="line-403"><span class="sd">    ``treatment_source``, which no visualizer render carries.</span>
+</span><span id="line-404"><span class="sd">    """</span>
+</span><span id="line-405">    <span class="n">named</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"subgenre"</span><span class="p">)</span>
+</span><span id="line-406">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">named</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">named</span><span class="p">:</span>
+</span><span id="line-407">        <span class="c1"># A name that could not be a subgenre drawer is not evidence of one.</span>
+</span><span id="line-408">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-409">            <span class="n">ok</span> <span class="o">=</span> <span class="n">_safe_component</span><span class="p">(</span><span class="n">named</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"subgenre"</span><span class="p">)</span> <span class="o">==</span> <span class="n">named</span>
+</span><span id="line-410">        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+</span><span id="line-411">            <span class="n">ok</span> <span class="o">=</span> <span class="kc">False</span>
+</span><span id="line-412">        <span class="k">return</span> <span class="n">named</span> <span class="k">if</span> <span class="n">ok</span> <span class="ow">and</span> <span class="n">named</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">RESERVED_SLUGS</span> <span class="k">else</span> <span class="kc">None</span>
+</span><span id="line-413">    <span class="n">inner</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"meta"</span><span class="p">)</span>
+</span><span id="line-414">    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inner</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"treatment_source"</span> <span class="ow">in</span> <span class="n">inner</span><span class="p">:</span>
+</span><span id="line-415">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLUG</span>
+</span><span id="line-416">
+</span><span id="line-417">        <span class="k">return</span> <span class="n">SLUG</span>
+</span><span id="line-418">    <span class="k">return</span> <span class="kc">None</span></div>
 
-</span><span id="line-406">
-</span><span id="line-407">
+</span><span id="line-419">
+</span><span id="line-420">
 <div class="viewcode-block" id="bucket_label">
 <a class="viewcode-back" href="../../../_autosummary/muvid.mcp.workspace.html#muvid.mcp.bucket_label">[docs]</a>
-</span><span id="line-408"><span class="k">def</span><span class="w"> </span><span class="nf">bucket_label</span><span class="p">(</span><span class="n">proj</span><span class="p">:</span> <span class="n">VisualizerProject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-409"><span class="w">    </span><span class="sd">"""What a visualizer-drawer bucket holds: ``"visualizer"``, or the one subgenre</span>
-</span><span id="line-410"><span class="sd">    whose work is all it holds.</span>
-</span><span id="line-411">
-</span><span id="line-412"><span class="sd">    Before muvid#103 subgenre projects lived in this drawer, so the drawer cannot</span>
-</span><span id="line-413"><span class="sd">    label them; their renders can. Evidence is each finished render's</span>
-</span><span id="line-414"><span class="sd">    ``meta.json`` (a render folder without one is a render that failed or is</span>
-</span><span id="line-415"><span class="sd">    still running, and says nothing), plus the ``lyricvid/`` folder the lyric</span>
-</span><span id="line-416"><span class="sd">    tools fetch their inputs into. A bucket with no evidence, or one that mixes</span>
-</span><span id="line-417"><span class="sd">    visualizer and subgenre work (allowed before and after muvid#103), stays</span>
-</span><span id="line-418"><span class="sd">    ``"visualizer"``. Read-only: nothing is moved or rewritten.</span>
-</span><span id="line-419"><span class="sd">    """</span>
-</span><span id="line-420">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLUG</span> <span class="k">as</span> <span class="n">lyric_slug</span>
-</span><span id="line-421">
-</span><span id="line-422">    <span class="n">kinds</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
-</span><span id="line-423">    <span class="k">if</span> <span class="p">(</span><span class="n">proj</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"lyricvid"</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-</span><span id="line-424">        <span class="n">kinds</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">lyric_slug</span><span class="p">)</span>
-</span><span id="line-425">    <span class="n">rdir</span> <span class="o">=</span> <span class="n">proj</span><span class="o">.</span><span class="n">renders_dir</span>
-</span><span id="line-426">    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">rdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span> <span class="k">if</span> <span class="n">rdir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="k">else</span> <span class="p">():</span>
-</span><span id="line-427">        <span class="n">spec</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"meta.json"</span>
-</span><span id="line-428">        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">is_file</span><span class="p">()):</span>
-</span><span id="line-429">            <span class="k">continue</span>
-</span><span id="line-430">        <span class="k">try</span><span class="p">:</span>
-</span><span id="line-431">            <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-432">        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-433">            <span class="k">continue</span>
-</span><span id="line-434">        <span class="n">kinds</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-</span><span id="line-435">            <span class="n">subgenre_of_render</span><span class="p">(</span><span class="n">meta</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{})</span> <span class="ow">or</span> <span class="s2">"visualizer"</span>
-</span><span id="line-436">        <span class="p">)</span>
-</span><span id="line-437">    <span class="k">return</span> <span class="n">kinds</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kinds</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"visualizer"</span></div>
+</span><span id="line-421"><span class="k">def</span><span class="w"> </span><span class="nf">bucket_label</span><span class="p">(</span><span class="n">proj</span><span class="p">:</span> <span class="n">VisualizerProject</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-422"><span class="w">    </span><span class="sd">"""What a visualizer-drawer bucket holds: ``"visualizer"``, or the one subgenre</span>
+</span><span id="line-423"><span class="sd">    whose work is all it holds.</span>
+</span><span id="line-424">
+</span><span id="line-425"><span class="sd">    Before muvid#103 subgenre projects lived in this drawer, so the drawer cannot</span>
+</span><span id="line-426"><span class="sd">    label them; their renders can. Evidence is each finished render's</span>
+</span><span id="line-427"><span class="sd">    ``meta.json`` (a render folder without one is a render that failed or is</span>
+</span><span id="line-428"><span class="sd">    still running, and says nothing), plus the ``lyricvid/`` folder the lyric</span>
+</span><span id="line-429"><span class="sd">    tools fetch their inputs into. A bucket with no evidence, or one that mixes</span>
+</span><span id="line-430"><span class="sd">    visualizer and subgenre work (allowed before and after muvid#103), stays</span>
+</span><span id="line-431"><span class="sd">    ``"visualizer"``. Read-only: nothing is moved or rewritten.</span>
+</span><span id="line-432"><span class="sd">    """</span>
+</span><span id="line-433">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.manifest</span><span class="w"> </span><span class="kn">import</span> <span class="n">SLUG</span> <span class="k">as</span> <span class="n">lyric_slug</span>
+</span><span id="line-434">
+</span><span id="line-435">    <span class="n">kinds</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+</span><span id="line-436">    <span class="k">if</span> <span class="p">(</span><span class="n">proj</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"lyricvid"</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+</span><span id="line-437">        <span class="n">kinds</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">lyric_slug</span><span class="p">)</span>
+</span><span id="line-438">    <span class="n">rdir</span> <span class="o">=</span> <span class="n">proj</span><span class="o">.</span><span class="n">renders_dir</span>
+</span><span id="line-439">    <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">rdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()</span> <span class="k">if</span> <span class="n">rdir</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="k">else</span> <span class="p">():</span>
+</span><span id="line-440">        <span class="n">spec</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"meta.json"</span>
+</span><span id="line-441">        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">is_file</span><span class="p">()):</span>
+</span><span id="line-442">            <span class="k">continue</span>
+</span><span id="line-443">        <span class="k">try</span><span class="p">:</span>
+</span><span id="line-444">            <span class="n">meta</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-445">        <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-446">            <span class="k">continue</span>
+</span><span id="line-447">        <span class="n">kinds</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+</span><span id="line-448">            <span class="n">subgenre_of_render</span><span class="p">(</span><span class="n">meta</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">meta</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="p">{})</span> <span class="ow">or</span> <span class="s2">"visualizer"</span>
+</span><span id="line-449">        <span class="p">)</span>
+</span><span id="line-450">    <span class="k">return</span> <span class="n">kinds</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kinds</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s2">"visualizer"</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -689,7 +705,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=c2d83de2"></script>
+    <script src="../../../_static/documentation_options.js?v=30b133cb"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
