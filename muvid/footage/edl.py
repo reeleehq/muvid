@@ -728,6 +728,12 @@ class FootageAlignment:
     #: before it existed); omitted from :meth:`to_dict` then, so those records stay
     #: byte-identical.
     song_match: "dict | None" = field(default=None, compare=False)
+    #: How long the clip's PICTURE runs, when that was probed (``None`` = not recorded:
+    #: the audio-measured ``duration_s`` stands). Derived from the manifest on load
+    #: (``FootageWorkspace.load_alignments``), never persisted here and never compared:
+    #: a free cut reads only the picture, so :func:`placed_as` bounds it by this
+    #: (muvid#322).
+    picture_s: "float | None" = field(default=None, compare=False)
 
     def to_dict(self) -> dict:
         out = {
@@ -1438,6 +1444,44 @@ RATE_MAX_DEV = 0.08
 EDGE_S = 0.25
 
 
+def with_pictures(
+    aligns: "Sequence[FootageAlignment]", clips: "Sequence[dict]"
+) -> "list[FootageAlignment]":
+    """``aligns`` with each video's recorded PICTURE length (``picture_s``, from its
+    manifest row's ``picture_duration``) — what a free cut is bounded by (muvid#322).
+    A clip with none recorded is returned unchanged.
+
+    >>> a = unplaced('c1', 10.0)
+    >>> with_pictures([a], [{'clip_id': 'c1', 'picture_duration': 6.0}])[0].picture_s
+    6.0
+    >>> with_pictures([a], [{'clip_id': 'c1'}])[0].picture_s is None
+    True
+    """
+    recorded = {
+        c.get("clip_id"): c["picture_duration"]
+        for c in clips
+        if c.get("picture_duration") is not None
+    }
+    return [
+        replace(a, picture_s=float(recorded[a.clip_id])) if a.clip_id in recorded else a
+        for a in aligns
+    ]
+
+
+def free_length(a: "FootageAlignment") -> float:
+    """How much of clip ``a`` a FREE cut may read: its picture's own length where that
+    is recorded, else the placement's ``duration_s``. A free cut reads the picture alone
+    (``-an``), so the audio-measured length is the wrong bound for it (muvid#322) — and
+    the ONE rule the gate (:func:`placed_as`), the planner and the in-point swap share.
+
+    >>> free_length(unplaced('c1', 10.0))
+    10.0
+    >>> free_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+    6.0
+    """
+    return a.duration_s if a.picture_s is None else a.picture_s
+
+
 def clip_in_of(e: "EdlEntry", a: "FootageAlignment") -> float:
     """Where cut ``e`` starts in its clip ``a``'s own time — THE sign convention:
     ``song_start - offset + slip`` — or, for a free cut, ``source_in + slip``, the
@@ -1463,16 +1507,23 @@ def placed_as(e: "EdlEntry", a: "FootageAlignment") -> "FootageAlignment":
     >>> p = placed_as(e, a)
     >>> p.offset_s, p.reliable, p.source, p.duration_s
     (28.0, True, 'free', 10.0)
+
+    A clip whose picture is shorter than its audio bounds a free cut by the picture:
+
+    >>> placed_as(e, replace(a, picture_s=6.0)).duration_s
+    6.0
     >>> clip_in_of(e, a)
     2.0
     """
     if getattr(e, "source_in", None) is None:
         return a
     offset = e.song_start - e.source_in
+    length = free_length(a)
     return replace(
         a,
         offset_s=offset,
-        coverage=(max(0.0, offset), offset + a.duration_s),
+        duration_s=length,
+        coverage=(max(0.0, offset), offset + length),
         overlaps=True,
         reliable=True,
         source=FREE,

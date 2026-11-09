@@ -207,6 +207,46 @@ def media_duration(media: PathLike) -> float:
     return float(duration)
 
 
+def picture_duration(media: PathLike) -> "float | None":
+    """Duration of ``media``'s first VIDEO stream in seconds, or ``None`` when none can
+    be told.
+
+    Not :func:`media_duration`: that is the container's, normally its longest stream,
+    and a phone video's audio track is often shorter or longer than its picture. A cut
+    that reads only the picture (``-an``) is bounded by this one (muvid#322). Matroska
+    and WebM give a stream no ``duration`` of its own, so the stream's ``DURATION`` tag
+    (``HH:MM:SS.ffffff``) and then ``nb_frames / r_frame_rate`` stand in; cover art
+    (``attached_pic``) is not a picture track."""
+    streams = probe(media).get("streams", [])
+    video = next(
+        (
+            s
+            for s in streams
+            if s.get("codec_type") == "video"
+            and not s.get("disposition", {}).get("attached_pic")
+        ),
+        None,
+    )
+    return None if video is None else _stream_seconds(video)
+
+
+def _stream_seconds(stream: dict) -> "float | None":
+    """A stream's length in seconds from whichever field this container fills in."""
+    try:
+        if stream.get("duration"):
+            return float(stream["duration"])
+        tag = (stream.get("tags") or {}).get("DURATION")
+        if tag:
+            h, m, sec = tag.split(":")
+            return int(h) * 3600 + int(m) * 60 + float(sec)
+        num, _, den = str(stream.get("r_frame_rate", "")).partition("/")
+        if stream.get("nb_frames") and float(num) > 0:
+            return int(stream["nb_frames"]) * float(den or 1) / float(num)
+    except (TypeError, ValueError, ZeroDivisionError):
+        pass
+    return None
+
+
 #: Sample format the raw-PCM decode emits: little-endian 32-bit float, which is
 #: exactly ``numpy.float32``'s memory layout, so an analysis pass can read the
 #: bytes straight into an array with no conversion step.
