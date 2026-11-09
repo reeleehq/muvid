@@ -665,7 +665,7 @@ def _placements(fp, *, on_unreadable=None) -> list:
     then it is called with ``(clip_id, error)`` and the clip gets a zero-length unplaced
     record, so one bad file does not cost every other clip its place (the editor
     document's lanes, muvid#138)."""
-    from muvid.footage.edl import STILL_DURATION_S, unplaced
+    from muvid.footage.edl import STILL_DURATION_S, unplaced, with_pictures
 
     aligns = fp.load_alignments()
     have = {a.clip_id for a in aligns}
@@ -684,7 +684,7 @@ def _placements(fp, *, on_unreadable=None) -> list:
                 raise
             on_unreadable(cid, e)
             out.append(unplaced(cid, 0.0))
-    return fp.with_pictures(out)
+    return with_pictures(out, fp.manifest().get("clips", []))
 
 
 def footage_roles(fp) -> dict:

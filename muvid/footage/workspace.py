@@ -59,10 +59,10 @@ import tempfile
 import time
 import warnings
 from contextlib import contextmanager
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from muvid.footage.edl import DECLARED, FootageAlignment
+from muvid.footage.edl import DECLARED, FootageAlignment, with_pictures
 from muvid.paths import (
     DATA_HOME_ENV_VAR as _DATA_HOME_ENV_VAR,
     caller_bucket,
@@ -807,23 +807,7 @@ class MusicVideoFootageProject:
             aligns = [FootageAlignment.from_dict(d) for d in json.loads(p.read_text())]
         except (OSError, ValueError):
             return []
-        return self.with_pictures(aligns)
-
-    def with_pictures(self, aligns: list[FootageAlignment]) -> list[FootageAlignment]:
-        """``aligns`` with each video's recorded PICTURE length (``picture_s``, from the
-        manifest's ``picture_duration``) — what a free cut is bounded by (muvid#322).
-        A clip with none recorded is returned unchanged."""
-        recorded = {
-            c.get("clip_id"): c.get("picture_duration")
-            for c in self.manifest().get("clips", [])
-            if c.get("picture_duration") is not None
-        }
-        return [
-            replace(a, picture_s=float(recorded[a.clip_id]))
-            if a.clip_id in recorded
-            else a
-            for a in aligns
-        ]
+        return with_pictures(aligns, self.manifest().get("clips", []))
 
     # -- renders -------------------------------------------------------------
     @property

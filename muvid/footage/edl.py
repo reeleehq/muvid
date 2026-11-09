@@ -1444,6 +1444,30 @@ RATE_MAX_DEV = 0.08
 EDGE_S = 0.25
 
 
+def with_pictures(
+    aligns: "Sequence[FootageAlignment]", clips: "Sequence[dict]"
+) -> "list[FootageAlignment]":
+    """``aligns`` with each video's recorded PICTURE length (``picture_s``, from its
+    manifest row's ``picture_duration``) — what a free cut is bounded by (muvid#322).
+    A clip with none recorded is returned unchanged.
+
+    >>> a = unplaced('c1', 10.0)
+    >>> with_pictures([a], [{'clip_id': 'c1', 'picture_duration': 6.0}])[0].picture_s
+    6.0
+    >>> with_pictures([a], [{'clip_id': 'c1'}])[0].picture_s is None
+    True
+    """
+    recorded = {
+        c.get("clip_id"): c["picture_duration"]
+        for c in clips
+        if c.get("picture_duration") is not None
+    }
+    return [
+        replace(a, picture_s=float(recorded[a.clip_id])) if a.clip_id in recorded else a
+        for a in aligns
+    ]
+
+
 def clip_in_of(e: "EdlEntry", a: "FootageAlignment") -> float:
     """Where cut ``e`` starts in its clip ``a``'s own time — THE sign convention:
     ``song_start - offset + slip`` — or, for a free cut, ``source_in + slip``, the
