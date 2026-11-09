@@ -44,12 +44,9 @@ _PROVENANCE_AGENT = "processor:muvid.footage.lacing_bridge"
 
 
 def _interval(start_s: float, end_s: float):
-    from lacing.time import RationalTime, TimeInterval
+    from lacing.time import TimeInterval
 
-    return TimeInterval(
-        start=RationalTime.from_seconds_lossy(start_s, rate=TIME_RATE, mode="round"),
-        end=RationalTime.from_seconds_lossy(end_s, rate=TIME_RATE, mode="round"),
-    )
+    return TimeInterval.from_seconds_lossy(start_s, end_s, rate=TIME_RATE, mode="round")
 
 
 def _annotation(

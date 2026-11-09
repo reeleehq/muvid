@@ -190,7 +190,9 @@ scoring-shots = [
 # annotations for a multitrack editor (reelee-web#203), and reads a DECISION tier back into
 # an EDL. Heavy import is lazy, so `import muvid`/`muvid.mcp` never pulls lacing.
 editor = [
-    "lacing",
+    # 0.0.94 is where TimeInterval.from_seconds_lossy exists (lacing#145), the one
+    # rounding rule `_interval` uses (muvid#305)
+    "lacing>=0.0.94",
 ]
 # The WEB lyric-video backend (muvid.lyricvid.render_web): a deterministic HTML page
 # screenshotted frame by frame by headless Chromium. OPTIONAL — the ASS backend is the
