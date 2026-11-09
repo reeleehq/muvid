@@ -314,3 +314,42 @@ def test_muvids_own_visualizer_bucket_registers_nothing(tmp_path, monkeypatch):
     meta = {"render_id": "r", "video": str(tmp_path / "nope.mp4")}
     assert proj.register_render(meta) is meta
     assert proj.manifest()["title"] == "T" and "cover" not in proj.manifest()
+
+
+def test_a_neighbour_of_another_genre_is_classified_without_opening_its_graph(
+    host, monkeypatch
+):
+    """muvid#339: the genre comes from the document mirror (``nw.project_genre``), so a
+    bucket of other projects costs one small read each, and only a project of THIS genre
+    is opened as a ``Project``."""
+    import muvid.production as production
+
+    _place(host, A, "mv", "music_video")
+    for pid in ("story1", "story2"):
+        _place(host, A, pid, "lyric-video")
+    opened = []
+    real = production.Project
+
+    def counting(root, *a, **kw):
+        opened.append(root.name)
+        return real(root, *a, **kw)
+
+    monkeypatch.setattr(production, "Project", counting)
+    listed = [
+        r["project_id"]
+        for ws in caller_workspaces(A, "footage")
+        for r in ws.list_projects()
+    ]
+    assert listed == ["mv"] and opened == ["mv"]
+
+
+def test_a_project_whose_mirror_is_unknown_is_still_classified_by_its_graph(
+    host, monkeypatch
+):
+    """An envelope that predates the mirror reads ``None``; the authoritative read
+    decides, as before."""
+    _place(host, A, "mv", "music_video")
+    monkeypatch.setattr(nw, "project_genre", lambda root: None, raising=False)
+    assert open_caller_project(A, "mv", kind="footage").email == A
+    with pytest.raises(FileNotFoundError):
+        open_caller_project(A, "mv", kind="visualizer")
