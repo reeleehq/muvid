@@ -1,4 +1,4 @@
-> built 2026-11-09 00:47 UTC from 64930a6 (main) · muvid 0.0.170. Details: build_info.json
+> built 2026-11-09 02:41 UTC from 560ee71 (main) · muvid 0.0.171. Details: build_info.json
 
 # index.html.md
 
@@ -8855,7 +8855,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`measure_spans`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.measure_spans)(fp)                                | Check, stretch by stretch, which parts of each placed video actually match the song where it is placed, and save what was found (muvid#16).                                                                                                                                                                                                                                                                                                            |
 | [`set_has_song`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.set_has_song)(fp, \*, clip_id, has_song)          | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                                                                                                                                                                                                   |
 | [`timeline`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.timeline)(fp)                                     | Which videos cover which spans of the song (overlaps shown), from the saved alignment — the map for choosing what to cut to.                                                                                                                                                                                                                                                                                                                           |
-| [`beat_grid`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.beat_grid)(fp)                                    | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                                                                                                                                                                                                  |
+| [`beat_grid`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.beat_grid)(fp, \*[, shape])                       | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                                                                                                                                                                                                  |
 | [`set_beat_grid`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.set_beat_grid)(fp, \*[, tempo_bpm, ...])          | Tell it where the beats are, when the automatic estimate is wrong for this song.                                                                                                                                                                                                                                                                                                                                                                       |
 | [`clear_beat_grid`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.clear_beat_grid)(fp)                              | Forget the beat grid I set, so the beat grid is estimated from the song again.                                                                                                                                                                                                                                                                                                                                                                         |
 | [`peaks`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.peaks)(fp, \*[, n])                               | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                                                                                                                                                                                               |
@@ -9079,7 +9079,7 @@ put to the GATE rather than re-implemented here.
 * **Return type:**
   [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
 
-### muvid.footage.service.beat_grid(fp)
+### muvid.footage.service.beat_grid(fp, , shape=True)
 
 The song’s beat grid — tempo and beat instants on the song timeline — without
 looking at the footage.
@@ -9102,6 +9102,16 @@ that start a bar), `downbeats_source` — `measured` (the estimator found them),
 to a bar — muvid.montage’s rule) or `first_beat` (no onset energy to vote with, so
 bars start on the first beat) — `beats_per_bar` and `bar_of_beat` (each beat’s
 bar number, 1 for the first bar, 0 for a pickup before it).
+
+And the song’s shape (muvid#316): `sections` (`[{label, start_s, end_s}]` — intro,
+verse, chorus … — from the song analysis), with `sections_source` `measured`,
+`none` (the analysis found no section: “one section” can be said, not inferred from
+an empty list) or `unavailable` (the song could not be analysed here); and
+`carried` (`[[start_s, end_s], ...]`), the spans where the grid the music cutter
+uses (a declared one included) has no measured beat and is carried on at the song’s
+own pace. `carried` is read on the analysis’s grid, which is the one the cutter
+uses; for a song the estimator finds almost no beat in, that grid is the analysis’s
+own fallback, not the `beats` listed here.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -9720,7 +9730,8 @@ footage scoring use it: the beat-derived metrics scored before it are stale (the
 others stay current) until `score` runs again, which recomputes only them — and
 they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
-song is set again). Returns the grid like `beat_grid` does, plus `changed`.
+song is set again). Returns the grid like `beat_grid` does (without the song’s shape; read
+`beat_grid` again for it), plus `changed`.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -15183,7 +15194,8 @@ footage scoring use it: the beat-derived metrics scored before it are stale (the
 others stay current) until `score_footage` runs again, which recomputes only them — and
 they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
-song is set again). Returns the grid like `beat_grid` does, plus `changed`.
+song is set again). Returns the grid like `beat_grid` does (without the song’s shape; read
+`beat_grid` again for it), plus `changed`.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -20698,18 +20710,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 00:47 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/64930a6dbc1846af78f65cc1d06d281bb0a07a3c"><code>64930a6</code></a> on branch <code>main</code>, for **muvid 0.0.170** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 02:41 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/560ee71b5660016ec70bd8cb4a5ffcd69ed67f30"><code>560ee71</code></a> on branch <code>main</code>, for **muvid 0.0.171** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.171) is ahead of the latest release on PyPI (0.0.170): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/64930a6dbc1846af78f65cc1d06d281bb0a07a3c"><code>64930a6dbc1846af78f65cc1d06d281bb0a07a3c</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/560ee71b5660016ec70bd8cb4a5ffcd69ed67f30"><code>560ee71b5660016ec70bd8cb4a5ffcd69ed67f30</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.170</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.171</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20718,9 +20732,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42540499928">42540499928</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42550963117">42550963117</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>34f2e97645fbd978841da1d5984d64840c5cb8e8</code> (in the history of the built commit) |
+| Event commit | <code>6a2346092c5d81564ad5dc1d9219c94301d3c6d3</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20745,13 +20759,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.170/">0.0.170</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.170/">0.0.170</a>, older than the documented version (0.0.171).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 64930a6dbc1846af78f65cc1d06d281bb0a07a3c
+git checkout 560ee71b5660016ec70bd8cb4a5ffcd69ed67f30
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

@@ -230,7 +230,7 @@ trust refusal belongs where the encode does, in <a class="reference internal" hr
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.timeline" title="muvid.footage.service.timeline"><code class="xref py py-obj docutils literal notranslate"><span class="pre">timeline</span></code></a>(fp)</p></td>
 <td><p>Which videos cover which spans of the song (overlaps shown), from the saved alignment — the map for choosing what to cut to.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.beat_grid" title="muvid.footage.service.beat_grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">beat_grid</span></code></a>(fp)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.service.beat_grid" title="muvid.footage.service.beat_grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">beat_grid</span></code></a>(fp, *[, shape])</p></td>
 <td><p>The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.service.set_beat_grid" title="muvid.footage.service.set_beat_grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_beat_grid</span></code></a>(fp, *[, tempo_bpm, ...])</p></td>
@@ -576,7 +576,7 @@ put to the GATE rather than re-implemented here.</p>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.service.beat_grid">
-<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">beat_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#beat_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.beat_grid" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.beat_grid'">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.service.</span></span><span class="sig-name descname"><span class="pre">beat_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/service.html#beat_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.service.beat_grid" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.service.beat_grid'">¶</a></dt>
 <dd><p>The song’s beat grid — tempo and beat instants on the song timeline — without
 looking at the footage.</p>
 <p>Computed once on the song (never per clip — clips map to it through their offsets)
@@ -595,6 +595,15 @@ that start a bar), <code class="docutils literal notranslate"><span class="pre">
 to a bar — muvid.montage’s rule) or <code class="docutils literal notranslate"><span class="pre">first_beat</span></code> (no onset energy to vote with, so
 bars start on the first beat) — <code class="docutils literal notranslate"><span class="pre">beats_per_bar</span></code> and <code class="docutils literal notranslate"><span class="pre">bar_of_beat</span></code> (each beat’s
 bar number, 1 for the first bar, 0 for a pickup before it).</p>
+<p>And the song’s shape (muvid#316): <code class="docutils literal notranslate"><span class="pre">sections</span></code> (<code class="docutils literal notranslate"><span class="pre">[{label,</span> <span class="pre">start_s,</span> <span class="pre">end_s}]</span></code> — intro,
+verse, chorus … — from the song analysis), with <code class="docutils literal notranslate"><span class="pre">sections_source</span></code> <code class="docutils literal notranslate"><span class="pre">measured</span></code>,
+<code class="docutils literal notranslate"><span class="pre">none</span></code> (the analysis found no section: “one section” can be said, not inferred from
+an empty list) or <code class="docutils literal notranslate"><span class="pre">unavailable</span></code> (the song could not be analysed here); and
+<code class="docutils literal notranslate"><span class="pre">carried</span></code> (<code class="docutils literal notranslate"><span class="pre">[[start_s,</span> <span class="pre">end_s],</span> <span class="pre">...]</span></code>), the spans where the grid the music cutter
+uses (a declared one included) has no measured beat and is carried on at the song’s
+own pace. <code class="docutils literal notranslate"><span class="pre">carried</span></code> is read on the analysis’s grid, which is the one the cutter
+uses; for a song the estimator finds almost no beat in, that grid is the analysis’s
+own fallback, not the <code class="docutils literal notranslate"><span class="pre">beats</span></code> listed here.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -1306,7 +1315,8 @@ footage scoring use it: the beat-derived metrics scored before it are stale (the
 others stay current) until <code class="docutils literal notranslate"><span class="pre">score</span></code> runs again, which recomputes only them — and
 they are current again if the grid is cleared; <code class="docutils literal notranslate"><span class="pre">scores_stale:</span> <span class="pre">true</span></code> says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
-song is set again). Returns the grid like <code class="docutils literal notranslate"><span class="pre">beat_grid</span></code> does, plus <code class="docutils literal notranslate"><span class="pre">changed</span></code>.</p>
+song is set again). Returns the grid like <code class="docutils literal notranslate"><span class="pre">beat_grid</span></code> does (without the song’s shape; read
+<code class="docutils literal notranslate"><span class="pre">beat_grid</span></code> again for it), plus <code class="docutils literal notranslate"><span class="pre">changed</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#dict" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
@@ -1595,7 +1605,7 @@ a candidate.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=45338af4"></script>
+<script src="../_static/documentation_options.js?v=e14b0eed"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

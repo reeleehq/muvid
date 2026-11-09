@@ -63,7 +63,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`measure_spans`](#muvid.footage.service.measure_spans)(fp)                                | Check, stretch by stretch, which parts of each placed video actually match the song where it is placed, and save what was found (muvid#16).                                                                                                                                                                                                                                                                                                            |
 | [`set_has_song`](#muvid.footage.service.set_has_song)(fp, \*, clip_id, has_song)          | Say whether a video has the song in its own sound — overriding what listening found.                                                                                                                                                                                                                                                                                                                                                                   |
 | [`timeline`](#muvid.footage.service.timeline)(fp)                                     | Which videos cover which spans of the song (overlaps shown), from the saved alignment — the map for choosing what to cut to.                                                                                                                                                                                                                                                                                                                           |
-| [`beat_grid`](#muvid.footage.service.beat_grid)(fp)                                    | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                                                                                                                                                                                                  |
+| [`beat_grid`](#muvid.footage.service.beat_grid)(fp, \*[, shape])                       | The song's beat grid — tempo and beat instants on the song timeline — without looking at the footage.                                                                                                                                                                                                                                                                                                                                                  |
 | [`set_beat_grid`](#muvid.footage.service.set_beat_grid)(fp, \*[, tempo_bpm, ...])          | Tell it where the beats are, when the automatic estimate is wrong for this song.                                                                                                                                                                                                                                                                                                                                                                       |
 | [`clear_beat_grid`](#muvid.footage.service.clear_beat_grid)(fp)                              | Forget the beat grid I set, so the beat grid is estimated from the song again.                                                                                                                                                                                                                                                                                                                                                                         |
 | [`peaks`](#muvid.footage.service.peaks)(fp, \*[, n])                               | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                                                                                                                                                                                               |
@@ -287,7 +287,7 @@ put to the GATE rather than re-implemented here.
 * **Return type:**
   [`Optional`](https://docs.python.org/3/library/typing.html#typing.Optional)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
 
-### muvid.footage.service.beat_grid(fp)
+### muvid.footage.service.beat_grid(fp, , shape=True)
 
 The song’s beat grid — tempo and beat instants on the song timeline — without
 looking at the footage.
@@ -310,6 +310,16 @@ that start a bar), `downbeats_source` — `measured` (the estimator found them),
 to a bar — muvid.montage’s rule) or `first_beat` (no onset energy to vote with, so
 bars start on the first beat) — `beats_per_bar` and `bar_of_beat` (each beat’s
 bar number, 1 for the first bar, 0 for a pickup before it).
+
+And the song’s shape (muvid#316): `sections` (`[{label, start_s, end_s}]` — intro,
+verse, chorus … — from the song analysis), with `sections_source` `measured`,
+`none` (the analysis found no section: “one section” can be said, not inferred from
+an empty list) or `unavailable` (the song could not be analysed here); and
+`carried` (`[[start_s, end_s], ...]`), the spans where the grid the music cutter
+uses (a declared one included) has no measured beat and is carried on at the song’s
+own pace. `carried` is read on the analysis’s grid, which is the one the cutter
+uses; for a song the estimator finds almost no beat in, that grid is the analysis’s
+own fallback, not the `beats` listed here.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -928,7 +938,8 @@ footage scoring use it: the beat-derived metrics scored before it are stale (the
 others stay current) until `score` runs again, which recomputes only them — and
 they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
-song is set again). Returns the grid like `beat_grid` does, plus `changed`.
+song is set again). Returns the grid like `beat_grid` does (without the song’s shape; read
+`beat_grid` again for it), plus `changed`.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

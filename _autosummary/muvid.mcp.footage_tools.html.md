@@ -625,7 +625,8 @@ footage scoring use it: the beat-derived metrics scored before it are stale (the
 others stay current) until `score_footage` runs again, which recomputes only them — and
 they are current again if the grid is cleared; `scores_stale: true` says so. A grid belongs to the
 song it was set for: with another song set it does not apply (and comes back if that
-song is set again). Returns the grid like `beat_grid` does, plus `changed`.
+song is set again). Returns the grid like `beat_grid` does (without the song’s shape; read
+`beat_grid` again for it), plus `changed`.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
