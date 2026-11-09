@@ -1142,7 +1142,7 @@ and whether an alignment / score tracks were actually dropped.</p>
 <span class="sig-prename descclassname"><span class="pre">muvid.mcp.footage_tools.</span></span><span class="sig-name descname"><span class="pre">set_song</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">project_id</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asset_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/mcp/footage_tools.html#set_song"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.mcp.footage_tools.set_song" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.mcp.footage_tools.set_song'">¶</a></dt>
 <dd><p>Set the project’s fixed clean song from an http(s) URL, or from a song already in
 one of your projects (<code class="docutils literal notranslate"><span class="pre">asset_id</span></code>). Free.</p>
-<p><code class="docutils literal notranslate"><span class="pre">asset_id</span></code> is the id <code class="docutils literal notranslate"><span class="pre">set_song</span></code> / <code class="docutils literal notranslate"><span class="pre">add_song</span></code> replies carry as <code class="docutils literal notranslate"><span class="pre">asset_id</span></code> (the
+<p><code class="docutils literal notranslate"><span class="pre">asset_id</span></code> is the <code class="docutils literal notranslate"><span class="pre">asset_id</span></code> a <code class="docutils literal notranslate"><span class="pre">set_song</span></code> or <code class="docutils literal notranslate"><span class="pre">add_footage</span></code> reply carries (the
 file’s SHA-256): the song is taken from where it already is — no download — and
 stored once however many of your projects use it. Give <code class="docutils literal notranslate"><span class="pre">url</span></code> or <code class="docutils literal notranslate"><span class="pre">asset_id</span></code>.</p>
 <p>Accepts a <strong>share link</strong> (Google Drive / Dropbox / OneDrive) as well as a direct media
@@ -1150,7 +1150,8 @@ URL — the link is normalised before fetching, and the downloaded bytes are che
 media, so a private-file sign-in page is refused with that diagnosis rather than stored.
 A <strong>page link</strong> — a video or music page (YouTube, SoundCloud, Bandcamp, …) — has its
 audio taken as mp3 through <code class="docutils literal notranslate"><span class="pre">yb</span></code> when that is installed, and the song then carries the
-source’s copyright notice (<code class="docutils literal notranslate"><span class="pre">song.notice</span></code>): you must have the right to use it.</p>
+source’s copyright notice (<code class="docutils literal notranslate"><span class="pre">song.notice</span></code>) and the page it came from
+(<code class="docutils literal notranslate"><span class="pre">song.source_url</span></code>): you must have the right to use it.</p>
 <p>This is the reference every uploaded clip is aligned to and whose audio the final
 video uses. Replaces any previous song. Duration/size-capped.</p>
 <dl class="field-list simple">
@@ -1218,7 +1219,7 @@ video uses. Replaces any previous song. Duration/size-capped.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=a3313db8"></script>
+<script src="../_static/documentation_options.js?v=0749b9a1"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

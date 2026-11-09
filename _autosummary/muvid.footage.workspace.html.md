@@ -319,7 +319,7 @@ Store `image_path` as `cover.jpg`, register it; return its artifact id.
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-#### set_song(src_path, , ext, name='', duration_s=None, notice='', link=False)
+#### set_song(src_path, , ext, name='', duration_s=None, notice='', link=False, source_url='')
 
 Store (replacing) the project’s one clean song from a local file.
 
@@ -343,7 +343,8 @@ The order of operations is the contract (muvid#17 item 4), in three phases:
 `name` is the display name (an uploaded file’s original name); `duration_s`
 is a duration the caller already probed, so a 100 MB song is not probed twice.
 `notice` is a copyright notice that travels with a song taken from a page link
-(muvid#274), recorded as `song_notice` only when given. `link` makes the stored
+(muvid#274), recorded as `song_notice` only when given, with the page it came
+from as `song_source_url` (`source_url`, muvid#333). `link` makes the stored
 song a hardlink of `src_path` (an asset already in another project, muvid#22).
 With a host catalog the song is registered too, and its id recorded as
 `song_artifact_id` (it equals `song_hash`: both are the SHA-256 of the bytes).

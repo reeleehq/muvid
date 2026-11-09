@@ -1016,7 +1016,7 @@ scores stale, so they are dropped.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='', link=False)
+### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='', link=False, source_url='')
 
 Set the project’s song — the clean master every video is aligned to and whose
 audio the finished video uses. Replaces any previous song.
@@ -1034,6 +1034,8 @@ was dropped, and its `asset_id` (the file’s SHA-256: pass it as `asset_id` to
 bind this very song into another project without fetching it again, muvid#22).
 `link` is the host’s: `path` is a file already stored in another of the
 caller’s projects, so the song is a hardlink of it, not a second copy.
+`source_url` is the host’s too: the page link a song’s audio was taken from, kept
+beside its copyright `notice` (muvid#333).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

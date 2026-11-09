@@ -849,7 +849,7 @@ and whether an alignment / score tracks were actually dropped.
 Set the project’s fixed clean song from an http(s) URL, or from a song already in
 one of your projects (`asset_id`). Free.
 
-`asset_id` is the id `set_song` / `add_song` replies carry as `asset_id` (the
+`asset_id` is the `asset_id` a `set_song` or `add_footage` reply carries (the
 file’s SHA-256): the song is taken from where it already is — no download — and
 stored once however many of your projects use it. Give `url` or `asset_id`.
 
@@ -858,7 +858,8 @@ URL — the link is normalised before fetching, and the downloaded bytes are che
 media, so a private-file sign-in page is refused with that diagnosis rather than stored.
 A **page link** — a video or music page (YouTube, SoundCloud, Bandcamp, …) — has its
 audio taken as mp3 through `yb` when that is installed, and the song then carries the
-source’s copyright notice (`song.notice`): you must have the right to use it.
+source’s copyright notice (`song.notice`) and the page it came from
+(`song.source_url`): you must have the right to use it.
 
 This is the reference every uploaded clip is aligned to and whose audio the final
 video uses. Replaces any previous song. Duration/size-capped.

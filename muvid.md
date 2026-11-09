@@ -1,4 +1,4 @@
-> built 2026-11-09 07:40 UTC from fa459d8 (main) · muvid 0.0.182. Details: build_info.json
+> built 2026-11-09 07:53 UTC from 4e441f0 (main) · muvid 0.0.183. Details: build_info.json
 
 # index.html.md
 
@@ -10035,7 +10035,7 @@ scores stale, so they are dropped.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='', link=False)
+### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='', link=False, source_url='')
 
 Set the project’s song — the clean master every video is aligned to and whose
 audio the finished video uses. Replaces any previous song.
@@ -10053,6 +10053,8 @@ was dropped, and its `asset_id` (the file’s SHA-256: pass it as `asset_id` to
 bind this very song into another project without fetching it again, muvid#22).
 `link` is the host’s: `path` is a file already stored in another of the
 caller’s projects, so the song is a hardlink of it, not a second copy.
+`source_url` is the host’s too: the page link a song’s audio was taken from, kept
+beside its copyright `notice` (muvid#333).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -10747,7 +10749,7 @@ Store `image_path` as `cover.jpg`, register it; return its artifact id.
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-#### set_song(src_path, , ext, name='', duration_s=None, notice='', link=False)
+#### set_song(src_path, , ext, name='', duration_s=None, notice='', link=False, source_url='')
 
 Store (replacing) the project’s one clean song from a local file.
 
@@ -10771,7 +10773,8 @@ The order of operations is the contract (muvid#17 item 4), in three phases:
 `name` is the display name (an uploaded file’s original name); `duration_s`
 is a duration the caller already probed, so a 100 MB song is not probed twice.
 `notice` is a copyright notice that travels with a song taken from a page link
-(muvid#274), recorded as `song_notice` only when given. `link` makes the stored
+(muvid#274), recorded as `song_notice` only when given, with the page it came
+from as `song_source_url` (`source_url`, muvid#333). `link` makes the stored
 song a hardlink of `src_path` (an asset already in another project, muvid#22).
 With a host catalog the song is registered too, and its id recorded as
 `song_artifact_id` (it equals `song_hash`: both are the SHA-256 of the bytes).
@@ -15670,7 +15673,7 @@ and whether an alignment / score tracks were actually dropped.
 Set the project’s fixed clean song from an http(s) URL, or from a song already in
 one of your projects (`asset_id`). Free.
 
-`asset_id` is the id `set_song` / `add_song` replies carry as `asset_id` (the
+`asset_id` is the `asset_id` a `set_song` or `add_footage` reply carries (the
 file’s SHA-256): the song is taken from where it already is — no download — and
 stored once however many of your projects use it. Give `url` or `asset_id`.
 
@@ -15679,7 +15682,8 @@ URL — the link is normalised before fetching, and the downloaded bytes are che
 media, so a private-file sign-in page is refused with that diagnosis rather than stored.
 A **page link** — a video or music page (YouTube, SoundCloud, Bandcamp, …) — has its
 audio taken as mp3 through `yb` when that is installed, and the song then carries the
-source’s copyright notice (`song.notice`): you must have the right to use it.
+source’s copyright notice (`song.notice`) and the page it came from
+(`song.source_url`): you must have the right to use it.
 
 This is the reference every uploaded clip is aligned to and whose audio the final
 video uses. Replaces any previous song. Duration/size-capped.
@@ -20997,20 +21001,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 07:40 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/fa459d868b85eab55b0fae3f36c126a5356adca8"><code>fa459d8</code></a> on branch <code>main</code>, for **muvid 0.0.182** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 07:53 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/4e441f021932d20b9031a1bc511723e2bdb90ef5"><code>4e441f0</code></a> on branch <code>main</code>, for **muvid 0.0.183** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.182) is ahead of the latest release on PyPI (0.0.181): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/fa459d868b85eab55b0fae3f36c126a5356adca8"><code>fa459d868b85eab55b0fae3f36c126a5356adca8</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/4e441f021932d20b9031a1bc511723e2bdb90ef5"><code>4e441f021932d20b9031a1bc511723e2bdb90ef5</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.182</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.183</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21019,9 +21021,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42579409652">42579409652</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42580868341">42580868341</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>b4b5e005f1c4c4f5321e046bbe0e457e85daa2c4</code> (in the history of the built commit) |
+| Event commit | <code>11335ce523303a10b344ac47ed7dfec7d32c2efe</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21046,13 +21048,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.181/">0.0.181</a>, older than the documented version (0.0.182).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.183/">0.0.183</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout fa459d868b85eab55b0fae3f36c126a5356adca8
+git checkout 4e441f021932d20b9031a1bc511723e2bdb90ef5
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
