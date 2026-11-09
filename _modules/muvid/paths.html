@@ -283,82 +283,94 @@
 
 </span><span id="line-94">
 </span><span id="line-95">
+</span><span id="line-96"><span class="c1">#: What may not appear in a path component. ``:`` is a Windows drive prefix (``D:x`` joins</span>
+</span><span id="line-97"><span class="c1">#: to another drive); it was the one character the two copies this replaced missed</span>
+</span><span id="line-98"><span class="c1">#: (nw's ``check_path_segment`` refuses it too, nw#227, muvid#340).</span>
+</span><span id="line-99"><span class="n">_NOT_IN_A_COMPONENT</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"/"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span><span class="p">,</span> <span class="s2">":"</span><span class="p">)</span>
+</span><span id="line-100">
+</span><span id="line-101">
 <div class="viewcode-block" id="safe_component">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.safe_component">[docs]</a>
-</span><span id="line-96"><span class="k">def</span><span class="w"> </span><span class="nf">safe_component</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-97"><span class="w">    </span><span class="sd">"""A single, traversal-safe path component (no ``/``, ``\\``, ``..``, or empties).</span>
-</span><span id="line-98">
-</span><span id="line-99"><span class="sd">    Every caller-supplied name reaching the data root goes through this. On the footage</span>
-</span><span id="line-100"><span class="sd">    MCP surface the names arrive from a remote OAuth caller, so there it is a trust</span>
-</span><span id="line-101"><span class="sd">    boundary rather than a tidiness check; :func:`project_root` is CLI-only and not on</span>
-</span><span id="line-102"><span class="sd">    that surface. Behaviour is unchanged from the two copies this replaced — notably</span>
-</span><span id="line-103"><span class="sd">    there is no length cap and no unicode normalisation, both pre-existing.</span>
-</span><span id="line-104"><span class="sd">    """</span>
-</span><span id="line-105">    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
-</span><span id="line-106">    <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span> <span class="ow">or</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">".."</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">"/"</span> <span class="ow">in</span> <span class="n">v</span> <span class="ow">or</span> <span class="s2">"</span><span class="se">\\</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">v</span> <span class="ow">or</span> <span class="s2">"</span><span class="se">\x00</span><span class="s2">"</span> <span class="ow">in</span> <span class="n">v</span><span class="p">:</span>
-</span><span id="line-107">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-108">    <span class="k">return</span> <span class="n">v</span></div>
+</span><span id="line-102"><span class="k">def</span><span class="w"> </span><span class="nf">safe_component</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-103"><span class="w">    </span><span class="sd">"""A single, traversal-safe path component (no ``/``, ``\\``, ``..``, or empties).</span>
+</span><span id="line-104">
+</span><span id="line-105"><span class="sd">    Every caller-supplied name reaching the data root goes through this. On the footage</span>
+</span><span id="line-106"><span class="sd">    MCP surface the names arrive from a remote OAuth caller, so there it is a trust</span>
+</span><span id="line-107"><span class="sd">    boundary rather than a tidiness check; :func:`project_root` is CLI-only and not on</span>
+</span><span id="line-108"><span class="sd">    that surface. Behaviour is that of the two copies this replaced, plus ``:`` (a drive</span>
+</span><span id="line-109"><span class="sd">    prefix) — there is still no length cap and no unicode normalisation, both</span>
+</span><span id="line-110"><span class="sd">    pre-existing.</span>
+</span><span id="line-111">
+</span><span id="line-112"><span class="sd">    **Why not ``nw.paths.check_path_segment``** (muvid#340): muvid's core never imports</span>
+</span><span id="line-113"><span class="sd">    ``nw`` (it is in the ``mcp`` extra, not the base dependencies, muvid#248), and this</span>
+</span><span id="line-114"><span class="sd">    is the core's one door for a caller-supplied name. The two stay in step by test</span>
+</span><span id="line-115"><span class="sd">    (``tests/test_paths.py``) rather than by import.</span>
+</span><span id="line-116"><span class="sd">    """</span>
+</span><span id="line-117">    <span class="n">v</span> <span class="o">=</span> <span class="p">(</span><span class="n">value</span> <span class="ow">or</span> <span class="s2">""</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+</span><span id="line-118">    <span class="k">if</span> <span class="ow">not</span> <span class="n">v</span> <span class="ow">or</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"."</span><span class="p">,</span> <span class="s2">".."</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">c</span> <span class="ow">in</span> <span class="n">v</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">_NOT_IN_A_COMPONENT</span><span class="p">):</span>
+</span><span id="line-119">        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"invalid </span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-120">    <span class="k">return</span> <span class="n">v</span></div>
 
-</span><span id="line-109">
-</span><span id="line-110">
+</span><span id="line-121">
+</span><span id="line-122">
 <div class="viewcode-block" id="canonical_email">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.canonical_email">[docs]</a>
-</span><span id="line-111"><span class="k">def</span><span class="w"> </span><span class="nf">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-</span><span id="line-112"><span class="w">    </span><span class="sd">"""The one spelling of a caller's email that names their data (muvid#312).</span>
-</span><span id="line-113">
-</span><span id="line-114"><span class="sd">    Emails are case-insensitive in practice, but a bucket named by the raw spelling is one</span>
-</span><span id="line-115"><span class="sd">    folder on a case-insensitive filesystem (macOS, Windows) and two on the Linux server.</span>
-</span><span id="line-116"><span class="sd">    The OAuth boundary lowercased already (``identity.token_email``); ``use_email`` and</span>
-</span><span id="line-117"><span class="sd">    every workspace now go through this too, so a host's drawer, a script and a token</span>
-</span><span id="line-118"><span class="sd">    agree. ``lower()``, not ``casefold()``, to match what the token boundary always did;</span>
-</span><span id="line-119"><span class="sd">    Unicode normalisation (NFC/NFD) is a separate, older gap.</span>
-</span><span id="line-120">
-</span><span id="line-121"><span class="sd">    No migration: hosted callers arrive through the token and were lowercase already. A</span>
-</span><span id="line-122"><span class="sd">    mixed-case folder made locally on Linux by ``use_email``/``for_email`` with a raw</span>
-</span><span id="line-123"><span class="sd">    spelling is no longer found under it; rename it to lowercase.</span>
-</span><span id="line-124"><span class="sd">    """</span>
-</span><span id="line-125">    <span class="k">return</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">email</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"email"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span></div>
+</span><span id="line-123"><span class="k">def</span><span class="w"> </span><span class="nf">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+</span><span id="line-124"><span class="w">    </span><span class="sd">"""The one spelling of a caller's email that names their data (muvid#312).</span>
+</span><span id="line-125">
+</span><span id="line-126"><span class="sd">    Emails are case-insensitive in practice, but a bucket named by the raw spelling is one</span>
+</span><span id="line-127"><span class="sd">    folder on a case-insensitive filesystem (macOS, Windows) and two on the Linux server.</span>
+</span><span id="line-128"><span class="sd">    The OAuth boundary lowercased already (``identity.token_email``); ``use_email`` and</span>
+</span><span id="line-129"><span class="sd">    every workspace now go through this too, so a host's drawer, a script and a token</span>
+</span><span id="line-130"><span class="sd">    agree. ``lower()``, not ``casefold()``, to match what the token boundary always did;</span>
+</span><span id="line-131"><span class="sd">    Unicode normalisation (NFC/NFD) is a separate, older gap.</span>
+</span><span id="line-132">
+</span><span id="line-133"><span class="sd">    No migration: hosted callers arrive through the token and were lowercase already. A</span>
+</span><span id="line-134"><span class="sd">    mixed-case folder made locally on Linux by ``use_email``/``for_email`` with a raw</span>
+</span><span id="line-135"><span class="sd">    spelling is no longer found under it; rename it to lowercase.</span>
+</span><span id="line-136"><span class="sd">    """</span>
+</span><span id="line-137">    <span class="k">return</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">email</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"email"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span></div>
 
-</span><span id="line-126">
-</span><span id="line-127">
+</span><span id="line-138">
+</span><span id="line-139">
 <div class="viewcode-block" id="caller_bucket">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.caller_bucket">[docs]</a>
-</span><span id="line-128"><span class="k">def</span><span class="w"> </span><span class="nf">caller_bucket</span><span class="p">(</span><span class="n">parent</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-129"><span class="w">    </span><span class="sd">"""The directory under ``parent`` holding one caller's projects."""</span>
-</span><span id="line-130">    <span class="k">return</span> <span class="n">parent</span> <span class="o">/</span> <span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">)</span></div>
+</span><span id="line-140"><span class="k">def</span><span class="w"> </span><span class="nf">caller_bucket</span><span class="p">(</span><span class="n">parent</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-141"><span class="w">    </span><span class="sd">"""The directory under ``parent`` holding one caller's projects."""</span>
+</span><span id="line-142">    <span class="k">return</span> <span class="n">parent</span> <span class="o">/</span> <span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">)</span></div>
 
-</span><span id="line-131">
-</span><span id="line-132">
+</span><span id="line-143">
+</span><span id="line-144">
 <div class="viewcode-block" id="project_root">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.project_root">[docs]</a>
-</span><span id="line-133"><span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">PROJECTS_KIND</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-134"><span class="w">    </span><span class="sd">"""Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.</span>
-</span><span id="line-135">
-</span><span id="line-136"><span class="sd">    Returns the path without creating it — ``muvid init`` (or a subgenre's own renderer)</span>
-</span><span id="line-137"><span class="sd">    owns creation, and a resolver that made directories could not be used to *ask* where</span>
-</span><span id="line-138"><span class="sd">    a project would go.</span>
-</span><span id="line-139">
-</span><span id="line-140"><span class="sd">    ``kind`` is the seam for a surface that wants its own subtree rather than sharing</span>
-</span><span id="line-141"><span class="sd">    ``projects/``; the connector-facing genres already use their own (``music_video/``,</span>
-</span><span id="line-142"><span class="sd">    ``visualizer/``) through the workspace classes that own those layouts.</span>
-</span><span id="line-143"><span class="sd">    """</span>
-</span><span id="line-144">    <span class="k">return</span> <span class="p">(</span>
-</span><span id="line-145">        <span class="n">data_home</span><span class="p">()</span>
-</span><span id="line-146">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"kind"</span><span class="p">)</span>
-</span><span id="line-147">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project name"</span><span class="p">)</span>
-</span><span id="line-148">    <span class="p">)</span></div>
+</span><span id="line-145"><span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">PROJECTS_KIND</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-146"><span class="w">    </span><span class="sd">"""Where a local muvid project named ``name`` belongs: ``{data_home}/{kind}/{name}``.</span>
+</span><span id="line-147">
+</span><span id="line-148"><span class="sd">    Returns the path without creating it — ``muvid init`` (or a subgenre's own renderer)</span>
+</span><span id="line-149"><span class="sd">    owns creation, and a resolver that made directories could not be used to *ask* where</span>
+</span><span id="line-150"><span class="sd">    a project would go.</span>
+</span><span id="line-151">
+</span><span id="line-152"><span class="sd">    ``kind`` is the seam for a surface that wants its own subtree rather than sharing</span>
+</span><span id="line-153"><span class="sd">    ``projects/``; the connector-facing genres already use their own (``music_video/``,</span>
+</span><span id="line-154"><span class="sd">    ``visualizer/``) through the workspace classes that own those layouts.</span>
+</span><span id="line-155"><span class="sd">    """</span>
+</span><span id="line-156">    <span class="k">return</span> <span class="p">(</span>
+</span><span id="line-157">        <span class="n">data_home</span><span class="p">()</span>
+</span><span id="line-158">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"kind"</span><span class="p">)</span>
+</span><span id="line-159">        <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project name"</span><span class="p">)</span>
+</span><span id="line-160">    <span class="p">)</span></div>
 
-</span><span id="line-149">
-</span><span id="line-150">
+</span><span id="line-161">
+</span><span id="line-162">
 <div class="viewcode-block" id="lut_dir">
 <a class="viewcode-back" href="../../_autosummary/muvid.paths.html#muvid.paths.lut_dir">[docs]</a>
-</span><span id="line-151"><span class="k">def</span><span class="w"> </span><span class="nf">lut_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-152"><span class="w">    </span><span class="sd">"""Where the LUTs a look may load live: ``{data_home}/luts`` (muvid#244).</span>
-</span><span id="line-153">
-</span><span id="line-154"><span class="sd">    Not created here, for :func:`project_root`'s reason; an absent folder simply holds</span>
-</span><span id="line-155"><span class="sd">    no LUT a look can name.</span>
-</span><span id="line-156"><span class="sd">    """</span>
-</span><span id="line-157">    <span class="k">return</span> <span class="n">data_home</span><span class="p">()</span> <span class="o">/</span> <span class="n">LUTS_KIND</span></div>
+</span><span id="line-163"><span class="k">def</span><span class="w"> </span><span class="nf">lut_dir</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-164"><span class="w">    </span><span class="sd">"""Where the LUTs a look may load live: ``{data_home}/luts`` (muvid#244).</span>
+</span><span id="line-165">
+</span><span id="line-166"><span class="sd">    Not created here, for :func:`project_root`'s reason; an absent folder simply holds</span>
+</span><span id="line-167"><span class="sd">    no LUT a look can name.</span>
+</span><span id="line-168"><span class="sd">    """</span>
+</span><span id="line-169">    <span class="k">return</span> <span class="n">data_home</span><span class="p">()</span> <span class="o">/</span> <span class="n">LUTS_KIND</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -373,7 +385,7 @@
 </footer>
     </div>
     
-    <script src="../../_static/documentation_options.js?v=68b8ad75"></script>
+    <script src="../../_static/documentation_options.js?v=5f40271f"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>

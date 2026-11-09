@@ -1,4 +1,4 @@
-> built 2026-11-09 08:22 UTC from 4cef5ce (main) · muvid 0.0.185. Details: build_info.json
+> built 2026-11-09 08:34 UTC from d714f9d (main) · muvid 0.0.186. Details: build_info.json
 
 # index.html.md
 
@@ -17782,8 +17782,14 @@ A single, traversal-safe path component (no `/`, `\`, `..`, or empties).
 Every caller-supplied name reaching the data root goes through this. On the footage
 MCP surface the names arrive from a remote OAuth caller, so there it is a trust
 boundary rather than a tidiness check; [`project_root()`](_autosummary/muvid.paths.html.md#muvid.paths.project_root) is CLI-only and not on
-that surface. Behaviour is unchanged from the two copies this replaced — notably
-there is no length cap and no unicode normalisation, both pre-existing.
+that surface. Behaviour is that of the two copies this replaced, plus `:` (a drive
+prefix) — there is still no length cap and no unicode normalisation, both
+pre-existing.
+
+\*\*Why not `nw.paths.check_path_segment``** (muvid#340): muvid's core never imports
+``nw` (it is in the `mcp` extra, not the base dependencies, muvid#248), and this
+is the core’s one door for a caller-supplied name. The two stay in step by test
+(`tests/test_paths.py`) rather than by import.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
@@ -21001,7 +21007,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 08:22 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/4cef5ceadb931fbf4c4adeabd7e6512176f8c965"><code>4cef5ce</code></a> on branch <code>main</code>, for **muvid 0.0.185** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 08:34 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d714f9d57c38c387c10118f630b7d5de5f466186"><code>d714f9d</code></a> on branch <code>main</code>, for **muvid 0.0.186** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -21010,9 +21016,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/4cef5ceadb931fbf4c4adeabd7e6512176f8c965"><code>4cef5ceadb931fbf4c4adeabd7e6512176f8c965</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d714f9d57c38c387c10118f630b7d5de5f466186"><code>d714f9d57c38c387c10118f630b7d5de5f466186</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.185</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.186</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21021,9 +21027,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42583879494">42583879494</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42585537598">42585537598</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>119f00a9e7e508f7e79a848419b07ce2fe37cd9c</code> (in the history of the built commit) |
+| Event commit | <code>e90fec5acb9f19e0a1329a1a9fc199d741f2db2c</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21048,13 +21054,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.185/">0.0.185</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.186/">0.0.186</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 4cef5ceadb931fbf4c4adeabd7e6512176f8c965
+git checkout d714f9d57c38c387c10118f630b7d5de5f466186
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

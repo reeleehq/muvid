@@ -155,8 +155,14 @@ A single, traversal-safe path component (no `/`, `\`, `..`, or empties).
 Every caller-supplied name reaching the data root goes through this. On the footage
 MCP surface the names arrive from a remote OAuth caller, so there it is a trust
 boundary rather than a tidiness check; [`project_root()`](#muvid.paths.project_root) is CLI-only and not on
-that surface. Behaviour is unchanged from the two copies this replaced — notably
-there is no length cap and no unicode normalisation, both pre-existing.
+that surface. Behaviour is that of the two copies this replaced, plus `:` (a drive
+prefix) — there is still no length cap and no unicode normalisation, both
+pre-existing.
+
+\*\*Why not `nw.paths.check_path_segment``** (muvid#340): muvid's core never imports
+``nw` (it is in the `mcp` extra, not the base dependencies, muvid#248), and this
+is the core’s one door for a caller-supplied name. The two stay in step by test
+(`tests/test_paths.py`) rather than by import.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
