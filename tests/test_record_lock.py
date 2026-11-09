@@ -297,3 +297,36 @@ def test_a_visualizer_render_meta_is_written_atomically(tmp_path, monkeypatch):
     assert json.loads((proj.renders_dir / "r1" / "meta.json").read_text()) == {
         "render_id": "r1"
     }
+
+
+def test_registering_a_render_merges_into_the_record_it_finds(tmp_path, monkeypatch):
+    """muvid#348: the second write of ``render_visualizer`` replaced the whole record, so a
+    key another writer added since the first (an ``organise`` title) was lost. It now
+    merges only what registering added, under the record's lock."""
+    from muvid.mcp.workspace import VisualizerWorkspace
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    proj = VisualizerWorkspace.for_email("u@x.com").create_project("p")
+    rdir = proj.new_render_dir("r1")
+    meta = rdir / "meta.json"
+    meta.write_text(json.dumps({"render_id": "r1"}))
+    # another writer lands between the first write and the registration's
+    meta.write_text(json.dumps({"render_id": "r1", "organise": {"title": "Take"}}))
+    proj.update_render_meta("r1", {"artifact_id": "abc"})
+    assert json.loads(meta.read_text()) == {
+        "render_id": "r1",
+        "organise": {"title": "Take"},
+        "artifact_id": "abc",
+    }
+    with pytest.raises(FileNotFoundError):  # never creates a record
+        proj.update_render_meta("nope", {"a": 1})
+
+
+def test_an_unreadable_alignments_file_is_said_not_silent(tmp_path, monkeypatch):
+    """muvid#348: treated as empty so a re-align repairs it, which also drops declared
+    offsets — so the reader warns."""
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    proj = W.FootageWorkspace.for_email("u@x.com").create_project("p")
+    (proj.root / "alignments.json").write_text("{torn")
+    with pytest.warns(RuntimeWarning, match="could not be read"):
+        assert proj.load_alignments() == []

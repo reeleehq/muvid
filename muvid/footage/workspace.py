@@ -829,6 +829,15 @@ class MusicVideoFootageProject:
         try:
             return [FootageAlignment.from_dict(d) for d in json.loads(p.read_text())]
         except (OSError, ValueError):
+            # Treated as empty so the next ``align`` repairs it (atomic writes make a torn
+            # file unexpected) — but that also drops any offset a person DECLARED, so it
+            # is said, not silent (muvid#348).
+            warnings.warn(
+                "alignments.json could not be read: treating the project as unaligned "
+                "(a re-align repairs it, and any offset you set by hand is lost)",
+                RuntimeWarning,
+                stacklevel=2,
+            )
             return []
 
     # -- renders -------------------------------------------------------------
