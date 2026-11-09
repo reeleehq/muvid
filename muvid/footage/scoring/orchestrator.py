@@ -547,6 +547,10 @@ def _score(
     for cid, kept in kept_tracks.items():
         if cid in tracks_by_clip:
             tracks_by_clip[cid].extend(kept)
+    # a cancel that landed DURING the last clip's decode ends that pass early without
+    # marking it truncated — saving it would serve a cut-short tensor as current (#326)
+    if _cancelled(should_cancel):
+        return {"status": "cancelled", "stage": "save"}
     kept_metrics = {tr.metric for trs in kept_tracks.values() for tr in trs}
     # Metric axis = the metrics actually produced by ≥1 clip (wanted, or kept).
     produced = {tr.metric for trs in tracks_by_clip.values() for tr in trs}

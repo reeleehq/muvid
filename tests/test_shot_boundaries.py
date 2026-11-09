@@ -235,3 +235,33 @@ def test_the_frame_time_is_the_decoders_else_the_index_clock():
     assert _frame_time(cap(3000.0), 10, 25.0) == 3.0
     assert _frame_time(cap(0.0), 10, 25.0) == 0.4  # no timestamp: the index clock
     assert _frame_time(cap(-1.0), 10, 25.0) == 0.4
+
+
+def test_samples_are_taken_by_time_and_the_cap_cannot_be_zero(tmp_path):
+    """A fixed stride sampled a 30 fps part at 7.5 Hz and a 12 fps part at 3 Hz."""
+    import subprocess
+
+    import numpy as np
+
+    from tests.ffmpeg_support import HAS_FFMPEG
+
+    if not HAS_FFMPEG:
+        pytest.skip("ffmpeg is not installed")
+    pytest.importorskip("cv2")
+    from muvid.footage.scoring.frames import sample_clip_frames
+
+    clip = tmp_path / "rates.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "testsrc=s=160x120:r=30:d=4",
+         "-f", "lavfi", "-i", "mandelbrot=s=160x120:r=12",
+         "-filter_complex",
+         "[1:v]trim=duration=4,setpts=PTS-STARTPTS+4/TB[m];[0:v][m]concat=n=2:v=1[v]",
+         "-map", "[v]", "-fps_mode", "vfr", "-pix_fmt", "yuv420p", str(clip)],
+        check=True,
+    )  # fmt: skip
+    fp = sample_clip_frames(str(clip), sample_fps=5.0)
+    gaps = np.diff(fp.clip_times)
+    gaps = np.delete(gaps, gaps.argmax())  # the fixture's own timestamp jump
+    assert gaps.max() < 0.35 and gaps.min() > 0.15  # ~5 Hz either side of it
+    assert sample_clip_frames(str(clip), max_frames=0).n_sampled == 1

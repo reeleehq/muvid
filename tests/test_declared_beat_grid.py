@@ -639,6 +639,9 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
     assert len(shots["A"]) == 1  # the frames strategy read the pass (muvid#259)
     # the cap cut the pass short: the reply and the manifest say where (muvid#326)
     assert load_manifest(proj.root)["sampled_to"] == {"A": 3.8}
+    summary = service.scores(proj)  # ...and the scores summary says so, per clip
+    assert [c.get("sampled_to") for c in summary["clips"]] == [3.8]
+    assert "3.8" in summary["warnings"][0] and "'A'" in summary["warnings"][0]
 
     service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
     decodes.clear()
