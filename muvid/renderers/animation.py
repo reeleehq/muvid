@@ -88,11 +88,11 @@ DFLT_AN_CAMERA_MOVE = "hold"
 AN_CAMERA_MOVE_PHRASES: tuple[tuple[str, str], ...] = (
     ("push in", "push_in"),
     ("push into", "push_in"),
-    ("dolly in", "push_in"),
+    ("dolly in", "dolly_in"),
     ("zoom in", "zoom_in"),
     ("pull out", "pull_out"),
     ("pull back", "pull_out"),
-    ("dolly out", "pull_out"),
+    ("dolly out", "dolly_out"),
     ("zoom out", "zoom_out"),
     ("pan left", "pan_left"),
     ("pan right", "pan_right"),
@@ -109,6 +109,15 @@ AN_CAMERA_MOVE_PHRASES: tuple[tuple[str, str], ...] = (
     ("lock off", "hold"),
     ("no movement", "hold"),
 )
+
+#: The nearest move an OLDER ``an`` has for one it lacks, tried before the no-op ``hold``
+#: (muvid#307): ``dolly_in``/``dolly_out`` (an#478) add depth parallax to the push/pull
+#: they extend, so a machine without them still gets the same direction of travel instead
+#: of a locked camera. A move with no entry degrades to ``hold`` with a warning.
+AN_CAMERA_MOVE_FALLBACKS: dict[str, str] = {
+    "dolly_in": "push_in",
+    "dolly_out": "pull_out",
+}
 
 #: Punctuation that ends a clause. Kept as a boundary rather than flattened to
 #: a space because a clause is how far back a negator reaches: "no clouds, push
@@ -205,7 +214,8 @@ def an_camera_move(
     silently — a dropped camera direction is the failure muvid#44 was:
 
     - the direction names no move this table knows ("handheld, drifting"), or
-    - it names one the *installed* ``an`` does not implement (``pan_left`` is
+    - it names one the *installed* ``an`` does not implement (a ``dolly`` first tries
+      its push/pull, :data:`AN_CAMERA_MOVE_FALLBACKS`, and still warns) (``pan_left`` is
       an#109, released in ``an`` 0.1.65; on 0.1.60 it is a hard refusal at
       validate and at compile).
 
@@ -234,6 +244,16 @@ def an_camera_move(
     >>> an_camera_move("pan left", known_moves={"hold", "push_in"})
     'hold'
 
+    A move with a close relative degrades to that, not to the no-op (muvid#307):
+
+    >>> import warnings
+    >>> with warnings.catch_warnings():
+    ...     warnings.simplefilter("ignore")
+    ...     an_camera_move("dolly in", known_moves={"hold", "push_in"})
+    'push_in'
+    >>> an_camera_move("dolly in", known_moves={"hold", "push_in", "dolly_in"})
+    'dolly_in'
+
     A direction naming nothing is not silently dropped:
 
     >>> import warnings
@@ -261,13 +281,25 @@ def an_camera_move(
     move = hits[0][3]
     if known_moves is None:
         known_moves = _installed_an_camera_moves()
+    asked = move
+    if known_moves is not None and move not in known_moves:
+        # one step, never a chain: a table cycle cannot loop
+        near = AN_CAMERA_MOVE_FALLBACKS.get(move)
+        if near is not None and near in known_moves:
+            warnings.warn(
+                f"camera direction {direction!r} asks for {asked!r}, which the "
+                f"installed `an` does not implement; rendering {near!r}, the move "
+                "it extends (`dolly_in`/`dolly_out` need a newer `an`, an#478).",
+                stacklevel=2,
+            )
+            return near
     if known_moves is not None and move not in known_moves:
         warnings.warn(
-            f"camera direction {direction!r} translates to {move!r}, which the "
+            f"camera direction {direction!r} translates to {asked!r}, which the "
             f"installed `an` does not implement (it has: {sorted(known_moves)}); "
             f"rendering the shot with {DFLT_AN_CAMERA_MOVE!r} instead. "
             "`pan_left`/`pan_right`/`tilt_up`/`tilt_down` need `an` >= 0.1.65 "
-            "(an#109).",
+            "(an#109); `dolly_in`/`dolly_out` need a release with an#478.",
             stacklevel=2,
         )
         return DFLT_AN_CAMERA_MOVE

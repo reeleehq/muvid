@@ -165,7 +165,7 @@ CAMERA_DIRECTION_CASES = [
     ("handheld, drifting", "hold"),
     ("slow push-in", "push_in"),
     ("SLOW PUSH IN", "push_in"),
-    ("dolly in on her face", "push_in"),
+    ("dolly in on her face", "dolly_in"),
     ("zoom in hard", "zoom_in"),
     ("pull back to reveal the room", "pull_out"),
     ("zoom out", "zoom_out"),
@@ -469,3 +469,26 @@ def test_the_skill_lists_exactly_the_phrases_the_renderer_recognises():
         f"{SKILL_PATH.name} does not name the camera phrases {missing}; an agent "
         "reading it cannot know they work."
     )
+
+
+def test_a_dolly_degrades_to_its_push_or_pull_on_an_older_an_not_to_hold():
+    """muvid#307: dolly_in/dolly_out (an#478) fall back to the move they extend."""
+    from muvid.renderers.animation import (
+        AN_CAMERA_MOVE_FALLBACKS,
+        an_camera_move,
+    )
+
+    old = {"hold", "push_in", "pull_out"}
+    new = old | {"dolly_in", "dolly_out"}
+    with pytest.warns(UserWarning, match="dolly_in"):
+        assert an_camera_move("dolly in", known_moves=old) == "push_in"
+    with pytest.warns(UserWarning, match="dolly_out"):
+        assert an_camera_move("dolly out", known_moves=old) == "pull_out"
+    with pytest.warns(UserWarning, match="dolly_in"):
+        assert an_camera_move("dolly in", known_moves={"hold"}) == "hold"
+    assert an_camera_move("dolly in", known_moves=new) == "dolly_in"
+    assert an_camera_move("dolly out", known_moves=new) == "dolly_out"
+    assert set(AN_CAMERA_MOVE_FALLBACKS.values()) <= old
+    fb = AN_CAMERA_MOVE_FALLBACKS
+    assert fb.keys() | set(fb.values()) <= RECORDED_AN_CAMERA_MOVES
+    assert not set(fb) & set(fb.values())  # no chain, so no cycle

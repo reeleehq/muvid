@@ -251,7 +251,7 @@ Rules:
   it recognises (case- and hyphen-insensitive; combine them with anything):
 
     `static` · `hold` · `locked` / `locked off` / `lock off` · `no movement`
-    · `push in` / `push into` / `dolly in` · `pull out` / `pull back` /
+    · `push in` / `push into` · `dolly in` · `pull out` / `pull back` ·
     `dolly out` · `zoom in` · `zoom out` · `pan left` · `pan right` ·
     `tilt up` / `crane up` · `tilt down` / `crane down`
 
