@@ -137,8 +137,13 @@ def _files_with_stem(directory: Path, stem: str) -> list[Path]:
     ]
 
 
-def replace_file(src, dest) -> Path:
+def replace_file(src, dest, *, link: bool = False) -> Path:
     """Put a copy of ``src`` at ``dest`` as a NEW file (temp sibling + ``os.replace``).
+
+    ``link=True`` makes the new name a HARDLINK of ``src`` instead of a copy, so an asset
+    bound into a second project is stored once (muvid#22); it falls back to a copy where
+    the filesystem cannot link (another device, a FAT volume). Safe because nothing here
+    writes a stored file in place.
 
     Never writes into an existing ``dest``: a project's media is hardlinked into the
     host's content-addressed catalog (``blobs/<sha256>``), so an in-place overwrite would
@@ -152,12 +157,25 @@ def replace_file(src, dest) -> Path:
     )
     os.close(fd)
     try:
-        shutil.copyfile(src, tmp)
+        copy_or_link(src, tmp, link=link)
         os.replace(tmp, dest)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise
     return dest
+
+
+def copy_or_link(src, dest, *, link: bool = False) -> None:
+    """Make ``dest`` (which exists, as a ``mkstemp`` placeholder) a copy of ``src`` — or
+    with ``link=True`` a hardlink of it, falling back to a copy when linking fails."""
+    if link:
+        try:
+            os.unlink(dest)
+            os.link(src, dest)
+            return
+        except OSError:
+            Path(dest).unlink(missing_ok=True)  # the placeholder, if the link failed
+    shutil.copyfile(src, dest)
 
 
 def store_cover(
@@ -353,6 +371,7 @@ class MusicVideoFootageProject:
         name: str = "",
         duration_s: "float | None" = None,
         notice: str = "",
+        link: bool = False,
     ) -> None:
         """Store (replacing) the project's one clean song from a local file.
 
@@ -376,7 +395,8 @@ class MusicVideoFootageProject:
         ``name`` is the display name (an uploaded file's original name); ``duration_s``
         is a duration the caller already probed, so a 100 MB song is not probed twice.
         ``notice`` is a copyright notice that travels with a song taken from a page link
-        (muvid#274), recorded as ``song_notice`` only when given.
+        (muvid#274), recorded as ``song_notice`` only when given. ``link`` makes the stored
+        song a hardlink of ``src_path`` (an asset already in another project, muvid#22).
         With a host catalog the song is registered too, and its id recorded as
         ``song_artifact_id`` (it equals ``song_hash``: both are the SHA-256 of the bytes).
         """
@@ -396,7 +416,7 @@ class MusicVideoFootageProject:
         # One cleanup for every phase, the lock's acquisition included: after os.replace
         # the staged name no longer exists and the unlink does nothing.
         try:
-            shutil.copyfile(src_path, staged)
+            copy_or_link(src_path, staged, link=link)
             duration = (
                 float(duration_s) if duration_s is not None else _probe_duration(staged)
             )
@@ -559,8 +579,11 @@ class MusicVideoFootageProject:
         kind: str = "",
         taken_at: "float | None" = None,
         taken_source: str = "",
+        link: bool = False,
     ) -> str:
-        """Store a footage clip from a local file; returns its ``clip_id``.
+        """Store a footage clip from a local file; returns its ``clip_id``. ``link``
+        stores it as a hardlink of ``src_path`` (an asset already in another project,
+        muvid#22) instead of a copy.
 
         ``kind="still"`` stores a photo (no sound, no duration); the default is a video,
         and writes no ``kind`` key, so a manifest written before photos existed reads
@@ -576,7 +599,7 @@ class MusicVideoFootageProject:
         # otherwise orphan the old one) before writing the new one.
         for old in _files_with_stem(clips_dir, cid):
             old.unlink()
-        dest = replace_file(src_path, clips_dir / f"{cid}{_safe_ext(ext)}")
+        dest = replace_file(src_path, clips_dir / f"{cid}{_safe_ext(ext)}", link=link)
         artifact_id = self._register(dest, kind="image" if kind == "still" else "video")
         entry = {"clip_id": cid, "file": dest.name, "name": name or cid}
         _set_or_drop(entry, "kind", kind or None)

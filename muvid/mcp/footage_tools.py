@@ -184,8 +184,32 @@ def _fetch_media(direct: str, dest: Path, *, kind: str, max_bytes: int, what: st
         raise _tool_error(f"could not fetch the {what}: {e}") from e
 
 
-def set_song(project_id: str, *, url: str) -> dict:
-    """Set the project's fixed clean song from an http(s) URL. Free.
+def _one_source(url: str, asset_id: str, *, what: str) -> None:
+    """A tool takes the media from a link OR from an asset already in the caller's
+    projects — exactly one, said before anything is fetched or stored (muvid#22)."""
+    if bool(url and url.strip()) == bool(asset_id and asset_id.strip()):
+        raise _tool_error(
+            f"give the {what} as `url` (a link) or as `asset_id` (one already in your "
+            "projects), one of them"
+        )
+
+
+def _bound_asset(asset_id: str, *, kind: str) -> Path:
+    """The caller's stored file for ``asset_id`` as ``kind`` (``audio`` | ``video``), or
+    a ToolError: the asset resolvers' refusal, in the tool's words."""
+    from muvid.footage.assets import resolve_asset
+
+    with _refusals():
+        return resolve_asset(current_email(), asset_id, kind=kind)
+
+
+def set_song(project_id: str, *, url: str = "", asset_id: str = "") -> dict:
+    """Set the project's fixed clean song from an http(s) URL, or from a song already in
+    one of your projects (``asset_id``). Free.
+
+    ``asset_id`` is the id ``set_song`` / ``add_song`` replies carry as ``asset_id`` (the
+    file's SHA-256): the song is taken from where it already is — no download — and
+    stored once however many of your projects use it. Give ``url`` or ``asset_id``.
 
     Accepts a **share link** (Google Drive / Dropbox / OneDrive) as well as a direct media
     URL — the link is normalised before fetching, and the downloaded bytes are checked to be
@@ -201,7 +225,10 @@ def set_song(project_id: str, *, url: str) -> dict:
 
     from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
 
+    _one_source(url, asset_id, what="song")
     proj = _open(project_id)
+    if asset_id.strip():
+        return _bound_song(proj, project_id, _bound_asset(asset_id, kind="audio"))
     direct = _resolve_media_url(url, what="song")
     notice, filename = "", ""
     with tempfile.TemporaryDirectory() as tmp:
@@ -233,6 +260,21 @@ def set_song(project_id: str, *, url: str) -> dict:
                 duration_s=dur,
                 notice=notice,
             )
+    return {"project_id": project_id, **out}
+
+
+def _bound_song(proj, project_id: str, stored: Path) -> dict:
+    """``stored`` (a song of one of the caller's projects) as this project's song, a
+    hardlink of it rather than a copy (muvid#22)."""
+    dur = _duration(stored)
+    if dur > _SONG_MAX_DURATION_S:
+        raise _tool_error(
+            f"song is {dur:.0f}s; the {_SONG_MAX_DURATION_S}s limit is exceeded"
+        )
+    with _refusals():
+        out = service.set_song(
+            proj, path=str(stored), ext=stored.suffix, duration_s=dur, link=True
+        )
     return {"project_id": project_id, **out}
 
 
@@ -278,8 +320,15 @@ def _display_name(title: str) -> str:
     return title.replace("/", "-").replace("\\", "-").strip()[:120]
 
 
-def add_footage(project_id: str, *, url: str, name: str = "") -> dict:
-    """Add a footage video clip from an http(s) URL (a recording of the song). Free.
+def add_footage(
+    project_id: str, *, url: str = "", name: str = "", asset_id: str = ""
+) -> dict:
+    """Add a footage video clip from an http(s) URL (a recording of the song), or one
+    already in one of your projects (``asset_id``). Free.
+
+    ``asset_id`` is the ``asset_id`` an earlier ``add_footage`` reply returned (the
+    file's SHA-256): the video is taken from where it already is — no download — and
+    stored once however many of your projects use it. Give ``url`` or ``asset_id``.
 
     Accepts a **share link** as well as a direct media URL. Fetched server-side (streamed to
     disk; SSRF-guarded, size/duration-capped) and asserted to be media before anything is
@@ -290,9 +339,22 @@ def add_footage(project_id: str, *, url: str, name: str = "") -> dict:
     """
     import tempfile
 
+    _one_source(url, asset_id, what="clip")
     proj = _open(project_id)
     if _n_videos(proj) >= _MAX_CLIPS:
         raise _tool_error(_limit_message(_n_videos(proj)))
+    if asset_id.strip():
+        stored = _bound_asset(asset_id, kind="video")
+        with _refusals():
+            out = service.add_clip(
+                proj,
+                path=str(stored),
+                ext=stored.suffix,
+                name=name,
+                duration_s=_duration(stored),
+                link=True,
+            )
+        return {"project_id": project_id, **out}
     direct = _resolve_media_url(url, what="clip")
     ext = _url_ext(url, "") or _url_ext(direct, "mp4")
     # Fetch into a tempdir, then hand off to the service (which copies into clips/ under

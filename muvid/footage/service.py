@@ -181,6 +181,7 @@ def set_song(
     filename: str = "",
     duration_s: Optional[float] = None,
     notice: str = "",
+    link: bool = False,
 ) -> dict:
     """Set the project's song — the clean master every video is aligned to and whose
     audio the finished video uses. Replaces any previous song.
@@ -193,8 +194,11 @@ def set_song(
     duration-capped.
 
     Returns ``song_duration`` (seconds), the stored ``song`` (name, and the
-    ``artifact_id`` to play it by when the project is hosted) and whether an alignment
-    was dropped.
+    ``artifact_id`` to play it by when the project is hosted), whether an alignment
+    was dropped, and its ``asset_id`` (the file's SHA-256: pass it as ``asset_id`` to
+    bind this very song into another project without fetching it again, muvid#22).
+    ``link`` is the host's: ``path`` is a file already stored in another of the
+    caller's projects, so the song is a hardlink of it, not a second copy.
     """
     src = _existing_file(path, what="song")
     _refuse_oversize(src, cap=SONG_MAX_BYTES, what="song")
@@ -210,12 +214,14 @@ def set_song(
         name=Path(filename).name if filename else "",
         duration_s=dur,
         notice=notice,
+        link=link,
     )
     _warm(song_analysis, fp)  # the beat and sections, while the person waits anyway
     return {
         "song_duration": round(dur, 2),
         "song": fp.song_info(),
         "alignment_invalidated": had_alignment,
+        "asset_id": fp.song_hash(),
     }
 
 
@@ -407,6 +413,7 @@ def add_clip(
     clip_id: str = "",
     ext: str = "",
     duration_s: Optional[float] = None,
+    link: bool = False,
 ) -> dict:
     """Add one video or photo to the project.
 
@@ -423,7 +430,11 @@ def add_clip(
 
     Run ``align`` afterwards: listening is how a video with the song in it gets its
     place on the song. Returns the ``clip_id``, its ``name`` and ``duration`` (and
-    ``artifact_id`` when hosted); a photo also ``kind: "still"``, ``width``, ``height``.
+    ``artifact_id`` when hosted); a video also its ``asset_id`` (the file's SHA-256: pass
+    it as ``asset_id`` to bind this very video into another project without fetching it
+    again, muvid#22); a photo also ``kind: "still"``, ``width``, ``height``. ``link`` is
+    the host's: ``path`` is a file already stored in another of the caller's projects,
+    so the video is a hardlink of it, not a second copy.
     """
     rows = fp.list_clips()
     known = {c["clip_id"] for c in rows}
@@ -466,14 +477,20 @@ def add_clip(
         name=label,
         taken_at=taken,
         taken_source=taken_source,
+        link=link,
     )
     _record_clip_duration(fp, cid, dur)
     _picture_length(fp, cid)
-    _record_clip_hash(fp, cid)
+    digest = _record_clip_hash(fp, cid)
     _warm(_warm_activity, fp, cid)
     _ensure_cover(fp)
     _prepare_filmstrip(fp, cid)
-    out = {"clip_id": cid, "name": label, "duration": round(dur, 2)}
+    out = {
+        "clip_id": cid,
+        "name": label,
+        "duration": round(dur, 2),
+        "asset_id": digest,
+    }
     row = next((c for c in fp.list_clips() if c["clip_id"] == cid), {})
     if row.get("artifact_id"):
         out["artifact_id"] = row["artifact_id"]
@@ -5069,16 +5086,19 @@ def _clip_duration(fp, clip_id: str) -> float:
     return dur
 
 
-def _record_clip_hash(fp, clip_id: str) -> None:
+def _record_clip_hash(fp, clip_id: str) -> str:
     """Record a just-stored clip's content hash, so the measurements keyed on it
-    (``beats/``) never re-hash a 400 MB file per request (``_recorded_clip_hash``)."""
+    (``beats/``) never re-hash a 400 MB file per request (``_recorded_clip_hash``), and
+    return it: it is the clip's ``asset_id`` (muvid#22)."""
     from muvid.catalog import hash_file
 
     from muvid.footage.workspace import file_identity
 
     path = Path(fp.clip_paths()[clip_id])
     measured = (path, file_identity(path))
-    _set_clip_field(fp, clip_id, "hash", hash_file(path), measured=measured)
+    digest = hash_file(path)
+    _set_clip_field(fp, clip_id, "hash", digest, measured=measured)
+    return digest
 
 
 def _warm_activity(fp, clip_id: str) -> None:
@@ -5353,7 +5373,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         hide=("duration_s", "ext"),
         # ``notice`` is the host's: a page link's copyright notice (muvid#274) is
         # stated by whoever fetched the page, never by the client.
-        host_params=("path", "filename", "notice"),
+        host_params=("path", "filename", "notice", "link"),
         max_upload_bytes=SONG_MAX_BYTES,
     ),
     OpSpec(
@@ -5361,7 +5381,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
         "Add a video or photo",
         "write",
         hide=("duration_s", "ext"),
-        host_params=("path", "filename"),
+        host_params=("path", "filename", "link"),
         max_upload_bytes=CLIP_MAX_BYTES,
         limits=FOOTAGE_LIMITS,
     ),
