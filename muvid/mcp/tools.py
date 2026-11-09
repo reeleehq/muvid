@@ -303,11 +303,16 @@ def render_visualizer(
         from muvid.mcp._cover import refresh_cover
 
         try:
-            meta = proj.register_render(meta)
+            registered = proj.register_render(meta)
         except (OSError, ValueError, *CATALOG_ERRORS) as e:
             raise _tool_error(
                 f"the render was made but could not be registered: {e}"
             ) from e
-        proj.write_render_meta(render_id, meta)
+        # merged, not rewritten: the record is already visible, so another writer may
+        # have added a key to it since the first write (muvid#348)
+        added = {k: v for k, v in registered.items() if meta.get(k) != v}
+        if added:
+            proj.update_render_meta(render_id, added)
+        meta = registered
         refresh_cover(proj, meta)
     return meta

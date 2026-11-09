@@ -114,6 +114,19 @@ class VisualizerProject:
             self.renders_dir / rid / "meta.json", json.dumps(meta, indent=2)
         )
 
+    def update_render_meta(self, render_id: str, changes: dict) -> None:
+        """Merge ``changes`` into a render's existing ``meta.json`` under its lock, so a
+        key another writer set meanwhile (an ``organise`` title, the ref backfill) is kept
+        rather than replaced by a whole-record rewrite (muvid#348)."""
+        from muvid.footage.workspace import no_record, update_json_record
+
+        rid = _safe_component(render_id, label="render_id")
+        update_json_record(
+            self.renders_dir / rid / "meta.json",
+            lambda m: m.update(changes),
+            default=no_record,
+        )
+
     def register_render(self, meta: dict) -> dict:
         """``meta`` with the host catalog ids of the render's video (``artifact_id``) and
         thumbnail (``thumbnail_artifact_id``).
