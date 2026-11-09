@@ -179,7 +179,7 @@ def test_a_chosen_part_outside_the_video_is_moved_in_and_says_so(bath):
     )
 
 
-def test_a_synced_cut_and_a_gap_and_a_bad_number_are_refused(bath):
+def test_a_gap_a_bad_number_and_both_slip_and_in_point_are_refused(bath):
     from muvid.footage.errors import FootageError
 
     edit_id = service.save_edit(
@@ -192,13 +192,44 @@ def test_a_synced_cut_and_a_gap_and_a_bad_number_are_refused(bath):
     )["edit_id"]
     with pytest.raises(FootageError, match="gap"):
         service.set_cut(bath, edit_id=edit_id, index=1, source_in_s=1.0)
-    with pytest.raises(FootageError, match="0 or more"):
-        service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=-1.0)
-    with pytest.raises(FootageError, match="number"):
-        service.set_cut(bath, edit_id=edit_id, index=0, source_in_s="later")
+    for bad in (-1.0, "later", True):
+        with pytest.raises(FootageError, match="source_in"):
+            service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=bad)
+    with pytest.raises(FootageError, match="pass one"):
+        service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=2.0, slip_s=0.1)
 
 
-def test_a_synced_cut_and_a_photo_have_no_part_to_choose():
+def test_a_video_with_the_song_in_it_has_no_part_to_choose(bath):
+    """By the clip's ROLE (what a person said wins), not the shape of one cut."""
+    from muvid.footage.errors import FootageError
+
+    edit_id = _edit(bath)
+    service.set_has_song(bath, clip_id="abbey", has_song="yes")
+    with pytest.raises(FootageError, match="slip_s"):
+        service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=2.0)
+
+
+def test_the_chosen_part_is_clamped_to_the_rooms_both_ends_with_a_warning(bath):
+    edit_id = _edit(bath)
+    hi = service.set_cut(bath, edit_id=edit_id, index=1, source_in_s=500.0)
+    used = hi["source_in_clamped"]["used"]
+    assert hi["edl"][1]["source_in"] == used
+    assert any("rather than" in w for w in hi["warnings"])
+    # the 12 s clip holds the cut's 4.5 s and the 0.5 s trail of the next blend after it
+    assert used == pytest.approx(12.0 - 4.5 - 0.5)
+    lo = service.set_cut(bath, edit_id=edit_id, index=1, source_in_s=0.0)
+    assert lo["edl"][1]["source_in"] == lo["source_in_clamped"]["used"] > 0.0
+
+
+def test_the_chosen_part_follows_the_rest_of_the_same_call(bath):
+    """A rate raised in the same call shrinks the room: the in-point is chosen after."""
+    edit_id = _edit(bath)
+    out = service.set_cut(bath, edit_id=edit_id, index=0, rate=1.05, source_in_s=500.0)
+    cut = out["edl"][0]
+    assert cut["rate"] == 1.05 and cut["source_in"] + 3.0 * 1.05 <= 12.0 + 1e-6
+
+
+def test_a_photo_has_no_part_to_choose():
     from types import SimpleNamespace
 
     from muvid.footage.edl import EdlEntry
@@ -208,7 +239,7 @@ def test_a_synced_cut_and_a_photo_have_no_part_to_choose():
         manifest=lambda: {"clips": [{"clip_id": "pic", "kind": service.STILL_KIND}]},
         load_alignments=lambda: [],
     )
-    with pytest.raises(FootageError, match="slip_s"):
-        service._chosen_in_point(fp, EdlEntry(0.0, 2.0, "dog"), 1.0)
     with pytest.raises(FootageError, match="photo"):
         service._chosen_in_point(fp, EdlEntry(0.0, 2.0, "pic", source_in=0.0), 1.0)
+    with pytest.raises(FootageError, match="no clip"):
+        service._chosen_in_point(fp, EdlEntry(0.0, 2.0, "ghost", source_in=0.0), 1.0)

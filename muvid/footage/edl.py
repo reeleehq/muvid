@@ -3120,6 +3120,26 @@ def in_point_bounds(
     return lo + edge, max(lo + edge, hi - edge)
 
 
+def clamp_in_point(
+    bounds: "tuple[float, float]", asked: float
+) -> "tuple[float, dict | None]":
+    """``asked`` moved into ``bounds`` (:func:`in_point_bounds`), rounded to the clock
+    muvid keeps; ``(used, None)`` when it already fit, else ``(used, {asked, used})``.
+
+    >>> clamp_in_point((0.5, 7.5), 4.0)
+    (4.0, None)
+    >>> clamp_in_point((0.5, 7.5), 40.0)
+    (7.5, {'asked': 40.0, 'used': 7.5})
+    >>> clamp_in_point((0.5, 7.5), 0.0)
+    (0.5, {'asked': 0.0, 'used': 0.5})
+    """
+    lo, hi = bounds
+    used = round(min(max(asked, lo), hi), 4)
+    if abs(used - asked) < _EPS:
+        return used, None
+    return used, {"asked": float(asked), "used": used}
+
+
 def still_in_point(cut: "EdlEntry") -> float:
     """Where a free cut on a STILL starts: the lowest ``source_in`` the gate accepts —
     the blend's lead — the same rule as a video's in-point minus the edge margin a still
