@@ -88,11 +88,11 @@ DFLT_AN_CAMERA_MOVE = "hold"
 AN_CAMERA_MOVE_PHRASES: tuple[tuple[str, str], ...] = (
     ("push in", "push_in"),
     ("push into", "push_in"),
-    ("dolly in", "push_in"),
+    ("dolly in", "dolly_in"),
     ("zoom in", "zoom_in"),
     ("pull out", "pull_out"),
     ("pull back", "pull_out"),
-    ("dolly out", "pull_out"),
+    ("dolly out", "dolly_out"),
     ("zoom out", "zoom_out"),
     ("pan left", "pan_left"),
     ("pan right", "pan_right"),
@@ -109,6 +109,15 @@ AN_CAMERA_MOVE_PHRASES: tuple[tuple[str, str], ...] = (
     ("lock off", "hold"),
     ("no movement", "hold"),
 )
+
+#: The nearest move an OLDER ``an`` has for one it lacks, tried before the no-op ``hold``
+#: (muvid#307): ``dolly_in``/``dolly_out`` (an#478) add depth parallax to the push/pull
+#: they extend, so a machine without them still gets the same direction of travel instead
+#: of a locked camera. A move with no entry degrades to ``hold`` with a warning.
+AN_CAMERA_MOVE_FALLBACKS: dict[str, str] = {
+    "dolly_in": "push_in",
+    "dolly_out": "pull_out",
+}
 
 #: Punctuation that ends a clause. Kept as a boundary rather than flattened to
 #: a space because a clause is how far back a negator reaches: "no clouds, push
@@ -234,6 +243,13 @@ def an_camera_move(
     >>> an_camera_move("pan left", known_moves={"hold", "push_in"})
     'hold'
 
+    A move with a close relative degrades to that, not to the no-op (muvid#307):
+
+    >>> an_camera_move("dolly in", known_moves={"hold", "push_in"})
+    'push_in'
+    >>> an_camera_move("dolly in", known_moves={"hold", "push_in", "dolly_in"})
+    'dolly_in'
+
     A direction naming nothing is not silently dropped:
 
     >>> import warnings
@@ -261,6 +277,12 @@ def an_camera_move(
     move = hits[0][3]
     if known_moves is None:
         known_moves = _installed_an_camera_moves()
+    while (
+        known_moves is not None
+        and move not in known_moves
+        and move in AN_CAMERA_MOVE_FALLBACKS
+    ):
+        move = AN_CAMERA_MOVE_FALLBACKS[move]  # a close relative, said nothing of
     if known_moves is not None and move not in known_moves:
         warnings.warn(
             f"camera direction {direction!r} translates to {move!r}, which the "
