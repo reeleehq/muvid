@@ -869,7 +869,7 @@ def unverified_stretches(
     if a.spans is None:
         return None
     lo = max(0.0, a.coverage[0] - a.offset_s)
-    hi = min(a.duration_s, a.coverage[1] - a.offset_s)
+    hi = min(synced_length(a), a.coverage[1] - a.offset_s)
     confirmed = sorted(
         (start, end)
         for start, end in (
@@ -1463,9 +1463,36 @@ def with_pictures(
         if c.get("picture_duration") is not None
     }
     return [
-        replace(a, picture_s=float(recorded[a.clip_id])) if a.clip_id in recorded else a
+        _with_picture(a, recorded[a.clip_id]) if a.clip_id in recorded else a
         for a in aligns
     ]
+
+
+def _with_picture(a: "FootageAlignment", picture: float) -> "FootageAlignment":
+    """``a`` knowing its picture is ``picture`` s long. A placement that overlaps the
+    song also loses the part of its coverage past the picture's last frame: the audio
+    ran on, the picture did not, and a cut there would freeze (muvid#344)."""
+    out = replace(a, picture_s=float(picture))
+    if a.source == UNPLACED or not a.overlaps or picture >= a.duration_s:
+        return out
+    end = max(a.coverage[0], min(a.coverage[1], a.offset_s + float(picture)))
+    return replace(out, coverage=(a.coverage[0], end))
+
+
+def synced_length(a: "FootageAlignment") -> float:
+    """How much of clip ``a`` a SYNCED cut may read: no more than the audio the aligner
+    measured and no more than the picture (a cut reads only the picture, ``-an``, so
+    past its last frame it would freeze, muvid#344). :func:`free_length` is the free
+    cut's: the picture alone.
+
+    >>> synced_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+    6.0
+    >>> synced_length(replace(unplaced('c1', 10.0), picture_s=12.0))
+    10.0
+    """
+    if a.picture_s is None:
+        return a.duration_s
+    return min(a.duration_s, a.picture_s)
 
 
 def free_length(a: "FootageAlignment") -> float:
@@ -2032,7 +2059,9 @@ def _clip_contains(
     past the end of the clip.
     """
     clip_in = start - a.offset_s + slip
-    return clip_in >= -_EPS and clip_in + (end - start) * rate <= a.duration_s + _EPS
+    return (
+        clip_in >= -_EPS and clip_in + (end - start) * rate <= synced_length(a) + _EPS
+    )
 
 
 def _absorbable(e: "EdlEntry | None", by_id: dict) -> bool:
@@ -3300,11 +3329,11 @@ def _validate_transition(i, e, prev, by_id) -> None:
         # renderer, and reading a clamped value here would let a short clip pass
         # by silently pretending it starts earlier than it does.
         end_in_clip = clip_in_of(prev, a) + _span(prev) * prev.rate
-        if end_in_clip + trail * prev.rate > a.duration_s + _EPS:
+        if end_in_clip + trail * prev.rate > synced_length(a) + _EPS:
             raise ValueError(
                 f"EDL entry {i}: the transition needs {trail:.3f}s of clip "
                 f"{prev.clip_id!r} PAST the end of entry {i - 1}'s span, but the clip "
-                f"ends {a.duration_s - end_in_clip:.3f}s after it."
+                f"ends {synced_length(a) - end_in_clip:.3f}s after it."
             )
     if not e.is_gap:
         a = placed_as(e, by_id[e.clip_id])

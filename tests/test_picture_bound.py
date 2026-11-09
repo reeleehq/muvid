@@ -123,3 +123,41 @@ def test_free_length_is_the_pictures_when_recorded():
 
     assert free_length(unplaced("c", 10.0)) == 10.0
     assert free_length(replace(unplaced("c", 10.0), picture_s=4.0)) == 4.0
+
+
+@needs_ffmpeg
+def test_a_synced_cut_past_the_pictures_last_frame_is_refused_though_the_audio_goes_on(
+    tmp_path,
+):
+    """muvid#344: the same freeze for a SYNCED cut. The aligner measured 5 s of audio, the
+    picture ends at 3 s; the render reads only the picture."""
+    fp = _project(tmp_path, picture_s=3.0, audio_s=5.0)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+         "sine=frequency=440:duration=12", str(tmp_path / "song.wav")],
+        check=True,
+    )  # fmt: skip
+    service.set_song(fp, path=str(tmp_path / "song.wav"))
+    service.set_offset(fp, clip_id="a", offset_s=0.0)
+
+    def synced(start, end):
+        return validate_edl(
+            [EdlEntry(song_start=start, song_end=end, clip_id="a")],
+            service._placements(fp),
+            12.0,
+            allow_unreliable=True,
+        )
+
+    assert synced(1.0, 2.5)
+    with pytest.raises(ValueError):
+        synced(3.5, 4.5)  # inside the audio, past the last frame
+    [placement] = service._placements(fp)
+    assert placement.coverage[1] == pytest.approx(3.0, abs=0.1)
+
+
+def test_synced_length_is_the_smaller_of_the_audio_and_the_picture():
+    from muvid.footage.edl import synced_length
+
+    assert synced_length(unplaced("c", 10.0)) == 10.0
+    assert synced_length(replace(unplaced("c", 10.0), picture_s=4.0)) == 4.0
+    assert synced_length(replace(unplaced("c", 10.0), picture_s=14.0)) == 10.0
