@@ -210,6 +210,8 @@ class KeptScores:
     shots: Mapping[str, Sequence[float]] = field(default_factory=dict)
     shot_strategies: Mapping[str, str] = field(default_factory=dict)
     shots_truncated: Mapping[str, float] = field(default_factory=dict)
+    #: where each clip's frame pass stopped, for the clips the frame cap cut short
+    sampled_to: Mapping[str, float] = field(default_factory=dict)
 
 
 def _available(scorers, *, requested: set) -> "tuple[list, dict[str, str]]":
@@ -447,6 +449,7 @@ def _score(
     shots_skipped: dict[str, str] = {}
     shot_strategies: dict[str, str] = {}
     shots_truncated: dict[str, float] = {}
+    sampled_to: dict[str, float] = {}
     skipped: dict[str, str] = {}
 
     for a in aligns:
@@ -525,6 +528,13 @@ def _score(
             # kept shots keep their truncation record with them
             shots_truncated[a.clip_id] = keep.shots_truncated[a.clip_id]
 
+        # the cap stopped the pass: EVERY frame-read metric ends here, not only the shots
+        # (muvid#326); a pass that decoded nothing keeps the record of the last one
+        if fp is not None and fp.truncated:
+            sampled_to[a.clip_id] = round(float(fp.clip_times[-1]), 3)
+        elif fp is None and keep is not None and a.clip_id in keep.sampled_to:
+            sampled_to[a.clip_id] = keep.sampled_to[a.clip_id]
+
         tracks_by_clip[a.clip_id] = [tr for tr in clip_tracks if tr.metric in wanted]
 
     # A partial re-score keeps the current metrics it did not recompute (muvid#206) —
@@ -576,6 +586,7 @@ def _score(
             "shot_boundaries": shots_by_clip,
             "shot_strategies": shot_strategies,
             "shots_truncated": shots_truncated,
+            "sampled_to": sampled_to,
             "tempo_bpm": round(tempo, 3) if math.isfinite(tempo) else None,
             "sample_fps": sample_fps or F.DEFAULT_SAMPLE_FPS,
             "lipsync_enabled": want_lipsync,
@@ -590,6 +601,9 @@ def _score(
         "skipped": skipped,
         "shots_skipped": shots_skipped,
         "shots_truncated": shots_truncated,
+        # {clip_id: seconds}: clips the frame cap cut short — no frame-read metric (nor
+        # shot) exists past it; empty when every clip was read to its end (muvid#326)
+        "sampled_to": sampled_to,
         "n_frames": n,
         "hop_s": hop_s,
         "beats": int(len(bg.beat_times)),

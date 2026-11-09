@@ -637,6 +637,8 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
     assert len(decodes) == 1  # q reads frames: the full run decodes
     shots = load_manifest(proj.root)["shot_boundaries"]
     assert len(shots["A"]) == 1  # the frames strategy read the pass (muvid#259)
+    # the cap cut the pass short: the reply and the manifest say where (muvid#326)
+    assert load_manifest(proj.root)["sampled_to"] == {"A": 3.8}
 
     service.set_beat_grid(proj, tempo_bpm=100.0, first_beat_s=0.3)
     decodes.clear()
@@ -649,6 +651,7 @@ def test_a_rescore_of_stale_metrics_that_read_no_frames_skips_the_decode(
     assert manifest["shot_strategies"] == {"A": "frames"}
     assert out["shots_skipped"] == {}
     assert manifest["shots_truncated"] == {"A": 3.8}
+    assert manifest["sampled_to"] == {"A": 3.8}  # kept with the tracks it describes
 
 
 def test_a_partial_rescore_keeps_the_inputs_of_the_metrics_it_kept(

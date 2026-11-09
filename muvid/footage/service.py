@@ -2063,6 +2063,7 @@ def _kept_scores(fp, *, hop_s: float):
         shots=manifest.get("shot_boundaries") or {},
         shot_strategies=manifest.get("shot_strategies") or {},
         shots_truncated=manifest.get("shots_truncated") or {},
+        sampled_to=manifest.get("sampled_to") or {},
     )
 
 
