@@ -25,14 +25,34 @@ project of the caller.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
 from muvid.footage.errors import FootageError
 
-#: ``(email, asset_id, kind) -> the file | None``; ``kind`` is ``"audio"`` (a song) or
-#: ``"video"`` (a clip).
-AssetResolver = Callable[[str, str, str], Optional[Path]]
+
+@dataclass(frozen=True)
+class Asset:
+    """A stored asset a resolver found: the file and what its owner already measured, so
+    binding it re-probes nothing it was told.
+
+    ``linkable`` says whether the new project may share the file's inode (a hardlink).
+    It is true only for a file muvid itself stores and never writes in place; a library
+    outside muvid's trust (muvid#7) is copied, because a shared inode would let a change
+    out there rewrite the bytes under this project's content hash."""
+
+    path: Path
+    name: str = ""
+    duration_s: Optional[float] = None
+    linkable: bool = False
+
+
+#: ``(email, asset_id, kind) -> Asset | None``; ``kind`` is ``"audio"`` (a song) or
+#: ``"video"`` (a clip). A resolver IS the authorization boundary: it must find only what
+#: ``email`` owns, and answer ``None`` (never raise) for anything else, so a refusal says
+#: nothing about whose asset exists.
+AssetResolver = Callable[[str, str, str], Optional[Asset]]
 
 #: The kinds an asset can be bound as, each with the sentence naming it in a refusal.
 ASSET_KINDS = {"audio": "song", "video": "video"}
@@ -48,8 +68,8 @@ def register_asset_resolver(resolver: AssetResolver, *, first: bool = False) -> 
     _RESOLVERS.insert(0, resolver) if first else _RESOLVERS.append(resolver)
 
 
-def resolve_asset(email: str, asset_id: str, *, kind: str) -> Path:
-    """The file of asset ``asset_id`` as ``kind`` for this caller; ``FootageError`` when
+def resolve_asset(email: str, asset_id: str, *, kind: str) -> Asset:
+    """The asset ``asset_id`` as ``kind`` for this caller; ``FootageError`` when
     no resolver finds it. The refusal does not say whose project holds it, or whether
     another caller's does (the existence of someone else's asset is not the caller's to
     learn)."""
@@ -63,8 +83,8 @@ def resolve_asset(email: str, asset_id: str, *, kind: str) -> Path:
         )
     for resolver in (*_RESOLVERS, own_projects):
         found = resolver(email, wanted, kind)
-        if found is not None and Path(found).is_file():
-            return Path(found)
+        if found is not None and Path(found.path).is_file():
+            return found
     raise FootageError(
         f"no {ASSET_KINDS[kind]} with that asset_id in your projects — use `url` to "
         "bring it in"
@@ -75,9 +95,10 @@ def _looks_like_a_hash(text: str) -> bool:
     return len(text) == 64 and all(c in "0123456789abcdef" for c in text)
 
 
-def own_projects(email: str, asset_id: str, kind: str) -> Optional[Path]:
+def own_projects(email: str, asset_id: str, kind: str) -> Optional[Asset]:
     """The default resolver: the caller's own footage projects, muvid's drawer then a
-    host's, by the hashes their manifests recorded."""
+    host's, by the hashes their manifests recorded. Their files are muvid's own, so they
+    are ``linkable``."""
     from muvid.downloads import caller_workspaces
 
     for ws in caller_workspaces(email, "footage"):
@@ -92,11 +113,16 @@ def own_projects(email: str, asset_id: str, kind: str) -> Optional[Path]:
     return None
 
 
-def _in_project(proj, asset_id: str, kind: str) -> Optional[Path]:
+def _in_project(proj, asset_id: str, kind: str) -> Optional[Asset]:
     manifest = proj.manifest()
     if kind == "audio":
         if manifest.get("song_hash") == asset_id and proj.has_song():
-            return proj.song_path()
+            return Asset(
+                Path(proj.song_path()),
+                name=proj.song_info().get("name") or "",
+                duration_s=proj.song_duration(),
+                linkable=True,
+            )
         return None
     paths = proj.clip_paths()
     for clip in manifest.get("clips", []):
@@ -105,5 +131,10 @@ def _in_project(proj, asset_id: str, kind: str) -> Optional[Path]:
             and clip.get("kind") != "still"
             and clip.get("clip_id") in paths
         ):
-            return Path(paths[clip["clip_id"]])
+            return Asset(
+                Path(paths[clip["clip_id"]]),
+                name=clip.get("name") or "",
+                duration_s=clip.get("duration"),
+                linkable=True,
+            )
     return None

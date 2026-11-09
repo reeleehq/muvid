@@ -194,9 +194,10 @@ def _one_source(url: str, asset_id: str, *, what: str) -> None:
         )
 
 
-def _bound_asset(asset_id: str, *, kind: str) -> Path:
-    """The caller's stored file for ``asset_id`` as ``kind`` (``audio`` | ``video``), or
-    a ToolError: the asset resolvers' refusal, in the tool's words."""
+def _bound_asset(asset_id: str, *, kind: str):
+    """The caller's stored :class:`~muvid.footage.assets.Asset` for ``asset_id`` as
+    ``kind`` (``audio`` | ``video``), or a ToolError: the resolvers' refusal, in the
+    tool's words."""
     from muvid.footage.assets import resolve_asset
 
     with _refusals():
@@ -263,19 +264,36 @@ def set_song(project_id: str, *, url: str = "", asset_id: str = "") -> dict:
     return {"project_id": project_id, **out}
 
 
-def _bound_song(proj, project_id: str, stored: Path) -> dict:
-    """``stored`` (a song of one of the caller's projects) as this project's song, a
-    hardlink of it rather than a copy (muvid#22)."""
-    dur = _duration(stored)
+def _bound_song(proj, project_id: str, asset) -> dict:
+    """``asset`` (a song of one of the caller's projects) as this project's song, a
+    hardlink of it rather than a copy where it may be shared (muvid#22)."""
+    dur = asset.duration_s if asset.duration_s is not None else _duration(asset.path)
     if dur > _SONG_MAX_DURATION_S:
         raise _tool_error(
             f"song is {dur:.0f}s; the {_SONG_MAX_DURATION_S}s limit is exceeded"
         )
-    with _refusals():
+    with _refusals(), _stored_file_may_vanish():
         out = service.set_song(
-            proj, path=str(stored), ext=stored.suffix, duration_s=dur, link=True
+            proj,
+            path=str(asset.path),
+            ext=asset.path.suffix,
+            filename=asset.name,
+            duration_s=dur,
+            link=asset.linkable,
         )
     return {"project_id": project_id, **out}
+
+
+@contextmanager
+def _stored_file_may_vanish():
+    """The stored asset can be removed between resolving it and binding it."""
+    try:
+        yield
+    except FileNotFoundError as e:
+        raise _tool_error(
+            "that asset was removed from your projects just now — use `url` to bring "
+            "it in"
+        ) from e
 
 
 def _answered_with_a_page(e: Exception) -> bool:
@@ -344,15 +362,19 @@ def add_footage(
     if _n_videos(proj) >= _MAX_CLIPS:
         raise _tool_error(_limit_message(_n_videos(proj)))
     if asset_id.strip():
-        stored = _bound_asset(asset_id, kind="video")
-        with _refusals():
+        asset = _bound_asset(asset_id, kind="video")
+        with _refusals(), _stored_file_may_vanish():
             out = service.add_clip(
                 proj,
-                path=str(stored),
-                ext=stored.suffix,
-                name=name,
-                duration_s=_duration(stored),
-                link=True,
+                path=str(asset.path),
+                ext=asset.path.suffix,
+                name=name or asset.name,
+                duration_s=(
+                    asset.duration_s
+                    if asset.duration_s is not None
+                    else _duration(asset.path)
+                ),
+                link=asset.linkable,
             )
         return {"project_id": project_id, **out}
     direct = _resolve_media_url(url, what="clip")

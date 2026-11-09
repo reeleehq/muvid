@@ -434,7 +434,8 @@ def add_clip(
     it as ``asset_id`` to bind this very video into another project without fetching it
     again, muvid#22); a photo also ``kind: "still"``, ``width``, ``height``. ``link`` is
     the host's: ``path`` is a file already stored in another of the caller's projects,
-    so the video is a hardlink of it, not a second copy.
+    so the video is a hardlink of it, not a second copy (a photo is always
+    re-encoded, so the flag does not apply to one).
     """
     rows = fp.list_clips()
     known = {c["clip_id"] for c in rows}

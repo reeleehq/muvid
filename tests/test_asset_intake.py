@@ -78,8 +78,9 @@ def test_a_clip_added_is_given_its_asset_id_and_binds_into_another_project(
     clip = _video(tmp_path / "c.mp4")
     out = service.add_clip(a, path=str(clip), clip_id="c1")
     assert out["asset_id"] == _sha(clip)
-    stored = assets.resolve_asset("u@x.com", out["asset_id"], kind="video")
-    assert stored == Path(a.clip_paths()["c1"])
+    found = assets.resolve_asset("u@x.com", out["asset_id"], kind="video")
+    stored = found.path
+    assert stored == Path(a.clip_paths()["c1"]) and found.linkable
     bound = service.add_clip(b, path=str(stored), clip_id="c1", link=True)
     assert bound["asset_id"] == out["asset_id"]
     pa, pb = a.clip_paths()["c1"], b.clip_paths()["c1"]
@@ -95,8 +96,9 @@ def test_a_song_binds_by_its_hash_and_is_stored_once(two_projects, tmp_path):
     song = _tone(tmp_path / "s.wav")
     out = service.set_song(a, path=str(song))
     assert out["asset_id"] == _sha(song)
-    stored = assets.resolve_asset("u@x.com", out["asset_id"], kind="audio")
-    service.set_song(b, path=str(stored), ext=stored.suffix, link=True)
+    found = assets.resolve_asset("u@x.com", out["asset_id"], kind="audio")
+    assert found.duration_s == pytest.approx(2.0, abs=0.1) and found.linkable
+    service.set_song(b, path=str(found.path), ext=found.path.suffix, link=True)
     assert os.stat(a.song_path()).st_ino == os.stat(b.song_path()).st_ino
     assert b.song_hash() == out["asset_id"]
 
@@ -127,15 +129,17 @@ def test_a_registered_resolver_is_tried_and_can_go_first(tmp_path, monkeypatch):
     f = tmp_path / "x.mp4"
     f.write_bytes(b"v")
     seen = []
+    found = assets.Asset(f, name="lib.mp4")
 
     def library(email, asset_id, kind):
         seen.append((email, asset_id, kind))
-        return f
+        return found
 
     assets.register_asset_resolver(library)
     assets.register_asset_resolver(library)  # twice: once
     assert assets._RESOLVERS == [library]
-    assert assets.resolve_asset("u@x.com", "a" * 64, kind="video") == f
+    got = assets.resolve_asset("u@x.com", "a" * 64, kind="video")
+    assert got is found and not got.linkable  # an outside library is copied, not linked
     assert seen == [("u@x.com", "a" * 64, "video")]
 
 
@@ -183,3 +187,35 @@ def test_exactly_one_of_url_and_asset_id(two_projects):
                 call()
         with pytest.raises(ToolError, match="no video with that asset_id"):
             ft.add_footage("b", asset_id="a" * 64)
+
+
+@needs_ffmpeg
+def test_binding_a_song_to_its_own_project_and_an_unlinkable_asset_is_copied(
+    two_projects, tmp_path
+):
+    a, b = two_projects
+    song = _tone(tmp_path / "s.wav")
+    service.set_song(a, path=str(song))
+    # a project's own song bound onto itself: the staged link outlives the song dir's rmtree
+    service.set_song(a, path=str(a.song_path()), ext=".wav", link=True)
+    assert _sha(a.song_path()) == _sha(song)
+    # not linkable: a copy, a second inode
+    service.set_song(b, path=str(a.song_path()), ext=".wav")
+    assert os.stat(a.song_path()).st_ino != os.stat(b.song_path()).st_ino
+
+
+def test_the_tool_takes_either_source_and_the_hosts_link_is_never_served():
+    import inspect
+
+    import nw
+
+    import muvid.genre  # noqa: F401
+    from muvid.mcp import footage_tools as ft
+
+    sig = inspect.signature(ft.add_footage)
+    assert sig.parameters["url"].default == ""
+    assert sig.parameters["asset_id"].default == ""
+    assert "link" not in sig.parameters
+    for name in ("set_song", "add_clip"):
+        op = nw.genre_op("music_video", name)
+        assert "link" not in op.params_schema["properties"]
