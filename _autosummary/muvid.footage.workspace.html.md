@@ -73,6 +73,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`normalise_id`](#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).                                                                                                                        |
 | [`read_json_dict`](#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                                |
 | [`replace_file`](#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                                         |
+| [`store_cover`](#muvid.footage.workspace.store_cover)(root, image, \*, taken_from, ...)     | Put `image` at `<root>/cover.jpg` (as a NEW file, so a blob the previous cover was hardlinked into keeps its bytes), register it, and record `{file, taken_from[, artifact_id]}` as the manifest's `cover`; return the id.                         |
 | [`update_json_record`](#muvid.footage.workspace.update_json_record)(path, change, \*[, ...])       | Re-read the JSON record at `path` under its lock, apply `change(record)` (which mutates it in place and may raise to write nothing), and write it back only if it changed; return what `change` returned.                                          |
 
 ### Classes
@@ -552,6 +553,19 @@ silently change the bytes behind an id that names the old ones. A rename gives
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.footage.workspace.store_cover(root, image, , taken_from, register, update_manifest)
+
+Put `image` at `<root>/cover.jpg` (as a NEW file, so a blob the previous cover
+was hardlinked into keeps its bytes), register it, and record
+`{file, taken_from[, artifact_id]}` as the manifest’s `cover`; return the id.
+
+The one cover primitive of every hosted production (footage, lyric video,
+visualizer): `register(path, kind=...)` is the catalog seam (`None` result with
+no catalog), `update_manifest(change)` the production’s own locked manifest write.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.workspace.update_json_record(path, change, \*, default=<class 'dict'>, lock=None)
 

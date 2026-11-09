@@ -47,10 +47,10 @@ app/deploy tree (a deploy’s `rsync --delete` would erase it).
 
 ### Classes
 
-| [`SubgenreWorkspace`](#muvid.mcp.workspace.SubgenreWorkspace)(email, root, slug)       | A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.   |
-|---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| [`VisualizerProject`](#muvid.mcp.workspace.VisualizerProject)(email, project_id, root) | One caller's visualizer bucket — a folder its renders land in.                            |
-| [`VisualizerWorkspace`](#muvid.mcp.workspace.VisualizerWorkspace)(email, root)           | A single caller's private visualizer area, addressed by `email`.                          |
+| [`SubgenreWorkspace`](#muvid.mcp.workspace.SubgenreWorkspace)(email, root, slug)              | A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.   |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| [`VisualizerProject`](#muvid.mcp.workspace.VisualizerProject)(email, project_id, root[, ...]) | One caller's visualizer bucket — a folder its renders land in.                            |
+| [`VisualizerWorkspace`](#muvid.mcp.workspace.VisualizerWorkspace)(email, root)                  | A single caller's private visualizer area, addressed by `email`.                          |
 
 ### muvid.mcp.workspace.DATA_HOME_ENV_VAR *= 'MUVID_DATA_HOME'*
 
@@ -86,7 +86,7 @@ only this subgenre’s renders is refused, as it was before.
 * **Return type:**
   [`VisualizerProject`](#muvid.mcp.workspace.VisualizerProject)
 
-### *class* muvid.mcp.workspace.VisualizerProject(email, project_id, root)
+### *class* muvid.mcp.workspace.VisualizerProject(email, project_id, root, media_catalog=None, defaults=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -94,7 +94,21 @@ One caller’s visualizer bucket — a folder its renders land in.
 
 `root` is exposed so `nw.create_genre_project`’s all-or-nothing rollback
 (`nw.genres._rollback_project` removes `project.root`) reverts a half-created
-bucket. Kept storage-only: no nw graph, no asset library.
+bucket. Storage-only: no nw graph, no asset library; a host-placed one also takes a
+`media_catalog` (ids and a cover recorded when given, nothing otherwise) but holds
+no policy about which picture is the cover.
+
+#### cover()
+
+The project’s cover record (`{file, artifact_id, taken_from}`) or `{}`.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+#### defaults *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)*
+
+What `manifest()` reads before anything is written (a host-placed project’s
+title comes from its nw project, so reading it creates nothing).
 
 #### list_renders()
 
@@ -103,12 +117,40 @@ This bucket’s renders (newest-first), from each render’s `meta.json`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
 
+#### media_catalog *: [object](https://docs.python.org/3/builtins/functions.html#object)* *= None*
+
+Where a HOST-placed project’s media is registered for the host to serve it — a
+`muvid.catalog.HostArtifactCatalog` (anything with its `register`), or
+`None` for muvid’s own workspace, whose records stay byte-identical (muvid#311).
+
 #### new_render_dir(render_id)
 
 Create + return a fresh directory for one render (traversal-checked id).
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+#### register_render(meta)
+
+`meta` with the host catalog ids of the render’s video (`artifact_id`) and
+thumbnail (`thumbnail_artifact_id`).
+
+A project with no `media_catalog` returns `meta` unchanged, so muvid’s own
+records carry no new key (omit-when-absent, muvid#311). A render that is later
+deleted keeps its id valid: catalog blobs are hardlinks.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+#### set_cover(image, , taken_from)
+
+Store `image` as the project’s cover and register it (host-placed only).
+
+The shared [`store_cover()`](muvid.footage.workspace.html.md#muvid.footage.workspace.store_cover) primitive; the policy of
+WHICH picture is the cover lives with the caller (`muvid.mcp._cover`).
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### *class* muvid.mcp.workspace.VisualizerWorkspace(email, root)
 

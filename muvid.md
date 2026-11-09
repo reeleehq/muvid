@@ -1,4 +1,4 @@
-> built 2026-11-08 23:32 UTC from 210991d (main) · muvid 0.0.168. Details: build_info.json
+> built 2026-11-09 00:07 UTC from aa9c32f (main) · muvid 0.0.169. Details: build_info.json
 
 # index.html.md
 
@@ -10231,6 +10231,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`normalise_id`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.ID_PATTERN).                                                                                                                        |
 | [`read_json_dict`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                                |
 | [`replace_file`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                                         |
+| [`store_cover`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.store_cover)(root, image, \*, taken_from, ...)     | Put `image` at `<root>/cover.jpg` (as a NEW file, so a blob the previous cover was hardlinked into keeps its bytes), register it, and record `{file, taken_from[, artifact_id]}` as the manifest's `cover`; return the id.                         |
 | [`update_json_record`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.update_json_record)(path, change, \*[, ...])       | Re-read the JSON record at `path` under its lock, apply `change(record)` (which mutates it in place and may raise to write nothing), and write it back only if it changed; return what `change` returned.                                          |
 
 ### Classes
@@ -10710,6 +10711,19 @@ silently change the bytes behind an id that names the old ones. A rename gives
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.footage.workspace.store_cover(root, image, , taken_from, register, update_manifest)
+
+Put `image` at `<root>/cover.jpg` (as a NEW file, so a blob the previous cover
+was hardlinked into keeps its bytes), register it, and record
+`{file, taken_from[, artifact_id]}` as the manifest’s `cover`; return the id.
+
+The one cover primitive of every hosted production (footage, lyric video,
+visualizer): `register(path, kind=...)` is the catalog seam (`None` result with
+no catalog), `update_manifest(change)` the production’s own locked manifest write.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### muvid.footage.workspace.update_json_record(path, change, \*, default=<class 'dict'>, lock=None)
 
@@ -15779,10 +15793,10 @@ app/deploy tree (a deploy’s `rsync --delete` would erase it).
 
 ### Classes
 
-| [`SubgenreWorkspace`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.SubgenreWorkspace)(email, root, slug)       | A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.   |
-|---------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
-| [`VisualizerProject`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerProject)(email, project_id, root) | One caller's visualizer bucket — a folder its renders land in.                            |
-| [`VisualizerWorkspace`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerWorkspace)(email, root)           | A single caller's private visualizer area, addressed by `email`.                          |
+| [`SubgenreWorkspace`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.SubgenreWorkspace)(email, root, slug)              | A single caller's area for ONE subgenre: the visualizer's bucket, in its own directory.   |
+|----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| [`VisualizerProject`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerProject)(email, project_id, root[, ...]) | One caller's visualizer bucket — a folder its renders land in.                            |
+| [`VisualizerWorkspace`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerWorkspace)(email, root)                  | A single caller's private visualizer area, addressed by `email`.                          |
 
 ### muvid.mcp.workspace.DATA_HOME_ENV_VAR *= 'MUVID_DATA_HOME'*
 
@@ -15818,7 +15832,7 @@ only this subgenre’s renders is refused, as it was before.
 * **Return type:**
   [`VisualizerProject`](_autosummary/muvid.mcp.workspace.html.md#muvid.mcp.workspace.VisualizerProject)
 
-### *class* muvid.mcp.workspace.VisualizerProject(email, project_id, root)
+### *class* muvid.mcp.workspace.VisualizerProject(email, project_id, root, media_catalog=None, defaults=dict())
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -15826,7 +15840,21 @@ One caller’s visualizer bucket — a folder its renders land in.
 
 `root` is exposed so `nw.create_genre_project`’s all-or-nothing rollback
 (`nw.genres._rollback_project` removes `project.root`) reverts a half-created
-bucket. Kept storage-only: no nw graph, no asset library.
+bucket. Storage-only: no nw graph, no asset library; a host-placed one also takes a
+`media_catalog` (ids and a cover recorded when given, nothing otherwise) but holds
+no policy about which picture is the cover.
+
+#### cover()
+
+The project’s cover record (`{file, artifact_id, taken_from}`) or `{}`.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+#### defaults *: [dict](https://docs.python.org/3/builtins/stdtypes.html#dict)*
+
+What `manifest()` reads before anything is written (a host-placed project’s
+title comes from its nw project, so reading it creates nothing).
 
 #### list_renders()
 
@@ -15835,12 +15863,40 @@ This bucket’s renders (newest-first), from each render’s `meta.json`.
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
 
+#### media_catalog *: [object](https://docs.python.org/3/builtins/functions.html#object)* *= None*
+
+Where a HOST-placed project’s media is registered for the host to serve it — a
+`muvid.catalog.HostArtifactCatalog` (anything with its `register`), or
+`None` for muvid’s own workspace, whose records stay byte-identical (muvid#311).
+
 #### new_render_dir(render_id)
 
 Create + return a fresh directory for one render (traversal-checked id).
 
 * **Return type:**
   [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+#### register_render(meta)
+
+`meta` with the host catalog ids of the render’s video (`artifact_id`) and
+thumbnail (`thumbnail_artifact_id`).
+
+A project with no `media_catalog` returns `meta` unchanged, so muvid’s own
+records carry no new key (omit-when-absent, muvid#311). A render that is later
+deleted keeps its id valid: catalog blobs are hardlinks.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+#### set_cover(image, , taken_from)
+
+Store `image` as the project’s cover and register it (host-placed only).
+
+The shared [`store_cover()`](_autosummary/muvid.footage.workspace.html.md#muvid.footage.workspace.store_cover) primitive; the policy of
+WHICH picture is the cover lives with the caller (`muvid.mcp._cover`).
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 ### *class* muvid.mcp.workspace.VisualizerWorkspace(email, root)
 
@@ -20612,7 +20668,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-08 23:32 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/210991da134f858f64f1779df4021fc789f1e79a"><code>210991d</code></a> on branch <code>main</code>, for **muvid 0.0.168** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 00:07 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/aa9c32f2937d4088f6c0c82fbb05d67a8df59db8"><code>aa9c32f</code></a> on branch <code>main</code>, for **muvid 0.0.169** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -20621,9 +20677,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/210991da134f858f64f1779df4021fc789f1e79a"><code>210991da134f858f64f1779df4021fc789f1e79a</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/aa9c32f2937d4088f6c0c82fbb05d67a8df59db8"><code>aa9c32f2937d4088f6c0c82fbb05d67a8df59db8</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.168</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.169</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20632,9 +20688,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42533711241">42533711241</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42537140193">42537140193</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>3fd3c61689af4fe2f17e0e0596104ff59392901d</code> (in the history of the built commit) |
+| Event commit | <code>f652bec6e8e70022c4ab667f5e71d1b9848ef157</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20659,13 +20715,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.168/">0.0.168</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.169/">0.0.169</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 210991da134f858f64f1779df4021fc789f1e79a
+git checkout aa9c32f2937d4088f6c0c82fbb05d67a8df59db8
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

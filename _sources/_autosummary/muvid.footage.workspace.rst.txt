@@ -29,6 +29,7 @@ muvid.footage.workspace
       normalise_id
       read_json_dict
       replace_file
+      store_cover
       update_json_record
    
    .. rubric:: Classes
