@@ -188,12 +188,32 @@ def test_a_neighbour_with_an_unreadable_graph_hides_nothing(host):
         open_caller_project(A, "story", kind="footage")
 
 
-def test_an_id_in_both_footage_drawers_lists_once(host):
+def test_an_id_in_both_footage_drawers_lists_both_and_marks_the_placed_one(host):
+    """muvid#334: the host's project under an id muvid's own drawer holds was dropped as
+    a duplicate and unreachable from the listing. It is listed beside muvid's, marked
+    placed so the host drops its own copy of the row; the tools still open muvid's own
+    for that id."""
     from muvid.footage.workspace import FootageWorkspace
+    from nw.delivery import PLACED_META_KEY
 
-    FootageWorkspace.for_email(A).create_project("mv")
+    own = FootageWorkspace.for_email(A).create_project("mv")
     _place(host, A, "mv", "music_video")
-    assert [p.project_id for p in downloads.list_projects(A)] == ["mv"]
+    rows = [p for p in downloads.list_projects(A) if p.project_id == "mv"]
+    assert len(rows) == 2
+    assert sorted(bool(r.meta.get(PLACED_META_KEY)) for r in rows) == [False, True]
+    assert open_caller_project(A, "mv", kind="footage").root == own.root
+    # a second spelling of the same side still lists once
+    assert len([p for p in downloads.list_projects(A) if p.project_id == "mv"]) == 2
+
+
+def test_only_a_host_placed_project_carries_the_placed_marker(host):
+    from muvid.footage.workspace import FootageWorkspace
+    from nw.delivery import PLACED_META_KEY
+
+    FootageWorkspace.for_email(A).create_project("own")
+    _place(host, A, "placed", "music_video")
+    meta = {p.project_id: p.meta for p in downloads.list_projects(A)}
+    assert PLACED_META_KEY not in meta["own"] and meta["placed"][PLACED_META_KEY] is True
 
 
 def _make_video(path):

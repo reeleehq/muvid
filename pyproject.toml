@@ -163,7 +163,9 @@ mcp = [
     # 0.0.126: `nw.caller_projects_dir`, where the HOST keeps a caller's placed projects
     # — how a muvid tool opens a project reelee created for the caller (muvid#296). The
     # code also asks for it with getattr, so an older nw loses exactly that drawer.
-    "nw>=0.0.126",
+    # 0.0.151: `nw.delivery.PLACED_META_KEY`, the marker a guest's listing puts on a row
+    # for a project the host placed, so the host drops its duplicate (muvid#334).
+    "nw>=0.0.151",
 ]
 # The footage SCORING layer's TORCH-FREE core tier (thorwhalen/muvid#13): quality gates +
 # motion-to-beat + the Viterbi selector + editor score-tracks. This is what the prod
