@@ -1574,7 +1574,9 @@ def beat_grid(fp, *, shape: bool = True) -> dict:
     an empty list) or ``unavailable`` (the song could not be analysed here); and
     ``carried`` (``[[start_s, end_s], ...]``), the spans where the grid the music cutter
     uses (a declared one included) has no measured beat and is carried on at the song's
-    own pace.
+    own pace. ``carried`` is read on the analysis's grid, which is the one the cutter
+    uses; for a song the estimator finds almost no beat in, that grid is the analysis's
+    own fallback, not the ``beats`` listed here.
     """
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
@@ -1614,10 +1616,10 @@ def _song_shape(fp) -> dict:
 
     try:
         analysis = song_analysis(fp)
-    # an unreadable file or probe. A missing optional package is not among them: the
+    # only what makes the song unreadable here (a file or probe). A missing optional package is not among them: the
     # analysis falls back to its numpy estimator rather than refusing, and anything else
     # is a regression that propagates.
-    except (FfmpegError, OSError, ValueError):
+    except (FfmpegError, OSError):
         return {"sections": [], "sections_source": "unavailable", "carried": []}
     sections = [
         {"label": x.label, "start_s": x.start, "end_s": x.end}
@@ -1781,7 +1783,8 @@ def set_beat_grid(
     others stay current) until ``score`` runs again, which recomputes only them — and
     they are current again if the grid is cleared; ``scores_stale: true`` says so. A grid belongs to the
     song it was set for: with another song set it does not apply (and comes back if that
-    song is set again). Returns the grid like ``beat_grid`` does, plus ``changed``.
+    song is set again). Returns the grid like ``beat_grid`` does (without the song's shape; read
+    ``beat_grid`` again for it), plus ``changed``.
     """
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
