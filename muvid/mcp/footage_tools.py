@@ -208,7 +208,7 @@ def set_song(project_id: str, *, url: str = "", asset_id: str = "") -> dict:
     """Set the project's fixed clean song from an http(s) URL, or from a song already in
     one of your projects (``asset_id``). Free.
 
-    ``asset_id`` is the id ``set_song`` / ``add_song`` replies carry as ``asset_id`` (the
+    ``asset_id`` is the ``asset_id`` a ``set_song`` or ``add_footage`` reply carries (the
     file's SHA-256): the song is taken from where it already is — no download — and
     stored once however many of your projects use it. Give ``url`` or ``asset_id``.
 
@@ -217,21 +217,28 @@ def set_song(project_id: str, *, url: str = "", asset_id: str = "") -> dict:
     media, so a private-file sign-in page is refused with that diagnosis rather than stored.
     A **page link** — a video or music page (YouTube, SoundCloud, Bandcamp, ...) — has its
     audio taken as mp3 through ``yb`` when that is installed, and the song then carries the
-    source's copyright notice (``song.notice``): you must have the right to use it.
+    source's copyright notice (``song.notice``) and the page it came from
+    (``song.source_url``): you must have the right to use it.
 
     This is the reference every uploaded clip is aligned to and whose audio the final
     video uses. Replaces any previous song. Duration/size-capped.
     """
     import tempfile
 
-    from muvid.mcp._fetch import FetchError, fetch_to_file_streaming
+    from fastmcp.exceptions import ToolError
+
+    from muvid.mcp._fetch import (
+        FetchError,
+        PermissionDeniedError,
+        fetch_to_file_streaming,
+    )
 
     _one_source(url, asset_id, what="song")
     proj = _open(project_id)
     if asset_id.strip():
         return _bound_song(proj, project_id, _bound_asset(asset_id, kind="audio"))
     direct = _resolve_media_url(url, what="song")
-    notice, filename = "", ""
+    notice, filename, source_url = "", "", ""
     with tempfile.TemporaryDirectory() as tmp:
         ext = _url_ext(url, "") or _url_ext(direct, "mp3")
         tmp_song = Path(tmp) / f"song.{ext}"
@@ -242,10 +249,18 @@ def set_song(project_id: str, *, url: str = "", asset_id: str = "") -> dict:
         except FetchError as e:
             # A web page where media was asked for: a page link, unless it was a share
             # link (then the page is a sign-in page, and graze's diagnosis is the answer).
-            if direct != url.strip() or not _answered_with_a_page(e):
+            if direct != url.strip() or not _may_be_a_page(e):
                 raise _tool_error(f"could not fetch the song: {e}") from e
-            page = _song_from_page(url.strip(), Path(tmp))
+            try:
+                page = _song_from_page(url.strip(), Path(tmp))
+            except ToolError:
+                if isinstance(e, PermissionDeniedError):
+                    # yb could not help either: the first diagnosis stands (private or
+                    # not shared), rather than "a web page ... yb is not installed"
+                    raise _tool_error(f"could not fetch the song: {e}") from e
+                raise
             tmp_song, ext, notice = page.path, "mp3", page.notice
+            source_url = url.strip()
             filename = f"{_display_name(page.title) or 'song'}.mp3"
         dur = _duration(tmp_song)
         if dur > _SONG_MAX_DURATION_S:
@@ -260,6 +275,7 @@ def set_song(project_id: str, *, url: str = "", asset_id: str = "") -> dict:
                 filename=filename,
                 duration_s=dur,
                 notice=notice,
+                source_url=source_url,
             )
     return {"project_id": project_id, **out}
 
@@ -294,6 +310,16 @@ def _stored_file_may_vanish():
             "that asset was removed from your projects just now — use `url` to bring "
             "it in"
         ) from e
+
+
+def _may_be_a_page(e: Exception) -> bool:
+    """Whether a failed direct fetch of a non-share link may still be a page ``yb`` can
+    take audio from: a web page came back where media was asked for, or the host refused
+    this server's plain fetch (HTTP 401/403 — video sites commonly do, to anything that
+    is not a browser or their own downloader), muvid#333."""
+    from muvid.mcp._fetch import PermissionDeniedError
+
+    return _answered_with_a_page(e) or isinstance(e, PermissionDeniedError)
 
 
 def _answered_with_a_page(e: Exception) -> bool:

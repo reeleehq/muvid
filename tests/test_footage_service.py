@@ -1029,9 +1029,18 @@ def test_upload_ops_take_the_file_from_the_host_only(tmp_path):
             ("path", "filename")
             + (("notice",) if name == "set_song" else ())
             + ("link",)
+            + (("source_url",) if name == "set_song" else ())
         )
         assert op.host_params == want
-        assert not {"path", "filename", "notice", "link", "duration_s", "ext"} & set(
+        assert not {
+            "path",
+            "filename",
+            "notice",
+            "link",
+            "source_url",
+            "duration_s",
+            "ext",
+        } & set(
             op.params_schema["properties"]
         )
         assert op.to_dict()["host_params"] == list(want)

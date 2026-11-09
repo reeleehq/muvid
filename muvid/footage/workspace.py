@@ -372,6 +372,7 @@ class MusicVideoFootageProject:
         duration_s: "float | None" = None,
         notice: str = "",
         link: bool = False,
+        source_url: str = "",
     ) -> None:
         """Store (replacing) the project's one clean song from a local file.
 
@@ -395,7 +396,8 @@ class MusicVideoFootageProject:
         ``name`` is the display name (an uploaded file's original name); ``duration_s``
         is a duration the caller already probed, so a 100 MB song is not probed twice.
         ``notice`` is a copyright notice that travels with a song taken from a page link
-        (muvid#274), recorded as ``song_notice`` only when given. ``link`` makes the stored
+        (muvid#274), recorded as ``song_notice`` only when given, with the page it came
+        from as ``song_source_url`` (``source_url``, muvid#333). ``link`` makes the stored
         song a hardlink of ``src_path`` (an asset already in another project, muvid#22).
         With a host catalog the song is registered too, and its id recorded as
         ``song_artifact_id`` (it equals ``song_hash``: both are the SHA-256 of the bytes).
@@ -456,6 +458,7 @@ class MusicVideoFootageProject:
                     _set_or_drop(m, "song_name", name or None)
                     _set_or_drop(m, "song_artifact_id", artifact_id)
                     _set_or_drop(m, "song_notice", notice or None)
+                    _set_or_drop(m, "song_source_url", source_url or None)
 
                 self.update_manifest(name_the_song)
         finally:
@@ -712,6 +715,7 @@ class MusicVideoFootageProject:
         }
         _set_or_drop(info, "artifact_id", m.get("song_artifact_id"))
         _set_or_drop(info, "notice", m.get("song_notice"))
+        _set_or_drop(info, "source_url", m.get("song_source_url"))
         return info
 
     # -- named edits ---------------------------------------------------------
