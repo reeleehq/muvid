@@ -262,6 +262,7 @@ def test_a_fully_synced_edit_does_not_record_music_only_settings(fp):
 def test_a_music_half_that_could_not_run_records_no_music_settings(fp, monkeypatch):
     """muvid#314 review: ``music`` is a truthy error report ({"n_cuts": 0}) when librosa or
     ffmpeg is missing; that is not an edit cut to the music."""
+
     def boom(*a, **k):
         raise ImportError("no librosa")
 
@@ -1370,7 +1371,7 @@ def test_beat_grid_numbers_bars(fp, monkeypatch):
         ),
     )
     monkeypatch.setattr(service, "_read_beat_grid_cache", lambda *a: None)
-    grid = service.beat_grid(fp)
+    grid = service.beat_grid(fp, shape=False)
     assert grid["downbeats_source"] == "derived" and grid["beats_per_bar"] == 4
     assert grid["downbeats"] == [1.0, 3.0, 5.0]
     assert grid["bar_of_beat"] == [0, 1, 1, 1, 1, 2, 2, 2, 2, 3]
@@ -1451,7 +1452,9 @@ def test_slip_moves_where_a_cut_reads_its_video_and_is_kept(fp):
     service.save_edit(fp, edl=_edl_ab(), edit_id="e")
     out = service.set_cut(fp, edit_id="e", index=0, slip_s=0.25)
     assert out["edl"][0]["slip_s"] == 0.25
-    assert "slip_s" not in out["edl"][1]  # absent when 0: every older edit stays byte-identical
+    assert (
+        "slip_s" not in out["edl"][1]
+    )  # absent when 0: every older edit stays byte-identical
     assert service.get_edit(fp, edit_id="e")["edl"][0]["slip_s"] == 0.25
     # The renderer's in-point: song_start - offset + slip (A sits at 0).
     entries = service._edit_entries(fp, "e")[1]
@@ -1466,7 +1469,9 @@ def test_slip_is_refused_outside_its_bound_or_its_footage(fp):
     service.save_edit(fp, edl=_edl_ab(), edit_id="e")
     before = service.get_edit(fp, edit_id="e")["edl"]
     with pytest.raises(FootageError, match="set_offset"):
-        service.set_cut(fp, edit_id="e", index=0, slip_s=0.8)  # over a beat: an alignment, not a slip
+        service.set_cut(
+            fp, edit_id="e", index=0, slip_s=0.8
+        )  # over a beat: an alignment, not a slip
     with pytest.raises(FootageError, match="does not contain"):
         service.set_cut(fp, edit_id="e", index=0, slip_s=-0.2)  # before A's first frame
     with pytest.raises(FootageError, match="does not contain"):
@@ -1524,7 +1529,9 @@ def test_the_editor_round_trip_keeps_a_slip_and_drops_one_no_cut_may_carry():
 def test_coalescing_never_merges_two_differently_slipped_cuts():
     from muvid.footage.edl import EdlEntry, _coalesce_absorbed
 
-    merged = _coalesce_absorbed([EdlEntry(0.0, 5.0, "A"), EdlEntry(5.0, 8.0, "A", slip_s=0.3)])
+    merged = _coalesce_absorbed(
+        [EdlEntry(0.0, 5.0, "A"), EdlEntry(5.0, 8.0, "A", slip_s=0.3)]
+    )
     assert [e.slip_s for e in merged] == [0.0, 0.3]
 
 
@@ -1546,7 +1553,9 @@ def test_status_carries_the_limits(fp):
     assert service.status(fp)["limits"] == dict(service.FOOTAGE_LIMITS)
 
 
-def test_the_video_refusal_names_the_limit_and_how_many_are_held(fp, tmp_path, monkeypatch):
+def test_the_video_refusal_names_the_limit_and_how_many_are_held(
+    fp, tmp_path, monkeypatch
+):
     monkeypatch.setattr(service, "MAX_CLIPS", 2)  # fp already holds A and B
     extra = _bytes_file(tmp_path / "C.mp4", b"clip-c")
     with pytest.raises(FootageError) as err:
@@ -1631,6 +1640,8 @@ def test_genre_status_reads_and_never_writes(tmp_path, monkeypatch):
     before = {p: p.stat().st_mtime_ns for p in project.root.rglob("*")}
     assert nw.genre_status_of(project) is not None
     assert {p: p.stat().st_mtime_ns for p in project.root.rglob("*")} == before
+
+
 def test_genre_status_summarises_a_lyric_video(tmp_path):
     import muvid
 
@@ -1671,7 +1682,9 @@ def test_a_reimported_render_keeps_what_a_caller_set_on_it(fp, tmp_path, monkeyp
     assert meta["label"] == "x" and meta["imported"] is True  # the import's own fields
 
 
-def test_a_reimport_over_a_torn_meta_is_refused_not_overwritten(fp, tmp_path, monkeypatch):
+def test_a_reimport_over_a_torn_meta_is_refused_not_overwritten(
+    fp, tmp_path, monkeypatch
+):
     monkeypatch.setattr(service, "_probe_duration", lambda p: 12.0)
     monkeypatch.setattr(service, "frame_size", lambda p: [1920, 1080])
     video = _bytes_file(tmp_path / "v.mp4", b"video-bytes")
@@ -1684,3 +1697,48 @@ def test_a_reimport_over_a_torn_meta_is_refused_not_overwritten(fp, tmp_path, mo
     assert meta.read_text() == "{torn"
     # refused before anything moved: the old video is still the render's
     assert (fp.renders_dir / ("r2" * 6) / "final.mp4").read_bytes() == b"video-bytes"
+
+
+def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(
+    fp, monkeypatch
+):
+    """muvid#316: ``sections`` with an honest ``sections_source``, and the spans where
+    the grid has no measured beat (before the first, through a hole, after the last)."""
+    from types import SimpleNamespace
+
+    from muvid.montage.analysis import Section
+
+    beats = [2.0, 2.5, 3.0, 3.5, 4.0, 8.0, 8.5, 9.0, 9.5]  # a hole from 4 s to 8 s
+    monkeypatch.setattr(
+        "mixing.audio.beat_grid",
+        lambda audio, **kw: SimpleNamespace(
+            beat_times=beats,
+            downbeat_times=[],
+            tempo_bpm=120.0,
+            onset_env=[],
+            onset_hop_s=0.05,
+        ),
+    )
+    monkeypatch.setattr(service, "_read_beat_grid_cache", lambda *a: None)
+    sections = (Section(label="verse", start=0.0, end=6.0),
+        Section(label="chorus", start=6.0, end=12.0),)
+    monkeypatch.setattr(
+        service, "song_analysis", lambda f: SimpleNamespace(sections=sections)
+    )
+    grid = service.beat_grid(fp)
+    assert grid["sections"] == [
+        {"label": "verse", "start_s": 0.0, "end_s": 6.0},
+        {"label": "chorus", "start_s": 6.0, "end_s": 12.0},
+    ]
+    assert grid["sections_source"] == "measured"
+    assert grid["carried"][0] == [0.0, 2.0] and [4.0, 8.0] in grid["carried"]
+    # no sections found: said, not left to an empty list
+    monkeypatch.setattr(
+        service, "song_analysis", lambda f: SimpleNamespace(sections=())
+    )
+    none = service.beat_grid(fp)
+    assert none["sections"] == [] and none["sections_source"] == "none"
+    # the connector's pinned reply neither measures nor carries the shape
+    assert not {"sections", "sections_source", "carried"} & set(
+        service.beat_grid(fp, shape=False)
+    )

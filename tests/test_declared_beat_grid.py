@@ -19,6 +19,13 @@ from muvid.footage.errors import FootageError
 SONG_DURATION = 30.0
 
 
+@pytest.fixture(autouse=True)
+def _no_song_analysis(monkeypatch):
+    """These pin the GRID; its sections/carried (muvid#316) need the real song analysis,
+    which a faked song cannot give (pinned in test_footage_service)."""
+    monkeypatch.setattr(service, "_song_shape", lambda *a, **k: {})
+
+
 @pytest.fixture
 def proj(tmp_path, monkeypatch):
     monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))

@@ -1545,7 +1545,7 @@ _BEAT_GRID_FROM_SCORES = "scores"
 _BEAT_GRID_COMPUTED = "computed"
 
 
-def beat_grid(fp) -> dict:
+def beat_grid(fp, *, shape: bool = True) -> dict:
     """The song's beat grid — tempo and beat instants on the song timeline — without
     looking at the footage.
 
@@ -1567,6 +1567,15 @@ def beat_grid(fp) -> dict:
     to a bar — muvid.montage's rule) or ``first_beat`` (no onset energy to vote with, so
     bars start on the first beat) — ``beats_per_bar`` and ``bar_of_beat`` (each beat's
     bar number, 1 for the first bar, 0 for a pickup before it).
+
+    And the song's shape (muvid#316): ``sections`` (``[{label, start_s, end_s}]`` — intro,
+    verse, chorus ... — from the song analysis, which a declared grid keeps), with
+    ``sections_source`` ``measured`` or ``none`` (none were found, or the analysis needs
+    a package that is not installed) so "one section" can be said rather than inferred
+    from an empty list; and ``carried`` (``[[start_s, end_s], ...]``), the spans where
+    this grid has no measured beat and the music cutter carries it on at the song's own
+    pace. A declared grid has none. ``shape=False`` leaves those three off and skips the
+    song analysis that measures them (the connector's pinned reply does not carry them).
     """
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
@@ -1587,7 +1596,31 @@ def beat_grid(fp) -> dict:
         "source": source,
     }
     reply.update(_bars(beats, record))
+    if shape:
+        reply.update(_song_shape(fp, beats, declared=source == DECLARED))
     return reply
+
+
+def _song_shape(fp, beats: list, *, declared: bool) -> dict:
+    """``beat_grid``'s ``sections``, ``sections_source`` and ``carried`` (muvid#316).
+
+    Sections come from :func:`song_analysis` (cached per song; a declared grid keeps the
+    estimate's sections). Only a missing package makes them ``none`` by refusal — any
+    other failure is a regression and propagates, as it does everywhere a sibling
+    package is called.
+    """
+    from muvid.footage.music_cut import carried_spans
+
+    try:
+        found = song_analysis(fp).sections
+    except ImportError:
+        found = ()
+    sections = [{"label": x.label, "start_s": x.start, "end_s": x.end} for x in found]
+    return {
+        "sections": sections,
+        "sections_source": "measured" if sections else "none",
+        "carried": [] if declared else carried_spans(beats, fp.song_duration()),
+    }
 
 
 #: Where a DECLARED beat grid lives: beside the manifest, NOT under ``scores/`` (whose
@@ -5319,7 +5352,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     ),
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
-    OpSpec("beat_grid", "Find the beat", "read"),
+    OpSpec("beat_grid", "Find the beat", "read", hide=("shape",)),
     OpSpec(
         "set_beat_grid", "Set the beat by hand", "write", invalidates=BEAT_GRID_READS
     ),
