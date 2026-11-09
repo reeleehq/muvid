@@ -1023,10 +1023,15 @@ def test_upload_ops_take_the_file_from_the_host_only(tmp_path):
 
     for name in ("set_song", "add_clip"):
         op = nw.genre_op("music_video", name)
-        # set_song also takes the host's copyright ``notice`` (muvid#274)
-        want = ("path", "filename") + (("notice",) if name == "set_song" else ())
+        # set_song also takes the host's copyright ``notice`` (muvid#274); both take the
+        # host's ``link`` (the file is an asset already stored in another project, #22)
+        want = (
+            ("path", "filename")
+            + (("notice",) if name == "set_song" else ())
+            + ("link",)
+        )
         assert op.host_params == want
-        assert not {"path", "filename", "notice", "duration_s", "ext"} & set(
+        assert not {"path", "filename", "notice", "link", "duration_s", "ext"} & set(
             op.params_schema["properties"]
         )
         assert op.to_dict()["host_params"] == list(want)
