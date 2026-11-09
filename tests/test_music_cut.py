@@ -1045,3 +1045,26 @@ def test_the_report_names_only_sections_in_the_cut():
     srcs, envelope_of = _affect_pool()
     cut = _affect_cut(srcs, envelope_of, spans=[(0.0, 20.0)])  # the verse alone
     assert {w["section"] for w in cut.report["affect_withheld"]} <= {"verse"}
+
+
+@pytest.mark.parametrize(
+    "beats,dur",
+    [
+        ([1.0, 1.5, 2.0, 2.5, 3.0], 4.6),
+        ([2.0, 2.5, 3.0, 3.5, 4.0, 8.0, 8.5, 9.0, 9.5], 30.0),
+        ([0.5 * k for k in range(1, 40)], 20.0),
+    ],
+)
+def test_carried_spans_are_exactly_where_extend_grid_adds_beats(beats, dur):
+    """muvid#316: ``carried_spans`` and ``extend_grid`` read one definition of 'where the
+    grid is carried' (``_grid_gaps``): every beat the cutter adds lies in a carried span,
+    and every carried span holds one."""
+    from muvid.footage.music_cut import carried_spans, extend_grid
+    from muvid.montage.analysis import Analysis
+
+    a = Analysis(duration=dur, tempo_bpm=120.0, beats=tuple(beats), downbeats=(beats[0],))
+    extended, _ = extend_grid(a, dur)
+    added = [b for b in extended.beats if round(b, 4) not in {round(x, 4) for x in beats}]
+    spans = carried_spans(beats, dur)
+    assert all(any(lo <= b <= hi for lo, hi in spans) for b in added)
+    assert all(any(lo <= b <= hi for b in added) for lo, hi in spans)

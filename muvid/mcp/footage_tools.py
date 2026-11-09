@@ -738,7 +738,8 @@ def beat_grid(project_id: str) -> dict:
     backend has no downbeat tracker, and an empty list would read as "this song has
     no downbeats", a measurement nobody made (gate, don't zero).
     """
-    out = _call(project_id, service.beat_grid)
+    # the connector's reply is pinned and carries no song shape, so it is not measured
+    out = _call(project_id, lambda fp: service.beat_grid(fp, shape=False))
     # The connector's reply is a pinned contract: ``downbeats`` present only when the
     # estimator MEASURED them (tests/test_beat_grid_tool.py). The derived bar
     # numbering the studio's ``beat_grid`` op adds is left off this reply until the

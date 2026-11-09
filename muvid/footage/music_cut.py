@@ -321,6 +321,58 @@ def pick_archetype(analysis) -> str:
 GRID_HOLE_BEATS = 1.6
 
 
+def _grid_gaps(beats, dur: float):
+    """``(period, head, filled, tail)`` — the beat the grid is carried at, the beats that
+    would be added before the first and after the last, and the ``(a, b)`` holes between
+    two measured beats wider than :data:`GRID_HOLE_BEATS` periods — or ``None`` when the
+    grid is too thin to carry. The ONE reading of "where is this grid carried", shared by
+    :func:`extend_grid` (which adds the beats) and :func:`carried_spans` (which reports
+    where they would go)."""
+    if len(beats) < 4:
+        return None
+    period = float(np.median(np.diff(beats)))
+    if not period > 0:
+        return None
+    filled = [
+        (a, b) for a, b in zip(beats, beats[1:]) if b - a > GRID_HOLE_BEATS * period
+    ]
+    head = []
+    t = beats[0] - period
+    while t >= 0.5 * period:  # no beat crammed against 0
+        head.insert(0, t)
+        t -= period
+    tail = []
+    t = beats[-1] + period
+    while t < dur - 0.5 * period:
+        tail.append(t)
+        t += period
+    return period, head, filled, tail
+
+
+def carried_spans(beats, dur: float) -> list:
+    """``[[start_s, end_s], ...]`` — where a measured beat grid has no beats and the
+    planner carries it on at the song's own pace (:func:`extend_grid`): before the first
+    beat, through each quiet hole, after the last. Empty for a grid that is not carried.
+
+    >>> carried_spans([1.0, 1.5, 2.0, 2.5, 3.0], 4.6)
+    [[0.0, 1.0], [3.0, 4.6]]
+    >>> carried_spans([1.0, 1.5, 2.0, 2.5, 3.0], 3.1)
+    [[0.0, 1.0]]
+    """
+    beats = list(beats)
+    found = _grid_gaps(beats, float(dur))
+    if found is None:
+        return []
+    _, head, filled, tail = found
+    spans = []
+    if head:
+        spans.append([0.0, float(beats[0])])
+    spans += [[float(a), float(b)] for a, b in filled]
+    if tail:
+        spans.append([float(beats[-1]), float(dur)])
+    return spans
+
+
 def extend_grid(analysis, duration: Optional[float] = None):
     """``analysis`` with its beat grid carried through the quiet passages a beat
     tracker goes silent on, and on to both ends of the song, at its own pace.
@@ -341,31 +393,19 @@ def extend_grid(analysis, duration: Optional[float] = None):
 
     beats = list(analysis.beats)
     dur = float(duration if duration is not None else analysis.duration)
-    if len(beats) < 4:
+    found = _grid_gaps(beats, dur)
+    if found is None:
         return analysis, None
-    period = float(np.median(np.diff(beats)))
-    if not period > 0:
-        return analysis, None
+    period, head, filled, tail = found
+    wide = set(filled)
     out = []
-    filled = []
     for a, b in zip(beats, beats[1:]):
         out.append(a)
-        if b - a > GRID_HOLE_BEATS * period:
+        if (a, b) in wide:
             n = int(round((b - a) / period))
             step = (b - a) / n
             out += [a + k * step for k in range(1, n)]
-            filled.append((a, b))
     out.append(beats[-1])
-    head = []
-    t = beats[0] - period
-    while t >= 0.5 * period:  # no beat crammed against 0
-        head.insert(0, t)
-        t -= period
-    tail = []
-    t = beats[-1] + period
-    while t < dur - 0.5 * period:
-        tail.append(t)
-        t += period
     if not head and not tail and not filled:
         return analysis, None
     grid = tuple(round(x, 4) for x in head + out + tail)

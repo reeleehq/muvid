@@ -1545,7 +1545,7 @@ _BEAT_GRID_FROM_SCORES = "scores"
 _BEAT_GRID_COMPUTED = "computed"
 
 
-def beat_grid(fp) -> dict:
+def beat_grid(fp, *, shape: bool = True) -> dict:
     """The song's beat grid — tempo and beat instants on the song timeline — without
     looking at the footage.
 
@@ -1567,6 +1567,16 @@ def beat_grid(fp) -> dict:
     to a bar — muvid.montage's rule) or ``first_beat`` (no onset energy to vote with, so
     bars start on the first beat) — ``beats_per_bar`` and ``bar_of_beat`` (each beat's
     bar number, 1 for the first bar, 0 for a pickup before it).
+
+    And the song's shape (muvid#316): ``sections`` (``[{label, start_s, end_s}]`` — intro,
+    verse, chorus ... — from the song analysis), with ``sections_source`` ``measured``,
+    ``none`` (the analysis found no section: "one section" can be said, not inferred from
+    an empty list) or ``unavailable`` (the song could not be analysed here); and
+    ``carried`` (``[[start_s, end_s], ...]``), the spans where the grid the music cutter
+    uses (a declared one included) has no measured beat and is carried on at the song's
+    own pace. ``carried`` is read on the analysis's grid, which is the one the cutter
+    uses; for a song the estimator finds almost no beat in, that grid is the analysis's
+    own fallback, not the ``beats`` listed here.
     """
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
@@ -1587,7 +1597,39 @@ def beat_grid(fp) -> dict:
         "source": source,
     }
     reply.update(_bars(beats, record))
+    if shape:
+        reply.update(_song_shape(fp))
     return reply
+
+
+def _song_shape(fp) -> dict:
+    """``beat_grid``'s ``sections``, ``sections_source`` and ``carried`` (muvid#316).
+
+    Both come from :func:`song_analysis` (cached per song, a declared grid swapped in
+    for the estimate) — the very grid :func:`~muvid.footage.music_cut.extend_grid`
+    carries, so ``carried`` is what the music cutter will actually carry (a test pins the
+    two against each other). Not computed for the connector's pinned reply
+    (``beat_grid(shape=False)``) nor for callers that only want the beats.
+    """
+    from muvid.footage.music_cut import carried_spans
+    from muvid.visualize.ffmpeg import FfmpegError
+
+    try:
+        analysis = song_analysis(fp)
+    # only what makes the song unreadable here (a file or probe). A missing optional package is not among them: the
+    # analysis falls back to its numpy estimator rather than refusing, and anything else
+    # is a regression that propagates.
+    except (FfmpegError, OSError):
+        return {"sections": [], "sections_source": "unavailable", "carried": []}
+    sections = [
+        {"label": x.label, "start_s": x.start, "end_s": x.end}
+        for x in analysis.sections
+    ]
+    return {
+        "sections": sections,
+        "sections_source": "measured" if sections else "none",
+        "carried": carried_spans(analysis.beats, fp.song_duration()),
+    }
 
 
 #: Where a DECLARED beat grid lives: beside the manifest, NOT under ``scores/`` (whose
@@ -1741,7 +1783,8 @@ def set_beat_grid(
     others stay current) until ``score`` runs again, which recomputes only them — and
     they are current again if the grid is cleared; ``scores_stale: true`` says so. A grid belongs to the
     song it was set for: with another song set it does not apply (and comes back if that
-    song is set again). Returns the grid like ``beat_grid`` does, plus ``changed``.
+    song is set again). Returns the grid like ``beat_grid`` does (without the song's shape; read
+    ``beat_grid`` again for it), plus ``changed``.
     """
     if not fp.has_song():
         raise FootageError("no song set — call set_song first")
@@ -1768,7 +1811,7 @@ def set_beat_grid(
     changed = before is None or any(before.get(k) != v for k, v in record.items())
     if changed:
         _write_declared(fp, {**record, "declared_at": time.time()})
-    return {**beat_grid(fp), "changed": changed, **_stale_flag(fp)}
+    return {**beat_grid(fp, shape=False), "changed": changed, **_stale_flag(fp)}
 
 
 def _write_declared(fp, record: dict) -> None:
@@ -3816,7 +3859,7 @@ def fit_to_beat(
     from muvid.footage.edl import _clip_contains, placed_as
 
     record, entries = _edit_entries(fp, edit_id)
-    grid = BeatGrid.fitted(beat_grid(fp)["beats"])
+    grid = BeatGrid.fitted(beat_grid(fp, shape=False)["beats"])
     if grid is None:
         raise FootageError(
             "the song has no steady beat to fit to (too few beats found, or the tempo "
@@ -5319,7 +5362,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     ),
     OpSpec("set_has_song", "Say whether a video has the song in it", "write"),
     OpSpec("timeline", "Show which videos cover which parts of the song", "read"),
-    OpSpec("beat_grid", "Find the beat", "read"),
+    OpSpec("beat_grid", "Find the beat", "read", hide=("shape",)),
     OpSpec(
         "set_beat_grid", "Set the beat by hand", "write", invalidates=BEAT_GRID_READS
     ),

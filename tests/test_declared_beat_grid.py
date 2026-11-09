@@ -19,6 +19,23 @@ from muvid.footage.errors import FootageError
 SONG_DURATION = 30.0
 
 
+@pytest.fixture(autouse=True)
+def _song_analysis(monkeypatch):
+    """The grid tests fake the song, so the estimator's analysis (muvid#316's sections
+    and carried spans) cannot run: stand a real ``Analysis`` in for the MEASURED one;
+    a declared grid is still swapped in by the code under test."""
+    from muvid.montage.analysis import Analysis
+
+    beats = tuple(0.5 * k for k in range(60))
+    monkeypatch.setattr(
+        service,
+        "_measured_song_analysis",
+        lambda fp, **kw: Analysis(
+            duration=SONG_DURATION, tempo_bpm=120.0, beats=beats, downbeats=beats[::4]
+        ),
+    )
+
+
 @pytest.fixture
 def proj(tmp_path, monkeypatch):
     monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
@@ -58,7 +75,7 @@ def test_a_declared_tempo_makes_a_steady_grid_with_bars(proj):
     assert out["beats"][:3] == [0.5, 1.0, 1.5] and out["beats"][-1] <= SONG_DURATION
     assert out["downbeats"][:2] == [0.5, 2.5] and out["downbeats_source"] == "declared"
     assert out["bar_of_beat"][:5] == [1, 1, 1, 1, 2]
-    assert service.beat_grid(proj) == out
+    assert service.beat_grid(proj, shape=False) == out
 
 
 def test_explicit_beats_a_pickup_and_the_bar_length(proj):
@@ -839,3 +856,12 @@ def test_a_run_that_decodes_no_frames_says_why_it_has_no_shots(scored_proj):
     out = service.run_scoring(proj, metrics=["beats_seen"])
     assert "no frames were decoded" in out["shots_skipped"]["A"]
     assert "beats_seen" in out["metrics"]
+
+
+def test_a_declared_grid_reports_where_the_cutter_carries_it(proj):
+    """muvid#316 review: a declared grid IS carried by the music cutter (a late first
+    beat gets a carried head), so ``carried`` says so rather than claiming all measured."""
+    service.set_beat_grid(proj, beats=[4.0 + 0.5 * k for k in range(20)])
+    out = service.beat_grid(proj)
+    assert out["source"] == "declared"
+    assert out["carried"] == [[0.0, 4.0], [13.5, SONG_DURATION]]

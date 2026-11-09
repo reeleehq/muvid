@@ -90,7 +90,7 @@ def fp(tmp_path, monkeypatch):
     service.set_offset(proj, clip_id="A", offset_s=-2.0)
     service.set_offset(proj, clip_id="B", offset_s=-2.0)
     grid = {"beats": [0.5 * k for k in range(60)]}
-    monkeypatch.setattr(service, "beat_grid", lambda fp: grid)
+    monkeypatch.setattr(service, "beat_grid", lambda fp, **_: grid)
     tau_a, v_a = _accents(offset=-2.0, song_start=10.0, slip=0.1, rate=1.04, seconds=40.0, noise=0.2)
     rng = np.random.default_rng(3)
     tau_b = np.arange(0.0, 40.0, HOP)
@@ -152,6 +152,6 @@ def test_the_fit_is_one_undo_step_and_a_dry_run_changes_nothing(fp, monkeypatch)
 
 
 def test_a_song_without_a_steady_beat_is_refused(fp, monkeypatch):
-    monkeypatch.setattr(service, "beat_grid", lambda fp: {"beats": [0.1, 0.9, 1.2]})
+    monkeypatch.setattr(service, "beat_grid", lambda fp, **_: {"beats": [0.1, 0.9, 1.2]})
     with pytest.raises(service.FootageError, match="no steady beat"):
         service.fit_to_beat(fp, edit_id="e")
