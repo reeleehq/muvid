@@ -238,3 +238,62 @@ def test_the_ref_backfill_repairs_a_ref_that_is_not_an_int(tmp_path, monkeypatch
     meta.write_text(json.dumps({"render_id": rid, "ref_n": bad}))
     assert proj.ensure_render_refs() == {rid: 1}
     assert json.loads(meta.read_text())["ref_n"] == 1  # durable, so it never shifts
+
+
+def test_two_renames_to_one_title_cannot_both_win(tmp_path, monkeypatch):
+    """muvid#300: the "is this title free?" check ran outside any lock, so two renders
+    renamed at once to the same title could both pass it. The check and the write that
+    takes the title are now one step under a project-level lock. The check is slowed
+    after it has answered, which is when an unlocked second rename gets in."""
+    pytest.importorskip("nw")
+    from muvid import downloads
+    from muvid.downloads import organise
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    proj = W.FootageWorkspace.for_email("u@x.com").create_project("p")
+    rids = ["r1" * 6, "r2" * 6]
+    for n, rid in enumerate(rids, 1):
+        rdir = proj.new_render_dir(rid)
+        (rdir / "final.mp4").write_bytes(b"v")
+        (rdir / "meta.json").write_text(json.dumps({"render_id": rid, "ref_n": n}))
+
+    real = downloads._refuse_taken_title
+
+    def slow(*a, **kw):
+        real(*a, **kw)
+        time.sleep(0.4)  # the window between "free" and "taken"
+
+    monkeypatch.setattr(downloads, "_refuse_taken_title", slow)
+    outcomes = []
+
+    def rename(rid):
+        try:
+            organise("u@x.com", "p", rid, title="The Take")
+            outcomes.append("won")
+        except ValueError:
+            outcomes.append("refused")
+
+    threads = [threading.Thread(target=rename, args=(r,)) for r in rids]
+    [t.start() for t in threads]
+    [t.join(20) for t in threads]
+    assert sorted(outcomes) == ["refused", "won"]
+
+
+def test_a_visualizer_render_meta_is_written_atomically(tmp_path, monkeypatch):
+    """muvid#300: ``write_text`` truncates in place; ``organise`` now refuses a torn
+    ``meta.json``, so the writer must never leave one."""
+    from muvid.mcp.workspace import VisualizerWorkspace
+
+    monkeypatch.setenv("MUVID_DATA_HOME", str(tmp_path))
+    proj = VisualizerWorkspace.for_email("u@x.com").create_project("p")
+    (proj.renders_dir / "r1").mkdir(parents=True)
+    seen = []
+    real = W.atomic_write_text
+    monkeypatch.setattr(
+        W, "atomic_write_text", lambda p, t: seen.append(p.name) or real(p, t)
+    )
+    proj.write_render_meta("r1", {"render_id": "r1"})
+    assert seen == ["meta.json"]
+    assert json.loads((proj.renders_dir / "r1" / "meta.json").read_text()) == {
+        "render_id": "r1"
+    }

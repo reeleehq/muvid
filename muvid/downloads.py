@@ -64,6 +64,7 @@ resolve the second, because only muvid knows the ordering that gives it meaning
 
 from __future__ import annotations
 
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
 from nw.delivery import Deliverable, format_ref, parse_ref
@@ -550,6 +551,46 @@ def list_projects(email: str) -> list:
     return rows
 
 
+def _refuse_taken_title(email: str, project_id: str, proj, render_id: str, title: str):
+    """Refuse ``title`` for ``render_id`` when it collides with a render id, or another
+    render's assigned title, in ANY drawer holding this project id: a claim names no
+    drawer, so a title must be unique across all of them (muvid#103)."""
+    want = title.casefold()
+    for _k, _p, other_proj in _open_all(email, project_id):
+        rdir = other_proj.renders_dir
+        if not rdir.is_dir():
+            continue
+        for child in rdir.iterdir():
+            if not child.is_dir():
+                continue
+            if child.name == render_id and other_proj.root == proj.root:
+                continue
+            if child.name.casefold() == want:
+                raise ValueError(f"{title!r} collides with render id {child.name!r}")
+            sib = _read_render_meta(other_proj, child.name).get("organise")
+            other = sib.get("title") if isinstance(sib, dict) else None
+            if isinstance(other, str) and other.strip().casefold() == want:
+                raise ValueError(f"{title!r} is already the title of {child.name!r}")
+
+
+@contextmanager
+def _title_lock(email: str, project_id: str, proj):
+    """Hold one lock per drawer holding this project id, in a fixed order, so the
+    "is this title free?" check and the write that takes it are one step: two concurrent
+    renames of two renders to the same title cannot both pass (muvid#300). A per-render
+    ``meta.json`` lock cannot see the other render's, hence a project-level one."""
+    from muvid.footage.workspace import file_lock
+
+    # resolved, so two spellings of one folder (a symlinked data home) lock in one order
+    roots = {Path(proj.root).resolve()} | {
+        Path(p.root).resolve() for _k, _pid, p in _open_all(email, project_id)
+    }
+    with ExitStack() as stack:
+        for root in sorted(roots):
+            stack.enter_context(file_lock(root / "locks" / "organise.lock"))
+        yield
+
+
 def organise(
     email: str,
     project_id: str,
@@ -613,67 +654,48 @@ def organise(
                 "strips that suffix to address posters, so the name could "
                 "never win"
             )
-        want = new_title.casefold()
-        # Every drawer holding this id, not only the target's: a claim names no
-        # drawer, so a title must be unique across all of them (muvid#103).
-        for _k, _p, other_proj in _open_all(email, project_id):
-            rdir = other_proj.renders_dir
-            if not rdir.is_dir():
-                continue
-            for child in rdir.iterdir():
-                if not child.is_dir():
-                    continue
-                if child.name == render_id and other_proj.root == proj.root:
-                    continue
-                if child.name.casefold() == want:
-                    raise ValueError(
-                        f"{new_title!r} collides with render id {child.name!r}"
-                    )
-                sib = _read_render_meta(other_proj, child.name).get("organise")
-                other = sib.get("title") if isinstance(sib, dict) else None
-                if isinstance(other, str) and other.strip().casefold() == want:
-                    raise ValueError(
-                        f"{new_title!r} is already the title of {child.name!r}"
-                    )
     if tags is not None and not isinstance(tags, (list, tuple)):
         raise ValueError("tags must be a list of strings (or [] to clear)")
 
-    wanted = {
-        "title": new_title if title else title,  # "" clears, None leaves
-        "tags": None if tags is None else [str(t) for t in tags],
-        "note": None if note is None else str(note),
-    }
+    with _title_lock(email, project_id, proj):
+        if new_title is not None:
+            _refuse_taken_title(email, project_id, proj, render_id, new_title)
+        wanted = {
+            "title": new_title if title else title,  # "" clears, None leaves
+            "tags": None if tags is None else [str(t) for t in tags],
+            "note": None if note is None else str(note),
+        }
 
-    def change(meta):
-        org = meta.get("organise")
-        org = dict(org) if isinstance(org, dict) else {}
-        for key, value in wanted.items():
-            if value is None:
-                continue  # unchanged
-            if len(value) == 0:
-                org.pop(key, None)  # "" / [] clears
+        def change(meta):
+            org = meta.get("organise")
+            org = dict(org) if isinstance(org, dict) else {}
+            for key, value in wanted.items():
+                if value is None:
+                    continue  # unchanged
+                if len(value) == 0:
+                    org.pop(key, None)  # "" / [] clears
+                else:
+                    org[key] = value
+            if org:
+                meta["organise"] = org
             else:
-                org[key] = value
-        if org:
-            meta["organise"] = org
-        else:
-            meta.pop("organise", None)
+                meta.pop("organise", None)
 
-    # A locked read-modify-write (muvid#280): meta.json carries PIPELINE-critical keys
-    # (ref_n, edl, download, ...) that another writer — the ref backfill of
-    # ensure_render_refs — may be setting at this moment, so it is re-read and changed
-    # under the meta's lock, and replaced atomically.
-    from muvid.footage.workspace import no_record, update_json_record
+        # A locked read-modify-write (muvid#280): meta.json carries PIPELINE-critical keys
+        # (ref_n, edl, download, ...) that another writer — the ref backfill of
+        # ensure_render_refs — may be setting at this moment, so it is re-read and changed
+        # under the meta's lock, and replaced atomically.
+        from muvid.footage.workspace import no_record, update_json_record
 
-    try:
-        update_json_record(
-            proj.renders_dir / render_id / "meta.json", change, default=no_record
-        )
-    except FileNotFoundError:  # a render still in flight, or one that crashed
-        raise KeyError(
-            f"render {render_id!r} has no record to organise yet; try again once "
-            "it has finished"
-        ) from None
+        try:
+            update_json_record(
+                proj.renders_dir / render_id / "meta.json", change, default=no_record
+            )
+        except FileNotFoundError:  # a render still in flight, or one that crashed
+            raise KeyError(
+                f"render {render_id!r} has no record to organise yet; try again once "
+                "it has finished"
+            ) from None
 
     # The receipt: re-read from storage, never echo the request.
     return _deliverable(
