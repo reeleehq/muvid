@@ -673,6 +673,16 @@ def _role_of(row: dict, alignment) -> str:
     return SYNCED if heard_the_song(alignment) else FREE_ROLE
 
 
+def _aligned(fp) -> list:
+    """The saved alignments as the planner and the gate read them: each overlapping
+    video's coverage ends at its picture's last frame (:func:`~muvid.footage.edl.
+    with_pictures`, muvid#344). For the READERS of a placement — never for a writer,
+    which would persist the clamped coverage."""
+    from muvid.footage.edl import with_pictures
+
+    return with_pictures(fp.load_alignments(), fp.manifest().get("clips", []))
+
+
 def _placements(fp, *, on_unreadable=None) -> list:
     """A placement for EVERY clip: its alignment where it has one, else an UNPLACED
     record (never persisted) carrying its duration — what a free cut needs to be
@@ -990,7 +1000,7 @@ def status(fp) -> dict:
     ``next_step`` names the operation that moves the project forward and why.
     """
     m = fp.manifest()
-    aligns = fp.load_alignments()
+    aligns = _aligned(fp)
     render_rows = renders(fp)["renders"]
     edit_rows = [_edit_summary(fp, rec) for rec in fp.list_edit_records()]
     out = {
@@ -1030,7 +1040,7 @@ def status_summary(fp) -> dict:
     placed — the number that means a problem, unlike a video cut to the music.
     """
     m = fp.manifest()
-    aligns = fp.load_alignments()
+    aligns = _aligned(fp)
     roles = footage_roles(fp)
     clips = m.get("clips", [])
     stills = sum(1 for c in clips if c.get("kind") == STILL_KIND)
@@ -1508,7 +1518,7 @@ def _offset_consensus(aligns) -> dict:
 def timeline(fp) -> dict:
     """Which videos cover which spans of the song (overlaps shown), from the saved
     alignment — the map for choosing what to cut to. Run ``align`` first."""
-    aligns = fp.load_alignments()
+    aligns = _aligned(fp)
     if not aligns:
         raise FootageError("no alignment yet — call align_footage first")
     song_dur = fp.song_duration()
@@ -2369,7 +2379,7 @@ def score_candidates(
     _manifest, tensor, stale = _current_scores(fp)
     applied = _applied_weights(preset, weights)
     config = resolve_config(preset=preset or None, weights=weights)
-    placed = {a.clip_id: a for a in fp.load_alignments() if a.overlaps}
+    placed = {a.clip_id: a for a in _aligned(fp) if a.overlaps}
     song_end = tensor.t0 + tensor.n * tensor.hop_s
     spans = [_candidate(c, i, song_end=song_end) for i, c in enumerate(candidates)]
     rewards = span_rewards(tensor, list(placed.values()), spans, config=config)
@@ -3214,7 +3224,7 @@ def explain_edit(
         entries = [_as_entry(e) for e in record.get("edl") or []]
     analysis, grid_note = extend_grid(song_analysis(fp), fp.song_duration())
     rows = {c["clip_id"]: c for c in fp.manifest().get("clips", [])}
-    aligns = {a.clip_id: a for a in fp.load_alignments()}
+    aligns = {a.clip_id: a for a in _aligned(fp)}
     paths = fp.clip_paths()
     roles = footage_roles(fp)
     clips = {

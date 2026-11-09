@@ -123,3 +123,93 @@ def test_free_length_is_the_pictures_when_recorded():
 
     assert free_length(unplaced("c", 10.0)) == 10.0
     assert free_length(replace(unplaced("c", 10.0), picture_s=4.0)) == 4.0
+
+
+@needs_ffmpeg
+def test_a_synced_cut_past_the_pictures_last_frame_is_refused_though_the_audio_goes_on(
+    tmp_path,
+):
+    """muvid#344: the same freeze for a SYNCED cut. The aligner measured 5 s of audio, the
+    picture ends at 3 s; the render reads only the picture."""
+    fp = _project(tmp_path, picture_s=3.0, audio_s=5.0)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+         "sine=frequency=440:duration=12", str(tmp_path / "song.wav")],
+        check=True,
+    )  # fmt: skip
+    service.set_song(fp, path=str(tmp_path / "song.wav"))
+    service.set_offset(fp, clip_id="a", offset_s=0.0)
+
+    def synced(start, end):
+        return validate_edl(
+            [EdlEntry(song_start=start, song_end=end, clip_id="a")],
+            service._placements(fp),
+            12.0,
+            allow_unreliable=True,
+        )
+
+    assert synced(1.0, 2.5)
+    with pytest.raises(ValueError):
+        synced(3.5, 4.5)  # inside the audio, past the last frame
+    [placement] = service._placements(fp)
+    assert placement.coverage[1] == pytest.approx(3.0, abs=0.1)
+
+
+def test_synced_length_is_the_smaller_of_the_audio_and_the_picture():
+    from muvid.footage.edl import synced_length
+
+    assert synced_length(unplaced("c", 10.0)) == 10.0
+    assert synced_length(replace(unplaced("c", 10.0), picture_s=4.0)) == 4.0
+    assert synced_length(replace(unplaced("c", 10.0), picture_s=14.0)) == 10.0
+
+
+def test_the_weighted_dp_does_not_pick_what_the_picture_cannot_show():
+    """muvid#344 review: ``weighted`` bounded a clip by its audio, so it picked a stretch
+    the gate then refused ("does not contain song span")."""
+    import numpy as np
+
+    from muvid.footage.edl import with_pictures
+    from muvid.footage.select_score import (
+        SelectionContext,
+        WeightedSelectionConfig,
+        run_weighted,
+        span_rewards,
+    )
+    from tests.test_scoring_select import _align, make_tensor
+
+    song, hop = 20.0, 0.1
+    n = int(np.ceil(song / hop)) + 1
+    t = np.arange(n) * hop
+    # A: 12 s of audio, an 8 s picture; B covers 10-20
+    aligns = with_pictures(
+        [_align("A", 0.0, 12.0, song), _align("B", 10.0, 10.0, song)],
+        [{"clip_id": "A", "picture_duration": 8.0}],
+    )
+    tensor = make_tensor(
+        aligns,
+        {"A": np.where(t < 8.0, 1.0, np.nan), "B": np.where(t >= 10.0, 0.2, np.nan)},
+        hop=hop,
+        n=n,
+    )
+    ctx = SelectionContext(tensor=tensor, beat_times=np.arange(0, 20.01, 0.5))
+    try:
+        entries = run_weighted(aligns, song, ctx)[0]
+    except ValueError as e:  # a gap the DP cannot fill is stated, not a gate refusal
+        assert "does not contain" not in str(e)
+    else:
+        assert all(e.clip_id != "A" or e.song_end <= 8.0 + 1e-6 for e in entries)
+    # a span past the picture has no reward to speak of
+    assert span_rewards(
+        tensor, aligns, [("A", 8.5, 9.5)], config=WeightedSelectionConfig()
+    ) == [None]
+
+
+def test_a_clamped_coverage_that_leaves_nothing_is_not_an_overlap():
+    from muvid.footage.edl import FootageAlignment, with_pictures
+
+    a = FootageAlignment("A", -10.0, 0.9, 20.0, (0.0, 10.0))
+    [out] = with_pictures([a], [{"clip_id": "A", "picture_duration": 5.0}])
+    assert out.coverage == (0.0, 0.0) and out.overlaps is False
+    b = FootageAlignment("B", 2.0, 0.9, 20.0, (2.0, 12.0))
+    [out] = with_pictures([b], [{"clip_id": "B", "picture_duration": 5.0}])
+    assert out.coverage == (2.0, 7.0) and out.overlaps is True
