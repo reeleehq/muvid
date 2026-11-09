@@ -28,27 +28,10 @@ __all__ = ["list_subgenres", "render_subgenre"]
 #: Inputs whose values are file references (fetched) rather than primitives
 #: are identified by the manifest: a property with ``"format": "path"`` or a
 #: declared media kind (``x-muvid-kind`` / ``contentMediaType``, muvid#293), OR —
-#: the backstop for a plugin that declares nothing — a name in this set, fetched
-#: through _resolve_input. Everything else is passed through as-is after schema
-#: validation.
-_FILE_INPUT_NAMES = frozenset(
-    {
-        "audio",
-        "lyrics",
-        "subtitles",
-        "cover",
-        "image",
-        "reference_image",
-        "clip",
-        "video",
-        # the list-valued pools (muvid#23 review): a plugin that forgets
-        # `format: path` must not hand raw strings to its renderer
-        "photos",
-        "clips",
-        "images",
-        "videos",
-    }
-)
+#: the backstop for a plugin that declares nothing — a name in
+#: :data:`~muvid.subgenres._schema.BACKSTOP_INPUT_KINDS` (the one table, muvid#328),
+#: fetched through _resolve_input. Everything else is passed through as-is after
+#: schema validation.
 
 #: Inputs that name a SERVER path by design (lyric-video's ``project``: an existing
 #: muvid project folder). A remote caller never names a server file, so the transport
@@ -75,11 +58,15 @@ def _is_file_input(name: str, schema: dict) -> bool:
     (``format: path``, or a declared media kind — on the property or a list's items),
     else its name is a known file input — the backstop for a plugin that declares
     nothing (muvid#293)."""
-    from muvid.subgenres._schema import declared_media_kind, declares_path
+    from muvid.subgenres._schema import (
+        BACKSTOP_INPUT_KINDS,
+        declared_media_kind,
+        declares_path,
+    )
 
     if declares_path(name, schema) or declared_media_kind(name, schema) is not None:
         return True
-    return name in _FILE_INPUT_NAMES
+    return name in BACKSTOP_INPUT_KINDS
 
 
 def render_subgenre(
