@@ -104,6 +104,7 @@ def test_a_page_link_becomes_the_song_through_yb_with_its_notice(
     assert song["name"] == "Que Calor (live).mp3" and song["file"] == "song.mp3"
     assert song["notice"].startswith("Downloaded from a user-supplied link")
     assert project.manifest()["song_notice"] == song["notice"]
+    assert song["source_url"] == PAGE  # the page it came from, beside the notice (#333)
 
 
 def test_muvids_target_check_refuses_a_private_host(project, page_answers_html, monkeypatch):
@@ -172,6 +173,7 @@ def test_a_song_set_without_a_notice_records_none(project, tmp_path):
     service.set_song(project, path=str(song), duration_s=10.0)
     assert "song_notice" not in project.manifest()
     assert "notice" not in project.song_info()
+    assert "source_url" not in project.song_info()
 
 
 def _with_yb_raising(monkeypatch, exc):
@@ -242,3 +244,63 @@ def test_the_notice_is_the_hosts_to_supply_not_the_clients(project, tmp_path):
     assert project.song_info()["notice"] == "n"
     service.set_song(project, path=str(song), duration_s=10.0)  # a plain re-set clears it
     assert "notice" not in project.song_info()
+
+
+@pytest.fixture
+def host_refuses_plain_fetch(monkeypatch):
+    """A video site answers this server's plain fetch with HTTP 403 (muvid#333)."""
+    import muvid.mcp._fetch as fetch_mod
+    import muvid.mcp.footage_tools as ft
+
+    def fetch(uri, dest, *, max_bytes, expect_kind=""):
+        raise fetch_mod.PermissionDeniedError(
+            "the link is private or not shared (HTTP 403)."
+        )
+
+    monkeypatch.setattr(fetch_mod, "fetch_to_file_streaming", fetch)
+    monkeypatch.setattr(ft, "_duration", lambda p: 12.0)
+    monkeypatch.setattr("muvid.mcp._fetch._host_is_public", lambda host: True)
+
+
+def test_a_403_on_a_page_link_falls_through_to_yb(
+    project, host_refuses_plain_fetch, monkeypatch
+):
+    import muvid.mcp._audio_link as AL
+    import muvid.mcp.footage_tools as ft
+    from muvid.mcp.identity import use_email
+
+    real = AL.song_from_page_link
+    calls = []
+    monkeypatch.setattr(
+        AL, "song_from_page_link", lambda url, **kw: real(url, download=_fake_yb(calls), **kw)
+    )
+    with use_email("u@x.com"):
+        out = ft.set_song("p", url=PAGE)
+    assert len(calls) == 1 and out["song"]["source_url"] == PAGE
+
+
+def test_a_403_with_no_yb_keeps_the_private_link_diagnosis(
+    project, host_refuses_plain_fetch, monkeypatch
+):
+    import sys
+
+    import muvid.mcp.footage_tools as ft
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.identity import use_email
+
+    monkeypatch.setitem(sys.modules, "yb.download", None)
+    with use_email("u@x.com"), pytest.raises(ToolError, match="private or not shared"):
+        ft.set_song("p", url=PAGE)
+
+
+def test_a_403_on_a_share_link_never_reaches_yb(
+    project, host_refuses_plain_fetch, monkeypatch
+):
+    import muvid.mcp._audio_link as AL
+    import muvid.mcp.footage_tools as ft
+    from fastmcp.exceptions import ToolError
+    from muvid.mcp.identity import use_email
+
+    monkeypatch.setattr(AL, "song_from_page_link", lambda *a, **k: pytest.fail("yb"))
+    with use_email("u@x.com"), pytest.raises(ToolError, match="private or not shared"):
+        ft.set_song("p", url=DRIVE_PAGE)
