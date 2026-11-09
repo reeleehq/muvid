@@ -70,6 +70,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 |---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`blend_reads`](#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                                                                                                                                                                               |
 | [`blend_trail`](#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                                                                                                                                                                                      |
+| [`clamp_in_point`](#muvid.footage.edl.clamp_in_point)(bounds, asked)                    | `asked` moved into `bounds` ([`in_point_bounds()`](#muvid.footage.edl.in_point_bounds)), rounded to the clock muvid keeps; `(used, None)` when it already fit, else `(used, {asked, used})`.                                                                                                                                                                                                                             |
 | [`clip_in_of`](#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                                                                                                                                                                                      |
 | [`clip_time_at`](#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                                                                                                                                                                                          |
 | [`derive_cuts`](#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                                                               |
@@ -996,6 +997,23 @@ Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).
 
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.clamp_in_point(bounds, asked)
+
+`asked` moved into `bounds` ([`in_point_bounds()`](#muvid.footage.edl.in_point_bounds)), rounded to the clock
+muvid keeps; `(used, None)` when it already fit, else `(used, {asked, used})`.
+
+```pycon
+>>> clamp_in_point((0.5, 7.5), 4.0)
+(4.0, None)
+>>> clamp_in_point((0.5, 7.5), 40.0)
+(7.5, {'asked': 40.0, 'used': 7.5})
+>>> clamp_in_point((0.5, 7.5), 0.0)
+(0.5, {'asked': 0.0, 'used': 0.5})
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)]
 
 ### muvid.footage.edl.clip_in_of(e, a)
 

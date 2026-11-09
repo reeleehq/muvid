@@ -46,6 +46,7 @@ muvid.footage.edl
       blend_lead
       blend_reads
       blend_trail
+      clamp_in_point
       clip_in_of
       clip_time_at
       derive_cuts

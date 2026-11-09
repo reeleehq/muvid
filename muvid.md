@@ -1,4 +1,4 @@
-> built 2026-11-09 00:07 UTC from aa9c32f (main) · muvid 0.0.169. Details: build_info.json
+> built 2026-11-09 00:47 UTC from 64930a6 (main) · muvid 0.0.170. Details: build_info.json
 
 # index.html.md
 
@@ -3478,6 +3478,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 |---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`blend_reads`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_reads)(transition, next_transition, \*)     | `(lead, trail)`: clip seconds a cut's blends read before its in-point (its own `transition`) and past its end (the FOLLOWING cut's), at the cut's `rate` — as `_validate_transition()` scales them.                                                                                                                                                                                                                               |
 | [`blend_trail`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.blend_trail)(t)                                   | Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).                                                                                                                                                                                                                                                                                                                                                      |
+| [`clamp_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clamp_in_point)(bounds, asked)                    | `asked` moved into `bounds` ([`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)), rounded to the clock muvid keeps; `(used, None)` when it already fit, else `(used, {asked, used})`.                                                                                                                                                                                                                             |
 | [`clip_in_of`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_in_of)(e, a)                                 | Where cut `e` starts in its clip `a`'s own time — THE sign convention: `song_start - offset + slip` — or, for a free cut, `source_in + slip`, the alignment playing no part.                                                                                                                                                                                                                                                      |
 | [`clip_time_at`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.clip_time_at)(e, a, t)                            | The moment of clip `a` cut `e` shows at song time `t` — the cut's affine map, `clip_in_of(e) + rate * (t - song_start)`.                                                                                                                                                                                                                                                                                                          |
 | [`derive_cuts`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.derive_cuts)(edl, alignments, clip_paths)         | Turn a *validated* EDL into render-ready cuts — the ONE place `clip_in` is derived.                                                                                                                                                                                                                                                                                                                                               |
@@ -4404,6 +4405,23 @@ Seconds a transition reads PAST the end of the PREVIOUS cut (in its source).
 
 * **Return type:**
   [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.clamp_in_point(bounds, asked)
+
+`asked` moved into `bounds` ([`in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds)), rounded to the clock
+muvid keeps; `(used, None)` when it already fit, else `(used, {asked, used})`.
+
+```pycon
+>>> clamp_in_point((0.5, 7.5), 4.0)
+(4.0, None)
+>>> clamp_in_point((0.5, 7.5), 40.0)
+(7.5, {'asked': 40.0, 'used': 7.5})
+>>> clamp_in_point((0.5, 7.5), 0.0)
+(0.5, {'asked': 0.0, 'used': 0.5})
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)]
 
 ### muvid.footage.edl.clip_in_of(e, a)
 
@@ -9707,7 +9725,7 @@ song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.set_cut(fp, , edit_id, index, clip_id=None, song_start=None, song_end=None, look=None, look_time_varying=None, slip_s=None, rate=None)
+### muvid.footage.service.set_cut(fp, , edit_id, index, clip_id=None, song_start=None, song_end=None, look=None, look_time_varying=None, slip_s=None, rate=None, source_in_s=None)
 
 Change one cut of a saved edit (`index` is its position in `get_edit`’s edl).
 
@@ -9733,6 +9751,12 @@ Change one cut of a saved edit (`index` is its position in `get_edit`’s edl).
   more footage over the same span, so the moves run 3 % faster (the song is never
   touched). Within `1 +- RATE_MAX_DEV`; `1` removes it. The video must hold the
   footage the cut then reads. A new video starts at speed 1.
+- `source_in_s`: for a cut to the music, which part of its video it shows — the
+  second of the video it starts at (`40` shows the part 40 s in). Moved as far as
+  the video allows (the cut’s footage, and the blends around it, must stay inside the
+  video) and the reply’s `source_in_clamped` says when it was. Resets `slip_s`.
+  Refused for a video with the song in it (its moment is its place on the song: use
+  `slip_s`; a video nobody has listened to yet counts as cut to the music) and for a photo, which is shown whole.
 
 Parameters left out are unchanged. The changed edit is checked and saved; returns it.
 
@@ -15164,7 +15188,7 @@ song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.footage_set_cut(project_id, , edit_id, index, clip_id=None, song_start=None, song_end=None, look=None, look_time_varying=None, slip_s=None, rate=None)
+### muvid.mcp.footage_tools.footage_set_cut(project_id, , edit_id, index, clip_id=None, song_start=None, song_end=None, look=None, look_time_varying=None, slip_s=None, rate=None, source_in_s=None)
 
 Change one cut of a saved edit (`index` is its position in `footage_get_edit`’s edl).
 
@@ -15190,6 +15214,12 @@ Change one cut of a saved edit (`index` is its position in `footage_get_edit`’
   more footage over the same span, so the moves run 3 % faster (the song is never
   touched). Within `1 +- RATE_MAX_DEV`; `1` removes it. The video must hold the
   footage the cut then reads. A new video starts at speed 1.
+- `source_in_s`: for a cut to the music, which part of its video it shows — the
+  second of the video it starts at (`40` shows the part 40 s in). Moved as far as
+  the video allows (the cut’s footage, and the blends around it, must stay inside the
+  video) and the reply’s `source_in_clamped` says when it was. Resets `slip_s`.
+  Refused for a video with the song in it (its moment is its place on the song: use
+  `slip_s`; a video nobody has listened to yet counts as cut to the music) and for a photo, which is shown whole.
 
 Parameters left out are unchanged. The changed edit is checked and saved; returns it.
 
@@ -20668,7 +20698,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 00:07 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/aa9c32f2937d4088f6c0c82fbb05d67a8df59db8"><code>aa9c32f</code></a> on branch <code>main</code>, for **muvid 0.0.169** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 00:47 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/64930a6dbc1846af78f65cc1d06d281bb0a07a3c"><code>64930a6</code></a> on branch <code>main</code>, for **muvid 0.0.170** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -20677,9 +20707,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/aa9c32f2937d4088f6c0c82fbb05d67a8df59db8"><code>aa9c32f2937d4088f6c0c82fbb05d67a8df59db8</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/64930a6dbc1846af78f65cc1d06d281bb0a07a3c"><code>64930a6dbc1846af78f65cc1d06d281bb0a07a3c</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.169</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.170</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20688,9 +20718,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42537140193">42537140193</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42540499928">42540499928</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>f652bec6e8e70022c4ab667f5e71d1b9848ef157</code> (in the history of the built commit) |
+| Event commit | <code>34f2e97645fbd978841da1d5984d64840c5cb8e8</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20715,13 +20745,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.169/">0.0.169</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.170/">0.0.170</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout aa9c32f2937d4088f6c0c82fbb05d67a8df59db8
+git checkout 64930a6dbc1846af78f65cc1d06d281bb0a07a3c
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

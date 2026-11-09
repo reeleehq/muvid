@@ -933,7 +933,7 @@ song is set again). Returns the grid like `beat_grid` does, plus `changed`.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.set_cut(fp, , edit_id, index, clip_id=None, song_start=None, song_end=None, look=None, look_time_varying=None, slip_s=None, rate=None)
+### muvid.footage.service.set_cut(fp, , edit_id, index, clip_id=None, song_start=None, song_end=None, look=None, look_time_varying=None, slip_s=None, rate=None, source_in_s=None)
 
 Change one cut of a saved edit (`index` is its position in `get_edit`’s edl).
 
@@ -959,6 +959,12 @@ Change one cut of a saved edit (`index` is its position in `get_edit`’s edl).
   more footage over the same span, so the moves run 3 % faster (the song is never
   touched). Within `1 +- RATE_MAX_DEV`; `1` removes it. The video must hold the
   footage the cut then reads. A new video starts at speed 1.
+- `source_in_s`: for a cut to the music, which part of its video it shows — the
+  second of the video it starts at (`40` shows the part 40 s in). Moved as far as
+  the video allows (the cut’s footage, and the blends around it, must stay inside the
+  video) and the reply’s `source_in_clamped` says when it was. Resets `slip_s`.
+  Refused for a video with the song in it (its moment is its place on the song: use
+  `slip_s`; a video nobody has listened to yet counts as cut to the music) and for a photo, which is shown whole.
 
 Parameters left out are unchanged. The changed edit is checked and saved; returns it.
 
