@@ -51,6 +51,26 @@ def _nw_locator(email: str) -> Optional[Path]:
     return locate(email) if locate is not None else None
 
 
+def _envelope_genre(root: Path) -> Optional[str]:
+    """The genre ``root`` was created as, from its document mirror (``nw.project_genre``,
+    nw#223) WITHOUT opening its graph; ``None`` when unknown — an nw that predates the
+    reader, a project whose envelope predates the mirror, or a mirror that cannot be
+    read — and the caller falls back to the authoritative read (muvid#339)."""
+    try:
+        import nw
+    except ImportError:
+        return None
+    read = getattr(nw, "project_genre", None)
+    if read is None:
+        return None
+    try:
+        envelope = read(root)
+    except Exception:  # noqa: BLE001 - a neighbour's unreadable mirror is "unknown"
+        return None
+    genre = envelope.get("genre") if isinstance(envelope, dict) else None
+    return genre if isinstance(genre, str) and genre else None
+
+
 def _footage_of(project, email: str):
     return dataclasses.replace(project.footage, email=email)
 
@@ -91,9 +111,15 @@ class HostWorkspace:
             inside = False
         if not (inside and (root / PROJECT_FILE_NAME).is_file()):
             raise missing
+        # Classify from the document mirror first: a bucket of N projects of other genres
+        # then costs N small reads, not N graph opens (any of which can fail on a graph
+        # the host has locked), and only a project of THIS genre is opened (muvid#339).
+        known = _envelope_genre(root)
+        if known is not None and known != self.genre:
+            raise missing
         try:
             project = Project(root, auto_migrate=False)
-            genre = project.genre
+            genre = known or project.genre
         except Exception as e:  # noqa: BLE001 - see below
             # A neighbour's graph that cannot be read (corrupt, or locked while the
             # host writes it) is not a project this drawer can serve; letting its
