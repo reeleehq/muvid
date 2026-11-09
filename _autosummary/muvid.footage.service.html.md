@@ -185,7 +185,7 @@ The op’s own ceiling for a host-streamed upload (`nw.GenreOp.max_upload_bytes`
 Whether the MCP transport serves it (`muvid.mcp._footage_ops`). `False`
 for an op only a host that honours `runs="job"` should run.
 
-### muvid.footage.service.add_clip(fp, , path, name='', filename='', clip_id='', ext='', duration_s=None)
+### muvid.footage.service.add_clip(fp, , path, name='', filename='', clip_id='', ext='', duration_s=None, link=False)
 
 Add one video or photo to the project.
 
@@ -202,7 +202,12 @@ project is refused. Size-, duration- and count-capped.
 
 Run `align` afterwards: listening is how a video with the song in it gets its
 place on the song. Returns the `clip_id`, its `name` and `duration` (and
-`artifact_id` when hosted); a photo also `kind: "still"`, `width`, `height`.
+`artifact_id` when hosted); a video also its `asset_id` (the file’s SHA-256: pass
+it as `asset_id` to bind this very video into another project without fetching it
+again, muvid#22); a photo also `kind: "still"`, `width`, `height`. `link` is
+the host’s: `path` is a file already stored in another of the caller’s projects,
+so the video is a hardlink of it, not a second copy (a photo is always
+re-encoded, so the flag does not apply to one).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -1011,7 +1016,7 @@ scores stale, so they are dropped.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='')
+### muvid.footage.service.set_song(fp, , path, ext='', filename='', duration_s=None, notice='', link=False)
 
 Set the project’s song — the clean master every video is aligned to and whose
 audio the finished video uses. Replaces any previous song.
@@ -1024,8 +1029,11 @@ they were measured against the old song — re-run `align` afterwards. Size- and
 duration-capped.
 
 Returns `song_duration` (seconds), the stored `song` (name, and the
-`artifact_id` to play it by when the project is hosted) and whether an alignment
-was dropped.
+`artifact_id` to play it by when the project is hosted), whether an alignment
+was dropped, and its `asset_id` (the file’s SHA-256: pass it as `asset_id` to
+bind this very song into another project without fetching it again, muvid#22).
+`link` is the host’s: `path` is a file already stored in another of the
+caller’s projects, so the song is a hardlink of it, not a second copy.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

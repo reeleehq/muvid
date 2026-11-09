@@ -1,0 +1,27 @@
+muvid.footage.assets
+====================
+
+.. automodule:: muvid.footage.assets
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      AssetResolver
+      ASSET_KINDS
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      own_projects
+      register_asset_resolver
+      resolve_asset
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      Asset
+   

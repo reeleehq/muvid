@@ -26,6 +26,7 @@
 - [muvid.footage](muvid.footage.html.md): Footage-aligned music video — align several device recordings of one song, assemble.
 - [muvid.footage.align](muvid.footage.align.html.md): Align a set of footage clips to the song — a thin wrapper over &#96;mixing.audio&#96;.
 - [muvid.footage.assemble](muvid.footage.assemble.html.md): Assemble validated cuts into a music video, in BOUNDED memory.
+- [muvid.footage.assets](muvid.footage.assets.html.md): Bind an asset that is already in one of the caller’s projects into another (muvid#22).
 - [muvid.footage.beat_fit](muvid.footage.beat_fit.html.md): Fitting a cut’s timing to the beat — the pure numerics behind &#96;service.fit_to_beat&#96;.
 - [muvid.footage.beats](muvid.footage.beats.html.md): Beat signals — continuous envelopes of where the beat is, in the song and in each video.
 - [muvid.footage.capture_time](muvid.footage.capture_time.html.md): When a photo or a video was taken, read from the file itself (muvid#137).

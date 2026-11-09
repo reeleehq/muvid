@@ -47,6 +47,7 @@ muvid.footage
 
    align
    assemble
+   assets
    beat_fit
    beats
    capture_time

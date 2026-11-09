@@ -64,6 +64,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`atomic_write_bytes`](#muvid.footage.workspace.atomic_write_bytes)(path, data)                    | Replace `path`'s content with `data` so a reader never sees a torn file.                                                                                                                                                                           |
 |----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`atomic_write_text`](#muvid.footage.workspace.atomic_write_text)(path, text)                     | Atomically replace `path` with `text` (UTF-8) — see [`atomic_write_bytes()`](#muvid.footage.workspace.atomic_write_bytes).                                                                                                                         |
+| [`copy_or_link`](#muvid.footage.workspace.copy_or_link)(src, dest, \*[, link])               | Make `dest` (which exists, as a `mkstemp` placeholder) a copy of `src` — or with `link=True` a hardlink of it, falling back to a copy when linking fails.                                                                                          |
 | [`data_root`](#muvid.footage.workspace.data_root)()                                       | The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.                                                                                                                                                                                 |
 | [`file_identity`](#muvid.footage.workspace.file_identity)(path)                               | `(inode, size, mtime_ns)` of `path`, or `None` when it is absent — what a measurement recorded after the fact checks the file still is (muvid#254).                                                                                                |
 | [`file_lock`](#muvid.footage.workspace.file_lock)(path)                                   | An exclusive advisory lock on the lock file `path` (which must end in [`LOCK_SUFFIX`](#muvid.footage.workspace.LOCK_SUFFIX)) for a read-modify-write.                                                                                       |
@@ -72,7 +73,7 @@ clip, and the score tensor is keyed on that alignment’s fingerprint).
 | [`no_record`](#muvid.footage.workspace.no_record)()                                       | The `default` of an [`update_json_record()`](#muvid.footage.workspace.update_json_record) that must not CREATE its record (a render's `meta.json`): an absent one raises `FileNotFoundError`, which the caller turns into its own "no such thing". |
 | [`normalise_id`](#muvid.footage.workspace.normalise_id)(value, \*, label)                    | `value` stripped, and refused (`ValueError`) unless it matches [`ID_PATTERN`](#muvid.footage.workspace.ID_PATTERN).                                                                                                                        |
 | [`read_json_dict`](#muvid.footage.workspace.read_json_dict)(path)                              | The JSON object at `path`, or `None` when it is absent, unreadable or not an object — the read side of [`atomic_write_text()`](#muvid.footage.workspace.atomic_write_text) for a record a reader may find missing.                                |
-| [`replace_file`](#muvid.footage.workspace.replace_file)(src, dest)                           | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                                         |
+| [`replace_file`](#muvid.footage.workspace.replace_file)(src, dest, \*[, link])               | Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).                                                                                                                                                                         |
 | [`store_cover`](#muvid.footage.workspace.store_cover)(root, image, \*, taken_from, ...)     | Put `image` at `<root>/cover.jpg` (as a NEW file, so a blob the previous cover was hardlinked into keeps its bytes), register it, and record `{file, taken_from[, artifact_id]}` as the manifest's `cover`; return the id.                         |
 | [`update_json_record`](#muvid.footage.workspace.update_json_record)(path, change, \*[, ...])       | Re-read the JSON record at `path` under its lock, apply `change(record)` (which mutates it in place and may raise to write nothing), and write it back only if it changed; return what `change` returned.                                          |
 
@@ -115,9 +116,11 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One caller’s stateful music-video project (song + clips + alignments + renders).
 
-#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='')
+#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='', link=False)
 
-Store a footage clip from a local file; returns its `clip_id`.
+Store a footage clip from a local file; returns its `clip_id`. `link`
+stores it as a hardlink of `src_path` (an asset already in another project,
+muvid#22) instead of a copy.
 
 `kind="still"` stores a photo (no sound, no duration); the default is a video,
 and writes no `kind` key, so a manifest written before photos existed reads
@@ -316,7 +319,7 @@ Store `image_path` as `cover.jpg`, register it; return its artifact id.
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-#### set_song(src_path, , ext, name='', duration_s=None, notice='')
+#### set_song(src_path, , ext, name='', duration_s=None, notice='', link=False)
 
 Store (replacing) the project’s one clean song from a local file.
 
@@ -340,7 +343,8 @@ The order of operations is the contract (muvid#17 item 4), in three phases:
 `name` is the display name (an uploaded file’s original name); `duration_s`
 is a duration the caller already probed, so a 100 MB song is not probed twice.
 `notice` is a copyright notice that travels with a song taken from a page link
-(muvid#274), recorded as `song_notice` only when given.
+(muvid#274), recorded as `song_notice` only when given. `link` makes the stored
+song a hardlink of `src_path` (an asset already in another project, muvid#22).
 With a host catalog the song is registered too, and its id recorded as
 `song_artifact_id` (it equals `song_hash`: both are the SHA-256 of the bytes).
 
@@ -455,6 +459,14 @@ way it gets there.
 * **Return type:**
   [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
+### muvid.footage.workspace.copy_or_link(src, dest, , link=False)
+
+Make `dest` (which exists, as a `mkstemp` placeholder) a copy of `src` — or
+with `link=True` a hardlink of it, falling back to a copy when linking fails.
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
+
 ### muvid.footage.workspace.data_root()
 
 The muvid data root: `$MUVID_DATA_HOME` or `~/.local/share/muvid`.
@@ -542,9 +554,14 @@ find missing.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict) | [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
-### muvid.footage.workspace.replace_file(src, dest)
+### muvid.footage.workspace.replace_file(src, dest, , link=False)
 
 Put a copy of `src` at `dest` as a NEW file (temp sibling + `os.replace`).
+
+`link=True` makes the new name a HARDLINK of `src` instead of a copy, so an asset
+bound into a second project is stored once (muvid#22); it falls back to a copy where
+the filesystem cannot link (another device, a FAT volume). Safe because nothing here
+writes a stored file in place.
 
 Never writes into an existing `dest`: a project’s media is hardlinked into the
 host’s content-addressed catalog (`blobs/<sha256>`), so an in-place overwrite would
