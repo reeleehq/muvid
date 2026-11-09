@@ -1301,6 +1301,12 @@ class EdlEntry:
     #: :func:`placed_as`). Additive in both directions, like the rest: an EDL without it
     #: means what it always meant.
     source_in: "float | None" = None
+    #: Provenance of :attr:`source_in`: a person CHOSE which part of the video this cut
+    #: shows (``set_cut(source_in_s=)``), as opposed to the cutter picking it. Only
+    #: ``explain_edit`` reads it (so it does not invent a rationale for a hand-picked
+    #: part, muvid#342); it changes no pixels. Cleared when the cut is given another
+    #: video. Omit-when-False, like :attr:`look_time_varying`.
+    source_in_by_hand: bool = False
 
     @property
     def is_gap(self) -> bool:
@@ -1658,7 +1664,24 @@ def _as_entry(e) -> EdlEntry:
         slip_s=_as_slip(e.get("slip_s")),
         rate=_as_rate(e.get("rate")),
         source_in=_as_source_in(e.get("source_in")),
+        source_in_by_hand=_as_flag(e.get("source_in_by_hand"), "source_in_by_hand"),
     )
+
+
+def _as_flag(raw, name: str) -> bool:
+    """Parse an optional boolean EDL field. RAISES on a non-bool (``bool("false")`` is
+    ``True``, which would arm a flag the caller asked to be off).
+
+    >>> _as_flag(None, 'x'), _as_flag(True, 'x')
+    (False, True)
+    """
+    if raw is None:
+        return False
+    if not isinstance(raw, bool):
+        raise ValueError(
+            f"EDL entry {name} is malformed ({raw!r}): it must be true or false."
+        )
+    return raw
 
 
 def _as_source_in(raw) -> "float | None":
@@ -1889,6 +1912,11 @@ def validate_edl(
                 "flag says whether THE LOOK reads the clock; with no look there "
                 "is nothing for it to describe, and the warning it arms would "
                 "never fire — a direction that quietly does nothing."
+            )
+        if e.source_in_by_hand and e.source_in is None:
+            raise ValueError(
+                f"EDL entry {i} sets source_in_by_hand but has no source_in: the flag "
+                "says who chose the part of the video, and an anchored cut has none."
             )
         prev_end = e.song_end
         prev = e
@@ -2150,6 +2178,7 @@ def _continues(prev: "EdlEntry", e: "EdlEntry") -> bool:
         return (
             abs(moved.source_in - e.source_in) <= _EPS
             and abs(moved.slip_s - e.slip_s) <= _EPS
+            and prev.source_in_by_hand == e.source_in_by_hand
         )
     return abs(moved.slip_s - e.slip_s) <= _EPS
 

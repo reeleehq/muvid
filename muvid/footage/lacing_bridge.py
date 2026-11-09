@@ -208,6 +208,9 @@ def _edl_body(e) -> dict:
     # Omit-when-None: an anchored cut (the absent value) writes no key.
     if getattr(e, "source_in", None) is not None:
         body["source_in"] = float(e.source_in)
+    # Omit-when-False, the same rule as `look_time_varying`.
+    if getattr(e, "source_in_by_hand", False):
+        body["source_in_by_hand"] = True
     return body
 
 
@@ -349,6 +352,9 @@ def edl_from_annotations(
         raw = a.body.get("source_in")
         if isinstance(raw, (int, float)) and not isinstance(raw, bool) and raw >= 0:
             entry["source_in"] = float(raw)
+            # provenance rides only beside the in-point it describes; a bool or nothing
+            if a.body.get("source_in_by_hand") is True:
+                entry["source_in_by_hand"] = True
         out.append(entry)
     return sorted(out, key=lambda e: e["song_start"])
 
