@@ -3277,6 +3277,7 @@ def set_cut(
     look_time_varying: Optional[bool] = None,
     slip_s: Optional[float] = None,
     rate: Optional[float] = None,
+    source_in_s: Optional[float] = None,
 ) -> dict:
     """Change one cut of a saved edit (``index`` is its position in ``get_edit``'s edl).
 
@@ -3302,11 +3303,21 @@ def set_cut(
       more footage over the same span, so the moves run 3 % faster (the song is never
       touched). Within ``1 +- RATE_MAX_DEV``; ``1`` removes it. The video must hold the
       footage the cut then reads. A new video starts at speed 1.
+    - ``source_in_s``: for a cut to the music, which part of its video it shows — the
+      second of the video it starts at (``40`` shows the part 40 s in). Moved as far as
+      the video allows (the cut's footage, and the blends around it, must stay inside the
+      video) and the reply's ``source_in_clamped`` says when it was. Resets ``slip_s``.
+      Refused for a video with the song in it (its moment is its place on the song: use
+      ``slip_s``; a video nobody has listened to yet counts as cut to the music) and for a photo, which is shown whole.
 
     Parameters left out are unchanged. The changed edit is checked and saved; returns it.
     """
     from muvid.footage.edl import EdlEntry
 
+    if source_in_s is not None and slip_s is not None:
+        raise FootageError(
+            "slip_s nudges the part a cut shows and source_in_s chooses it: pass one"
+        )
     record, entries = _edit_entries(fp, edit_id)
     i = _check_index(entries, index)
     e: EdlEntry = entries[i]
@@ -3385,45 +3396,52 @@ def set_cut(
                 fp, clip_id or "", e, entries[i + 1] if i + 1 < len(entries) else None
             ),
         )
+    clamped = None
+    if source_in_s is not None:
+        following = entries[i + 1] if i + 1 < len(entries) else None
+        chosen, clamped = _chosen_in_point(fp, e, source_in_s, following)
+        e = replace(e, source_in=chosen, slip_s=0.0)
     entries[i] = e
-    return _store_changed(fp, record, entries, changed=i)
+    reply = _store_changed(fp, record, entries, changed=i)
+    if clamped:
+        reply["source_in_clamped"] = clamped
+        reply.setdefault("warnings", []).append(
+            f"the video holds the cut only from {clamped['used']:g}s, so it starts there "
+            f"rather than at the {clamped['asked']:g}s asked"
+        )
+    return reply
 
 
-def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
-    """Where a cut swapped onto ``clip_id`` starts in it: ``None`` (synced, follows the
-    clip's place) for a clip with the song in it; for a clip cut to the music, the start
-    of the clip — just past a thumb on the button, and far enough in for the cut's blend
-    — so a swap never inherits another clip's in-point (47 s into a 10 s clip).
+def _in_point_room(fp, clip_id: str, e, following=None, *, edge_s: float):
+    """``(kind, bounds)`` of where cut ``e`` may start in clip ``clip_id`` — the one
+    reading of the clip every in-point picker shares (the swap's default and a person's
+    choice), so the clip's ROLE is decided once.
 
-    The in-point also leaves room AFTER the cut: the next cut's blend (``following``) reads
-    its trail past this cut's end in this clip, and ``validate_edl`` requires it. A clip
-    too short to hold the span, its own blend and that trail is refused here, plainly,
-    rather than by the gate on the next save (muvid#181). The bounds are
-    :func:`muvid.footage.edl.in_point_bounds`', the same ones the music cutter picks
-    within (muvid#192)."""
-    from muvid.footage.edl import EDGE_S, blend_reads, in_point_bounds, still_in_point
+    ``kind`` is ``"unknown"`` (no such clip: the edit gate names it), ``"synced"`` (the
+    song is in it: its moment is its place on the song), ``"still"`` (a photo) or
+    ``"free"`` (cut to the music), and ``bounds`` is the legal ``(lo, hi)`` range for a
+    free one (:func:`muvid.footage.edl.in_point_bounds`, ``edge_s`` the margin kept), else
+    ``None``. A free clip too short for the cut and the blends around it is refused here,
+    plainly, with what it needs (muvid#181).
+    """
+    from muvid.footage.edl import blend_reads, in_point_bounds
 
-    if not clip_id:
-        return None
     row = next(
         (c for c in fp.manifest().get("clips", []) if c.get("clip_id") == clip_id), None
     )
     if row is None:
-        return None  # unknown: the edit gate names it
+        return "unknown", None
     aligns = {a.clip_id: a for a in fp.load_alignments()}
     if _role_of(row, aligns.get(clip_id)) == SYNCED:
-        return None
+        return "synced", None
     if row.get("kind") == STILL_KIND:
-        try:
-            return round(still_in_point(e), 4)
-        except ValueError as exc:
-            raise FootageError(str(exc)) from exc
+        return "still", None
     following_t = following.transition if following is not None else None
     # the length the gate checks the cut against, as the planner uses (muvid#290)
     duration = _free_length(fp, clip_id, aligns.get(clip_id))
     span = e.song_end - e.song_start
     bounds = in_point_bounds(
-        e, clip_duration_s=duration, next_transition=following_t, edge_s=EDGE_S
+        e, clip_duration_s=duration, next_transition=following_t, edge_s=edge_s
     )
     if bounds is None:
         before, after = blend_reads(e.transition, following_t, rate=e.rate)
@@ -3433,6 +3451,68 @@ def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
             + (f" and {after:.2f}s of the next cut's blend after" if after else "")
             + f" — it needs {span * e.rate + before + after:.2f}s"
         )
+    return "free", bounds
+
+
+def _chosen_in_point(fp, e, asked, following=None) -> tuple[float, Optional[dict]]:
+    """``(source_in, clamped)`` for a cut whose part of its video a person chose.
+
+    Only a cut on a video cut to the music has one to choose (an anchored cut on such a
+    video becomes a free one — its moment is then the person's, not an offset's). The
+    range is the room :func:`_in_point_room` reads with no edge margin (the person chose
+    the spot; the gate's bounds are the only limit) and a reset slip. ``clamped`` is
+    ``{asked, used}`` when the ask was moved into range, else ``None``.
+    """
+    from muvid.footage.edl import _as_source_in, clamp_in_point
+
+    if e.is_gap:
+        raise FootageError("a gap has no picture to choose a part of")
+    try:
+        want = _as_source_in(asked)
+    except ValueError as err:
+        raise FootageError(
+            f"source_in_s={asked!r} must be a number of seconds into the video, 0 or more"
+        ) from err
+    kind, bounds = _in_point_room(
+        fp, e.clip_id, replace(e, slip_s=0.0), following, edge_s=0.0
+    )
+    if kind == "synced":
+        raise FootageError(
+            f"clip {e.clip_id!r} has the song in it, so a cut's moment is its place on "
+            "the song — nudge it with slip_s, or fix the video's offset"
+        )
+    if kind == "still":
+        raise FootageError(
+            f"{e.clip_id!r} is a photo: shown whole, with no part to choose"
+        )
+    if kind == "unknown":
+        raise FootageError(f"no clip {e.clip_id!r} in the project")
+    used, clamped = clamp_in_point(bounds, want)
+    return used, clamped
+
+
+def _swap_in_point(fp, clip_id: str, e, following=None) -> Optional[float]:
+    """Where a cut swapped onto ``clip_id`` starts in it: ``None`` (synced, follows the
+    clip's place) for a clip with the song in it; for a clip cut to the music, the start
+    of the clip — just past a thumb on the button, and far enough in for the cut's blend
+    — so a swap never inherits another clip's in-point (47 s into a 10 s clip).
+
+    The in-point also leaves room AFTER the cut: the next cut's blend (``following``) reads
+    its trail past this cut's end in this clip, and ``validate_edl`` requires it
+    (muvid#181). The bounds are :func:`muvid.footage.edl.in_point_bounds`', the same ones
+    the music cutter picks within (muvid#192)."""
+    from muvid.footage.edl import EDGE_S, still_in_point
+
+    if not clip_id:
+        return None
+    kind, bounds = _in_point_room(fp, clip_id, e, following, edge_s=EDGE_S)
+    if kind == "still":
+        try:
+            return round(still_in_point(e), 4)
+        except ValueError as exc:
+            raise FootageError(str(exc)) from exc
+    if kind != "free":
+        return None  # unknown (the edit gate names it) or synced (follows its place)
     return round(bounds[0], 4)
 
 
