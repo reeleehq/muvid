@@ -105,8 +105,14 @@ class VisualizerProject:
         return d
 
     def write_render_meta(self, render_id: str, meta: dict) -> None:
+        from muvid.footage.workspace import atomic_write_text
+
         rid = _safe_component(render_id, label="render_id")
-        (self.renders_dir / rid / "meta.json").write_text(json.dumps(meta, indent=2))
+        # replaced atomically, never truncated in place: ``organise`` reads this strictly
+        # (muvid#280), so a torn file would make a render unorganisable (muvid#300)
+        atomic_write_text(
+            self.renders_dir / rid / "meta.json", json.dumps(meta, indent=2)
+        )
 
     def register_render(self, meta: dict) -> dict:
         """``meta`` with the host catalog ids of the render's video (``artifact_id``) and
