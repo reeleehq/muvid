@@ -122,7 +122,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 |-------------------------------------------------------------------|--------------------------------------------------------------------|
 | [`FootageCancelled`](#muvid.footage.service.FootageCancelled) | An operation stopped between steps because its host asked it to.   |
 
-### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None))*
+### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None), ('source_in_by_hand', <class 'bool'>, False))*
 
 Every optional [`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) field [`edl_json()`](#muvid.footage.service.edl_json) carries,
 and how to render it. **The list is the round trip.** `_as_entry` reads all of

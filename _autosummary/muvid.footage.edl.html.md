@@ -249,7 +249,7 @@ so the genre can publish all three without importing the cutter (numpy).
 
 Every reason [`exclude_unvouched()`](#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.
 
-### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None)
+### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -393,6 +393,17 @@ b-roll, stills — cut to the music rather than synced to it: its map is
 claims no sync there is nothing for the aligner to vouch for (see
 [`placed_as()`](#muvid.footage.edl.placed_as)). Additive in both directions, like the rest: an EDL without it
 means what it always meant.
+
+#### source_in_by_hand *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+a person CHOSE which part of the video this cut
+shows (`set_cut(source_in_s=)`), as opposed to the cutter picking it. Only
+`explain_edit` reads it (so it does not invent a rationale for a hand-picked
+part, muvid#342); it changes no pixels. Cleared when the cut is given another
+video. Omit-when-False, like [`look_time_varying`](#muvid.footage.edl.EdlEntry.look_time_varying).
+
+* **Type:**
+  Provenance of [`source_in`](#muvid.footage.edl.EdlEntry.source_in)
 
 #### transition *: [Transition](#muvid.footage.edl.Transition) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 

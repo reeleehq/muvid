@@ -1,4 +1,4 @@
-> built 2026-11-09 06:53 UTC from 4ea812b (main) · muvid 0.0.181. Details: build_info.json
+> built 2026-11-09 07:40 UTC from fa459d8 (main) · muvid 0.0.182. Details: build_info.json
 
 # index.html.md
 
@@ -3756,7 +3756,7 @@ so the genre can publish all three without importing the cutter (numpy).
 
 Every reason [`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.
 
-### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None)
+### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3900,6 +3900,17 @@ b-roll, stills — cut to the music rather than synced to it: its map is
 claims no sync there is nothing for the aligner to vouch for (see
 [`placed_as()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as)). Additive in both directions, like the rest: an EDL without it
 means what it always meant.
+
+#### source_in_by_hand *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+a person CHOSE which part of the video this cut
+shows (`set_cut(source_in_s=)`), as opposed to the cutter picking it. Only
+`explain_edit` reads it (so it does not invent a rationale for a hand-picked
+part, muvid#342); it changes no pixels. Cleared when the cut is given another
+video. Omit-when-False, like [`look_time_varying`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.look_time_varying).
+
+* **Type:**
+  Provenance of [`source_in`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.source_in)
 
 #### transition *: [Transition](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -5638,7 +5649,7 @@ editorial — on a real 478x850 clip of dancers a whole body does not fit in a
 full-width 16:9 window at all (315-380px of subject into 269px), so “heads or
 feet” is a decision per cut, not a default.
 
-### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None)
+### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -5782,6 +5793,17 @@ b-roll, stills — cut to the music rather than synced to it: its map is
 claims no sync there is nothing for the aligner to vouch for (see
 `placed_as()`). Additive in both directions, like the rest: an EDL without it
 means what it always meant.
+
+#### source_in_by_hand *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+a person CHOSE which part of the video this cut
+shows (`set_cut(source_in_s=)`), as opposed to the cutter picking it. Only
+`explain_edit` reads it (so it does not invent a rationale for a hand-picked
+part, muvid#342); it changes no pixels. Cleared when the cut is given another
+video. Omit-when-False, like [`look_time_varying`](_autosummary/muvid.footage.html.md#muvid.footage.EdlEntry.look_time_varying).
+
+* **Type:**
+  Provenance of [`source_in`](_autosummary/muvid.footage.html.md#muvid.footage.EdlEntry.source_in)
 
 #### transition *: [Transition](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -9119,7 +9141,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 |-------------------------------------------------------------------|--------------------------------------------------------------------|
 | [`FootageCancelled`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.FootageCancelled) | An operation stopped between steps because its host asked it to.   |
 
-### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None))*
+### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None), ('source_in_by_hand', <class 'bool'>, False))*
 
 Every optional [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) field [`edl_json()`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.edl_json) carries,
 and how to render it. **The list is the round trip.** `_as_entry` reads all of
@@ -20975,18 +20997,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 06:53 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/4ea812b68854d0b2c901de376a272183499691c7"><code>4ea812b</code></a> on branch <code>main</code>, for **muvid 0.0.181** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 07:40 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/fa459d868b85eab55b0fae3f36c126a5356adca8"><code>fa459d8</code></a> on branch <code>main</code>, for **muvid 0.0.182** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.182) is ahead of the latest release on PyPI (0.0.181): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/4ea812b68854d0b2c901de376a272183499691c7"><code>4ea812b68854d0b2c901de376a272183499691c7</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/fa459d868b85eab55b0fae3f36c126a5356adca8"><code>fa459d868b85eab55b0fae3f36c126a5356adca8</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.181</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.182</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20995,9 +21019,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42574447447">42574447447</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42579409652">42579409652</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>c616d594e5481064813871039275fc2795f022e9</code> (in the history of the built commit) |
+| Event commit | <code>b4b5e005f1c4c4f5321e046bbe0e457e85daa2c4</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21022,13 +21046,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.181/">0.0.181</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.181/">0.0.181</a>, older than the documented version (0.0.182).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 4ea812b68854d0b2c901de376a272183499691c7
+git checkout fa459d868b85eab55b0fae3f36c126a5356adca8
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
