@@ -291,9 +291,13 @@ def _explain_cut(
         )
     else:
         from_s = float(e.source_in) + getattr(e, "slip_s", 0.0)
-        said.append(
-            f"It shows {name} from {clock(from_s)} into the clip{_why_stretch(e, grid, envelope_of, from_s)}."
+        # a part somebody picked has no rationale of the cutter's to give (muvid#342)
+        why = (
+            ", the part you chose"
+            if getattr(e, "source_in_by_hand", False)
+            else _why_stretch(e, grid, envelope_of, from_s)
         )
+        said.append(f"It shows {name} from {clock(from_s)} into the clip{why}.")
     if from_s is not None and kind == "video":
         to_s = from_s + length * getattr(e, "rate", 1.0)
         for a0, a1, at in shown.get(e.clip_id, []):

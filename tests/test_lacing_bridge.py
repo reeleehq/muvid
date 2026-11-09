@@ -504,3 +504,19 @@ def test_edl_from_annotations_tool_refuses_another_projects_lane(tmp_path, monke
     ]
     with use_email("u@x.com"), pytest.raises(ToolError, match="different song"):
         ft.footage_edl_from_annotations("p", annotations=stale)
+
+
+def test_the_in_point_provenance_round_trips_through_the_editor_lane():
+    """muvid#342: a hand-chosen in-point stays hand-chosen after the editor round trip;
+    an automatic one writes no key (omit-when-False)."""
+    from muvid.footage.edl import EdlEntry
+
+    entries = [
+        EdlEntry(0.0, 2.0, "A", source_in=1.0, source_in_by_hand=True),
+        EdlEntry(2.0, 4.0, "B", source_in=0.5),
+    ]
+    anns = edl_annotations(entries, song_asset_id=SONG_HASH, attributed_to="u:x")
+    assert anns[0].body["source_in_by_hand"] is True
+    assert "source_in_by_hand" not in anns[1].body
+    back = edl_from_annotations(anns)
+    assert back[0]["source_in_by_hand"] is True and "source_in_by_hand" not in back[1]

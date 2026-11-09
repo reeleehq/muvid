@@ -306,3 +306,15 @@ def test_a_short_residue_next_to_exact_cover_is_still_named():
     split = [_synced("B", 0.0, 12.0), _synced("C", 16.0, 12.0), _synced("D", 32.0, 8.0)]
     holes = only_weak_footage(EdlEntry(0.0, 40.0, "A"), weak, split)
     assert [(h.song_start, h.song_end) for h in holes] == [(12.0, 16.0), (28.0, 32.0)]
+
+
+def test_a_part_a_person_chose_is_not_given_the_cutters_rationale():
+    """muvid#342: 'chosen because its picture changes on k of m beats' is the cutter's
+    reason; for an in-point set by hand with ``source_in_s`` it would be invented."""
+    an = _analysis(bpm=60.0)
+    picked = [EdlEntry(0.0, 4.0, "v1", source_in=3.0, source_in_by_hand=True)]
+    auto = [EdlEntry(0.0, 4.0, "v1", source_in=3.0)]
+    said = explain(picked, analysis=an, song_duration=40.0, clips=_clips())["cuts"][0]["text"]
+    assert "the part you chose" in said and "chosen because" not in said
+    other = explain(auto, analysis=an, song_duration=40.0, clips=_clips())["cuts"][0]["text"]
+    assert "the part you chose" not in other

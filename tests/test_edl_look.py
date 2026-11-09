@@ -1284,6 +1284,7 @@ def test_every_optional_edl_field_is_carried_by_the_returned_edl():
         "slip_s",
         "rate",
         "source_in",
+        "source_in_by_hand",
     ], (
         f"EdlEntry grew or lost an optional field ({optional}). Decide whether it "
         "belongs in the returned/persisted edit, add it to "
@@ -1307,11 +1308,15 @@ def test_every_optional_edl_field_is_carried_by_the_returned_edl():
         "rate": 1.03,
         # A free cut's ABSENT value is None (anchored), so any number must survive.
         "source_in": 2.5,
+        # a provenance flag's ABSENT value is False; it rides beside the in-point it describes
+        "source_in_by_hand": True,
     }
     for field in optional:
         kwargs = {field: values[field]}
         if field in ("look_time_varying", "look_spec"):
             kwargs["look"] = _GREY
+        if field == "source_in_by_hand":
+            kwargs["source_in"] = 2.5
         e = EdlEntry(0.0, 4.0, "A", **kwargs)
         assert field in _edl_json(e), (
             f"{field!r} is accepted by validate_edl and honoured by the renderer, "
