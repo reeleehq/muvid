@@ -724,7 +724,9 @@ class MusicVideoFootageProject:
 
     def edits_lock(self):
         """Serialise a read-modify-write of this project's edits (see :func:`file_lock`)."""
-        return file_lock(self.edits_dir / ".lock")
+        # ``locks/edits.lock`` beside the other two: a lock named just ``.lock`` has no
+        # name before the suffix, which newer dol refuses as "a file path, not a folder"
+        return file_lock(self.root / "locks" / "edits.lock")
 
     def has_edit(self, edit_id: str) -> bool:
         return self._edit_path(edit_id).exists()
