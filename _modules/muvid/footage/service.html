@@ -5688,168 +5688,191 @@
 </span><span id="line-5315">    <span class="s2">"timeline"</span><span class="p">,</span>
 </span><span id="line-5316"><span class="p">)</span>
 </span><span id="line-5317">
-</span><span id="line-5318"><span class="c1">#: What ``align`` / ``set_offset`` / ``clear_offset`` make stale (muvid#286): the</span>
-</span><span id="line-5319"><span class="c1">#: placement reads, plus the score reads, since moving a video makes the scores</span>
-</span><span id="line-5320"><span class="c1">#: measured on it stale (and the score reads answer from the placements too).</span>
-</span><span id="line-5321"><span class="n">ALIGNMENT_READS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">({</span><span class="o">*</span><span class="n">PLACEMENT_READS</span><span class="p">,</span> <span class="o">*</span><span class="n">SCORE_READS</span><span class="p">}))</span>
-</span><span id="line-5322">
-</span><span id="line-5323">
-</span><span id="line-5324"><span class="c1">#: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.</span>
-</span><span id="line-5325"><span class="n">FOOTAGE_LIMITS</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-5326">    <span class="s2">"max_videos"</span><span class="p">:</span> <span class="n">MAX_CLIPS</span><span class="p">,</span>
-</span><span id="line-5327">    <span class="s2">"max_photos"</span><span class="p">:</span> <span class="n">MAX_STILLS</span><span class="p">,</span>
-</span><span id="line-5328"><span class="p">}</span>
-</span><span id="line-5329">
-</span><span id="line-5330"><span class="n">FOOTAGE_OP_SPECS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">OpSpec</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-5331">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"status"</span><span class="p">,</span> <span class="s2">"Show where the video stands"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5332">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5333">        <span class="s2">"set_song"</span><span class="p">,</span>
-</span><span id="line-5334">        <span class="s2">"Set the song"</span><span class="p">,</span>
-</span><span id="line-5335">        <span class="s2">"destroy"</span><span class="p">,</span>
-</span><span id="line-5336">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"duration_s"</span><span class="p">,</span> <span class="s2">"ext"</span><span class="p">),</span>
-</span><span id="line-5337">        <span class="c1"># ``notice`` is the host's: a page link's copyright notice (muvid#274) is</span>
-</span><span id="line-5338">        <span class="c1"># stated by whoever fetched the page, never by the client.</span>
-</span><span id="line-5339">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"path"</span><span class="p">,</span> <span class="s2">"filename"</span><span class="p">,</span> <span class="s2">"notice"</span><span class="p">),</span>
-</span><span id="line-5340">        <span class="n">max_upload_bytes</span><span class="o">=</span><span class="n">SONG_MAX_BYTES</span><span class="p">,</span>
-</span><span id="line-5341">    <span class="p">),</span>
-</span><span id="line-5342">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5343">        <span class="s2">"add_clip"</span><span class="p">,</span>
-</span><span id="line-5344">        <span class="s2">"Add a video or photo"</span><span class="p">,</span>
-</span><span id="line-5345">        <span class="s2">"write"</span><span class="p">,</span>
-</span><span id="line-5346">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"duration_s"</span><span class="p">,</span> <span class="s2">"ext"</span><span class="p">),</span>
-</span><span id="line-5347">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"path"</span><span class="p">,</span> <span class="s2">"filename"</span><span class="p">),</span>
-</span><span id="line-5348">        <span class="n">max_upload_bytes</span><span class="o">=</span><span class="n">CLIP_MAX_BYTES</span><span class="p">,</span>
-</span><span id="line-5349">        <span class="n">limits</span><span class="o">=</span><span class="n">FOOTAGE_LIMITS</span><span class="p">,</span>
-</span><span id="line-5350">    <span class="p">),</span>
-</span><span id="line-5351">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"remove_clip"</span><span class="p">,</span> <span class="s2">"Remove a video"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">),</span>
-</span><span id="line-5352">    <span class="c1"># song candidates (muvid#135): a host's upload and job runner serve them; the MCP</span>
-</span><span id="line-5353">    <span class="c1"># transport has neither an upload path for them nor a job for the ranking yet</span>
-</span><span id="line-5354">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5355">        <span class="s2">"add_song_candidate"</span><span class="p">,</span>
-</span><span id="line-5356">        <span class="s2">"Add a song to choose from"</span><span class="p">,</span>
-</span><span id="line-5357">        <span class="s2">"write"</span><span class="p">,</span>
-</span><span id="line-5358">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"duration_s"</span><span class="p">,</span> <span class="s2">"ext"</span><span class="p">),</span>
-</span><span id="line-5359">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"path"</span><span class="p">,</span> <span class="s2">"filename"</span><span class="p">),</span>
-</span><span id="line-5360">        <span class="n">max_upload_bytes</span><span class="o">=</span><span class="n">SONG_MAX_BYTES</span><span class="p">,</span>
-</span><span id="line-5361">        <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-5362">    <span class="p">),</span>
-</span><span id="line-5363">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5364">        <span class="s2">"remove_song_candidate"</span><span class="p">,</span> <span class="s2">"Remove a song to choose from"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span>
-</span><span id="line-5365">    <span class="p">),</span>
-</span><span id="line-5366">    <span class="c1"># replaces the song (as set_song does): its offsets and scores go with it</span>
-</span><span id="line-5367">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"use_song_candidate"</span><span class="p">,</span> <span class="s2">"Use this song"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
-</span><span id="line-5368">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5369">        <span class="s2">"rank_songs"</span><span class="p">,</span> <span class="s2">"Find the song the videos fit best"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">,</span> <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span>
-</span><span id="line-5370">    <span class="p">),</span>
+</span><span id="line-5318"><span class="c1">#: The reads that show a placement's measured SPANS (the unverified stretches): what</span>
+</span><span id="line-5319"><span class="c1">#: ``measure_spans`` makes stale (muvid#318). Not the score tensor's reads — spans are</span>
+</span><span id="line-5320"><span class="c1">#: not a scoring input — but ``score_candidates`` is here: the planner's trust tiers</span>
+</span><span id="line-5321"><span class="c1">#: demote a stretch the spans do not confirm (``select_score._demote_distrusted``), so</span>
+</span><span id="line-5322"><span class="c1">#: a candidate's reward moves with them. Derived from the code by</span>
+</span><span id="line-5323"><span class="c1">#: ``test_beat_grid_invalidations``.</span>
+</span><span id="line-5324"><span class="n">SPAN_READS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-5325">    <span class="s2">"editor_document"</span><span class="p">,</span>
+</span><span id="line-5326">    <span class="s2">"explain_edit"</span><span class="p">,</span>
+</span><span id="line-5327">    <span class="s2">"get_edit"</span><span class="p">,</span>
+</span><span id="line-5328">    <span class="s2">"score_candidates"</span><span class="p">,</span>
+</span><span id="line-5329"><span class="p">)</span>
+</span><span id="line-5330">
+</span><span id="line-5331"><span class="c1">#: The reads that sort the videos into synced and to-the-music (``footage_roles``): what</span>
+</span><span id="line-5332"><span class="c1">#: ``set_has_song`` makes stale (muvid#318).</span>
+</span><span id="line-5333"><span class="n">ROLE_READS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="s2">"editor_document"</span><span class="p">,</span> <span class="s2">"explain_edit"</span><span class="p">,</span> <span class="s2">"get_edit"</span><span class="p">,</span> <span class="s2">"status"</span><span class="p">)</span>
+</span><span id="line-5334">
+</span><span id="line-5335"><span class="c1">#: What ``align`` / ``set_offset`` / ``clear_offset`` make stale (muvid#286): the</span>
+</span><span id="line-5336"><span class="c1">#: placement reads, plus the score reads, since moving a video makes the scores</span>
+</span><span id="line-5337"><span class="c1">#: measured on it stale (and the score reads answer from the placements too).</span>
+</span><span id="line-5338"><span class="n">ALIGNMENT_READS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">sorted</span><span class="p">({</span><span class="o">*</span><span class="n">PLACEMENT_READS</span><span class="p">,</span> <span class="o">*</span><span class="n">SCORE_READS</span><span class="p">}))</span>
+</span><span id="line-5339">
+</span><span id="line-5340">
+</span><span id="line-5341"><span class="c1">#: The count ceilings a project is held to — the SSOT for ``add_clip``'s spec and ``status``.</span>
+</span><span id="line-5342"><span class="n">FOOTAGE_LIMITS</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-5343">    <span class="s2">"max_videos"</span><span class="p">:</span> <span class="n">MAX_CLIPS</span><span class="p">,</span>
+</span><span id="line-5344">    <span class="s2">"max_photos"</span><span class="p">:</span> <span class="n">MAX_STILLS</span><span class="p">,</span>
+</span><span id="line-5345"><span class="p">}</span>
+</span><span id="line-5346">
+</span><span id="line-5347"><span class="n">FOOTAGE_OP_SPECS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">OpSpec</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="line-5348">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"status"</span><span class="p">,</span> <span class="s2">"Show where the video stands"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5349">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5350">        <span class="s2">"set_song"</span><span class="p">,</span>
+</span><span id="line-5351">        <span class="s2">"Set the song"</span><span class="p">,</span>
+</span><span id="line-5352">        <span class="s2">"destroy"</span><span class="p">,</span>
+</span><span id="line-5353">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"duration_s"</span><span class="p">,</span> <span class="s2">"ext"</span><span class="p">),</span>
+</span><span id="line-5354">        <span class="c1"># ``notice`` is the host's: a page link's copyright notice (muvid#274) is</span>
+</span><span id="line-5355">        <span class="c1"># stated by whoever fetched the page, never by the client.</span>
+</span><span id="line-5356">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"path"</span><span class="p">,</span> <span class="s2">"filename"</span><span class="p">,</span> <span class="s2">"notice"</span><span class="p">),</span>
+</span><span id="line-5357">        <span class="n">max_upload_bytes</span><span class="o">=</span><span class="n">SONG_MAX_BYTES</span><span class="p">,</span>
+</span><span id="line-5358">    <span class="p">),</span>
+</span><span id="line-5359">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5360">        <span class="s2">"add_clip"</span><span class="p">,</span>
+</span><span id="line-5361">        <span class="s2">"Add a video or photo"</span><span class="p">,</span>
+</span><span id="line-5362">        <span class="s2">"write"</span><span class="p">,</span>
+</span><span id="line-5363">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"duration_s"</span><span class="p">,</span> <span class="s2">"ext"</span><span class="p">),</span>
+</span><span id="line-5364">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"path"</span><span class="p">,</span> <span class="s2">"filename"</span><span class="p">),</span>
+</span><span id="line-5365">        <span class="n">max_upload_bytes</span><span class="o">=</span><span class="n">CLIP_MAX_BYTES</span><span class="p">,</span>
+</span><span id="line-5366">        <span class="n">limits</span><span class="o">=</span><span class="n">FOOTAGE_LIMITS</span><span class="p">,</span>
+</span><span id="line-5367">    <span class="p">),</span>
+</span><span id="line-5368">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"remove_clip"</span><span class="p">,</span> <span class="s2">"Remove a video"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">),</span>
+</span><span id="line-5369">    <span class="c1"># song candidates (muvid#135): a host's upload and job runner serve them; the MCP</span>
+</span><span id="line-5370">    <span class="c1"># transport has neither an upload path for them nor a job for the ranking yet</span>
 </span><span id="line-5371">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5372">        <span class="s2">"align"</span><span class="p">,</span>
-</span><span id="line-5373">        <span class="s2">"Listen to the videos"</span><span class="p">,</span>
+</span><span id="line-5372">        <span class="s2">"add_song_candidate"</span><span class="p">,</span>
+</span><span id="line-5373">        <span class="s2">"Add a song to choose from"</span><span class="p">,</span>
 </span><span id="line-5374">        <span class="s2">"write"</span><span class="p">,</span>
-</span><span id="line-5375">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
-</span><span id="line-5376">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ALIGNMENT_READS</span><span class="p">,</span>
-</span><span id="line-5377">    <span class="p">),</span>
-</span><span id="line-5378">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5379">        <span class="s2">"set_offset"</span><span class="p">,</span>
-</span><span id="line-5380">        <span class="s2">"Place a video on the song by hand"</span><span class="p">,</span>
-</span><span id="line-5381">        <span class="s2">"write"</span><span class="p">,</span>
-</span><span id="line-5382">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ALIGNMENT_READS</span><span class="p">,</span>
-</span><span id="line-5383">    <span class="p">),</span>
-</span><span id="line-5384">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5385">        <span class="s2">"clear_offset"</span><span class="p">,</span>
-</span><span id="line-5386">        <span class="s2">"Forget where I placed this video"</span><span class="p">,</span>
-</span><span id="line-5387">        <span class="s2">"destroy"</span><span class="p">,</span>
-</span><span id="line-5388">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ALIGNMENT_READS</span><span class="p">,</span>
-</span><span id="line-5389">    <span class="p">),</span>
-</span><span id="line-5390">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5391">        <span class="s2">"measure_spans"</span><span class="p">,</span>
-</span><span id="line-5392">        <span class="s2">"Check which parts of each video match the song"</span><span class="p">,</span>
-</span><span id="line-5393">        <span class="s2">"write"</span><span class="p">,</span>
-</span><span id="line-5394">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
-</span><span id="line-5395">        <span class="c1"># minutes per project (about align's cost): a host runs it as a job; the MCP</span>
-</span><span id="line-5396">        <span class="c1"># transport would block a request on it, so it waits for a job-backed tool</span>
-</span><span id="line-5397">        <span class="c1"># (muvid#16's latency decision)</span>
-</span><span id="line-5398">        <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-</span><span id="line-5399">    <span class="p">),</span>
-</span><span id="line-5400">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"set_has_song"</span><span class="p">,</span> <span class="s2">"Say whether a video has the song in it"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5401">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"timeline"</span><span class="p">,</span> <span class="s2">"Show which videos cover which parts of the song"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5402">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"beat_grid"</span><span class="p">,</span> <span class="s2">"Find the beat"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">,</span> <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"shape"</span><span class="p">,)),</span>
-</span><span id="line-5403">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5404">        <span class="s2">"set_beat_grid"</span><span class="p">,</span> <span class="s2">"Set the beat by hand"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">,</span> <span class="n">invalidates</span><span class="o">=</span><span class="n">BEAT_GRID_READS</span>
-</span><span id="line-5405">    <span class="p">),</span>
-</span><span id="line-5406">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5407">        <span class="s2">"clear_beat_grid"</span><span class="p">,</span>
-</span><span id="line-5408">        <span class="s2">"Forget the beat I set"</span><span class="p">,</span>
-</span><span id="line-5409">        <span class="s2">"destroy"</span><span class="p">,</span>
-</span><span id="line-5410">        <span class="n">invalidates</span><span class="o">=</span><span class="n">BEAT_GRID_READS</span><span class="p">,</span>
-</span><span id="line-5411">    <span class="p">),</span>
-</span><span id="line-5412">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"peaks"</span><span class="p">,</span> <span class="s2">"Show the song's waveform"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5413">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"beat_signals"</span><span class="p">,</span> <span class="s2">"Show where the beat is in the song or a video"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5414">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"filmstrips"</span><span class="p">,</span> <span class="s2">"Show the videos' filmstrips"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5415">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"filmstrip"</span><span class="p">,</span> <span class="s2">"Show one video's filmstrip"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5416">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5417">        <span class="s2">"score"</span><span class="p">,</span>
-</span><span id="line-5418">        <span class="s2">"Look at the footage"</span><span class="p">,</span>
-</span><span id="line-5419">        <span class="s2">"write"</span><span class="p">,</span>
-</span><span id="line-5420">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
-</span><span id="line-5421">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"should_cancel"</span><span class="p">,),</span>
-</span><span id="line-5422">        <span class="n">invalidates</span><span class="o">=</span><span class="n">SCORE_READS</span><span class="p">,</span>
+</span><span id="line-5375">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"duration_s"</span><span class="p">,</span> <span class="s2">"ext"</span><span class="p">),</span>
+</span><span id="line-5376">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"path"</span><span class="p">,</span> <span class="s2">"filename"</span><span class="p">),</span>
+</span><span id="line-5377">        <span class="n">max_upload_bytes</span><span class="o">=</span><span class="n">SONG_MAX_BYTES</span><span class="p">,</span>
+</span><span id="line-5378">        <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-5379">    <span class="p">),</span>
+</span><span id="line-5380">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5381">        <span class="s2">"remove_song_candidate"</span><span class="p">,</span> <span class="s2">"Remove a song to choose from"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span>
+</span><span id="line-5382">    <span class="p">),</span>
+</span><span id="line-5383">    <span class="c1"># replaces the song (as set_song does): its offsets and scores go with it</span>
+</span><span id="line-5384">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"use_song_candidate"</span><span class="p">,</span> <span class="s2">"Use this song"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+</span><span id="line-5385">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5386">        <span class="s2">"rank_songs"</span><span class="p">,</span> <span class="s2">"Find the song the videos fit best"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">,</span> <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span> <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span>
+</span><span id="line-5387">    <span class="p">),</span>
+</span><span id="line-5388">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5389">        <span class="s2">"align"</span><span class="p">,</span>
+</span><span id="line-5390">        <span class="s2">"Listen to the videos"</span><span class="p">,</span>
+</span><span id="line-5391">        <span class="s2">"write"</span><span class="p">,</span>
+</span><span id="line-5392">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
+</span><span id="line-5393">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ALIGNMENT_READS</span><span class="p">,</span>
+</span><span id="line-5394">    <span class="p">),</span>
+</span><span id="line-5395">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5396">        <span class="s2">"set_offset"</span><span class="p">,</span>
+</span><span id="line-5397">        <span class="s2">"Place a video on the song by hand"</span><span class="p">,</span>
+</span><span id="line-5398">        <span class="s2">"write"</span><span class="p">,</span>
+</span><span id="line-5399">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ALIGNMENT_READS</span><span class="p">,</span>
+</span><span id="line-5400">    <span class="p">),</span>
+</span><span id="line-5401">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5402">        <span class="s2">"clear_offset"</span><span class="p">,</span>
+</span><span id="line-5403">        <span class="s2">"Forget where I placed this video"</span><span class="p">,</span>
+</span><span id="line-5404">        <span class="s2">"destroy"</span><span class="p">,</span>
+</span><span id="line-5405">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ALIGNMENT_READS</span><span class="p">,</span>
+</span><span id="line-5406">    <span class="p">),</span>
+</span><span id="line-5407">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5408">        <span class="s2">"measure_spans"</span><span class="p">,</span>
+</span><span id="line-5409">        <span class="s2">"Check which parts of each video match the song"</span><span class="p">,</span>
+</span><span id="line-5410">        <span class="s2">"write"</span><span class="p">,</span>
+</span><span id="line-5411">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
+</span><span id="line-5412">        <span class="n">invalidates</span><span class="o">=</span><span class="n">SPAN_READS</span><span class="p">,</span>
+</span><span id="line-5413">        <span class="c1"># minutes per project (about align's cost): a host runs it as a job; the MCP</span>
+</span><span id="line-5414">        <span class="c1"># transport would block a request on it, so it waits for a job-backed tool</span>
+</span><span id="line-5415">        <span class="c1"># (muvid#16's latency decision)</span>
+</span><span id="line-5416">        <span class="n">mcp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-5417">    <span class="p">),</span>
+</span><span id="line-5418">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5419">        <span class="s2">"set_has_song"</span><span class="p">,</span>
+</span><span id="line-5420">        <span class="s2">"Say whether a video has the song in it"</span><span class="p">,</span>
+</span><span id="line-5421">        <span class="s2">"write"</span><span class="p">,</span>
+</span><span id="line-5422">        <span class="n">invalidates</span><span class="o">=</span><span class="n">ROLE_READS</span><span class="p">,</span>
 </span><span id="line-5423">    <span class="p">),</span>
-</span><span id="line-5424">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"scores"</span><span class="p">,</span> <span class="s2">"Show how each video scores over the song"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5425">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"score_candidates"</span><span class="p">,</span> <span class="s2">"Compare how stretches of the videos score"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5426">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"strategies"</span><span class="p">,</span> <span class="s2">"List the ways to cut"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5427">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"propose_edit"</span><span class="p">,</span> <span class="s2">"Cut it for me"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5428">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"save_edit"</span><span class="p">,</span> <span class="s2">"Save a cut list as a new edit"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5429">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"edits"</span><span class="p">,</span> <span class="s2">"List the edits"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5430">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"explain_edit"</span><span class="p">,</span> <span class="s2">"Explain the cuts"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5431">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"get_edit"</span><span class="p">,</span> <span class="s2">"Open an edit"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5432">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"replace_edit"</span><span class="p">,</span> <span class="s2">"Replace an edit's whole cut list"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">),</span>
-</span><span id="line-5433">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"set_cut"</span><span class="p">,</span> <span class="s2">"Change a cut"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5434">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"split_cut"</span><span class="p">,</span> <span class="s2">"Split a cut here"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5435">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"merge_cut"</span><span class="p">,</span> <span class="s2">"Join a cut to its neighbour"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5436">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"fit_to_beat"</span><span class="p">,</span> <span class="s2">"Fit the moves to the beat"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5437">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"set_span"</span><span class="p">,</span> <span class="s2">"Choose which part of the song the video covers"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5438">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"rename_edit"</span><span class="p">,</span> <span class="s2">"Rename an edit"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5439">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"looks"</span><span class="p">,</span> <span class="s2">"List the looks"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5440">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"luts"</span><span class="p">,</span> <span class="s2">"List the colour LUTs"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5441">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"undo_edit"</span><span class="p">,</span> <span class="s2">"Undo"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5442">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"redo_edit"</span><span class="p">,</span> <span class="s2">"Redo"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
-</span><span id="line-5443">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"delete_edit"</span><span class="p">,</span> <span class="s2">"Delete an edit"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">),</span>
-</span><span id="line-5444">    <span class="n">OpSpec</span><span class="p">(</span>
-</span><span id="line-5445">        <span class="s2">"render"</span><span class="p">,</span>
-</span><span id="line-5446">        <span class="s2">"Make the video"</span><span class="p">,</span>
-</span><span id="line-5447">        <span class="s2">"render"</span><span class="p">,</span>
-</span><span id="line-5448">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
-</span><span id="line-5449">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"annotate"</span><span class="p">,),</span>
-</span><span id="line-5450">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"should_cancel"</span><span class="p">,),</span>
-</span><span id="line-5451">    <span class="p">),</span>
-</span><span id="line-5452">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"renders"</span><span class="p">,</span> <span class="s2">"List the finished videos"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5453">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"editor_document"</span><span class="p">,</span> <span class="s2">"Open the project in the timeline editor"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
-</span><span id="line-5454"><span class="p">)</span>
-</span><span id="line-5455">
-</span><span id="line-5456">
-</span><span id="line-5457"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">FOOTAGE_OP_SPECS</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
-</span><span id="line-5458">    <span class="s2">"FOOTAGE_OP_SPECS"</span><span class="p">,</span>
-</span><span id="line-5459">    <span class="s2">"OpSpec"</span><span class="p">,</span>
-</span><span id="line-5460">    <span class="s2">"FootageError"</span><span class="p">,</span>
-</span><span id="line-5461">    <span class="s2">"FootageCancelled"</span><span class="p">,</span>
-</span><span id="line-5462">    <span class="s2">"assemble"</span><span class="p">,</span>
-</span><span id="line-5463">    <span class="s2">"declared_alignment"</span><span class="p">,</span>
-</span><span id="line-5464">    <span class="s2">"edl_from_annotations"</span><span class="p">,</span>
-</span><span id="line-5465">    <span class="s2">"edl_json"</span><span class="p">,</span>
-</span><span id="line-5466">    <span class="s2">"coverage_report"</span><span class="p">,</span>
-</span><span id="line-5467">    <span class="s2">"exclusion_note"</span><span class="p">,</span>
-</span><span id="line-5468">    <span class="s2">"assemble_refusal"</span><span class="p">,</span>
-</span><span id="line-5469">    <span class="s2">"resolve_canvas"</span><span class="p">,</span>
-</span><span id="line-5470">    <span class="s2">"refresh_cover"</span><span class="p">,</span>
-</span><span id="line-5471">    <span class="s2">"grab_cover_frame"</span><span class="p">,</span>
-</span><span id="line-5472">    <span class="s2">"import_render"</span><span class="p">,</span>
-</span><span id="line-5473">    <span class="s2">"frame_size"</span><span class="p">,</span>
-</span><span id="line-5474">    <span class="s2">"frame_rate"</span><span class="p">,</span>
-</span><span id="line-5475">    <span class="s2">"public_render"</span><span class="p">,</span>
-</span><span id="line-5476">    <span class="s2">"require_scorable"</span><span class="p">,</span>
-</span><span id="line-5477">    <span class="s2">"run_scoring"</span><span class="p">,</span>
-</span><span id="line-5478">    <span class="s2">"EDL_OPTIONAL_FIELDS"</span><span class="p">,</span>
-</span><span id="line-5479"><span class="p">]</span>
+</span><span id="line-5424">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"timeline"</span><span class="p">,</span> <span class="s2">"Show which videos cover which parts of the song"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5425">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"beat_grid"</span><span class="p">,</span> <span class="s2">"Find the beat"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">,</span> <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"shape"</span><span class="p">,)),</span>
+</span><span id="line-5426">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5427">        <span class="s2">"set_beat_grid"</span><span class="p">,</span> <span class="s2">"Set the beat by hand"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">,</span> <span class="n">invalidates</span><span class="o">=</span><span class="n">BEAT_GRID_READS</span>
+</span><span id="line-5428">    <span class="p">),</span>
+</span><span id="line-5429">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5430">        <span class="s2">"clear_beat_grid"</span><span class="p">,</span>
+</span><span id="line-5431">        <span class="s2">"Forget the beat I set"</span><span class="p">,</span>
+</span><span id="line-5432">        <span class="s2">"destroy"</span><span class="p">,</span>
+</span><span id="line-5433">        <span class="n">invalidates</span><span class="o">=</span><span class="n">BEAT_GRID_READS</span><span class="p">,</span>
+</span><span id="line-5434">    <span class="p">),</span>
+</span><span id="line-5435">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"peaks"</span><span class="p">,</span> <span class="s2">"Show the song's waveform"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5436">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"beat_signals"</span><span class="p">,</span> <span class="s2">"Show where the beat is in the song or a video"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5437">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"filmstrips"</span><span class="p">,</span> <span class="s2">"Show the videos' filmstrips"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5438">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"filmstrip"</span><span class="p">,</span> <span class="s2">"Show one video's filmstrip"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5439">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5440">        <span class="s2">"score"</span><span class="p">,</span>
+</span><span id="line-5441">        <span class="s2">"Look at the footage"</span><span class="p">,</span>
+</span><span id="line-5442">        <span class="s2">"write"</span><span class="p">,</span>
+</span><span id="line-5443">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
+</span><span id="line-5444">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"should_cancel"</span><span class="p">,),</span>
+</span><span id="line-5445">        <span class="n">invalidates</span><span class="o">=</span><span class="n">SCORE_READS</span><span class="p">,</span>
+</span><span id="line-5446">    <span class="p">),</span>
+</span><span id="line-5447">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"scores"</span><span class="p">,</span> <span class="s2">"Show how each video scores over the song"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5448">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"score_candidates"</span><span class="p">,</span> <span class="s2">"Compare how stretches of the videos score"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5449">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"strategies"</span><span class="p">,</span> <span class="s2">"List the ways to cut"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5450">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"propose_edit"</span><span class="p">,</span> <span class="s2">"Cut it for me"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5451">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"save_edit"</span><span class="p">,</span> <span class="s2">"Save a cut list as a new edit"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5452">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"edits"</span><span class="p">,</span> <span class="s2">"List the edits"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5453">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"explain_edit"</span><span class="p">,</span> <span class="s2">"Explain the cuts"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5454">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"get_edit"</span><span class="p">,</span> <span class="s2">"Open an edit"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5455">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"replace_edit"</span><span class="p">,</span> <span class="s2">"Replace an edit's whole cut list"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">),</span>
+</span><span id="line-5456">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"set_cut"</span><span class="p">,</span> <span class="s2">"Change a cut"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5457">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"split_cut"</span><span class="p">,</span> <span class="s2">"Split a cut here"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5458">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"merge_cut"</span><span class="p">,</span> <span class="s2">"Join a cut to its neighbour"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5459">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"fit_to_beat"</span><span class="p">,</span> <span class="s2">"Fit the moves to the beat"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5460">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"set_span"</span><span class="p">,</span> <span class="s2">"Choose which part of the song the video covers"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5461">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"rename_edit"</span><span class="p">,</span> <span class="s2">"Rename an edit"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5462">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"looks"</span><span class="p">,</span> <span class="s2">"List the looks"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5463">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"luts"</span><span class="p">,</span> <span class="s2">"List the colour LUTs"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5464">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"undo_edit"</span><span class="p">,</span> <span class="s2">"Undo"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5465">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"redo_edit"</span><span class="p">,</span> <span class="s2">"Redo"</span><span class="p">,</span> <span class="s2">"write"</span><span class="p">),</span>
+</span><span id="line-5466">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"delete_edit"</span><span class="p">,</span> <span class="s2">"Delete an edit"</span><span class="p">,</span> <span class="s2">"destroy"</span><span class="p">),</span>
+</span><span id="line-5467">    <span class="n">OpSpec</span><span class="p">(</span>
+</span><span id="line-5468">        <span class="s2">"render"</span><span class="p">,</span>
+</span><span id="line-5469">        <span class="s2">"Make the video"</span><span class="p">,</span>
+</span><span id="line-5470">        <span class="s2">"render"</span><span class="p">,</span>
+</span><span id="line-5471">        <span class="n">runs</span><span class="o">=</span><span class="s2">"job"</span><span class="p">,</span>
+</span><span id="line-5472">        <span class="n">hide</span><span class="o">=</span><span class="p">(</span><span class="s2">"annotate"</span><span class="p">,),</span>
+</span><span id="line-5473">        <span class="n">host_params</span><span class="o">=</span><span class="p">(</span><span class="s2">"should_cancel"</span><span class="p">,),</span>
+</span><span id="line-5474">    <span class="p">),</span>
+</span><span id="line-5475">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"renders"</span><span class="p">,</span> <span class="s2">"List the finished videos"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5476">    <span class="n">OpSpec</span><span class="p">(</span><span class="s2">"editor_document"</span><span class="p">,</span> <span class="s2">"Open the project in the timeline editor"</span><span class="p">,</span> <span class="s2">"read"</span><span class="p">),</span>
+</span><span id="line-5477"><span class="p">)</span>
+</span><span id="line-5478">
+</span><span id="line-5479">
+</span><span id="line-5480"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="n">spec</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">spec</span> <span class="ow">in</span> <span class="n">FOOTAGE_OP_SPECS</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span>
+</span><span id="line-5481">    <span class="s2">"FOOTAGE_OP_SPECS"</span><span class="p">,</span>
+</span><span id="line-5482">    <span class="s2">"OpSpec"</span><span class="p">,</span>
+</span><span id="line-5483">    <span class="s2">"FootageError"</span><span class="p">,</span>
+</span><span id="line-5484">    <span class="s2">"FootageCancelled"</span><span class="p">,</span>
+</span><span id="line-5485">    <span class="s2">"assemble"</span><span class="p">,</span>
+</span><span id="line-5486">    <span class="s2">"declared_alignment"</span><span class="p">,</span>
+</span><span id="line-5487">    <span class="s2">"edl_from_annotations"</span><span class="p">,</span>
+</span><span id="line-5488">    <span class="s2">"edl_json"</span><span class="p">,</span>
+</span><span id="line-5489">    <span class="s2">"coverage_report"</span><span class="p">,</span>
+</span><span id="line-5490">    <span class="s2">"exclusion_note"</span><span class="p">,</span>
+</span><span id="line-5491">    <span class="s2">"assemble_refusal"</span><span class="p">,</span>
+</span><span id="line-5492">    <span class="s2">"resolve_canvas"</span><span class="p">,</span>
+</span><span id="line-5493">    <span class="s2">"refresh_cover"</span><span class="p">,</span>
+</span><span id="line-5494">    <span class="s2">"grab_cover_frame"</span><span class="p">,</span>
+</span><span id="line-5495">    <span class="s2">"import_render"</span><span class="p">,</span>
+</span><span id="line-5496">    <span class="s2">"frame_size"</span><span class="p">,</span>
+</span><span id="line-5497">    <span class="s2">"frame_rate"</span><span class="p">,</span>
+</span><span id="line-5498">    <span class="s2">"public_render"</span><span class="p">,</span>
+</span><span id="line-5499">    <span class="s2">"require_scorable"</span><span class="p">,</span>
+</span><span id="line-5500">    <span class="s2">"run_scoring"</span><span class="p">,</span>
+</span><span id="line-5501">    <span class="s2">"EDL_OPTIONAL_FIELDS"</span><span class="p">,</span>
+</span><span id="line-5502"><span class="p">]</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -5863,7 +5886,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=1d3a144a"></script>
+    <script src="../../../_static/documentation_options.js?v=2ac29e20"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
