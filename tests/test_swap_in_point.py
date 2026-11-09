@@ -193,7 +193,7 @@ def test_a_gap_a_bad_number_and_both_slip_and_in_point_are_refused(bath):
     with pytest.raises(FootageError, match="gap"):
         service.set_cut(bath, edit_id=edit_id, index=1, source_in_s=1.0)
     for bad in (-1.0, "later", True):
-        with pytest.raises(FootageError, match="source_in"):
+        with pytest.raises(FootageError, match="source_in_s"):
             service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=bad)
     with pytest.raises(FootageError, match="pass one"):
         service.set_cut(bath, edit_id=edit_id, index=0, source_in_s=2.0, slip_s=0.1)

@@ -3308,12 +3308,16 @@ def set_cut(
       the video allows (the cut's footage, and the blends around it, must stay inside the
       video) and the reply's ``source_in_clamped`` says when it was. Resets ``slip_s``.
       Refused for a video with the song in it (its moment is its place on the song: use
-      ``slip_s``) and for a photo, which is shown whole.
+      ``slip_s``; a video nobody has listened to yet counts as cut to the music) and for a photo, which is shown whole.
 
     Parameters left out are unchanged. The changed edit is checked and saved; returns it.
     """
     from muvid.footage.edl import EdlEntry
 
+    if source_in_s is not None and slip_s is not None:
+        raise FootageError(
+            "slip_s nudges the part a cut shows and source_in_s chooses it: pass one"
+        )
     record, entries = _edit_entries(fp, edit_id)
     i = _check_index(entries, index)
     e: EdlEntry = entries[i]
@@ -3394,10 +3398,6 @@ def set_cut(
         )
     clamped = None
     if source_in_s is not None:
-        if slip_s is not None:
-            raise FootageError(
-                "slip_s nudges the part a cut shows and source_in_s chooses it: pass one"
-            )
         following = entries[i + 1] if i + 1 < len(entries) else None
         chosen, clamped = _chosen_in_point(fp, e, source_in_s, following)
         e = replace(e, source_in=chosen, slip_s=0.0)
@@ -3470,7 +3470,9 @@ def _chosen_in_point(fp, e, asked, following=None) -> tuple[float, Optional[dict
     try:
         want = _as_source_in(asked)
     except ValueError as err:
-        raise FootageError(str(err)) from err
+        raise FootageError(
+            f"source_in_s={asked!r} must be a number of seconds into the video, 0 or more"
+        ) from err
     kind, bounds = _in_point_room(
         fp, e.clip_id, replace(e, slip_s=0.0), following, edge_s=0.0
     )
