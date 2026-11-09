@@ -581,8 +581,9 @@ def _title_lock(email: str, project_id: str, proj):
     ``meta.json`` lock cannot see the other render's, hence a project-level one."""
     from muvid.footage.workspace import file_lock
 
-    roots = {Path(proj.root)} | {
-        Path(p.root) for _k, _pid, p in _open_all(email, project_id)
+    # resolved, so two spellings of one folder (a symlinked data home) lock in one order
+    roots = {Path(proj.root).resolve()} | {
+        Path(p.root).resolve() for _k, _pid, p in _open_all(email, project_id)
     }
     with ExitStack() as stack:
         for root in sorted(roots):
