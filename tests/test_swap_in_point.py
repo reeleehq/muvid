@@ -256,3 +256,21 @@ def test_a_chosen_in_point_is_recorded_as_chosen_and_a_swap_clears_it(bath):
     assert again["edl"][0].get("source_in_by_hand") is True  # a nudge keeps the choice
     swapped = service.set_cut(bath, edit_id=edit_id, index=0, clip_id="dog")
     assert "source_in_by_hand" not in swapped["edl"][0]
+
+
+def test_the_provenance_flag_without_an_in_point_is_refused():
+    from muvid.footage.edl import EdlEntry, unplaced, validate_edl
+
+    with pytest.raises(ValueError, match="source_in_by_hand"):
+        validate_edl(
+            [EdlEntry(0.0, 2.0, "A", source_in_by_hand=True)],
+            [unplaced("A", 10.0)],
+            2.0,
+            allow_unreliable=True,
+        )
+    from muvid.footage.edl import _as_entry
+
+    with pytest.raises(ValueError, match="true or false"):
+        _as_entry(
+            {"song_start": 0, "song_end": 1, "clip_id": "A", "source_in_by_hand": "yes"}
+        )
