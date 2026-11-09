@@ -152,3 +152,32 @@ def test_check_subgenre_conformance_carries_it(tmp_path):
     )
     report = check_subgenre_conformance(bad, workdir=tmp_path, render=False)
     assert any("smell" in f for f in report.failures)
+
+
+def test_one_table_decides_both_what_is_fetched_and_what_is_checked(
+    monkeypatch, tmp_path
+):
+    """muvid#328: the fetch decision and the kind asserted were two name tables that
+    could drift. Both now read ``BACKSTOP_INPUT_KINDS``: every name in it is fetched as
+    a file AND has its kind asserted on the bytes; a name outside it is neither."""
+    from muvid.mcp import _fetch, tools
+    from muvid.subgenres._schema import BACKSTOP_INPUT_KINDS
+
+    seen = {}
+    monkeypatch.setattr(
+        _fetch,
+        "fetch_media",
+        lambda url, dest, *, kind="": seen.update(kind=kind) or dest,
+    )
+    for name, kind in BACKSTOP_INPUT_KINDS.items():
+        assert st._is_file_input(name, {"properties": {}}), name
+        tools._resolve_input("https://example.com/x", tmp_path / "x", label=name)
+        assert seen["kind"] == kind, name
+    assert not st._is_file_input("tempo", {"properties": {}})
+    tools._resolve_input("https://example.com/x", tmp_path / "x", label="tempo")
+    assert seen["kind"] == ""
+    # a declared kind still wins over the backstop
+    tools._resolve_input(
+        "https://example.com/x", tmp_path / "x", label="audio", kind="video"
+    )
+    assert seen["kind"] == "video"

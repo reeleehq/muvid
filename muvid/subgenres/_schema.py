@@ -24,6 +24,7 @@ __all__ = [
     "validate",
     "SchemaError",
     "ENFORCED_KEYWORDS",
+    "BACKSTOP_INPUT_KINDS",
     "MEDIA_KINDS",
     "declared_media_kind",
     "media_kind_problems",
@@ -138,6 +139,29 @@ def validate(
 #: "a file, but nothing to assert about its bytes" (lyrics text, a plugin's own format).
 MEDIA_KINDS = ("audio", "video", "image", "")
 _MEDIA_TOPS = MEDIA_KINDS[:3]
+
+#: The backstop behind a declared kind (muvid#328, one table for what were two): input
+#: NAMES a transport fetches as files when a plugin declares nothing, each with the
+#: kind to assert on its first bytes (``""`` = a file with nothing to assert). A private
+#: share link answers HTTP 200 with a sign-in page, which would otherwise reach ffmpeg as
+#: "Invalid data found" (muvid#23), so a name here is kind-checked; a name not here is
+#: neither fetched nor checked. The list-valued pools (``photos``, ``clips``, ...) are
+#: here because a plugin that forgets ``format: path`` must not hand raw strings to its
+#: renderer (muvid#23 review).
+BACKSTOP_INPUT_KINDS: "Mapping[str, str]" = {
+    "audio": "audio",
+    "lyrics": "",
+    "subtitles": "",
+    "cover": "image",
+    "image": "image",
+    "reference_image": "image",
+    "photos": "image",
+    "images": "image",
+    "clip": "video",
+    "clips": "video",
+    "video": "video",
+    "videos": "video",
+}
 
 
 def _declarations(schema: Mapping[str, Any], name: str) -> "list[Mapping[str, Any]]":
