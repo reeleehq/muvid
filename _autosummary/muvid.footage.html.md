@@ -276,7 +276,7 @@ of being measured. Selection filters on this; reporting shows it with a reason.
 
 How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
 the audio-measured `duration_s` stands). Derived from the manifest on load
-(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+(`service._aligned` / `_placements`), never persisted here and never compared:
 a free cut reads only the picture, so `placed_as()` bounds it by this
 (muvid#322).
 

@@ -1,4 +1,4 @@
-> built 2026-11-09 05:17 UTC from 634bd7d (main) · muvid 0.0.178. Details: build_info.json
+> built 2026-11-09 06:26 UTC from d21348b (main) · muvid 0.0.179. Details: build_info.json
 
 # index.html.md
 
@@ -3594,6 +3594,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`selection_unverified_stretches`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those at least [`SELECTION_MIN_UNVERIFIED_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
 | [`song_opinion`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.song_opinion)(song_match)                         | `(verdict, reason)` that `song_match` reaches under [`SONG_THRESHOLDS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SONG_THRESHOLDS) (`"contains"` / `"absent"` / `"undecided"`, and the evidence in words), or `None` when there is no record.                                                                                                                                                                                                   |
 | [`still_in_point`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                                 |
+| [`synced_length`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.synced_length)(a)                                 | How much of clip `a` a SYNCED cut may read: no more than the audio the aligner measured and no more than the picture (a cut reads only the picture, `-an`, so past its last frame it would freeze, muvid#344).                                                                                                                                                                                                                    |
 | [`trusted_cover`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.trusted_cover)(a)                                 | The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement minus its unverified stretches, and nothing at all when the aligner does not vouch for it or it does not overlap the song.                                                                                                                                                                                                                         |
 | [`unplaced`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                                         |
 | [`unverified_in_cut`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.unverified_in_cut)(e, a)                          | The song-time stretches of cut `e` that show its clip `a` where [`selection_unverified_stretches()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.selection_unverified_stretches) says the clip does not match the song (muvid#241).                                                                                                                                                                                                                              |
@@ -3957,7 +3958,7 @@ of being measured. Selection filters on this; reporting shows it with a reason.
 
 How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
 the audio-measured `duration_s` stands). Derived from the manifest on load
-(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+(`service._aligned` / `_placements`), never persisted here and never compared:
 a free cut reads only the picture, so [`placed_as()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.placed_as) bounds it by this
 (muvid#322).
 
@@ -4843,6 +4844,23 @@ does not need (it has no thumb on the button). muvid#203.
 ```pycon
 >>> still_in_point(EdlEntry(0.0, 2.0, "p", transition=Transition(1.0, "fade")))
 0.5
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.synced_length(a)
+
+How much of clip `a` a SYNCED cut may read: no more than the audio the aligner
+measured and no more than the picture (a cut reads only the picture, `-an`, so
+past its last frame it would freeze, muvid#344). [`free_length()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.free_length) is the free
+cut’s: the picture alone.
+
+```pycon
+>>> synced_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+6.0
+>>> synced_length(replace(unplaced('c1', 10.0), picture_s=12.0))
+10.0
 ```
 
 * **Return type:**
@@ -5822,7 +5840,7 @@ of being measured. Selection filters on this; reporting shows it with a reason.
 
 How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
 the audio-measured `duration_s` stands). Derived from the manifest on load
-(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+(`service._aligned` / `_placements`), never persisted here and never compared:
 a free cut reads only the picture, so `placed_as()` bounds it by this
 (muvid#322).
 
@@ -20930,20 +20948,18 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-09 05:17 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/634bd7d24c755e8bb5ef12fb255e4da43d2eed3e"><code>634bd7d</code></a> on branch <code>main</code>, for **muvid 0.0.178** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-09 06:26 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/d21348b5d1a94bb7d33124bdf8532f6f7531debe"><code>d21348b</code></a> on branch <code>main</code>, for **muvid 0.0.179** (from <code>pyproject.toml</code>).
 
-#### WARNING
-The documentation and the package may be misaligned:
-
-- The documented version (0.0.178) is ahead of the latest release on PyPI (0.0.177): these docs describe unreleased code.
+#### NOTE
+Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/634bd7d24c755e8bb5ef12fb255e4da43d2eed3e"><code>634bd7d24c755e8bb5ef12fb255e4da43d2eed3e</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/d21348b5d1a94bb7d33124bdf8532f6f7531debe"><code>d21348b5d1a94bb7d33124bdf8532f6f7531debe</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.178</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.179</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -20952,9 +20968,9 @@ The documentation and the package may be misaligned:
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42565186768">42565186768</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/42571732444">42571732444</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>0df7ce9864169354ed4c83b67806cd6f7c5fbc7a</code> (in the history of the built commit) |
+| Event commit | <code>5a174e4d423e4a36b4305550f0eaa5d754214baa</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -20979,13 +20995,13 @@ The documentation and the package may be misaligned:
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.177/">0.0.177</a>, older than the documented version (0.0.178).
+Latest release: <a href="https://pypi.org/project/muvid/0.0.179/">0.0.179</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 634bd7d24c755e8bb5ef12fb255e4da43d2eed3e
+git checkout d21348b5d1a94bb7d33124bdf8532f6f7531debe
 pip install "epythet==0.2.22"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

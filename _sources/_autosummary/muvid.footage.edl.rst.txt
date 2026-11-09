@@ -63,6 +63,7 @@ muvid.footage.edl
       selection_unverified_stretches
       song_opinion
       still_in_point
+      synced_length
       trusted_cover
       unplaced
       unverified_in_cut

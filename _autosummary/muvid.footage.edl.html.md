@@ -87,6 +87,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`selection_unverified_stretches`](#muvid.footage.edl.selection_unverified_stretches)(a)                | The unverified stretches SELECTION acts on (muvid#16 slice 2, muvid#241): those at least [`SELECTION_MIN_UNVERIFIED_S`](#muvid.footage.edl.SELECTION_MIN_UNVERIFIED_S) long — a shorter one is below what the measurement resolves, and preferring away from it cut a 0.6 s flash into a confirmed take — and none on a DECLARED offset, which a person vouched for, usually because the windows land on an alias there (muvid#59). |
 | [`song_opinion`](#muvid.footage.edl.song_opinion)(song_match)                         | `(verdict, reason)` that `song_match` reaches under [`SONG_THRESHOLDS`](#muvid.footage.edl.SONG_THRESHOLDS) (`"contains"` / `"absent"` / `"undecided"`, and the evidence in words), or `None` when there is no record.                                                                                                                                                                                                   |
 | [`still_in_point`](#muvid.footage.edl.still_in_point)(cut)                              | Where a free cut on a STILL starts: the lowest `source_in` the gate accepts — the blend's lead — the same rule as a video's in-point minus the edge margin a still does not need (it has no thumb on the button).                                                                                                                                                                                                                 |
+| [`synced_length`](#muvid.footage.edl.synced_length)(a)                                 | How much of clip `a` a SYNCED cut may read: no more than the audio the aligner measured and no more than the picture (a cut reads only the picture, `-an`, so past its last frame it would freeze, muvid#344).                                                                                                                                                                                                                    |
 | [`trusted_cover`](#muvid.footage.edl.trusted_cover)(a)                                 | The song-time stretches clip `a` could show in TRUSTWORTHY sync: its placement minus its unverified stretches, and nothing at all when the aligner does not vouch for it or it does not overlap the song.                                                                                                                                                                                                                         |
 | [`unplaced`](#muvid.footage.edl.unplaced)(clip_id, duration_s)                    | The record of a clip with no place on the song: usable by free cuts only.                                                                                                                                                                                                                                                                                                                                                         |
 | [`unverified_in_cut`](#muvid.footage.edl.unverified_in_cut)(e, a)                          | The song-time stretches of cut `e` that show its clip `a` where [`selection_unverified_stretches()`](#muvid.footage.edl.selection_unverified_stretches) says the clip does not match the song (muvid#241).                                                                                                                                                                                                                              |
@@ -450,7 +451,7 @@ of being measured. Selection filters on this; reporting shows it with a reason.
 
 How long the clip’s PICTURE runs, when that was probed (`None` = not recorded:
 the audio-measured `duration_s` stands). Derived from the manifest on load
-(`FootageWorkspace.load_alignments`), never persisted here and never compared:
+(`service._aligned` / `_placements`), never persisted here and never compared:
 a free cut reads only the picture, so [`placed_as()`](#muvid.footage.edl.placed_as) bounds it by this
 (muvid#322).
 
@@ -1336,6 +1337,23 @@ does not need (it has no thumb on the button). muvid#203.
 ```pycon
 >>> still_in_point(EdlEntry(0.0, 2.0, "p", transition=Transition(1.0, "fade")))
 0.5
+```
+
+* **Return type:**
+  [`float`](https://docs.python.org/3/builtins/functions.html#float)
+
+### muvid.footage.edl.synced_length(a)
+
+How much of clip `a` a SYNCED cut may read: no more than the audio the aligner
+measured and no more than the picture (a cut reads only the picture, `-an`, so
+past its last frame it would freeze, muvid#344). [`free_length()`](#muvid.footage.edl.free_length) is the free
+cut’s: the picture alone.
+
+```pycon
+>>> synced_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+6.0
+>>> synced_length(replace(unplaced('c1', 10.0), picture_s=12.0))
+10.0
 ```
 
 * **Return type:**

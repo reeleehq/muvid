@@ -466,7 +466,7 @@ of being measured. Selection filters on this; reporting shows it with a reason.<
 <span class="sig-name descname"><span class="pre">picture_s</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" rel="nofollow noopener" title="(in Python v3.15)"><span class="pre">float</span><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" rel="nofollow noopener" title="(in Python v3.15)"><span class="pre">None</span><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.FootageAlignment.picture_s" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.FootageAlignment.picture_s'">¶</a></dt>
 <dd><p>How long the clip’s PICTURE runs, when that was probed (<code class="docutils literal notranslate"><span class="pre">None</span></code> = not recorded:
 the audio-measured <code class="docutils literal notranslate"><span class="pre">duration_s</span></code> stands). Derived from the manifest on load
-(<code class="docutils literal notranslate"><span class="pre">FootageWorkspace.load_alignments</span></code>), never persisted here and never compared:
+(<code class="docutils literal notranslate"><span class="pre">service._aligned</span></code> / <code class="docutils literal notranslate"><span class="pre">_placements</span></code>), never persisted here and never compared:
 a free cut reads only the picture, so <code class="xref py py-func docutils literal notranslate"><span class="pre">placed_as()</span></code> bounds it by this
 (muvid#322).</p>
 </dd></dl>
@@ -1206,7 +1206,7 @@ the loosest bound rather than an absent one.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=66a0b9fb"></script>
+<script src="../_static/documentation_options.js?v=c2d83de2"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
