@@ -25,14 +25,23 @@ def _functions(*, package: bool) -> dict:
         else [pathlib.Path(service.__file__)]
     )
     funcs: dict = {}
+
+    def mentions(node):
+        names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)}
+        return names | {n.attr for n in ast.walk(node) if isinstance(n, ast.Attribute)}
+
     for path in paths:
-        for fn in ast.walk(ast.parse(path.read_text())):
+        tree = ast.parse(path.read_text())
+        for fn in ast.walk(tree):
             if isinstance(fn, ast.FunctionDef):
-                mentioned = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name)}
-                mentioned |= {
-                    n.attr for n in ast.walk(fn) if isinstance(n, ast.Attribute)
-                }
-                funcs.setdefault(fn.name, set()).update(mentioned)
+                funcs.setdefault(fn.name, set()).update(mentions(fn))
+        # a module-level table is a node too: a callable stored in ``TRUST_TIERS`` and
+        # called as ``tier.intervals(a)`` is reached through the table's name (#318 review)
+        for node in tree.body:
+            if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+                tgts = node.targets if isinstance(node, ast.Assign) else [node.target]
+                for t in (t for t in tgts if isinstance(t, ast.Name)):
+                    funcs.setdefault(t.id, set()).update(mentions(node.value))
     return funcs
 
 
@@ -55,42 +64,62 @@ def _reads_reaching(*targets: str, package: bool = False) -> set:
     return {r for r in reads if reaches(r)}
 
 
-#: Where ``service`` hands the project to code the walks above cannot follow, each a
-#: reviewed fact: scoring's own entry point (a write), the fingerprint of a keyed input
-#: (an object's method), the decorator's wrapped function, the filmstrip and waveform
-#: caches (they read the clips and the song, never a placement).
+#: Where ``service`` hands the project to code the walks above cannot follow, as
+#: ``(the function doing it, the callee)`` — each a reviewed fact: scoring's own entry
+#: point (a write), the fingerprint of a keyed input (an object's method), the
+#: decorator's wrapped function, the filmstrip and waveform caches (they read the clips
+#: and the song, never a placement). Compared for EQUALITY, so an entry that goes stale
+#: is reported too.
 _FP_HANDED_ON = {
-    "score_project",
-    "k.fingerprint",
-    "fn",
-    "clip_filmstrip",
-    "song_peaks",
+    ("run_scoring", "score_project"),
+    ("_input_fingerprints", "k.fingerprint"),
+    ("_edits_locked", "fn"),
+    ("_filmstrip", "clip_filmstrip"),
+    ("_prepare_filmstrip", "clip_filmstrip"),
+    ("peaks", "song_peaks"),
 }
+
+
+def _callee_name(f) -> str:
+    if isinstance(f, ast.Name):
+        return f.id
+    if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name):
+        return f"{f.value.id}.{f.attr}"
+    return ast.dump(f)[:60]
 
 
 def test_service_hands_the_project_only_where_the_walks_were_checked():
     """muvid#318: the walks follow calls inside ``service.py`` by name. A call that
-    passes the project (``fp``) to a function from another module, or to a method of
-    an object, escapes them: a read could depend on a write's data with no declaration
-    noticing. Any NEW such hand-off fails here until someone decides whether the callee
-    reads what a writer changes (and extends the walk or lists it above)."""
+    passes the project (``fp``, positionally, as a keyword or starred) to a function
+    from another module, or to a method of an object, escapes them: a read could depend
+    on a write's data with no declaration noticing. Any NEW such hand-off fails here
+    until someone decides whether the callee reads what a writer changes (and extends
+    the walk or lists it above). It watches the project, not the data taken from it: a
+    callee handed ``list(placed.values())`` is what the derivation tests' module-table
+    nodes are for."""
     tree = ast.parse(pathlib.Path(service.__file__).read_text())
     defined = {
         n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.ClassDef))
     }
+
+    def hands_fp(call):
+        args = [a.value if isinstance(a, ast.Starred) else a for a in call.args]
+        args += [k.value for k in call.keywords]
+        return any(isinstance(a, ast.Name) and a.id == "fp" for a in args)
+
     escaped = set()
-    for call in (c for c in ast.walk(tree) if isinstance(c, ast.Call)):
-        if not any(isinstance(a, ast.Name) and a.id == "fp" for a in call.args):
-            continue
-        f = call.func
-        if isinstance(f, ast.Name):
-            if f.id not in defined and not hasattr(builtins, f.id):
-                escaped.add(f.id)
-        elif isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name):
-            escaped.add(f"{f.value.id}.{f.attr}")
-        else:
-            escaped.add(ast.dump(f)[:60])
-    assert escaped <= _FP_HANDED_ON, sorted(escaped - _FP_HANDED_ON)
+    for fn in (n for n in tree.body if isinstance(n, ast.FunctionDef)):
+        for call in (c for c in ast.walk(fn) if isinstance(c, ast.Call)):
+            f = call.func
+            if not hands_fp(call):
+                continue
+            if isinstance(f, ast.Name) and (f.id in defined or hasattr(builtins, f.id)):
+                continue
+            escaped.add((fn.name, _callee_name(f)))
+    assert escaped == _FP_HANDED_ON, (
+        sorted(escaped - _FP_HANDED_ON),
+        sorted(_FP_HANDED_ON - escaped),
+    )
 
 
 def test_beat_grid_invalidations_cover_every_read_of_the_grid():

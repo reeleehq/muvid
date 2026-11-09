@@ -5316,9 +5316,17 @@ PLACEMENT_READS: tuple[str, ...] = (
 )
 
 #: The reads that show a placement's measured SPANS (the unverified stretches): what
-#: ``measure_spans`` makes stale (muvid#318). Not the score reads — spans are not a
-#: scoring input. Derived from the code by ``test_beat_grid_invalidations``.
-SPAN_READS: tuple[str, ...] = ("editor_document", "explain_edit", "get_edit")
+#: ``measure_spans`` makes stale (muvid#318). Not the score tensor's reads — spans are
+#: not a scoring input — but ``score_candidates`` is here: the planner's trust tiers
+#: demote a stretch the spans do not confirm (``select_score._demote_distrusted``), so
+#: a candidate's reward moves with them. Derived from the code by
+#: ``test_beat_grid_invalidations``.
+SPAN_READS: tuple[str, ...] = (
+    "editor_document",
+    "explain_edit",
+    "get_edit",
+    "score_candidates",
+)
 
 #: The reads that sort the videos into synced and to-the-music (``footage_roles``): what
 #: ``set_has_song`` makes stale (muvid#318).
