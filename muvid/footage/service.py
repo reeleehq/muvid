@@ -468,7 +468,7 @@ def add_clip(
         taken_source=taken_source,
     )
     _record_clip_duration(fp, cid, dur)
-    _record_picture_duration(fp, cid, src)
+    _picture_length(fp, cid)
     _record_clip_hash(fp, cid)
     _warm(_warm_activity, fp, cid)
     _ensure_cover(fp)
@@ -684,7 +684,7 @@ def _placements(fp, *, on_unreadable=None) -> list:
                 raise
             on_unreadable(cid, e)
             out.append(unplaced(cid, 0.0))
-    return with_pictures(out, fp.manifest().get("clips", []))
+    return with_pictures(out, _with_recorded_pictures(fp))
 
 
 def footage_roles(fp) -> dict:
@@ -700,10 +700,12 @@ def _free_sources(fp, placements) -> list:
     """The clips and photos to cut to the music, as :class:`music_cut.FreeSource`.
 
     A video's ``duration_s`` is the length the planner may read, which is the length the
-    gate checks a free cut against (:func:`_free_length`, muvid#322: the picture's own).
+    gate checks a free cut against (:func:`~muvid.footage.edl.free_length`, muvid#322:
+    the picture's own).
     A phone video whose audio track is shorter than its picture otherwise got in-points
     the gate then refused (muvid#290: "does not contain song span", on a 21.6 s video
     with 20 s of audio)."""
+    from muvid.footage.edl import free_length
     from muvid.footage.music_cut import STILL, VIDEO, FreeSource
 
     by_id = {a.clip_id: a for a in fp.load_alignments()}
@@ -720,29 +722,12 @@ def _free_sources(fp, placements) -> list:
                 clip_id=cid,
                 path=paths[cid],
                 kind=STILL if still else VIDEO,
-                duration_s=None if still else _free_length(fp, cid, placed.get(cid)),
+                duration_s=None if still else free_length(placed[cid]),
                 taken_at=c.get("taken_at"),
                 taken_source=c.get("taken_source", ""),
             )
         )
     return out
-
-
-def _free_length(fp, clip_id: str, placement) -> float:
-    """How much of a video a free cut may read: the length the planner and the in-point
-    swap size a free cut's room by, and the gate checks it against (muvid#322).
-
-    The video's own PICTURE length where it was recorded at ``add_clip`` — a free cut
-    reads only the picture. A clip added before that field existed has none, and keeps
-    the earlier bound: the container's duration, no longer than the placement's
-    audio-measured one (muvid#290)."""
-    for c in fp.manifest().get("clips", []):
-        if c.get("clip_id") == clip_id and c.get("picture_duration") is not None:
-            return float(c["picture_duration"])
-    picture = _clip_duration(fp, clip_id)
-    if placement is None or not placement.duration_s:
-        return picture
-    return min(picture, float(placement.duration_s))
 
 
 def _activity_envelope(fp, source):
@@ -3473,7 +3458,7 @@ def _in_point_room(fp, clip_id: str, e, following=None, *, edge_s: float):
     ``None``. A free clip too short for the cut and the blends around it is refused here,
     plainly, with what it needs (muvid#181).
     """
-    from muvid.footage.edl import blend_reads, in_point_bounds
+    from muvid.footage.edl import blend_reads, free_length, in_point_bounds
 
     row = next(
         (c for c in fp.manifest().get("clips", []) if c.get("clip_id") == clip_id), None
@@ -3486,8 +3471,9 @@ def _in_point_room(fp, clip_id: str, e, following=None, *, edge_s: float):
     if row.get("kind") == STILL_KIND:
         return "still", None
     following_t = following.transition if following is not None else None
-    # the length the gate checks the cut against, as the planner uses (muvid#290)
-    duration = _free_length(fp, clip_id, aligns.get(clip_id))
+    # the length the gate checks the cut against, as the planner uses (muvid#322)
+    placed = {a.clip_id: a for a in _placements(fp)}
+    duration = free_length(placed[clip_id])
     span = e.song_end - e.song_start
     bounds = in_point_bounds(
         e, clip_duration_s=duration, next_transition=following_t, edge_s=edge_s
@@ -5099,19 +5085,38 @@ def _record_clip_duration(fp, clip_id: str, duration_s: float) -> None:
     _set_clip_field(fp, clip_id, "duration", duration_s)
 
 
-def _record_picture_duration(fp, clip_id: str, path: Path) -> None:
-    """Record the length of a video's own PICTURE stream (muvid#322), omit-when-absent:
-    nothing is written when the file reports none (or cannot be probed: the caller may
-    have supplied ``duration_s`` for a file ffprobe will not read), and a clip without
-    the field keeps the container's duration as its bound."""
+def _picture_length(fp, clip_id: str) -> "float | None":
+    """A video's PICTURE length (muvid#322): recorded at add time, else measured (and
+    then recorded) like :func:`_clip_duration`. ``None`` when the file reports none —
+    nothing is recorded, and the clip keeps the container's duration as its bound.
+    A caller-supplied ``duration_s`` may sit on a file ffprobe will not read; that too
+    is ``None``, not a refusal."""
+    from muvid.footage.workspace import file_identity
     from muvid.visualize.ffmpeg import FfmpegError, picture_duration
 
+    for c in fp.manifest().get("clips", []):
+        if c.get("clip_id") == clip_id and c.get("kind") == STILL_KIND:
+            return None
+        if c.get("clip_id") == clip_id and c.get("picture_duration") is not None:
+            return float(c["picture_duration"])
+    path = Path(fp.clip_paths()[clip_id])
+    measured = (path, file_identity(path))  # before measuring (#254)
     try:
         picture = picture_duration(path)
-    except FfmpegError:  # the bound is then the container's, as before this field
-        return
+    except FfmpegError:
+        return None
     if picture is not None:
-        _set_clip_field(fp, clip_id, "picture_duration", picture)
+        _set_clip_field(fp, clip_id, "picture_duration", picture, measured=measured)
+    return picture
+
+
+def _with_recorded_pictures(fp) -> list:
+    """The manifest's clip rows, each video's ``picture_duration`` filled in (measured
+    once and kept) — what :func:`~muvid.footage.edl.with_pictures` overlays."""
+    for c in fp.manifest().get("clips", []):
+        if c.get("kind") != STILL_KIND and c.get("picture_duration") is None:
+            _picture_length(fp, c["clip_id"])
+    return fp.manifest().get("clips", [])
 
 
 def _set_clip_field(fp, clip_id: str, key: str, value, *, measured=None) -> None:

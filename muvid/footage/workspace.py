@@ -62,7 +62,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from muvid.footage.edl import DECLARED, FootageAlignment, with_pictures
+from muvid.footage.edl import DECLARED, FootageAlignment
 from muvid.paths import (
     DATA_HOME_ENV_VAR as _DATA_HOME_ENV_VAR,
     caller_bucket,
@@ -804,10 +804,9 @@ class MusicVideoFootageProject:
         if not p.exists():
             return []
         try:
-            aligns = [FootageAlignment.from_dict(d) for d in json.loads(p.read_text())]
+            return [FootageAlignment.from_dict(d) for d in json.loads(p.read_text())]
         except (OSError, ValueError):
             return []
-        return with_pictures(aligns, self.manifest().get("clips", []))
 
     # -- renders -------------------------------------------------------------
     @property

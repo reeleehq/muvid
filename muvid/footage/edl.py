@@ -1468,6 +1468,20 @@ def with_pictures(
     ]
 
 
+def free_length(a: "FootageAlignment") -> float:
+    """How much of clip ``a`` a FREE cut may read: its picture's own length where that
+    is recorded, else the placement's ``duration_s``. A free cut reads the picture alone
+    (``-an``), so the audio-measured length is the wrong bound for it (muvid#322) — and
+    the ONE rule the gate (:func:`placed_as`), the planner and the in-point swap share.
+
+    >>> free_length(unplaced('c1', 10.0))
+    10.0
+    >>> free_length(replace(unplaced('c1', 10.0), picture_s=6.0))
+    6.0
+    """
+    return a.duration_s if a.picture_s is None else a.picture_s
+
+
 def clip_in_of(e: "EdlEntry", a: "FootageAlignment") -> float:
     """Where cut ``e`` starts in its clip ``a``'s own time — THE sign convention:
     ``song_start - offset + slip`` — or, for a free cut, ``source_in + slip``, the
@@ -1504,8 +1518,7 @@ def placed_as(e: "EdlEntry", a: "FootageAlignment") -> "FootageAlignment":
     if getattr(e, "source_in", None) is None:
         return a
     offset = e.song_start - e.source_in
-    # a free cut reads the picture alone (``-an``), so the picture's length bounds it
-    length = a.duration_s if a.picture_s is None else a.picture_s
+    length = free_length(a)
     return replace(
         a,
         offset_s=offset,

@@ -88,9 +88,38 @@ def test_a_cut_past_the_last_frame_is_refused_though_the_audio_goes_on(tmp_path)
 
 
 @needs_ffmpeg
-def test_a_clip_with_no_recorded_picture_keeps_the_earlier_bound(tmp_path):
+def test_a_clip_added_before_the_field_existed_is_measured_and_recorded(tmp_path):
+    """No migration: the gate measures a clip with no recorded picture, once."""
     fp = _project(tmp_path, picture_s=3.0, audio_s=5.0)
     service._set_clip_field(fp, "a", "picture_duration", None)
+    assert (
+        next(c for c in fp.manifest()["clips"] if c["clip_id"] == "a").get(
+            "picture_duration"
+        )
+        is None
+    )
+    with pytest.raises(ValueError):
+        _free_cut(fp, source_in=3.5)
     row = next(c for c in fp.manifest()["clips"] if c["clip_id"] == "a")
-    assert row["picture_duration"] is None
-    assert service._free_length(fp, "a", None) == pytest.approx(row["duration"])
+    assert row["picture_duration"] == pytest.approx(3.0, abs=0.1)
+
+
+@needs_ffmpeg
+def test_a_matroska_picture_is_measured_from_its_tag(tmp_path):
+    """Matroska gives a stream no ``duration`` of its own; its DURATION tag stands in."""
+    from muvid.visualize.ffmpeg import picture_duration
+
+    path = tmp_path / "a.mkv"
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+         "testsrc=size=160x120:rate=25:duration=3", "-pix_fmt", "yuv420p", str(path)],
+        check=True,
+    )  # fmt: skip
+    assert picture_duration(path) == pytest.approx(3.0, abs=0.1)
+
+
+def test_free_length_is_the_pictures_when_recorded():
+    from muvid.footage.edl import free_length
+
+    assert free_length(unplaced("c", 10.0)) == 10.0
+    assert free_length(replace(unplaced("c", 10.0), picture_s=4.0)) == 4.0

@@ -21,8 +21,9 @@ def _swap_fixture(tmp_path, *, dur, span=2.0, fade=1.0, nxt_fade=1.0):
         10.0 + span, 20.0, "b", transition=Transition(duration_s=nxt_fade, curve="fade")
     )
     fp = SimpleNamespace(
-        manifest=lambda: {"clips": [{"clip_id": "dog"}]},
+        manifest=lambda: {"clips": [{"clip_id": "dog", "picture_duration": None}]},
         load_alignments=lambda: [],
+        clip_paths=lambda: {"dog": "/nonexistent/dog.mp4"},  # unprobeable: no picture
     )
     return fp, e, nxt, dur
 
