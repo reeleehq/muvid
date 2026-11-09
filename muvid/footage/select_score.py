@@ -48,6 +48,7 @@ from muvid.footage.edl import (
     EdlEntry,
     FootageAlignment,
     _EPS,
+    synced_length,
     validate_edl,
 )
 from muvid.footage.trust import TRUST_TIERS, UNVERIFIED, UNVOUCHED
@@ -607,7 +608,7 @@ def span_rewards(tensor, aligns, spans, *, config) -> "list[float | None]":
             out.append(None)
             continue
         a, prefix = placed
-        if start < a.offset_s - _EPS or end > a.offset_s + a.duration_s + _EPS:
+        if start < a.offset_s - _EPS or end > a.offset_s + synced_length(a) + _EPS:
             out.append(None)
             continue
         out.append(
@@ -664,7 +665,9 @@ def _viterbi(aligns, boundaries, composite, tensor, cfg) -> _Solved:
 
     def contains(c, i, j):
         a = aligns[c]
-        return B[i] >= a.offset_s - _EPS and B[j] <= a.offset_s + a.duration_s + _EPS
+        return (
+            B[i] >= a.offset_s - _EPS and B[j] <= a.offset_s + synced_length(a) + _EPS
+        )
 
     def feasible(c, i, j):
         length = B[j] - B[i]

@@ -730,7 +730,7 @@ class FootageAlignment:
     song_match: "dict | None" = field(default=None, compare=False)
     #: How long the clip's PICTURE runs, when that was probed (``None`` = not recorded:
     #: the audio-measured ``duration_s`` stands). Derived from the manifest on load
-    #: (``FootageWorkspace.load_alignments``), never persisted here and never compared:
+    #: (``service._aligned`` / ``_placements``), never persisted here and never compared:
     #: a free cut reads only the picture, so :func:`placed_as` bounds it by this
     #: (muvid#322).
     picture_s: "float | None" = field(default=None, compare=False)
@@ -1476,7 +1476,8 @@ def _with_picture(a: "FootageAlignment", picture: float) -> "FootageAlignment":
     if a.source == UNPLACED or not a.overlaps or picture >= a.duration_s:
         return out
     end = max(a.coverage[0], min(a.coverage[1], a.offset_s + float(picture)))
-    return replace(out, coverage=(a.coverage[0], end))
+    # nothing of the song is left: the clip no longer overlaps it
+    return replace(out, coverage=(a.coverage[0], end), overlaps=end > a.coverage[0])
 
 
 def synced_length(a: "FootageAlignment") -> float:
