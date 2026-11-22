@@ -520,3 +520,31 @@ def test_the_in_point_provenance_round_trips_through_the_editor_lane():
     assert "source_in_by_hand" not in anns[1].body
     back = edl_from_annotations(anns)
     assert back[0]["source_in_by_hand"] is True and "source_in_by_hand" not in back[1]
+
+
+def test_the_cutters_in_point_provenance_round_trips_and_excludes_by_hand():
+    """muvid#357: the cutter's half of the provenance survives the editor round trip
+    (omit-when-False), and one in-point cannot be both the cutter's and a person's."""
+    from muvid.footage.edl import EdlEntry, unplaced, validate_edl
+
+    entries = [
+        EdlEntry(0.0, 2.0, "A", source_in=1.0, source_in_by_cutter=True),
+        EdlEntry(2.0, 4.0, "B", source_in=0.5),
+    ]
+    anns = edl_annotations(entries, song_asset_id=SONG_HASH, attributed_to="u:x")
+    assert anns[0].body["source_in_by_cutter"] is True
+    assert "source_in_by_cutter" not in anns[1].body
+    back = edl_from_annotations(anns)
+    assert back[0]["source_in_by_cutter"] is True and "source_in_by_cutter" not in back[1]
+    both = EdlEntry(
+        0.0, 2.0, "A", source_in=1.0, source_in_by_cutter=True, source_in_by_hand=True
+    )
+    with pytest.raises(ValueError, match="source_in_by_cutter"):
+        validate_edl([both], [unplaced("A", 10.0)], 2.0, allow_unreliable=True)
+    with pytest.raises(ValueError, match="source_in_by_cutter"):
+        validate_edl(
+            [EdlEntry(0.0, 2.0, "A", source_in_by_cutter=True)],
+            [unplaced("A", 10.0)],
+            2.0,
+            allow_unreliable=True,
+        )

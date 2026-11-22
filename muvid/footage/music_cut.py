@@ -1453,7 +1453,7 @@ def _one_cut(
     used.setdefault(src.clip_id, []).append((s_in, s_in + length))
     if inner:
         fits.setdefault(src.clip_id, []).append(fit)
-    return replace(draft, source_in=round(s_in, 4))
+    return replace(draft, source_in=round(s_in, 4), source_in_by_cutter=True)
 
 
 def _back_on_the_beat(entries: list, shifted: Mapping[float, float], by_id) -> list:

@@ -211,6 +211,9 @@ def _edl_body(e) -> dict:
     # Omit-when-False, the same rule as `look_time_varying`.
     if getattr(e, "source_in_by_hand", False):
         body["source_in_by_hand"] = True
+    # Omit-when-False; the cutter's half of the provenance (muvid#357).
+    if getattr(e, "source_in_by_cutter", False):
+        body["source_in_by_cutter"] = True
     return body
 
 
@@ -355,6 +358,8 @@ def edl_from_annotations(
             # provenance rides only beside the in-point it describes; a bool or nothing
             if a.body.get("source_in_by_hand") is True:
                 entry["source_in_by_hand"] = True
+            elif a.body.get("source_in_by_cutter") is True:
+                entry["source_in_by_cutter"] = True
         out.append(entry)
     return sorted(out, key=lambda e: e["song_start"])
 
