@@ -29,6 +29,10 @@ from __future__ import annotations
 # A too-old nw fails loudly at import rather than at first create: a missing name here,
 # a missing keyword in `genre_music_video` (through `nw.require_fields`). muvid pins the
 # floor in its [mcp] extra; muvid CORE never imports this module, so muvid stays nw-free.
+from muvid._needs import require_nw
+
+require_nw(needed_by="muvid.genre")
+
 from nw import Genre, Template, register_genre, register_genre_project_factory
 
 # Registering the footage-aligned `music_video` genre too, so a host's single

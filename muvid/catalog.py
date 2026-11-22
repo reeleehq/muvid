@@ -16,6 +16,10 @@ Its docstring states the rules (id = content hash, blob before row, hardlinked, 
 
 from __future__ import annotations
 
+from muvid._needs import require_nw
+
+require_nw(needed_by="muvid.catalog")
+
 from nw.media_catalog import (
     BACKEND_ENV_KEY,
     BYTES_ROUTE,

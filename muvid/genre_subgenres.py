@@ -24,6 +24,10 @@ only, which is the property the plugin surface exists to provide.
 
 from __future__ import annotations
 
+from muvid._needs import require_nw
+
+require_nw(needed_by="muvid.genre_subgenres")
+
 from nw import (
     Genre,
     Template,

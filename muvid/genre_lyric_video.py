@@ -27,6 +27,10 @@ ships, so it does not get to change later.
 
 from __future__ import annotations
 
+from muvid._needs import require_nw
+
+require_nw(needed_by="muvid.genre_lyric_video")
+
 from nw import (
     Genre,
     GenreOp,
