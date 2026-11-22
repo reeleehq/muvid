@@ -1737,7 +1737,9 @@ def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(fp, mon
         Section(label="verse", start=0.0, end=6.0),
         Section(label="chorus", start=6.0, end=12.0),
     )
-    shape = SimpleNamespace(sections=sections, beats=beats)
+    shape = SimpleNamespace(
+        sections=sections, beats=beats, section_source="energy"
+    )
     monkeypatch.setattr(service, "song_analysis", lambda f: shape)
     grid = service.beat_grid(fp)
     assert grid["sections"] == [
@@ -1745,7 +1747,15 @@ def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(fp, mon
         {"label": "chorus", "start_s": 6.0, "end_s": 12.0},
     ]
     assert grid["sections_source"] == "measured"
+    assert grid["sections_basis"] == "energy"
     assert grid["carried"] == [[0.0, 2.0], [4.0, 8.0], [9.5, 30.0]]
+    # one whole-song section from the energy analysis is no shape found (muvid#366)...
+    shape.sections = (Section(label="verse", start=0.0, end=30.0),)
+    flat = service.beat_grid(fp)
+    assert flat["sections_source"] == "none" and flat["sections_basis"] == "energy"
+    # ...but a single SUPPLIED section is what the caller said
+    shape.section_source = "supplied"
+    assert service.beat_grid(fp)["sections_source"] == "measured"
     # no section found: said, not left to an empty list
     shape.sections = ()
     assert service.beat_grid(fp)["sections_source"] == "none"
@@ -1758,7 +1768,8 @@ def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(fp, mon
     monkeypatch.setattr(service, "song_analysis", unreadable)
     out = service.beat_grid(fp)
     assert out["sections_source"] == "unavailable" and out["carried"] == []
+    assert out["sections_basis"] is None
     assert out["beats"] == list(beats)
     # the connector's pinned reply neither measures nor carries the shape
     pinned = service.beat_grid(fp, shape=False)
-    assert not {"sections", "sections_source", "carried"} & set(pinned)
+    assert not {"sections", "sections_source", "sections_basis", "carried"} & set(pinned)
