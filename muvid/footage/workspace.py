@@ -692,7 +692,9 @@ class MusicVideoFootageProject:
 
     def list_clips(self) -> list[dict]:
         """``[{clip_id, name}]`` — plus ``artifact_id`` when the host catalog holds it,
-        ``kind: "still"`` for a photo, and ``has_song`` when a person said (``set_has_song``)."""
+        ``kind: "still"`` for a photo, ``has_song`` when a person said (``set_has_song``),
+        and ``picture_duration`` (seconds) when the manifest recorded the video's picture
+        length (muvid#322), so a screen can bound a slip by the picture, not the container."""
         rows = []
         for c in self.manifest().get("clips", []):
             row = {"clip_id": c["clip_id"], "name": c.get("name", c["clip_id"])}
@@ -700,6 +702,7 @@ class MusicVideoFootageProject:
             _set_or_drop(row, "kind", c.get("kind"))
             _set_or_drop(row, "has_song", c.get("has_song"))
             _set_or_drop(row, "taken_at", c.get("taken_at"))
+            _set_or_drop(row, "picture_duration", c.get("picture_duration"))
             rows.append(row)
         return rows
 
