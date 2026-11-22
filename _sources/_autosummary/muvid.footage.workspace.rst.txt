@@ -26,7 +26,6 @@ muvid.footage.workspace
       file_lock
       fresh_output
       init_footage_project
-      no_record
       normalise_id
       read_json_dict
       replace_file

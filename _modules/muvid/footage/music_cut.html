@@ -1661,7 +1661,7 @@
 </span><span id="line-1453">    <span class="n">used</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">s_in</span><span class="p">,</span> <span class="n">s_in</span> <span class="o">+</span> <span class="n">length</span><span class="p">))</span>
 </span><span id="line-1454">    <span class="k">if</span> <span class="n">inner</span><span class="p">:</span>
 </span><span id="line-1455">        <span class="n">fits</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">clip_id</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fit</span><span class="p">)</span>
-</span><span id="line-1456">    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">draft</span><span class="p">,</span> <span class="n">source_in</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">s_in</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+</span><span id="line-1456">    <span class="k">return</span> <span class="n">replace</span><span class="p">(</span><span class="n">draft</span><span class="p">,</span> <span class="n">source_in</span><span class="o">=</span><span class="nb">round</span><span class="p">(</span><span class="n">s_in</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">source_in_by_cutter</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </span><span id="line-1457">
 </span><span id="line-1458">
 </span><span id="line-1459"><span class="k">def</span><span class="w"> </span><span class="nf">_back_on_the_beat</span><span class="p">(</span><span class="n">entries</span><span class="p">:</span> <span class="nb">list</span><span class="p">,</span> <span class="n">shifted</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">],</span> <span class="n">by_id</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
@@ -1745,7 +1745,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=547ee38f"></script>
+    <script src="../../../_static/documentation_options.js?v=f0066796"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

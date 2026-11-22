@@ -1214,7 +1214,7 @@
 </span><span id="line-930">                <span class="n">n</span> <span class="o">=</span> <span class="n">update_json_record</span><span class="p">(</span>
 </span><span id="line-931">                    <span class="n">meta_path</span><span class="p">,</span>
 </span><span id="line-932">                    <span class="k">lambda</span> <span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="n">nxt</span><span class="p">:</span> <span class="n">_assign_ref</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">),</span>
-</span><span id="line-933">                    <span class="n">default</span><span class="o">=</span><span class="n">no_record</span><span class="p">,</span>  <span class="c1"># never re-create a removed render's record</span>
+</span><span id="line-933">                    <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># must exist: never re-create a removed render's record</span>
 </span><span id="line-934">                <span class="p">)</span>
 </span><span id="line-935">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
 </span><span id="line-936">                <span class="c1"># A read-only or unreadable meta must not break listing; the ref is</span>
@@ -1434,138 +1434,128 @@
 </span><span id="line-1136">    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">record</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 </span><span id="line-1137">
 </span><span id="line-1138">
-<div class="viewcode-block" id="no_record">
-<a class="viewcode-back" href="../../../_autosummary/muvid.footage.workspace.html#muvid.footage.workspace.no_record">[docs]</a>
-</span><span id="line-1139"><span class="k">def</span><span class="w"> </span><span class="nf">no_record</span><span class="p">():</span>
-</span><span id="line-1140"><span class="w">    </span><span class="sd">"""The ``default`` of an :func:`update_json_record` that must not CREATE its record</span>
-</span><span id="line-1141"><span class="sd">    (a render's ``meta.json``): an absent one raises ``FileNotFoundError``, which the</span>
-</span><span id="line-1142"><span class="sd">    caller turns into its own "no such thing"."""</span>
-</span><span id="line-1143">    <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="s2">"the record to update does not exist"</span><span class="p">)</span></div>
-
-</span><span id="line-1144">
-</span><span id="line-1145">
 <div class="viewcode-block" id="read_json_dict">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.workspace.html#muvid.footage.workspace.read_json_dict">[docs]</a>
-</span><span id="line-1146"><span class="k">def</span><span class="w"> </span><span class="nf">read_json_dict</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"dict | None"</span><span class="p">:</span>
-</span><span id="line-1147"><span class="w">    </span><span class="sd">"""The JSON object at ``path``, or ``None`` when it is absent, unreadable or not an</span>
-</span><span id="line-1148"><span class="sd">    object — the read side of :func:`atomic_write_text` for a record a reader may</span>
-</span><span id="line-1149"><span class="sd">    find missing."""</span>
-</span><span id="line-1150">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-1151">        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-1152">    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-1153">        <span class="k">return</span> <span class="kc">None</span>
-</span><span id="line-1154">    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
+</span><span id="line-1139"><span class="k">def</span><span class="w"> </span><span class="nf">read_json_dict</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"dict | None"</span><span class="p">:</span>
+</span><span id="line-1140"><span class="w">    </span><span class="sd">"""The JSON object at ``path``, or ``None`` when it is absent, unreadable or not an</span>
+</span><span id="line-1141"><span class="sd">    object — the read side of :func:`atomic_write_text` for a record a reader may</span>
+</span><span id="line-1142"><span class="sd">    find missing."""</span>
+</span><span id="line-1143">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-1144">        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-1145">    <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-1146">        <span class="k">return</span> <span class="kc">None</span>
+</span><span id="line-1147">    <span class="k">return</span> <span class="n">data</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span></div>
 
-</span><span id="line-1155">
-</span><span id="line-1156">
+</span><span id="line-1148">
+</span><span id="line-1149">
 <div class="viewcode-block" id="init_footage_project">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.workspace.html#muvid.footage.workspace.init_footage_project">[docs]</a>
-</span><span id="line-1157"><span class="k">def</span><span class="w"> </span><span class="nf">init_footage_project</span><span class="p">(</span>
-</span><span id="line-1158">    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-</span><span id="line-1159">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-1160">    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-</span><span id="line-1161">    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
-</span><span id="line-1162">    <span class="n">canvas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_CANVAS_NAME</span><span class="p">,</span>
-</span><span id="line-1163">    <span class="n">media_catalog</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-</span><span id="line-1164">    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
-</span><span id="line-1165"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MusicVideoFootageProject</span><span class="p">:</span>
-</span><span id="line-1166"><span class="w">    </span><span class="sd">"""A footage project rooted at ``root``, writing its manifest if there is none yet.</span>
-</span><span id="line-1167">
-</span><span id="line-1168"><span class="sd">    The one place a footage manifest is born, for both the MCP workspace (below) and a</span>
-</span><span id="line-1169"><span class="sd">    host-placed :class:`muvid.Project` (whose footage lives at ``&lt;project&gt;/footage``).</span>
-</span><span id="line-1170"><span class="sd">    Idempotent: an existing manifest is left exactly as it is.</span>
-</span><span id="line-1171"><span class="sd">    """</span>
-</span><span id="line-1172">    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
-</span><span id="line-1173">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-1174">        <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-1175">        <span class="n">canvas_name</span> <span class="o">=</span> <span class="n">canvas</span> <span class="k">if</span> <span class="n">canvas</span> <span class="ow">in</span> <span class="n">CANVASES</span> <span class="k">else</span> <span class="n">DEFAULT_CANVAS_NAME</span>
-</span><span id="line-1176">        <span class="n">atomic_write_text</span><span class="p">(</span>
-</span><span id="line-1177">            <span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">,</span>
-</span><span id="line-1178">            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
-</span><span id="line-1179">                <span class="p">{</span>
-</span><span id="line-1180">                    <span class="s2">"title"</span><span class="p">:</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">project_id</span><span class="p">,</span>
-</span><span id="line-1181">                    <span class="s2">"canvas"</span><span class="p">:</span> <span class="n">canvas_name</span><span class="p">,</span>
-</span><span id="line-1182">                    <span class="s2">"created"</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-</span><span id="line-1183">                <span class="p">},</span>
-</span><span id="line-1184">                <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-</span><span id="line-1185">            <span class="p">),</span>
-</span><span id="line-1186">        <span class="p">)</span>
-</span><span id="line-1187">    <span class="k">return</span> <span class="n">MusicVideoFootageProject</span><span class="p">(</span>
-</span><span id="line-1188">        <span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">media_catalog</span><span class="o">=</span><span class="n">media_catalog</span>
-</span><span id="line-1189">    <span class="p">)</span></div>
+</span><span id="line-1150"><span class="k">def</span><span class="w"> </span><span class="nf">init_footage_project</span><span class="p">(</span>
+</span><span id="line-1151">    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+</span><span id="line-1152">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-1153">    <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+</span><span id="line-1154">    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+</span><span id="line-1155">    <span class="n">canvas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_CANVAS_NAME</span><span class="p">,</span>
+</span><span id="line-1156">    <span class="n">media_catalog</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+</span><span id="line-1157">    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span>
+</span><span id="line-1158"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MusicVideoFootageProject</span><span class="p">:</span>
+</span><span id="line-1159"><span class="w">    </span><span class="sd">"""A footage project rooted at ``root``, writing its manifest if there is none yet.</span>
+</span><span id="line-1160">
+</span><span id="line-1161"><span class="sd">    The one place a footage manifest is born, for both the MCP workspace (below) and a</span>
+</span><span id="line-1162"><span class="sd">    host-placed :class:`muvid.Project` (whose footage lives at ``&lt;project&gt;/footage``).</span>
+</span><span id="line-1163"><span class="sd">    Idempotent: an existing manifest is left exactly as it is.</span>
+</span><span id="line-1164"><span class="sd">    """</span>
+</span><span id="line-1165">    <span class="n">root</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root</span><span class="p">)</span>
+</span><span id="line-1166">    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-1167">        <span class="n">root</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-1168">        <span class="n">canvas_name</span> <span class="o">=</span> <span class="n">canvas</span> <span class="k">if</span> <span class="n">canvas</span> <span class="ow">in</span> <span class="n">CANVASES</span> <span class="k">else</span> <span class="n">DEFAULT_CANVAS_NAME</span>
+</span><span id="line-1169">        <span class="n">atomic_write_text</span><span class="p">(</span>
+</span><span id="line-1170">            <span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">,</span>
+</span><span id="line-1171">            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+</span><span id="line-1172">                <span class="p">{</span>
+</span><span id="line-1173">                    <span class="s2">"title"</span><span class="p">:</span> <span class="n">title</span> <span class="ow">or</span> <span class="n">project_id</span><span class="p">,</span>
+</span><span id="line-1174">                    <span class="s2">"canvas"</span><span class="p">:</span> <span class="n">canvas_name</span><span class="p">,</span>
+</span><span id="line-1175">                    <span class="s2">"created"</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+</span><span id="line-1176">                <span class="p">},</span>
+</span><span id="line-1177">                <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+</span><span id="line-1178">            <span class="p">),</span>
+</span><span id="line-1179">        <span class="p">)</span>
+</span><span id="line-1180">    <span class="k">return</span> <span class="n">MusicVideoFootageProject</span><span class="p">(</span>
+</span><span id="line-1181">        <span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="p">,</span> <span class="n">media_catalog</span><span class="o">=</span><span class="n">media_catalog</span>
+</span><span id="line-1182">    <span class="p">)</span></div>
 
-</span><span id="line-1190">
-</span><span id="line-1191">
+</span><span id="line-1183">
+</span><span id="line-1184">
 <div class="viewcode-block" id="FootageWorkspace">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.workspace.html#muvid.footage.workspace.FootageWorkspace">[docs]</a>
-</span><span id="line-1192"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-1193"><span class="k">class</span><span class="w"> </span><span class="nc">FootageWorkspace</span><span class="p">:</span>
-</span><span id="line-1194"><span class="w">    </span><span class="sd">"""A caller's private music-video area, addressed by ``email``."""</span>
+</span><span id="line-1185"><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-1186"><span class="k">class</span><span class="w"> </span><span class="nc">FootageWorkspace</span><span class="p">:</span>
+</span><span id="line-1187"><span class="w">    </span><span class="sd">"""A caller's private music-video area, addressed by ``email``."""</span>
+</span><span id="line-1188">
+</span><span id="line-1189">    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
+</span><span id="line-1190">    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span>
+</span><span id="line-1191">
+</span><span id="line-1192">    <span class="nd">@classmethod</span>
+</span><span id="line-1193">    <span class="k">def</span><span class="w"> </span><span class="nf">for_email</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"FootageWorkspace"</span><span class="p">:</span>
+</span><span id="line-1194">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">),</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">())</span>
 </span><span id="line-1195">
-</span><span id="line-1196">    <span class="n">email</span><span class="p">:</span> <span class="nb">str</span>
-</span><span id="line-1197">    <span class="n">root</span><span class="p">:</span> <span class="n">Path</span>
-</span><span id="line-1198">
-</span><span id="line-1199">    <span class="nd">@classmethod</span>
-</span><span id="line-1200">    <span class="k">def</span><span class="w"> </span><span class="nf">for_email</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">email</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">root</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"FootageWorkspace"</span><span class="p">:</span>
-</span><span id="line-1201">        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">canonical_email</span><span class="p">(</span><span class="n">email</span><span class="p">),</span> <span class="n">root</span><span class="o">=</span><span class="n">root</span> <span class="ow">or</span> <span class="n">data_root</span><span class="p">())</span>
+</span><span id="line-1196">    <span class="nd">@property</span>
+</span><span id="line-1197">    <span class="k">def</span><span class="w"> </span><span class="nf">projects_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-1198">        <span class="k">return</span> <span class="n">caller_bucket</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"music_video"</span> <span class="o">/</span> <span class="s2">"projects"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+</span><span id="line-1199">
+</span><span id="line-1200">    <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
+</span><span id="line-1201">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span> <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project_id"</span><span class="p">)</span>
 </span><span id="line-1202">
-</span><span id="line-1203">    <span class="nd">@property</span>
-</span><span id="line-1204">    <span class="k">def</span><span class="w"> </span><span class="nf">projects_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-1205">        <span class="k">return</span> <span class="n">caller_bucket</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"music_video"</span> <span class="o">/</span> <span class="s2">"projects"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
-</span><span id="line-1206">
-</span><span id="line-1207">    <span class="k">def</span><span class="w"> </span><span class="nf">project_root</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-</span><span id="line-1208">        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span> <span class="o">/</span> <span class="n">safe_component</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">"project_id"</span><span class="p">)</span>
-</span><span id="line-1209">
-</span><span id="line-1210">    <span class="k">def</span><span class="w"> </span><span class="nf">create_project</span><span class="p">(</span>
-</span><span id="line-1211">        <span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">canvas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_CANVAS_NAME</span>
-</span><span id="line-1212">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MusicVideoFootageProject</span><span class="p">:</span>
-</span><span id="line-1213">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-1214">        <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-1215">            <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
-</span><span id="line-1216">                <span class="sa">f</span><span class="s2">"project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> already exists for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-1217">            <span class="p">)</span>
-</span><span id="line-1218">        <span class="k">return</span> <span class="n">init_footage_project</span><span class="p">(</span>
-</span><span id="line-1219">            <span class="n">root</span><span class="p">,</span> <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span>
-</span><span id="line-1220">        <span class="p">)</span>
-</span><span id="line-1221">
-</span><span id="line-1222">    <span class="k">def</span><span class="w"> </span><span class="nf">open_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MusicVideoFootageProject</span><span class="p">:</span>
-</span><span id="line-1223">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
-</span><span id="line-1224">        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-1225">            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-1226">        <span class="k">return</span> <span class="n">MusicVideoFootageProject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
-</span><span id="line-1227">
-</span><span id="line-1228">    <span class="k">def</span><span class="w"> </span><span class="nf">list_projects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-</span><span id="line-1229">        <span class="n">pdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span>
-</span><span id="line-1230">        <span class="k">if</span> <span class="ow">not</span> <span class="n">pdir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-1231">            <span class="k">return</span> <span class="p">[]</span>
-</span><span id="line-1232">        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
-</span><span id="line-1233">        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">pdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
-</span><span id="line-1234">            <span class="n">spec</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"manifest.json"</span>
-</span><span id="line-1235">            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
-</span><span id="line-1236">                <span class="k">continue</span>
-</span><span id="line-1237">            <span class="k">try</span><span class="p">:</span>
-</span><span id="line-1238">                <span class="n">manifest</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
-</span><span id="line-1239">                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-</span><span id="line-1240">                    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-1241">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
-</span><span id="line-1242">                <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
-</span><span id="line-1243">            <span class="k">try</span><span class="p">:</span>
-</span><span id="line-1244">                <span class="n">mtime</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
-</span><span id="line-1245">            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
-</span><span id="line-1246">                <span class="k">continue</span>  <span class="c1"># vanished mid-scan</span>
-</span><span id="line-1247">            <span class="c1"># `modified`/`created` stay on the row: every consumer used to</span>
-</span><span id="line-1248">            <span class="c1"># re-guess an order this method had already computed and popped</span>
-</span><span id="line-1249">            <span class="c1"># (the delivery seam's ProjectLister sorts a cross-genre union).</span>
-</span><span id="line-1250">            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-</span><span id="line-1251">                <span class="p">{</span>
-</span><span id="line-1252">                    <span class="s2">"project_id"</span><span class="p">:</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-</span><span id="line-1253">                    <span class="s2">"title"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-</span><span id="line-1254">                    <span class="s2">"created"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"created"</span><span class="p">),</span>
-</span><span id="line-1255">                    <span class="s2">"modified"</span><span class="p">:</span> <span class="n">mtime</span><span class="p">,</span>
-</span><span id="line-1256">                <span class="p">}</span>
-</span><span id="line-1257">            <span class="p">)</span>
-</span><span id="line-1258">        <span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"modified"</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-1259">        <span class="k">return</span> <span class="n">rows</span></div>
+</span><span id="line-1203">    <span class="k">def</span><span class="w"> </span><span class="nf">create_project</span><span class="p">(</span>
+</span><span id="line-1204">        <span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">""</span><span class="p">,</span> <span class="n">canvas</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">DEFAULT_CANVAS_NAME</span>
+</span><span id="line-1205">    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MusicVideoFootageProject</span><span class="p">:</span>
+</span><span id="line-1206">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-1207">        <span class="k">if</span> <span class="n">root</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-1208">            <span class="k">raise</span> <span class="ne">FileExistsError</span><span class="p">(</span>
+</span><span id="line-1209">                <span class="sa">f</span><span class="s2">"project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> already exists for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-1210">            <span class="p">)</span>
+</span><span id="line-1211">        <span class="k">return</span> <span class="n">init_footage_project</span><span class="p">(</span>
+</span><span id="line-1212">            <span class="n">root</span><span class="p">,</span> <span class="n">project_id</span><span class="o">=</span><span class="n">project_id</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">title</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span>
+</span><span id="line-1213">        <span class="p">)</span>
+</span><span id="line-1214">
+</span><span id="line-1215">    <span class="k">def</span><span class="w"> </span><span class="nf">open_project</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MusicVideoFootageProject</span><span class="p">:</span>
+</span><span id="line-1216">        <span class="n">root</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">project_root</span><span class="p">(</span><span class="n">project_id</span><span class="p">)</span>
+</span><span id="line-1217">        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">root</span> <span class="o">/</span> <span class="s2">"manifest.json"</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-1218">            <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"no project </span><span class="si">{</span><span class="n">project_id</span><span class="si">!r}</span><span class="s2"> for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-1219">        <span class="k">return</span> <span class="n">MusicVideoFootageProject</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">project_id</span><span class="p">,</span> <span class="n">root</span><span class="p">)</span>
+</span><span id="line-1220">
+</span><span id="line-1221">    <span class="k">def</span><span class="w"> </span><span class="nf">list_projects</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+</span><span id="line-1222">        <span class="n">pdir</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">projects_dir</span>
+</span><span id="line-1223">        <span class="k">if</span> <span class="ow">not</span> <span class="n">pdir</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-1224">            <span class="k">return</span> <span class="p">[]</span>
+</span><span id="line-1225">        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+</span><span id="line-1226">        <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">pdir</span><span class="o">.</span><span class="n">iterdir</span><span class="p">():</span>
+</span><span id="line-1227">            <span class="n">spec</span> <span class="o">=</span> <span class="n">child</span> <span class="o">/</span> <span class="s2">"manifest.json"</span>
+</span><span id="line-1228">            <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">child</span><span class="o">.</span><span class="n">is_dir</span><span class="p">()</span> <span class="ow">and</span> <span class="n">spec</span><span class="o">.</span><span class="n">exists</span><span class="p">()):</span>
+</span><span id="line-1229">                <span class="k">continue</span>
+</span><span id="line-1230">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-1231">                <span class="n">manifest</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">spec</span><span class="o">.</span><span class="n">read_text</span><span class="p">())</span>
+</span><span id="line-1232">                <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">manifest</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+</span><span id="line-1233">                    <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-1234">            <span class="k">except</span> <span class="p">(</span><span class="ne">OSError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+</span><span id="line-1235">                <span class="n">manifest</span> <span class="o">=</span> <span class="p">{}</span>
+</span><span id="line-1236">            <span class="k">try</span><span class="p">:</span>
+</span><span id="line-1237">                <span class="n">mtime</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span><span class="o">.</span><span class="n">st_mtime</span>
+</span><span id="line-1238">            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+</span><span id="line-1239">                <span class="k">continue</span>  <span class="c1"># vanished mid-scan</span>
+</span><span id="line-1240">            <span class="c1"># `modified`/`created` stay on the row: every consumer used to</span>
+</span><span id="line-1241">            <span class="c1"># re-guess an order this method had already computed and popped</span>
+</span><span id="line-1242">            <span class="c1"># (the delivery seam's ProjectLister sorts a cross-genre union).</span>
+</span><span id="line-1243">            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+</span><span id="line-1244">                <span class="p">{</span>
+</span><span id="line-1245">                    <span class="s2">"project_id"</span><span class="p">:</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="line-1246">                    <span class="s2">"title"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"title"</span><span class="p">)</span> <span class="ow">or</span> <span class="n">child</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="line-1247">                    <span class="s2">"created"</span><span class="p">:</span> <span class="n">manifest</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"created"</span><span class="p">),</span>
+</span><span id="line-1248">                    <span class="s2">"modified"</span><span class="p">:</span> <span class="n">mtime</span><span class="p">,</span>
+</span><span id="line-1249">                <span class="p">}</span>
+</span><span id="line-1250">            <span class="p">)</span>
+</span><span id="line-1251">        <span class="n">rows</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">r</span><span class="p">:</span> <span class="n">r</span><span class="p">[</span><span class="s2">"modified"</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-1252">        <span class="k">return</span> <span class="n">rows</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -1580,7 +1570,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=547ee38f"></script>
+    <script src="../../../_static/documentation_options.js?v=f0066796"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

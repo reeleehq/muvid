@@ -74,7 +74,7 @@ editorial — on a real 478x850 clip of dancers a whole body does not fit in a
 full-width 16:9 window at all (315-380px of subject into 269px), so “heads or
 feet” is a decision per cut, not a default.
 
-### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False)
+### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -218,6 +218,18 @@ b-roll, stills — cut to the music rather than synced to it: its map is
 claims no sync there is nothing for the aligner to vouch for (see
 `placed_as()`). Additive in both directions, like the rest: an EDL without it
 means what it always meant.
+
+#### source_in_by_cutter *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
+
+the CUTTER chose [`source_in`](#muvid.footage.EdlEntry.source_in)
+(set when `music_cut` fills a free video cut). `explain_edit` gives its
+beat-change rationale only for an in-point that says so; a record without it, a
+swap, a `save_edit` write or an editor move gets a neutral sentence (less
+detail, never false). Cleared with [`source_in_by_hand`](#muvid.footage.EdlEntry.source_in_by_hand) whenever a person
+sets or the swap re-picks the in-point. Omit-when-False.
+
+* **Type:**
+  The other half of the provenance (muvid#357)
 
 #### source_in_by_hand *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
 
