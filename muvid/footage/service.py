@@ -1595,6 +1595,10 @@ def beat_grid(fp, *, shape: bool = True) -> dict:
     verse, chorus ... — from the song analysis), with ``sections_source`` ``measured``,
     ``none`` (the analysis found no section: "one section" can be said, not inferred from
     an empty list) or ``unavailable`` (the song could not be analysed here); and
+    ``sections_basis`` says how they were derived (``energy`` — which bars are louder, so
+    a 'chorus' is only the louder half — ``structure`` or ``supplied``; ``None`` when
+    unavailable), and a single whole-song section from the ``energy`` analysis is
+    reported as ``none`` (muvid#366); and
     ``carried`` (``[[start_s, end_s], ...]``), the spans where the grid the music cutter
     uses (a declared one included) has no measured beat and is carried on at the song's
     own pace. ``carried`` is read on the analysis's grid, which is the one the cutter
@@ -1643,14 +1647,25 @@ def _song_shape(fp) -> dict:
     # analysis falls back to its numpy estimator rather than refusing, and anything else
     # is a regression that propagates.
     except (FfmpegError, OSError):
-        return {"sections": [], "sections_source": "unavailable", "carried": []}
+        return {
+            "sections": [],
+            "sections_source": "unavailable",
+            "sections_basis": None,
+            "carried": [],
+        }
     sections = [
         {"label": x.label, "start_s": x.start, "end_s": x.end}
         for x in analysis.sections
     ]
+    basis = analysis.section_source or None
+    # The energy analysis always returns at least one section, so a flat song comes
+    # back as ONE whole-song 'verse': that is the analysis not finding a shape, and it
+    # is reported as such (muvid#366). A single SUPPLIED or structural section stands.
+    found = len(sections) > 1 or (len(sections) == 1 and basis != "energy")
     return {
         "sections": sections,
-        "sections_source": "measured" if sections else "none",
+        "sections_source": "measured" if found else "none",
+        "sections_basis": basis,
         "carried": carried_spans(analysis.beats, fp.song_duration()),
     }
 
