@@ -67,6 +67,10 @@ from __future__ import annotations
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
 
+from muvid._needs import require_nw
+
+require_nw(needed_by="muvid.downloads")
+
 from nw.delivery import Deliverable, format_ref, parse_ref
 
 #: The genre identifier the connector's resolver registry keys on.

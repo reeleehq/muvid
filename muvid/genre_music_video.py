@@ -27,6 +27,10 @@ from __future__ import annotations
 
 import inspect
 
+from muvid._needs import require_nw
+
+require_nw(needed_by="muvid.genre_music_video")
+
 from nw import (
     Genre,
     GenreOp,
