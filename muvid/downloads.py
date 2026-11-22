@@ -702,11 +702,11 @@ def organise(
         # (ref_n, edl, download, ...) that another writer — the ref backfill of
         # ensure_render_refs — may be setting at this moment, so it is re-read and changed
         # under the meta's lock, and replaced atomically.
-        from muvid.footage.workspace import no_record, update_json_record
+        from muvid.footage.workspace import update_json_record
 
         try:
             update_json_record(
-                proj.renders_dir / render_id / "meta.json", change, default=no_record
+                proj.renders_dir / render_id / "meta.json", change, default=None
             )
         except FileNotFoundError:  # a render still in flight, or one that crashed
             raise KeyError(

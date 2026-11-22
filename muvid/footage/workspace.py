@@ -930,7 +930,7 @@ class MusicVideoFootageProject:
                 n = update_json_record(
                     meta_path,
                     lambda m, n=nxt: _assign_ref(m, n),
-                    default=no_record,  # never re-create a removed render's record
+                    default=None,  # must exist: never re-create a removed render's record
                 )
             except (OSError, ValueError):
                 # A read-only or unreadable meta must not break listing; the ref is
@@ -1134,13 +1134,6 @@ RECORD_PERMS = 0o600
 def _record_dumps(record) -> str:
     """A record's on-disk form — and what "it changed" is measured on."""
     return json.dumps(record, indent=2)
-
-
-def no_record():
-    """The ``default`` of an :func:`update_json_record` that must not CREATE its record
-    (a render's ``meta.json``): an absent one raises ``FileNotFoundError``, which the
-    caller turns into its own "no such thing"."""
-    raise FileNotFoundError("the record to update does not exist")
 
 
 def read_json_dict(path) -> "dict | None":
