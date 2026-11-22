@@ -213,7 +213,7 @@ without editing muvid.</p>
 <code class="docutils literal notranslate"><span class="pre">ELEVENLABS_API_KEY</span></code> (transcription), <code class="docutils literal notranslate"><span class="pre">FAL_KEY</span></code> (fal.ai generation).</p>
 </section>
 <section id="muvid-visualize-audio-cover-video">
-<h2><code class="docutils literal notranslate"><span class="pre">muvid.visualize</span></code> — audio + cover → video<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-visualize-audio-cover-video" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-visualize-audio-cover-video'">¶</a></h2>
+<span id="muvidvisualize--audio--cover--video"></span><h2><code class="docutils literal notranslate"><span class="pre">muvid.visualize</span></code> — audio + cover → video<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-visualize-audio-cover-video" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-visualize-audio-cover-video'">¶</a></h2>
 <p>Turn a song into a publishable music video, without the AI pipeline:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize</span><span class="w"> </span><span class="kn">import</span> <span class="n">render_audio_video</span><span class="p">,</span> <span class="n">list_visuals</span><span class="p">,</span> <span class="n">verify_video</span><span class="p">,</span> <span class="n">report</span>
 </span><span id="line-2">
@@ -249,7 +249,7 @@ except Ken Burns (via <code class="docutils literal notranslate"><span class="pr
 <code class="docutils literal notranslate"><span class="pre">muvid.visualize</span></code> and uploads.</p>
 </section>
 <section id="the-music-video-genre-footage-assembly">
-<h2>The <code class="docutils literal notranslate"><span class="pre">music_video</span></code> genre — footage assembly<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#the-music-video-genre-footage-assembly" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#the-music-video-genre-footage-assembly'">¶</a></h2>
+<span id="the-music_video-genre--footage-assembly"></span><h2>The <code class="docutils literal notranslate"><span class="pre">music_video</span></code> genre — footage assembly<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#the-music-video-genre-footage-assembly" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#the-music-video-genre-footage-assembly'">¶</a></h2>
 <p>Several people filmed the same gig on their phones. Each recording caught the <em>same
 song</em> through a different mic, from a different seat, starting at a different moment.
 <code class="docutils literal notranslate"><span class="pre">muvid.footage</span></code> puts them all on the clean studio master’s timeline and cuts a music
@@ -345,7 +345,7 @@ time on one axis — and reads an edited <code class="docutils literal notransla
 → export → render round-trips to the same cuts, transitions included.</p>
 </section>
 <section id="muvid-lyricvid-lyric-videos">
-<h2><code class="docutils literal notranslate"><span class="pre">muvid.lyricvid</span></code> — lyric videos<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-lyricvid-lyric-videos" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-lyricvid-lyric-videos'">¶</a></h2>
+<span id="muvidlyricvid--lyric-videos"></span><h2><code class="docutils literal notranslate"><span class="pre">muvid.lyricvid</span></code> — lyric videos<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-lyricvid-lyric-videos" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-lyricvid-lyric-videos'">¶</a></h2>
 <p>A song in, a typographic music video out: the words appear in time with the
 singing. Free, deterministic, and no API key.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">pip<span class="w"> </span>install<span class="w"> </span><span class="s1">'muvid[lyricvid]'</span>
@@ -389,7 +389,7 @@ editable deliverable you can open in Aegisub. <code class="docutils literal notr
 effects ASS cannot express, at 10-100x the render time.</p>
 </section>
 <section id="muvid-choreo-visual-music">
-<h2><code class="docutils literal notranslate"><span class="pre">muvid.choreo</span></code> — visual music<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-choreo-visual-music" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-choreo-visual-music'">¶</a></h2>
+<span id="muvidchoreo--visual-music"></span><h2><code class="docutils literal notranslate"><span class="pre">muvid.choreo</span></code> — visual music<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-choreo-visual-music" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-choreo-visual-music'">¶</a></h2>
 <p>Audio in, nothing else. The Oskar Fischinger / Norman McLaren / “Star Guitar”
 lineage: discrete musical <strong>events</strong> become <strong>objects</strong> with persistence on
 screen, and sections become different arrangements — choreographed and
@@ -407,7 +407,7 @@ are drawn in numpy and piped into ffmpeg. Deterministic: same song and seed,
 same video. <code class="docutils literal notranslate"><span class="pre">events.json</span></code> and <code class="docutils literal notranslate"><span class="pre">scene.json</span></code> ride along as inspectable artifacts.</p>
 </section>
 <section id="muvid-montage-beat-cut-montage">
-<h2><code class="docutils literal notranslate"><span class="pre">muvid.montage</span></code> — beat-cut montage<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-montage-beat-cut-montage" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-montage-beat-cut-montage'">¶</a></h2>
+<span id="muvidmontage--beat-cut-montage"></span><h2><code class="docutils literal notranslate"><span class="pre">muvid.montage</span></code> — beat-cut montage<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid-montage-beat-cut-montage" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid-montage-beat-cut-montage'">¶</a></h2>
 <p>A song plus a pool of photos and/or short clips that have no timeline of their
 own — the thing “photo beat sync” templates sell.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">python<span class="w"> </span>-m<span class="w"> </span>muvid.montage<span class="w"> </span>render<span class="w"> </span>song.wav<span class="w"> </span>out.mp4<span class="w"> </span>--photos<span class="w"> </span>a.jpg<span class="w"> </span>b.jpg<span class="w"> </span>c.jpg
@@ -425,7 +425,7 @@ the beat), <code class="docutils literal notranslate"><span class="pre">stop_mot
 <em>before</em> rendering and rides along as an artifact, so an edit is a re-render.</p>
 </section>
 <section id="plugins-adding-a-kind-of-video">
-<h2>Plugins — adding a kind of video<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#plugins-adding-a-kind-of-video" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#plugins-adding-a-kind-of-video'">¶</a></h2>
+<span id="plugins--adding-a-kind-of-video"></span><h2>Plugins — adding a kind of video<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#plugins-adding-a-kind-of-video" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#plugins-adding-a-kind-of-video'">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">muvid.subgenres</span></code> is how another kind of video gets added, by muvid or by anyone
 else, without editing muvid. A subgenre is declared as pure data:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres</span><span class="w"> </span><span class="kn">import</span> <span class="n">Subgenre</span>
@@ -475,7 +475,7 @@ nothing in muvid names them. They appear in the <code class="docutils literal no
 workspace and validates the request against the manifest’s own schema first.</p>
 </section>
 <section id="second-tour">
-<h2>30-second tour<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#second-tour" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#second-tour'">¶</a></h2>
+<span id="30-second-tour"></span><h2>30-second tour<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#second-tour" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#second-tour'">¶</a></h2>
 <p>Every verb takes the project root explicitly. Ask muvid where a project belongs rather
 than inventing a path: an app-named folder under your home directory is data sitting where
 only code belongs, and nothing backs it up or cleans it up.</p>
@@ -685,7 +685,7 @@ Claude Code skills) through the eight stages. It will:</p>
 
 </section>
 </section>
-<p class="epythet-provenance" style="font-size:.8em;opacity:.65;margin-top:2.5em;text-align:right">built 2026-11-09 13:32 UTC from <a href="https://github.com/reeleehq/muvid/commit/1f82d6ed22e257cd5a6fdd56d2ee9c8b6dc1c355">1f82d6e</a> (main) · muvid 0.0.187 · <a href="about-this-build.html">about this build</a></p>
+<p class="epythet-provenance" style="font-size:.8em;opacity:.65;margin-top:2.5em;text-align:right">built 2026-11-22 09:40 UTC from <a href="https://github.com/reeleehq/muvid/commit/f9677101da4d7cb6a78f0f3b236a17e2a3e785d8">f967710</a> (main) · muvid 0.0.188 · <a href="about-this-build.html">about this build</a></p>
 </div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
 <div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
 <ul>
@@ -718,7 +718,7 @@ Claude Code skills) through the eight stages. It will:</p>
 </div>
 </footer>
 </div>
-<script src="_static/documentation_options.js?v=fb38a306"></script>
+<script src="_static/documentation_options.js?v=132200c4"></script>
 <script src="_static/doctools.js?v=fd6eb6e6"></script>
 <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="_static/clipboard.min.js?v=a7894cd8"></script>
