@@ -2676,6 +2676,7 @@ EDL_OPTIONAL_FIELDS = (
     ("rate", float, 1.0),
     ("source_in", float, None),
     ("source_in_by_hand", bool, False),
+    ("source_in_by_cutter", bool, False),
 )
 
 
@@ -3425,6 +3426,7 @@ def set_cut(
             rate=1.0,
             source_in=None,  # set below, from the cut as it will finally be
             source_in_by_hand=False,  # the new video's part is the backend's pick
+            source_in_by_cutter=False,  # ...by the swap, not by the cutter (muvid#357)
         )
         swapped = True
         if not clip_id:  # a gap carries no picture, so no look either
@@ -3494,7 +3496,13 @@ def set_cut(
     if source_in_s is not None:
         following = entries[i + 1] if i + 1 < len(entries) else None
         chosen, clamped = _chosen_in_point(fp, e, source_in_s, following)
-        e = replace(e, source_in=chosen, slip_s=0.0, source_in_by_hand=True)
+        e = replace(
+            e,
+            source_in=chosen,
+            slip_s=0.0,
+            source_in_by_hand=True,
+            source_in_by_cutter=False,
+        )
     entries[i] = e
     reply = _store_changed(fp, record, entries, changed=i)
     if clamped:

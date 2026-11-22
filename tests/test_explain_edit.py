@@ -318,3 +318,26 @@ def test_a_part_a_person_chose_is_not_given_the_cutters_rationale():
     assert "the part you chose" in said and "chosen because" not in said
     other = explain(auto, analysis=an, song_duration=40.0, clips=_clips())["cuts"][0]["text"]
     assert "the part you chose" not in other
+
+
+def test_the_cutters_rationale_is_given_only_for_an_in_point_the_cutter_chose():
+    """muvid#357: a record that does not say the cutter chose the in-point (a swap, a
+    saved edit, an editor move, an old record) gets a neutral sentence, not a reason."""
+    an = _analysis(bpm=60.0)
+    kw = dict(analysis=an, song_duration=40.0, clips=_clips())
+    unmarked = explain([EdlEntry(0.0, 4.0, "v1", source_in=3.0)], **kw)["cuts"][0]["text"]
+    chosen = explain(
+        [EdlEntry(0.0, 4.0, "v1", source_in=3.0, source_in_by_cutter=True)], **kw
+    )["cuts"][0]["text"]
+    assert "chosen" not in unmarked and "picture changes" not in unmarked
+    assert unmarked.rstrip(".").endswith("into the clip")
+    assert chosen != unmarked and "into the clip," in chosen
+
+
+def test_the_cutter_marks_the_video_in_points_it_chose():
+    """muvid#357: ``music_cut`` fill sets the flag on a free VIDEO cut (the in-point its
+    rationale explains), and not on a still's blend lead."""
+    cut = _fill(analysis=_analysis(), archetype="beat_cut")
+    videos = [e for e in cut.entries if e.clip_id.startswith("v")]
+    assert videos and all(e.source_in_by_cutter for e in videos)
+    assert not any(e.source_in_by_cutter for e in cut.entries if e.clip_id == "p1")

@@ -1307,6 +1307,13 @@ class EdlEntry:
     #: part, muvid#342); it changes no pixels. Cleared when the cut is given another
     #: video. Omit-when-False, like :attr:`look_time_varying`.
     source_in_by_hand: bool = False
+    #: The other half of the provenance (muvid#357): the CUTTER chose :attr:`source_in`
+    #: (set when ``music_cut`` fills a free video cut). ``explain_edit`` gives its
+    #: beat-change rationale only for an in-point that says so; a record without it, a
+    #: swap, a ``save_edit`` write or an editor move gets a neutral sentence (less
+    #: detail, never false). Cleared with :attr:`source_in_by_hand` whenever a person
+    #: sets or the swap re-picks the in-point. Omit-when-False.
+    source_in_by_cutter: bool = False
 
     @property
     def is_gap(self) -> bool:
@@ -1665,6 +1672,7 @@ def _as_entry(e) -> EdlEntry:
         rate=_as_rate(e.get("rate")),
         source_in=_as_source_in(e.get("source_in")),
         source_in_by_hand=_as_flag(e.get("source_in_by_hand"), "source_in_by_hand"),
+        source_in_by_cutter=_as_flag(e.get("source_in_by_cutter"), "source_in_by_cutter"),
     )
 
 
@@ -1917,6 +1925,16 @@ def validate_edl(
             raise ValueError(
                 f"EDL entry {i} sets source_in_by_hand but has no source_in: the flag "
                 "says who chose the part of the video, and an anchored cut has none."
+            )
+        if e.source_in_by_cutter and e.source_in is None:
+            raise ValueError(
+                f"EDL entry {i} sets source_in_by_cutter but has no source_in: the flag "
+                "says who chose the part of the video, and an anchored cut has none."
+            )
+        if e.source_in_by_cutter and e.source_in_by_hand:
+            raise ValueError(
+                f"EDL entry {i} sets both source_in_by_cutter and source_in_by_hand: "
+                "one chose the part of the video, not both."
             )
         prev_end = e.song_end
         prev = e
@@ -2179,6 +2197,7 @@ def _continues(prev: "EdlEntry", e: "EdlEntry") -> bool:
             abs(moved.source_in - e.source_in) <= _EPS
             and abs(moved.slip_s - e.slip_s) <= _EPS
             and prev.source_in_by_hand == e.source_in_by_hand
+            and prev.source_in_by_cutter == e.source_in_by_cutter
         )
     return abs(moved.slip_s - e.slip_s) <= _EPS
 
