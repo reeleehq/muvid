@@ -1672,7 +1672,9 @@ def _as_entry(e) -> EdlEntry:
         rate=_as_rate(e.get("rate")),
         source_in=_as_source_in(e.get("source_in")),
         source_in_by_hand=_as_flag(e.get("source_in_by_hand"), "source_in_by_hand"),
-        source_in_by_cutter=_as_flag(e.get("source_in_by_cutter"), "source_in_by_cutter"),
+        source_in_by_cutter=_as_flag(
+            e.get("source_in_by_cutter"), "source_in_by_cutter"
+        ),
     )
 
 
