@@ -221,7 +221,9 @@ Delete persisted score tracks — the primary invalidation on song/offset change
 #### list_clips()
 
 `[{clip_id, name}]` — plus `artifact_id` when the host catalog holds it,
-`kind: "still"` for a photo, and `has_song` when a person said (`set_has_song`).
+`kind: "still"` for a photo, `has_song` when a person said (`set_has_song`),
+and `picture_duration` (seconds) when the manifest recorded the video’s picture
+length (muvid#322), so a screen can bound a slip by the picture, not the container.
 
 * **Return type:**
   [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)]
