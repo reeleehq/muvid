@@ -320,6 +320,10 @@ And the song’s shape (muvid#316): `sections` (`[{label, start_s, end_s}]` — 
 verse, chorus … — from the song analysis), with `sections_source` `measured`,
 `none` (the analysis found no section: “one section” can be said, not inferred from
 an empty list) or `unavailable` (the song could not be analysed here); and
+`sections_basis` says how they were derived (`energy` — which bars are louder, so
+a ‘chorus’ is only the louder half — `structure` or `supplied`; `None` when
+unavailable), and a single whole-song section from the `energy` analysis is
+reported as `none` (muvid#366); and
 `carried` (`[[start_s, end_s], ...]`), the spans where the grid the music cutter
 uses (a declared one included) has no measured beat and is carried on at the song’s
 own pace. `carried` is read on the analysis’s grid, which is the one the cutter

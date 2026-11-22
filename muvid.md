@@ -1,4 +1,4 @@
-> built 2026-11-22 10:02 UTC from f1d2953 (main) · muvid 0.0.189. Details: build_info.json
+> built 2026-11-22 10:32 UTC from 7e40c43 (main) · muvid 0.0.190. Details: build_info.json
 
 # index.html.md
 
@@ -9339,6 +9339,10 @@ And the song’s shape (muvid#316): `sections` (`[{label, start_s, end_s}]` — 
 verse, chorus … — from the song analysis), with `sections_source` `measured`,
 `none` (the analysis found no section: “one section” can be said, not inferred from
 an empty list) or `unavailable` (the song could not be analysed here); and
+`sections_basis` says how they were derived (`energy` — which bars are louder, so
+a ‘chorus’ is only the louder half — `structure` or `supplied`; `None` when
+unavailable), and a single whole-song section from the `energy` analysis is
+reported as `none` (muvid#366); and
 `carried` (`[[start_s, end_s], ...]`), the spans where the grid the music cutter
 uses (a declared one included) has no measured beat and is carried on at the song’s
 own pace. `carried` is read on the analysis’s grid, which is the one the cutter
@@ -21030,7 +21034,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-22 10:02 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/f1d2953a46c840a13eac098a6b28a43540db3aab"><code>f1d2953</code></a> on branch <code>main</code>, for **muvid 0.0.189** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-22 10:32 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/7e40c438feee7564df3c98b6409c16d040cc5adc"><code>7e40c43</code></a> on branch <code>main</code>, for **muvid 0.0.190** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -21039,9 +21043,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/f1d2953a46c840a13eac098a6b28a43540db3aab"><code>f1d2953a46c840a13eac098a6b28a43540db3aab</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/7e40c438feee7564df3c98b6409c16d040cc5adc"><code>7e40c438feee7564df3c98b6409c16d040cc5adc</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.189</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.190</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21050,9 +21054,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45009589776">45009589776</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45011519317">45011519317</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>a5767199329bec4e79d6748f94747dcda3028510</code> (in the history of the built commit) |
+| Event commit | <code>a1e97d387732fba72b9b73c74434d7dad6400fb1</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21077,13 +21081,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.189/">0.0.189</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.190/">0.0.190</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout f1d2953a46c840a13eac098a6b28a43540db3aab
+git checkout 7e40c438feee7564df3c98b6409c16d040cc5adc
 pip install "epythet==0.2.23"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

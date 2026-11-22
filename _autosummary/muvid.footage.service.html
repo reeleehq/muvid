@@ -604,6 +604,10 @@ bar number, 1 for the first bar, 0 for a pickup before it).</p>
 verse, chorus … — from the song analysis), with <code class="docutils literal notranslate"><span class="pre">sections_source</span></code> <code class="docutils literal notranslate"><span class="pre">measured</span></code>,
 <code class="docutils literal notranslate"><span class="pre">none</span></code> (the analysis found no section: “one section” can be said, not inferred from
 an empty list) or <code class="docutils literal notranslate"><span class="pre">unavailable</span></code> (the song could not be analysed here); and
+<code class="docutils literal notranslate"><span class="pre">sections_basis</span></code> says how they were derived (<code class="docutils literal notranslate"><span class="pre">energy</span></code> — which bars are louder, so
+a ‘chorus’ is only the louder half — <code class="docutils literal notranslate"><span class="pre">structure</span></code> or <code class="docutils literal notranslate"><span class="pre">supplied</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> when
+unavailable), and a single whole-song section from the <code class="docutils literal notranslate"><span class="pre">energy</span></code> analysis is
+reported as <code class="docutils literal notranslate"><span class="pre">none</span></code> (muvid#366); and
 <code class="docutils literal notranslate"><span class="pre">carried</span></code> (<code class="docutils literal notranslate"><span class="pre">[[start_s,</span> <span class="pre">end_s],</span> <span class="pre">...]</span></code>), the spans where the grid the music cutter
 uses (a declared one included) has no measured beat and is carried on at the song’s
 own pace. <code class="docutils literal notranslate"><span class="pre">carried</span></code> is read on the analysis’s grid, which is the one the cutter
@@ -1615,7 +1619,7 @@ a candidate.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=b75a84dd"></script>
+<script src="../_static/documentation_options.js?v=547ee38f"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
