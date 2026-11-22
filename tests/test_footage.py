@@ -802,3 +802,24 @@ def test_list_music_video_projects_recovers_a_lost_project_id(tmp_path, monkeypa
     with use_email("other@x.com"):
         theirs = ft.list_music_video_projects()["projects"]
     assert [r["project_id"] for r in theirs] == ["theirs"]
+
+
+def test_list_clips_surfaces_picture_duration_only_when_recorded(tmp_path):
+    """muvid#367: the row carries the manifest's picture_duration; absent stays absent."""
+    from muvid.footage.workspace import MusicVideoFootageProject as FootagePaths
+
+    class _P(FootagePaths):
+        def __init__(self, clips):
+            self._clips = clips
+
+        def manifest(self):
+            return {"clips": self._clips}
+
+    rows = _P(
+        [
+            {"clip_id": "A", "picture_duration": 12.5},
+            {"clip_id": "B"},
+        ]
+    ).list_clips()
+    assert rows[0]["picture_duration"] == 12.5
+    assert "picture_duration" not in rows[1]
