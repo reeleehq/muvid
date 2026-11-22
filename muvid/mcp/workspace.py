@@ -118,13 +118,13 @@ class VisualizerProject:
         """Merge ``changes`` into a render's existing ``meta.json`` under its lock, so a
         key another writer set meanwhile (an ``organise`` title, the ref backfill) is kept
         rather than replaced by a whole-record rewrite (muvid#348)."""
-        from muvid.footage.workspace import no_record, update_json_record
+        from muvid.footage.workspace import update_json_record
 
         rid = _safe_component(render_id, label="render_id")
         update_json_record(
             self.renders_dir / rid / "meta.json",
             lambda m: m.update(changes),
-            default=no_record,
+            default=None,  # the render's record must exist
         )
 
     def register_render(self, meta: dict) -> dict:

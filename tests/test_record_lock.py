@@ -30,7 +30,7 @@ def _file(path, payload: bytes):
 def test_a_record_that_must_exist_is_not_created(tmp_path):
     path = tmp_path / "meta.json"
     with pytest.raises(FileNotFoundError):
-        W.update_json_record(path, lambda m: m.update(a=1), default=W.no_record)
+        W.update_json_record(path, lambda m: m.update(a=1), default=None)
     assert not path.exists()
 
 
