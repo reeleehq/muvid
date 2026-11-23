@@ -68,8 +68,10 @@ dependencies = [
     "numpy",
     # 0.1.44 is where `graze.content_kind` exists alongside `graze.share_links`. muvid
     # needs both halves: normalise a pasted share link before fetching, then assert the
-    # bytes are media rather than a sign-in page (muvid#23).
-    "graze>=0.1.44",
+    # bytes are media rather than a sign-in page (muvid#23). 0.1.49: the sniffed
+    # family on `ContentKindMismatch` (graze#17), which muvid reads instead of the
+    # message text (muvid#333).
+    "graze>=0.1.49",
     # 0.3.100 is where `dol.atomic.file_lock` exists (dol#164), the lock every project
     # read-modify-write takes (muvid#254): it polls on Windows instead of raising after
     # ~10 s of contention. dol already arrived through graze; now it is declared.
