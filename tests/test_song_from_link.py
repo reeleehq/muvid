@@ -304,3 +304,22 @@ def test_a_403_on_a_share_link_never_reaches_yb(
     monkeypatch.setattr(AL, "song_from_page_link", lambda *a, **k: pytest.fail("yb"))
     with use_email("u@x.com"), pytest.raises(ToolError, match="private or not shared"):
         ft.set_song("p", url=DRIVE_PAGE)
+
+
+def test_a_page_is_told_by_grazes_family_not_by_its_message():
+    """muvid#333: what arrived is read from ``ContentKindMismatch.family``
+    (graze>=0.1.49), so a reworded graze message cannot change the decision."""
+    from graze.content_kind import ContentKindMismatch
+
+    from muvid.mcp.footage_tools import _answered_with_a_page
+
+    def failed(cause):
+        e = RuntimeError("fetch failed")
+        e.__cause__ = cause
+        return e
+
+    page = ContentKindMismatch("reworded", family="html", expect_kind="audio")
+    zip_ = ContentKindMismatch("got an HTML page (not really)", family="archive")
+    assert _answered_with_a_page(failed(page))
+    assert not _answered_with_a_page(failed(zip_))
+    assert not _answered_with_a_page(failed(ValueError("got an HTML page")))

@@ -329,8 +329,8 @@ def _answered_with_a_page(e: Exception) -> bool:
     cause = e.__cause__
     if not isinstance(cause, ContentKindMismatch):
         return False
-    # graze states the family only in its message today (see reeleehq/muvid#274's PR)
-    return getattr(cause, "family", None) == "html" or "got an HTML page" in str(cause)
+    # graze>=0.1.49 names what arrived (graze#17): read it, never the message text
+    return cause.family == "html"
 
 
 def _song_from_page(url: str, workdir: Path):
