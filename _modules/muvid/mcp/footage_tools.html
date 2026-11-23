@@ -522,8 +522,8 @@
 </span><span id="line-329">    <span class="n">cause</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">__cause__</span>
 </span><span id="line-330">    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cause</span><span class="p">,</span> <span class="n">ContentKindMismatch</span><span class="p">):</span>
 </span><span id="line-331">        <span class="k">return</span> <span class="kc">False</span>
-</span><span id="line-332">    <span class="c1"># graze states the family only in its message today (see reeleehq/muvid#274's PR)</span>
-</span><span id="line-333">    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">cause</span><span class="p">,</span> <span class="s2">"family"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"html"</span> <span class="ow">or</span> <span class="s2">"got an HTML page"</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">cause</span><span class="p">)</span>
+</span><span id="line-332">    <span class="c1"># graze&gt;=0.1.49 names what arrived (graze#17): read it, never the message text</span>
+</span><span id="line-333">    <span class="k">return</span> <span class="n">cause</span><span class="o">.</span><span class="n">family</span> <span class="o">==</span> <span class="s2">"html"</span>
 </span><span id="line-334">
 </span><span id="line-335">
 </span><span id="line-336"><span class="k">def</span><span class="w"> </span><span class="nf">_song_from_page</span><span class="p">(</span><span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">workdir</span><span class="p">:</span> <span class="n">Path</span><span class="p">):</span>
@@ -1271,7 +1271,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=c7feedfc"></script>
+    <script src="../../../_static/documentation_options.js?v=638669e5"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
