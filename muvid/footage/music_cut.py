@@ -422,7 +422,29 @@ def extend_grid(analysis, duration: Optional[float] = None):
         )
     else:
         note = None  # only a lead-in before the first beat: nothing worth saying
-    return replace(analysis, beats=grid, downbeats=new_downs), note
+    return (
+        replace(
+            analysis,
+            beats=grid,
+            downbeats=new_downs,
+            cut_rank=_carried_rank(analysis, grid),
+        ),
+        note,
+    )
+
+
+def _carried_rank(analysis, grid) -> tuple:
+    """``analysis.cut_rank`` re-indexed onto ``grid``: a measured beat keeps its rank, a
+    carried-on one (a quiet passage, an end) ranks 0.0 — nothing was heard there. Empty
+    when the analysis has no rank, so the planner's ``accents`` still falls back to the
+    grid exactly as before; without this, ANY added beat broke the one-rank-per-beat
+    invariant and ``accents`` fell back silently."""
+    rank = tuple(getattr(analysis, "cut_rank", ()) or ())
+    beats = tuple(analysis.beats)
+    if not rank or len(rank) != len(beats):
+        return ()
+    by_time = {round(float(b), 4): r for b, r in zip(beats, rank)}
+    return tuple(by_time.get(round(float(x), 4), 0.0) for x in grid)
 
 
 def _carried_downbeats(grid, measured, bpb: int) -> tuple:
@@ -614,11 +636,21 @@ def _mixed_clock_note(sources: Sequence[FreeSource]) -> str:
     return ""
 
 
-def _treatment(archetype: str, cut_feel: str):
+def _treatment(archetype: str, cut_feel: str, cut_on: str = ""):
     from muvid.montage import spec as spec_mod
     from muvid.montage.pipeline import build_treatment
 
     treatment, _notes, _src = build_treatment({"archetype": archetype})
+    if cut_on and cut_on != treatment.direction.cut_on:
+        from dataclasses import replace
+
+        if cut_on not in spec_mod.CUT_ONS:
+            raise ValueError(
+                f"unknown cut_on {cut_on!r}; one of {sorted(spec_mod.CUT_ONS)}"
+            )
+        treatment = replace(
+            treatment, direction=replace(treatment.direction, cut_on=cut_on)
+        )
     if cut_feel and cut_feel != treatment.direction.cut_feel:
         from dataclasses import replace
 
@@ -847,6 +879,7 @@ def fill_spans(
     analysis: Any = None,
     archetype: str = ARCHETYPE_AUTO,
     cut_feel: str = "",
+    cut_on: str = "",
     envelope_of: Optional[Callable[[FreeSource], "Optional[Envelope]"]] = None,
     anchor_of: Callable[[FreeSource], tuple[float, float]] = _default_anchor,
     canvas: tuple[int, int] = (1920, 1080),
@@ -866,7 +899,10 @@ def fill_spans(
     picture-change :class:`Envelope`; ``None`` falls back to the planner's blind stride),
     ``anchor_of`` (a still's focal point). ``archetype`` is a montage archetype with one
     picture per slot, or ``"auto"``; ``cut_feel`` a montage pace (``slow``, ``steady``,
-    ``driving``, ``frantic``). ``fit`` is one of :data:`FITS`; ``size_of`` reads a
+    ``driving``, ``frantic``); ``cut_on`` which beats the cuts land on (a key of
+    :data:`muvid.montage.spec.CUT_ONS`: ``grid``, the archetype's default, or ``accents``,
+    each cut nudged onto the most accented beat near it, ``analysis.cut_rank``; same count
+    and pace). ``fit`` is one of :data:`FITS`; ``size_of`` reads a
     picture's displayed size (for ``cover``). ``order`` is one of :data:`ORDERS`: by
     default the pictures follow the order they were TAKEN in
     (:func:`chronological_picks`); the report says which order applied and why.
@@ -906,7 +942,7 @@ def fill_spans(
             f"archetype {chosen!r} cannot be an edit (one picture per cut); use one of "
             f"{list(SINGLE_PICTURE_ARCHETYPES)} or 'auto'"
         )
-    treatment = _treatment(chosen, cut_feel)
+    treatment = _treatment(chosen, cut_feel, cut_on)
     if order not in ORDERS:
         raise ValueError(f"order must be one of {list(ORDERS)}, got {order!r}")
     media = _media_for(sources)
@@ -1086,6 +1122,13 @@ def fill_spans(
         "beat_source": getattr(analysis, "beat_source", ""),
         "style": chosen,
         "pace": treatment.direction.cut_feel,
+        # which beats the cuts land on; ``accents`` with no per-beat rank is the grid
+        "cut_on": (
+            treatment.direction.cut_on
+            if treatment.direction.cut_on != "accents"
+            or len(analysis.cut_rank) == len(analysis.beats)
+            else "grid"
+        ),
         # which order the pictures follow, and why (taken -> upload when no file says
         # when it was taken)
         "order": order_used,

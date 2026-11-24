@@ -582,6 +582,7 @@ class MusicVideoFootageProject:
         kind: str = "",
         taken_at: "float | None" = None,
         taken_source: str = "",
+        source_hash: str = "",
         link: bool = False,
     ) -> str:
         """Store a footage clip from a local file; returns its ``clip_id``. ``link``
@@ -592,7 +593,10 @@ class MusicVideoFootageProject:
         and writes no ``kind`` key, so a manifest written before photos existed reads
         the same. ``taken_at`` (wall-clock seconds, see
         :mod:`muvid.footage.capture_time`) and ``taken_source`` (the tag it came from)
-        are recorded only when known — a manifest without them reads the same too."""
+        are recorded only when known — a manifest without them reads the same too.
+        ``source_hash`` is the hash of the file the clip was MADE from when the stored
+        bytes are not those (a photo is stored re-encoded upright), so a re-import can
+        tell an unchanged source without re-adding it; absent for a byte copy."""
         import shutil
 
         cid = normalise_id(clip_id, label="clip_id")
@@ -609,6 +613,7 @@ class MusicVideoFootageProject:
         _set_or_drop(entry, "artifact_id", artifact_id)
         _set_or_drop(entry, "taken_at", taken_at)
         _set_or_drop(entry, "taken_source", taken_source or None)
+        _set_or_drop(entry, "source_hash", source_hash or None)
 
         def add(m):
             clips = m.setdefault("clips", [])

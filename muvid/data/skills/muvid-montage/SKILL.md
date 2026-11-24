@@ -41,8 +41,8 @@ service.add_clip(fp, path="abbey.jpg")  # a photo: stored upright, kind="still"
 service.align(fp)  # every video: listened to, or declared below
 service.set_has_song(fp, clip_id="…", has_song="no")  # overrule listening, per clip
 out = service.propose_edit(
-    fp, pace="steady", style="auto"
-)  # pace: slow|steady|driving|frantic; style: auto|cuts|fades
+    fp, pace="steady", style="auto", cut_on="accents"
+)  # pace: slow|steady|driving|frantic; style: auto|cuts|fades; cut_on: grid|accents
 out["music"]  # what the cut to the music did: style, n_cuts, uses, on_beat per video
 service.render(fp, edit_id=out["edit_id"])
 why = service.explain_edit(
@@ -57,7 +57,7 @@ why = service.explain_edit(
 ## What happens inside (so you can change it in the right place)
 
 - **The edit model.** A *free cut* is an `EdlEntry` with `source_in` set: it shows its clip from that second of the clip's own time, whatever its alignment. `edl.placed_as(e, a)` turns it into the placement it implies (`offset = song_start − source_in`, vouched by construction), so every containment, blend and render check applies unchanged, and the trust gate never refuses a free cut. An unplaced clip or photo has a never-persisted `edl.unplaced` record carrying its duration (`STILL_DURATION_S` for a photo).
-- **Where the cuts fall.** `muvid.montage.plan.plan_montage` (the montage subgenre's planner): every cut on a beat, bar or section boundary, denser in loud sections, with the reuse policy that lets a few clips carry a whole song. Which beats it cuts on is `direction.cut_on`: `grid` (the default: every n-th beat, on the bar) or `accents` (the same number of cuts, moved onto the beats the song accents most — `Analysis.cut_rank`, muvid#275; it falls back to the grid on a song with no rank). The style is picked from the tempo (`music_cut.pick_archetype`: slow dissolves under 92 BPM, hard cuts on the beat above). `grid` is excluded because an edit holds one picture per cut.
+- **Where the cuts fall.** `muvid.montage.plan.plan_montage` (the montage subgenre's planner): every cut on a beat, bar or section boundary, denser in loud sections, with the reuse policy that lets a few clips carry a whole song. Which beats it cuts on is `direction.cut_on`: `grid` (the default: every n-th beat, on the bar) or `accents` (the same number of cuts, moved onto the beats the song accents most — `Analysis.cut_rank`, muvid#275; it falls back to the grid on a song with no rank; `music.cut_on` says which applied). In the footage path it is `propose_edit(cut_on=...)`: use `accents` when the song has hits the picture should lock to (a drum fill, a tabla phrase). The style is picked from the tempo (`music_cut.pick_archetype`: slow dissolves under 92 BPM, hard cuts on the beat above). `grid` is excluded because an edit holds one picture per cut.
 - **Which stretch of a video.** `music_cut.choose_source_in` scores every in-point by: picture-change hits on the beats inside the cut (relative to the clip's own mean), liveliness matched to the section's loudness, sharpness (so a whip-pan blur loses), and reuse of stretches already shown. The signal is `footage.beats.activity_signal`: frame differences with the camera move included, because in b-roll a pan arriving IS the event. It is measured once per clip (about 0.7 s for a 34 s phone clip) and cached under `beats/`.
 - **Photos.** Named camera looks (`slow_push`, `pan_right`, `slow_pull`, `pan_left`, `punch_in`) at zoom 1.12, anchored on `burns.salient_box` (the photo's detailed region; the centre without `burns`).
 - **Framing.** Free cuts are `cover`-cropped to the canvas, centred on the subject for photos (`music_cut.cover_crop`), computed on the size the picture is SHOWN at: a phone video stored 640×360 with a −90° rotation is portrait (`music_cut.display_size`).
@@ -67,6 +67,8 @@ why = service.explain_edit(
 - **Speed.** "Cut it for me" is a synchronous op, so nothing heavy happens there: the song's analysis is measured at `set_song` and kept (`service.song_analysis`, keyed on the song hash), each video's hash and picture signal at `add_clip`, and probes and photo anchors are memoised per file. Photos are stored upright as JPEG; HEIC is read through `pi-heif` (in the `scoring` extra, so the studio install has it); on a machine installed without it, it is refused with a plain reason.
 
 ## Traps
+
+- **Fades over photos pop.** Each photo carries a moving camera look, and a fade's blend restarts it, so the outgoing photo snaps back to its unzoomed framing at every fade ([muvid#376](https://github.com/reeleehq/muvid/issues/376)). Until that lands, cut a photo montage with `style="cuts"`; the render's warnings name each affected cut.
 
 - **A short video cannot hold a long slot.** When it runs out, the rest of the slot goes to the least-used source that can hold it (`_take_over`), never to its neighbours; a blend with no footage either side is dropped (`_feasible_blends`).
 - **Footage shorter than the song** is reused: each stretch at most once before repeats, with different stretches on each return. v1 fills the whole song rather than trimming it. Trimming to a section boundary is the UX recommendation, deferred to [reelee-web#402](https://github.com/thorwhalen/reelee-web/issues/402); `set_span` does it by hand today.
