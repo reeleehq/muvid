@@ -810,7 +810,9 @@ def _measured_song_analysis(fp, *, path=None, key=None):
     song = Path(path) if path is not None else fp.song_path()
     key = key or (fp.song_hash() if path is None else hash_file(song))
     cache = (
-        Path(fp.root) / "beats" / f"{key[:16]}-montage-analysis{_ANALYSIS_CACHE_TAG}.json"
+        Path(fp.root)
+        / "beats"
+        / f"{key[:16]}-montage-analysis{_ANALYSIS_CACHE_TAG}.json"
     )
     cached = read_json(cache)
     if cached is not None:
