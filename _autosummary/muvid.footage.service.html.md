@@ -671,7 +671,7 @@ Returns `{duration_s, n, peaks: [0..1, ...]}`; slice `i` covers song time
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto', order='')
+### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto', order='', cut_on='')
 
 Cut it for me: build an edit of the whole song — or of `span` (`[start_s,
 end_s]`, the part of the song the video covers) — from the placed videos, and (by
@@ -704,6 +704,10 @@ choice — fades for a slow song). `order` is how the pictures follow one anothe
 reports which) — or `planner`, the montage planner’s reuse order, which ignores
 chronology and matches the videos’ liveliness to the sections’ loudness (lively
 pictures in the loud parts; `music.affect` says when it applied, muvid#134).
+`cut_on` is which beats those cuts land on: `grid` (the default, every n-th beat
+on the bar) or `accents` — the same number of cuts, each moved onto the most
+accented beat near it (a drum hit, a tabla phrase; muvid#275), for a song whose
+accents are what the picture should lock to.
 `explain_edit` says why
 each cut is where it is.
 

@@ -1,4 +1,4 @@
-> built 2026-11-23 11:23 UTC from 9fa56d5 (main) · muvid 0.0.193. Details: build_info.json
+> built 2026-11-24 10:42 UTC from 5d8e248 (main) · muvid 0.0.194. Details: build_info.json
 
 # index.html.md
 
@@ -7439,7 +7439,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>, max_cuts=None)
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', cut_on='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>, max_cuts=None)
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -7448,7 +7448,10 @@ sections — [`muvid.montage.analysis.analyze()`](_autosummary/muvid.montage.ana
 picture-change [`Envelope`](_autosummary/muvid.footage.music_cut.html.md#muvid.footage.music_cut.Envelope); `None` falls back to the planner’s blind stride),
 `anchor_of` (a still’s focal point). `archetype` is a montage archetype with one
 picture per slot, or `"auto"`; `cut_feel` a montage pace (`slow`, `steady`,
-`driving`, `frantic`). `fit` is one of `FITS`; `size_of` reads a
+`driving`, `frantic`); `cut_on` which beats the cuts land on (a key of
+[`muvid.montage.spec.CUT_ONS`](_autosummary/muvid.montage.spec.html.md#muvid.montage.spec.CUT_ONS): `grid`, the archetype’s default, or `accents`,
+each cut nudged onto the most accented beat near it, `analysis.cut_rank`; same count
+and pace). `fit` is one of `FITS`; `size_of` reads a
 picture’s displayed size (for `cover`). `order` is one of `ORDERS`: by
 default the pictures follow the order they were TAKEN in
 (`chronological_picks()`); the report says which order applied and why.
@@ -9714,7 +9717,7 @@ Returns `{duration_s, n, peaks: [0..1, ...]}`; slice `i` covers song time
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto', order='')
+### muvid.footage.service.propose_edit(fp, , strategy='', preset='', weights=None, config=None, save=True, name='', span=None, pace='', style='auto', order='', cut_on='')
 
 Cut it for me: build an edit of the whole song — or of `span` (`[start_s,
 end_s]`, the part of the song the video covers) — from the placed videos, and (by
@@ -9747,6 +9750,10 @@ choice — fades for a slow song). `order` is how the pictures follow one anothe
 reports which) — or `planner`, the montage planner’s reuse order, which ignores
 chronology and matches the videos’ liveliness to the sections’ loudness (lively
 pictures in the loud parts; `music.affect` says when it applied, muvid#134).
+`cut_on` is which beats those cuts land on: `grid` (the default, every n-th beat
+on the bar) or `accents` — the same number of cuts, each moved onto the most
+accented beat near it (a drum hit, a tabla phrase; muvid#275), for a song whose
+accents are what the picture should lock to.
 `explain_edit` says why
 each cut is where it is.
 
@@ -10573,7 +10580,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One caller’s stateful music-video project (song + clips + alignments + renders).
 
-#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='', link=False)
+#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='', source_hash='', link=False)
 
 Store a footage clip from a local file; returns its `clip_id`. `link`
 stores it as a hardlink of `src_path` (an asset already in another project,
@@ -10584,6 +10591,9 @@ and writes no `kind` key, so a manifest written before photos existed reads
 the same. `taken_at` (wall-clock seconds, see
 [`muvid.footage.capture_time`](_autosummary/muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)) and `taken_source` (the tag it came from)
 are recorded only when known — a manifest without them reads the same too.
+`source_hash` is the hash of the file the clip was MADE from when the stored
+bytes are not those (a photo is stored re-encoded upright), so a re-import can
+tell an unchanged source without re-adding it; absent for a byte copy.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
@@ -15635,7 +15645,7 @@ The selection strategies available for full-auto assembly. Free.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='', order='')
+### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='', order='', style='auto', cut_on='')
 
 Propose an EDL **without rendering it** — the cheap half of assembly. Free, seconds.
 
@@ -15667,7 +15677,11 @@ follow one another: `taken` (the default) in the order they were taken — by th
 their files say, upload order for any that say nothing; `music.order` /
 `music.order_note` report which applied — or `planner`, the reuse order that
 ignores chronology and puts lively videos in the loud parts of the song
-(`music.affect` says when it applied).
+(`music.affect` says when it applied). `style` is how the picture changes:
+`cuts` (hard, on the beat), `fades` (each starting on the beat) or `auto` (the
+song’s choice). `cut_on` is which beats the cuts land on: `grid` (default) or
+`accents` — the same number of cuts, each moved onto the most accented beat near it
+(a drum hit, a tabla phrase); `music.cut_on` says which applied.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -21051,7 +21065,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-23 11:23 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/9fa56d57be1151c0c42be6cfbca0b3639f240832"><code>9fa56d5</code></a> on branch <code>main</code>, for **muvid 0.0.193** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-24 10:42 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5d8e2483f0e05d1a756b2f015b7ba0ff47524175"><code>5d8e248</code></a> on branch <code>main</code>, for **muvid 0.0.194** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -21060,9 +21074,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/9fa56d57be1151c0c42be6cfbca0b3639f240832"><code>9fa56d57be1151c0c42be6cfbca0b3639f240832</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5d8e2483f0e05d1a756b2f015b7ba0ff47524175"><code>5d8e2483f0e05d1a756b2f015b7ba0ff47524175</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.193</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.194</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21071,9 +21085,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45162138990">45162138990</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45375443708">45375443708</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>bb3e56c2e2781742d1b074684e27cb00433fa2ed</code> (in the history of the built commit) |
+| Event commit | <code>415f55787e53f39b57f592b5f151929cd791f110</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21098,13 +21112,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.193/">0.0.193</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.194/">0.0.194</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 9fa56d57be1151c0c42be6cfbca0b3639f240832
+git checkout 5d8e2483f0e05d1a756b2f015b7ba0ff47524175
 pip install "epythet==0.2.25"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

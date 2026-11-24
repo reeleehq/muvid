@@ -115,7 +115,7 @@ Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 One caller’s stateful music-video project (song + clips + alignments + renders).
 
-#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='', link=False)
+#### add_clip(clip_id, src_path, , ext, name='', kind='', taken_at=None, taken_source='', source_hash='', link=False)
 
 Store a footage clip from a local file; returns its `clip_id`. `link`
 stores it as a hardlink of `src_path` (an asset already in another project,
@@ -126,6 +126,9 @@ and writes no `kind` key, so a manifest written before photos existed reads
 the same. `taken_at` (wall-clock seconds, see
 [`muvid.footage.capture_time`](muvid.footage.capture_time.html.md#module-muvid.footage.capture_time)) and `taken_source` (the tag it came from)
 are recorded only when known — a manifest without them reads the same too.
+`source_hash` is the hash of the file the clip was MADE from when the stored
+bytes are not those (a photo is stored re-encoded upright), so a re-import can
+tell an unchanged source without re-adding it; absent for a byte copy.
 
 * **Return type:**
   [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)

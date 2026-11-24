@@ -788,7 +788,7 @@ The selection strategies available for full-auto assembly. Free.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='', order='')
+### muvid.mcp.footage_tools.propose_edit(project_id, , strategy='', preset='', weights=None, config=None, save=False, name='', pace='', order='', style='auto', cut_on='')
 
 Propose an EDL **without rendering it** — the cheap half of assembly. Free, seconds.
 
@@ -820,7 +820,11 @@ follow one another: `taken` (the default) in the order they were taken — by th
 their files say, upload order for any that say nothing; `music.order` /
 `music.order_note` report which applied — or `planner`, the reuse order that
 ignores chronology and puts lively videos in the loud parts of the song
-(`music.affect` says when it applied).
+(`music.affect` says when it applied). `style` is how the picture changes:
+`cuts` (hard, on the beat), `fades` (each starting on the beat) or `auto` (the
+song’s choice). `cut_on` is which beats the cuts land on: `grid` (default) or
+`accents` — the same number of cuts, each moved onto the most accented beat near it
+(a drum hit, a tabla phrase); `music.cut_on` says which applied.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

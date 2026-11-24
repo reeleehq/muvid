@@ -124,7 +124,7 @@ room, the montage planner’s own blind rule, with reuse still avoided.
 * **Return type:**
   [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
 
-### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>, max_cuts=None)
+### muvid.footage.music_cut.fill_spans(song_path, sources, \*, spans=None, song_duration=None, analysis=None, archetype='auto', cut_feel='', cut_on='', envelope_of=None, anchor_of=<function \_default_anchor>, canvas=(1920, 1080), fps=30.0, fit='cover', size_of=<function display_size>, order='taken', affect_of=<function liveliness>, max_cuts=None)
 
 Free cuts of `sources` covering `spans` of the song (default: all of it).
 
@@ -133,7 +133,10 @@ sections — [`muvid.montage.analysis.analyze()`](muvid.montage.analysis.html.md
 picture-change [`Envelope`](#muvid.footage.music_cut.Envelope); `None` falls back to the planner’s blind stride),
 `anchor_of` (a still’s focal point). `archetype` is a montage archetype with one
 picture per slot, or `"auto"`; `cut_feel` a montage pace (`slow`, `steady`,
-`driving`, `frantic`). `fit` is one of `FITS`; `size_of` reads a
+`driving`, `frantic`); `cut_on` which beats the cuts land on (a key of
+[`muvid.montage.spec.CUT_ONS`](muvid.montage.spec.html.md#muvid.montage.spec.CUT_ONS): `grid`, the archetype’s default, or `accents`,
+each cut nudged onto the most accented beat near it, `analysis.cut_rank`; same count
+and pace). `fit` is one of `FITS`; `size_of` reads a
 picture’s displayed size (for `cover`). `order` is one of `ORDERS`: by
 default the pictures follow the order they were TAKEN in
 (`chronological_picks()`); the report says which order applied and why.
