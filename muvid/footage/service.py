@@ -790,6 +790,14 @@ def song_analysis(fp):
     return _with_declared_grid(fp, _measured_song_analysis(fp))
 
 
+#: Bumped when the montage analysis gains a field a cut depends on, so a cache written
+#: before it is measured once more rather than read forever: ``-v2`` is the per-beat
+#: accent rank (``cut_rank``, muvid#272), without which ``cut_on="accents"`` silently
+#: cut on the grid. An absent field cannot be told from an empty one (``to_dict`` drops
+#: an empty rank), hence a key, not a check.
+_ANALYSIS_CACHE_TAG = "-v2"
+
+
 def _measured_song_analysis(fp, *, path=None, key=None):
     """The estimator's analysis of the song (or of the song file at ``path``, keyed by
     its content hash ``key`` — a candidate, muvid#135), cached; a declared grid is NOT
@@ -801,17 +809,15 @@ def _measured_song_analysis(fp, *, path=None, key=None):
 
     song = Path(path) if path is not None else fp.song_path()
     key = key or (fp.song_hash() if path is None else hash_file(song))
-    cache = Path(fp.root) / "beats" / f"{key[:16]}-montage-analysis.json"
+    cache = (
+        Path(fp.root) / "beats" / f"{key[:16]}-montage-analysis{_ANALYSIS_CACHE_TAG}.json"
+    )
     cached = read_json(cache)
     if cached is not None:
         try:
-            analysis = Analysis.from_dict(cached)
+            return Analysis.from_dict(cached)
         except (KeyError, TypeError, ValueError):
-            analysis = None  # an older shape: measure again
-        # beats with no per-beat rank: cached before the rank existed (muvid#272), and
-        # `cut_on="accents"` would fall back to the grid for that song forever
-        if analysis is not None and (analysis.cut_rank or not analysis.beats):
-            return analysis
+            pass  # an older shape: measure again
     analysis = music_cut._default_analysis(str(song))
     write_json(cache, analysis.to_dict())
     return analysis
