@@ -1773,3 +1773,30 @@ def test_beat_grid_reports_the_songs_shape_and_where_the_beat_is_carried(fp, mon
     # the connector's pinned reply neither measures nor carries the shape
     pinned = service.beat_grid(fp, shape=False)
     assert not {"sections", "sections_source", "sections_basis", "carried"} & set(pinned)
+
+
+@needs_ffmpeg
+def test_importer_leaves_an_unchanged_photo_alone(tmp_path):
+    """A photo is stored re-encoded upright, so its stored bytes never equal its
+    source's: the importer compares the source hash the clip row records instead, and a
+    re-import of an unchanged folder adds and replaces nothing."""
+    from muvid.importing import import_production
+
+    src = tmp_path / "src"
+    src.mkdir()
+    _tone(src / "song.wav", seconds=4.0)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i",
+         "testsrc=size=320x240", "-frames:v", "1", str(src / "pose.jpg")],
+        check=True,
+    )
+    manifest = {
+        "kind": "footage", "id": "photos", "canvas": "portrait",
+        "song": {"path": "song.wav"},
+        "clips": [{"id": "pose", "path": "pose.jpg"}],
+    }
+    projects = tmp_path / "projects"
+    first = import_production(manifest, projects, base_dir=src)
+    again = import_production(manifest, projects, base_dir=src)
+    assert first["clips"] == {"pose": "added"}
+    assert again["clips"] == {"pose": "unchanged"}

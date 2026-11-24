@@ -491,6 +491,8 @@ def _summary(cuts, sections, song_duration, selection, grid_note, tempo):
         chose.append({"cuts": "hard cuts", "fades": "fades"}.get(style, style))
     if pace:
         chose.append({"driving": "lively"}.get(pace, pace) + " pace")
+    if selection.get("cut_on") == "accents":
+        chose.append("cuts on the song's strongest hits")
     if chose:
         said.append(f"You chose {' and '.join(chose)}.")
     elif tempo and selection.get("strategy") and any(c.get("free") for c in cuts):

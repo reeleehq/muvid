@@ -526,6 +526,8 @@ def _add_still(fp, src: Path, *, clip_id: str, name: str, filename: str) -> dict
     sideways otherwise, and ffmpeg does not turn it), RGB, as JPEG, bounded in size."""
     import tempfile
 
+    from muvid.catalog import hash_file
+
     try:
         from PIL import Image, ImageOps
     except ImportError as e:  # pragma: no cover - pillow ships with the scoring extra
@@ -563,6 +565,7 @@ def _add_still(fp, src: Path, *, clip_id: str, name: str, filename: str) -> dict
                     kind=STILL_KIND,
                     taken_at=taken,
                     taken_source=taken_source,
+                    source_hash=hash_file(src),
                 )
     except (OSError, ValueError, Image.DecompressionBombError) as e:
         # PIL's "cannot identify image file" is an OSError; a huge photo is a bomb error
@@ -787,6 +790,14 @@ def song_analysis(fp):
     return _with_declared_grid(fp, _measured_song_analysis(fp))
 
 
+#: Bumped when the montage analysis gains a field a cut depends on, so a cache written
+#: before it is measured once more rather than read forever: ``-v2`` is the per-beat
+#: accent rank (``cut_rank``, muvid#272), without which ``cut_on="accents"`` silently
+#: cut on the grid. An absent field cannot be told from an empty one (``to_dict`` drops
+#: an empty rank), hence a key, not a check.
+_ANALYSIS_CACHE_TAG = "-v2"
+
+
 def _measured_song_analysis(fp, *, path=None, key=None):
     """The estimator's analysis of the song (or of the song file at ``path``, keyed by
     its content hash ``key`` — a candidate, muvid#135), cached; a declared grid is NOT
@@ -798,7 +809,9 @@ def _measured_song_analysis(fp, *, path=None, key=None):
 
     song = Path(path) if path is not None else fp.song_path()
     key = key or (fp.song_hash() if path is None else hash_file(song))
-    cache = Path(fp.root) / "beats" / f"{key[:16]}-montage-analysis.json"
+    cache = (
+        Path(fp.root) / "beats" / f"{key[:16]}-montage-analysis{_ANALYSIS_CACHE_TAG}.json"
+    )
     cached = read_json(cache)
     if cached is not None:
         try:
@@ -896,6 +909,7 @@ def _music_fill(
     style: str = "auto",
     canvas=None,
     order: str = "",
+    cut_on: str = "",
 ):
     """Replace the gap entries of ``entries`` with free cuts of ``sources`` cut to the
     music; ``(entries, report)``. The synced cuts are untouched."""
@@ -919,6 +933,7 @@ def _music_fill(
         song_duration=song_dur,
         archetype=STYLES[style or "auto"],
         cut_feel=pace,
+        cut_on=cut_on,
         order=order or DEFAULT_ORDER,
         envelope_of=lambda s: _activity_envelope(fp, s),
         canvas=canvas or fp.canvas(),
@@ -2855,6 +2870,7 @@ def _auto_edit(
     style="auto",
     canvas=None,
     order="",
+    cut_on="",
 ):
     """The auto path, synced half then music half: the strategy cuts the clips that
     carry the song (:func:`_role_of`); every span it leaves empty is cut to the music
@@ -2895,6 +2911,7 @@ def _auto_edit(
             style=style,
             canvas=canvas,
             order=order,
+            cut_on=cut_on,
         )
     except (ImportError, OSError) as e:
         # The music half needs the montage analysis (librosa, ffmpeg). Without it the
@@ -3045,6 +3062,7 @@ def propose_edit(
     pace: Literal["", "slow", "steady", "driving", "frantic"] = "",
     style: Literal["auto", "cuts", "fades"] = "auto",
     order: Literal["", "taken", "planner"] = "",
+    cut_on: Literal["", "grid", "accents"] = "",
 ) -> dict:
     """Cut it for me: build an edit of the whole song — or of ``span`` (``[start_s,
     end_s]``, the part of the song the video covers) — from the placed videos, and (by
@@ -3077,6 +3095,10 @@ def propose_edit(
     reports which) — or ``planner``, the montage planner's reuse order, which ignores
     chronology and matches the videos' liveliness to the sections' loudness (lively
     pictures in the loud parts; ``music.affect`` says when it applied, muvid#134).
+    ``cut_on`` is which beats those cuts land on: ``grid`` (the default, every n-th beat
+    on the bar) or ``accents`` — the same number of cuts, each moved onto the most
+    accented beat near it (a drum hit, a tabla phrase; muvid#275), for a song whose
+    accents are what the picture should lock to.
     ``explain_edit`` says why
     each cut is where it is.
     """
@@ -3090,6 +3112,10 @@ def propose_edit(
     strat = strategy or ("weighted" if has_selection_config else DEFAULT_STRATEGY)
     if style not in STYLES:
         raise FootageError(f"style must be one of {sorted(STYLES)}, got {style!r}")
+    from muvid.montage.spec import CUT_ONS
+
+    if cut_on and cut_on not in CUT_ONS:
+        raise FootageError(f"cut_on must be one of {sorted(CUT_ONS)}, got {cut_on!r}")
     from muvid.footage.music_cut import ORDERS
 
     if order and order not in ORDERS:
@@ -3106,6 +3132,7 @@ def propose_edit(
             pace=pace,
             style=style,
             order=order,
+            cut_on=cut_on,
         )
         if span is not None:
             excluded = [
@@ -3168,6 +3195,8 @@ def propose_edit(
             ("pace", pace if cut_to_music else ""),
             ("order", music.get("order", "") if cut_to_music else ""),
             ("style", style if cut_to_music and style != "auto" else ""),
+            # what APPLIED (accents with no per-beat rank is the grid), as for order
+            ("cut_on", music.get("cut_on", "") if cut_to_music and cut_on else ""),
         ):
             if value:
                 selection[key] = value
@@ -4376,6 +4405,7 @@ EDIT_SUMMARY_SELECTION_KEYS = (
     "pace",
     "order",
     "style",
+    "cut_on",
 )
 
 
@@ -5280,16 +5310,17 @@ def grab_cover_frame(video, dest) -> None:
     from muvid.visualize.ffmpeg import run_ffmpeg
 
     video, dest = Path(video), Path(dest)
-    # a photo is its own cover: no duration to seek a fraction into
-    at = (
-        0.0
+    # a photo is its own cover: no duration to seek a fraction into, and NO `-ss` at all
+    # — ffmpeg 9 encodes nothing for `-ss 0` before a still input and still exits 0, so
+    # a photo-only project failed its first import with a missing cover frame
+    seek = (
+        []
         if _is_still_name(video.name)
-        else max(0.0, _probe_duration(video) * COVER_AT_FRACTION)
+        else ["-ss", f"{max(0.0, _probe_duration(video) * COVER_AT_FRACTION):.3f}"]
     )
     run_ffmpeg(
         [
-            "-ss",
-            f"{at:.3f}",
+            *seek,
             "-i",
             str(video),
             "-frames:v",
@@ -5299,6 +5330,10 @@ def grab_cover_frame(video, dest) -> None:
             str(dest),
         ]
     )
+    if not dest.is_file() or dest.stat().st_size == 0:
+        from muvid.visualize.ffmpeg import FfmpegError
+
+        raise FfmpegError(f"ffmpeg wrote no cover frame for {video.name!r}")
 
 
 # =============================================================================

@@ -266,8 +266,13 @@ def _import_clip(fp, clip: Mapping, resolve) -> str:
 
     src = resolve(clip["path"])
     stored = fp.clip_paths().get(clip["id"])
-    if stored and Path(stored).exists() and hash_file(stored) == hash_file(src):
-        return "unchanged"
+    if stored and Path(stored).exists():
+        # a photo is stored re-encoded, so its row carries the hash of its SOURCE
+        rows = fp.manifest().get("clips", [])
+        row = next((c for c in rows if c.get("clip_id") == clip["id"]), {})
+        known = row.get("source_hash") or row.get("hash")
+        if hash_file(src) in ((known,) if known else (hash_file(stored),)):
+            return "unchanged"
     verdict = "added"
     if stored:
         service.remove_clip(fp, clip_id=clip["id"])

@@ -286,6 +286,69 @@ def test_pace_changes_how_often_the_music_cuts_come(bath):
     assert driving > slow
 
 
+# -- cutting on the song's accents (a drum hit, a tabla phrase) -------------------------
+
+
+def _accented(analysis: Analysis, accents) -> Analysis:
+    """``analysis`` with every beat in ``accents`` ranked 1.0 and the rest 0.1."""
+    from dataclasses import replace
+
+    hot = {round(a, 4) for a in accents}
+    return replace(
+        analysis,
+        cut_rank=tuple(1.0 if round(b, 4) in hot else 0.1 for b in analysis.beats),
+    )
+
+
+def test_extend_grid_keeps_one_rank_per_beat():
+    """A carried-on beat (a quiet end) ranks 0.0 and every measured one keeps its rank:
+    without it, the grid grew, the rank did not, and ``accents`` fell back silently."""
+    full = _analysis(duration=40.0)
+    short = full.beats[: len(full.beats) // 2]  # the beat goes quiet at 20 s
+    from dataclasses import replace
+
+    a = _accented(replace(full, beats=short, downbeats=short[::4]), [short[5]])
+    b, _note = music_cut.extend_grid(a, 40.0)
+    assert len(b.beats) > len(a.beats) and len(b.cut_rank) == len(b.beats)
+    assert b.cut_rank[b.beats.index(round(short[5], 4))] == 1.0
+    assert b.cut_rank[-1] == 0.0
+
+
+def test_cut_on_accents_moves_the_cuts_onto_the_accented_beats():
+    base = _analysis()
+    off_bar = [b for i, b in enumerate(base.beats) if i % 4 == 1]  # just after each bar
+    accented = _accented(base, off_bar)
+
+    def cuts(cut_on):
+        out = fill_spans(
+            "/x/song.wav", _sources(), analysis=accented, cut_on=cut_on,
+            cut_feel="steady", envelope_of=lambda s: None,
+            anchor_of=lambda s: (0.5, 0.5), size_of=lambda p: (1080, 1920),
+            canvas=(1080, 1920),
+        )
+        return out, [e.song_start for e in out.entries[1:]]
+
+    grid, on_grid = cuts("grid")
+    acc, on_acc = cuts("accents")
+    hot = {round(b, 3) for b in off_bar}
+    assert acc.report["cut_on"] == "accents" and grid.report["cut_on"] == "grid"
+    assert len(on_acc) == len(on_grid)  # same count, same pace
+    share = lambda ts: sum(round(t, 3) in hot for t in ts) / len(ts)
+    assert share(on_acc) > share(on_grid)
+
+
+def test_propose_edit_cut_on_is_recorded_and_checked(bath):
+    """The edit records the cut_on that APPLIED: ``accents`` on a song with no per-beat
+    rank is the grid, and a chip saying "accents" then is muvid#314's lie."""
+    out = service.propose_edit(bath, cut_on="accents")
+    applied = out["music"]["cut_on"]
+    assert applied in ("accents", "grid")
+    [row] = [r for r in service.edits(bath)["edits"] if r["edit_id"] == out["edit_id"]]
+    assert row["selection"].get("cut_on") == applied
+    with pytest.raises(service.FootageError):
+        service.propose_edit(bath, cut_on="downbeats", save=False)
+
+
 # -- end to end: real media -----------------------------------------------------------
 
 
@@ -1068,3 +1131,44 @@ def test_carried_spans_are_exactly_where_extend_grid_adds_beats(beats, dur):
     spans = carried_spans(beats, dur)
     assert all(any(lo <= b <= hi for lo, hi in spans) for b in added)
     assert all(any(lo <= b <= hi for b in added) for lo, hi in spans)
+
+
+def test_a_photo_cover_is_grabbed_without_a_seek(tmp_path, monkeypatch):
+    """ffmpeg 9 encoded nothing for ``-ss 0`` before a large phone photo (3840x2880,
+    re-saved by Pillow) and still exited 0, so a photo-only hosted project failed its
+    first import on a missing cover frame: a still is never seeked."""
+    import muvid.visualize.ffmpeg as ff
+
+    seen = []
+
+    def fake(args, **kw):
+        seen.append(list(args))
+        Path(args[-1]).write_bytes(b"jpg")
+
+    monkeypatch.setattr(ff, "run_ffmpeg", fake)
+    service.grab_cover_frame(tmp_path / "pose.jpg", tmp_path / "cover.jpg")
+    assert "-ss" not in seen[0]
+
+
+def test_a_cover_frame_ffmpeg_did_not_write_is_an_error(tmp_path, monkeypatch):
+    """ffmpeg can exit 0 having encoded nothing; that is a failure, not a cover."""
+    import muvid.visualize.ffmpeg as ff
+
+    monkeypatch.setattr(ff, "run_ffmpeg", lambda args, **kw: None)
+    with pytest.raises(ff.FfmpegError):
+        service.grab_cover_frame(tmp_path / "pose.jpg", tmp_path / "cover.jpg")
+
+
+def test_cut_on_choices_are_the_planners():
+    """The signature's Literal feeds the hosts' schemas; the planner's CUT_ONS is the
+    runtime truth. They must not drift."""
+    import inspect
+    from typing import get_args
+
+    from muvid.montage.spec import CUT_ONS
+
+    ann = inspect.signature(service.propose_edit).parameters["cut_on"].annotation
+    assert set(get_args(eval(ann, vars(service)) if isinstance(ann, str) else ann)) == {
+        "",
+        *CUT_ONS,
+    }

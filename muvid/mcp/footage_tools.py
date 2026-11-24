@@ -579,6 +579,8 @@ def propose_edit(
     name: str = "",
     pace: str = "",
     order: str = "",
+    style: str = "auto",
+    cut_on: str = "",
 ) -> dict:
     """Propose an EDL **without rendering it** — the cheap half of assembly. Free, seconds.
 
@@ -610,7 +612,11 @@ def propose_edit(
     their files say, upload order for any that say nothing; ``music.order`` /
     ``music.order_note`` report which applied — or ``planner``, the reuse order that
     ignores chronology and puts lively videos in the loud parts of the song
-    (``music.affect`` says when it applied).
+    (``music.affect`` says when it applied). ``style`` is how the picture changes:
+    ``cuts`` (hard, on the beat), ``fades`` (each starting on the beat) or ``auto`` (the
+    song's choice). ``cut_on`` is which beats the cuts land on: ``grid`` (default) or
+    ``accents`` — the same number of cuts, each moved onto the most accented beat near it
+    (a drum hit, a tabla phrase); ``music.cut_on`` says which applied.
     """
     return _call(
         project_id,
@@ -623,6 +629,8 @@ def propose_edit(
         name=name,
         pace=pace,
         order=order,
+        style=style,
+        cut_on=cut_on,
     )
 
 
