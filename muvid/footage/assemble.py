@@ -32,7 +32,8 @@ Now three bounded stages, memory O(1) in cut count:
 3. **Mux the clean song** in the same final pass. When the master already IS the delivery
    contract (aac, 48 kHz stereo), its packets are stream-copied bit-identically; anything
    else is encoded to the contract (aac 192k, 48 kHz stereo — verify_video's audio check
-   must be a property of the renderer, not of which song the user brought: muvid#24 B3).
+   must be a property of the renderer, not of which song the user brought: muvid#24 B3),
+   with the encoder's priming trimmed so the song stays on its picture (muvid#379).
 
 ffmpeg auto-applies each clip's rotation metadata on decode (default ``-autorotate 1``),
 so a display-matrix portrait clip lands upright and pillarboxed, never stretched.
@@ -835,12 +836,17 @@ def _render_first_usable(candidates, part: Path, **render_kwargs) -> None:
     )
 
 
+#: A render starting less than this far into the song is a whole-song render: the
+#: master is read from its first sample (and may be stream-copied).
+_HEAD_TRIM_MIN_S = 1e-3
+
+
 def _audio_args(
     song_path: str,
     *,
     fade_out_s: float = 0.0,
     total_s: float = 0.0,
-    trimmed_head: bool = False,
+    song_start: float = 0.0,
 ) -> list[str]:
     """Stream-copy the master when it already is the delivery contract; else encode to it.
 
@@ -849,22 +855,43 @@ def _audio_args(
     aac/48000/2ch — so that is exactly the copy condition, decided by probe, not hope.
     A tail fade (``fade_out_s`` over the last seconds of a ``total_s`` render) is a
     filter, so it always encodes. So does a render that starts after the song does
-    (``trimmed_head``): a stream copy after an input ``-ss`` begins on an AAC packet
-    boundary rather than at the seek point, and the picture, cut exactly, would run
-    that fraction of a frame out of sync with the music.
+    (``song_start``): a stream copy cannot begin between AAC packets, and the picture,
+    cut exactly, would run that fraction of a frame out of sync with the music.
+
+    **Every encode is put back on the picture** (muvid#379). The AAC encoder primes
+    1024 samples and the delivery contract writes no edit list, so a player plays
+    them and the song landed 21.3 ms late — measured 22.3 ms on a click, for a wav
+    master, a trimmed span and a fade alike.
+    :func:`~muvid.footage.sound.aac_priming_filter` trims them off the input, LAST,
+    so the fade's ``st`` is still read on the delivered timeline.
+
+    **The head is cut by ``atrim`` on decoded samples, never by an input ``-ss``**: on
+    an AAC master ffmpeg 9.0.1's input seek is off by its own priming — measured
+    21.7 ms EARLY on a 44.1 kHz master, 1.7 ms on a 48 kHz one — which used to cancel
+    the encode's lateness by accident and would surface as an early song once the
+    lateness is fixed. Decoding the head of a song is cheap; a seek that depends on
+    the codec is not exact.
     """
-    from muvid.visualize.ffmpeg import probe
+    from muvid.footage.sound import aac_priming_filter
 
     encode = ["-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2"]
-    if trimmed_head and not (fade_out_s > 0 and total_s > 0):
-        return encode
-    if fade_out_s > 0 and total_s > 0:
+    trimmed = song_start >= _HEAD_TRIM_MIN_S
+    fading = fade_out_s > 0 and total_s > 0
+    if not (trimmed or fading) and _is_delivery_audio(song_path):
+        return ["-c:a", "copy"]
+    links = []
+    if trimmed:
+        links.append(f"atrim=start={song_start:.6f},asetpts=PTS-STARTPTS")
+    if fading:
         fade = min(fade_out_s, total_s)
-        return [
-            "-af",
-            f"afade=t=out:st={max(0.0, total_s - fade):.6f}:d={fade:.6f}",
-            *encode,
-        ]
+        links.append(f"afade=t=out:st={max(0.0, total_s - fade):.6f}:d={fade:.6f}")
+    links.append(aac_priming_filter())
+    return ["-af", ",".join(links), *encode]
+
+
+def _is_delivery_audio(song_path: str) -> bool:
+    """Whether the master's first audio stream already is aac / 48 kHz / stereo."""
+    from muvid.visualize.ffmpeg import probe
 
     try:
         astreams = [
@@ -875,13 +902,11 @@ def _audio_args(
         a = astreams[0] if astreams else {}
     except Exception:  # noqa: BLE001 — un-probeable song: encode, never crash the render
         a = {}
-    if (
+    return (
         a.get("codec_name") == "aac"
         and str(a.get("sample_rate")) == "48000"
         and a.get("channels") == 2
-    ):
-        return ["-c:a", "copy"]
-    return encode
+    )
 
 
 def _has_video_frames(part: Path) -> bool:
@@ -1030,12 +1055,11 @@ def assemble_music_video(
         concat_list.write_text("".join(f"file {n}\n" for n in names))
         song_start = cuts[0].song_start
         total = cuts[-1].song_end - song_start
-        # The song is trimmed to the covered span. For a fill_gaps EDL that span IS the
-        # whole song, so the -ss is omitted and -t admits every packet — which is what
-        # keeps the stream-copy path bit-identical to the master.
+        # The song is cut to the covered span by `_audio_args`' atrim, on decoded
+        # samples (an input -ss on an AAC master is off by its priming, muvid#379).
+        # For a fill_gaps EDL the span IS the whole song and -t admits every packet,
+        # which is what keeps the stream-copy path bit-identical to the master.
         song_input = ["-i", str(song_path)]
-        if song_start > 1e-3:
-            song_input = ["-ss", f"{song_start:.6f}", *song_input]
         run_ffmpeg(
             [
                 "-f",
@@ -1057,7 +1081,7 @@ def assemble_music_video(
                     song_path,
                     fade_out_s=fade_out_s,
                     total_s=total,
-                    trimmed_head=song_start > 1e-3,
+                    song_start=song_start,
                 ),
                 # Delivery contract (muvid#24 B3): no edit lists, moov up front.
                 "-use_editlist",
