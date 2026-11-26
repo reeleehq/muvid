@@ -462,6 +462,67 @@ def test_a_copied_aac_master_still_lands_late(tmp_path):
     assert abs(late) < 3.0, f"the song plays {late:+.1f} ms off its picture"
 
 
+def _starts(video):
+    """``{codec_type: start_time}`` and the video's decoded frame count."""
+    import json
+
+    j = json.loads(
+        subprocess.run(
+            ["ffprobe", "-v", "error", "-count_frames", "-show_entries"]
+            + [
+                "stream=codec_type,start_time,nb_read_frames",
+                "-of",
+                "json",
+                str(video),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+    )
+    starts = {s["codec_type"]: float(s["start_time"]) for s in j["streams"]}
+    frames = next(
+        int(s["nb_read_frames"]) for s in j["streams"] if s["codec_type"] == "video"
+    )
+    return starts, frames
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize("fps", [25, 30])
+def test_the_picture_starts_with_the_song(tmp_path, fps):
+    """muvid#384: the video stream starts at 0, like the audio.
+
+    Every part is x264 with B-frames, so its first frame carries a 2-frame
+    composition delay that an edit list would hide; the delivery contract writes
+    none, and without ``+negative_cts_offsets`` that delay became the stream's
+    start time: 0.080 s at 25 fps, 0.067 s at 30, every frame shown that long after
+    the music it was cut to. ``mux_audio`` copied it on, and its ``-shortest`` then
+    cut the last 2-5 frames to the audio's length.
+    """
+    from muvid.footage.assemble import assemble_music_video
+    from muvid.footage.edl import AssemblyCut, Transition
+    from muvid.footage.sound import mux_audio
+
+    song = tmp_path / "song.m4a"
+    subprocess.run(
+        ["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i"]
+        + ["anullsrc=r=48000:cl=stereo", "-t", "6", "-c:a", "aac", str(song)],
+        check=True,
+    )
+    clip = _testsrc_clip(tmp_path, "c", 8.0, size="320x180")
+    cuts = [
+        AssemblyCut(0.0, 3.0, "c", 0.0, str(clip)),
+        AssemblyCut(3.0, 6.0, "c", 1.0, str(clip), transition=Transition(0.4, "fade")),
+    ]
+    out = assemble_music_video(
+        cuts, str(song), str(tmp_path / "o.mp4"), canvas=(320, 180), fps=fps
+    )
+    for video in (out, mux_audio(out, song, tmp_path / "m.mp4")):
+        starts, frames = _starts(video)
+        assert starts == {"video": 0.0, "audio": 0.0}, (video.name, starts)
+        assert frames == 6 * fps, (video.name, frames)
+
+
 @needs_ffmpeg
 def test_a_portrait_render_passes_its_own_verify(tmp_path):
     """Adversarial-review finding 1: verify_video hard-coded 16:9/720p, so every use of
