@@ -251,14 +251,15 @@ def _render_still(
             str(segment),
             "-i",
             str(ctx.audio),
-            *(["-af", loud.filter_spec()] if loud else []),
             "-map",
             "0:v",
             "-map",
             "1:a",
             "-c:v",
             "copy",
-            *_audio_encode_args(audio_bitrate),
+            *_audio_encode_args(
+                audio_bitrate, before=(loud.filter_spec(),) if loud else ()
+            ),
             "-t",
             f"{ctx.duration:.3f}",
             *_container_args(),
@@ -308,9 +309,10 @@ def _render_filtergraph(
 
     chains.append(f"[{video}]fps={ctx.fps},format=yuv420p[vout]")
 
-    if loud:
-        chains.append(f"{_as_label(audio_label)}{loud.filter_spec()}[aout]")
-        audio_label = "[aout]"
+    chains.append(
+        _audio_graph_tail(audio_label, *([loud.filter_spec()] if loud else []))
+    )
+    audio_label = "[aenc]"
 
     run_ffmpeg(
         [
@@ -327,7 +329,7 @@ def _render_filtergraph(
                 fps=ctx.fps,
                 gop=_gop_frames(ctx.fps, gop_seconds),
             ),
-            *_audio_encode_args(audio_bitrate),
+            *_audio_encode_args(audio_bitrate, filtered=True),
             # -t bounds the render; -shortest ends it with the audio. Note we do
             # NOT pass `-fflags +shortest`: the widely copied incantation cuts
             # tens of milliseconds off the end of the song.
@@ -393,9 +395,23 @@ def _video_encode_args(*, crf: int, preset: str, fps: int, gop: int) -> list[str
     ]
 
 
-def _audio_encode_args(bitrate: str) -> list[str]:
-    """AAC-LC, 48 kHz, stereo. The sample rate is pinned on purpose — see above."""
+def _audio_encode_args(
+    bitrate: str, *, before: "tuple[str, ...]" = (), filtered: bool = False
+) -> list[str]:
+    """AAC-LC, 48 kHz, stereo. The sample rate is pinned on purpose — see above.
+
+    The encode is put back on the picture (muvid#385): an AAC encoder primes 1024
+    samples and :func:`_container_args` writes no edit list, so without
+    :func:`~muvid.visualize.ffmpeg.aac_priming_filter` the song played 21.3 ms
+    late. ``before`` are links to run ahead of it (a loudness pass) as one ``-af``.
+    ``filtered=True`` when the mapped audio is a ``-filter_complex`` output, which
+    cannot also take ``-af``: that graph must end in :func:`_audio_graph_tail`.
+    """
+    from muvid.visualize.ffmpeg import aac_priming_filter
+
+    af = [] if filtered else ["-af", ",".join([*before, aac_priming_filter()])]
     return [
+        *af,
         "-c:a",
         "aac",
         "-b:a",
@@ -405,6 +421,14 @@ def _audio_encode_args(bitrate: str) -> list[str]:
         "-ac",
         "2",
     ]
+
+
+def _audio_graph_tail(label: str, *links: str, out: str = "aenc") -> str:
+    """The filter_complex chain that ends an audio branch: ``links``, then the AAC
+    priming compensation (see :func:`_audio_encode_args`). Map ``[out]``."""
+    from muvid.visualize.ffmpeg import aac_priming_filter
+
+    return f"{_as_label(label)}{','.join([*links, aac_priming_filter()])}[{out}]"
 
 
 def _check_even(size: tuple[int, int]) -> None:

@@ -24,6 +24,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterator
 
+# The AAC priming compensation (muvid#379, #385) lives in the stdlib-only `muvid.aac`
+# so a module can import it without loading muvid.visualize; re-exported here beside
+# the other ffmpeg primitives every renderer already imports.
+from muvid.aac import AAC_PRIMING_SAMPLES, AAC_SAMPLE_RATE, aac_priming_filter  # noqa: F401
+
 PathLike = str | Path
 
 #: Env var bounding a single ffmpeg invocation's wall-clock (seconds). Unset =
