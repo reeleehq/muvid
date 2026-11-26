@@ -678,8 +678,8 @@ def test_a_photos_move_carries_on_through_the_fade(tmp_path):
     ordinary frames of the push.
 
     The boundary is found from the render's own steps rather than computed,
-    because the decoder may emit the video's leading frames twice
-    (``-use_editlist 0`` with a B-frame start offset).
+    because the decoder emits the video's leading frames twice (the stream starts
+    two frames late, muvid#384).
     """
     w, h, fps = 320, 180, 25
     a = _picture(tmp_path, "a", "testsrc2", w, h)
