@@ -29,6 +29,7 @@ from muvid.visualize.canvas import (
 from muvid.visualize.ffmpeg import (
     Loudness,
     PathLike,
+    apply_loudness,
     media_duration,
     measure_loudness,
     require_ffmpeg,
@@ -169,16 +170,24 @@ def render_audio_video(
         plan = resolve_visual(visual, ctx)
 
         loud = None
+        delivered = audio  # the audio the video carries
         if normalize:
             loud = measure_loudness(audio, loudness or Loudness())
+            # normalized in a step of its own, so the render cannot cut its tail
+            # (muvid#393); the visual still reacts to the song as given
+            delivered = apply_loudness(audio, loud, work / "normalized.wav")
 
         encode = dict(
-            crf=crf, preset=preset, audio_bitrate=audio_bitrate, gop_seconds=gop_seconds
+            crf=crf,
+            preset=preset,
+            audio_bitrate=audio_bitrate,
+            gop_seconds=gop_seconds,
+            delivered=delivered,
         )
         if plan.still is not None:
-            _render_still(plan.still, ctx, out, loud=loud, **encode)
+            _render_still(plan.still, ctx, out, **encode)
         else:
-            _render_filtergraph(plan, ctx, out, loud=loud, **encode)
+            _render_filtergraph(plan, ctx, out, **encode)
 
         canvas = plan.still if plan.still and plan.still.exists() else None
         if canvas and workdir is None:
@@ -202,11 +211,11 @@ def _render_still(
     ctx: VisualContext,
     out: Path,
     *,
-    loud: Loudness | None,
     crf: int,
     preset: str,
     audio_bitrate: str,
     gop_seconds: float,
+    delivered: Path,
 ) -> None:
     """Encode one short segment of the static canvas, then loop it, copying.
 
@@ -250,16 +259,14 @@ def _render_still(
             "-i",
             str(segment),
             "-i",
-            str(ctx.audio),
+            str(delivered),
             "-map",
             "0:v",
             "-map",
             "1:a",
             "-c:v",
             "copy",
-            *_audio_encode_args(
-                audio_bitrate, before=(loud.filter_spec(),) if loud else ()
-            ),
+            *_audio_encode_args(audio_bitrate),
             # -t alone let the copied picture run two frames past the song (4.2 s
             # for 4.0 s at 10 fps): a copy is cut on packets, after B-frame
             # reordering. The frame count that covers the song is the bound
@@ -279,22 +286,33 @@ def _render_filtergraph(
     ctx: VisualContext,
     out: Path,
     *,
-    loud: Loudness | None,
     crf: int,
     preset: str,
     audio_bitrate: str,
     gop_seconds: float,
+    delivered: Path,
 ) -> None:
-    """The general path: build one filter_complex, encode video and audio."""
+    """The general path: build one filter_complex, encode video and audio.
+
+    The visual reads ``ctx.audio`` (input 0); the video carries ``delivered``,
+    which is that same file unless the song was normalized (muvid#393), in which
+    case it is an input of its own, added last so the visual's input indices hold.
+    """
     inputs: list[str] = ["-i", str(ctx.audio)]
     for group in plan.inputs:
         inputs += [str(a) for a in group]
+    separate = Path(delivered) != Path(ctx.audio)
 
     chains: list[str] = []
     audio_label = "0:a"
     if plan.uses_audio:
         chains.append("[0:a]asplit=2[atrack][aviz]")
         audio_label = "[atrack]"
+    if separate:
+        if plan.uses_audio:
+            chains.append("[atrack]anullsink")
+        audio_label = f"{sum(1 for x in inputs if x == '-i')}:a"
+        inputs += ["-i", str(delivered)]
     chains += list(plan.filters)
 
     video = plan.video
@@ -325,9 +343,7 @@ def _render_filtergraph(
         f"trim=end_frame={n_frames},format=yuv420p[vout]"
     )
 
-    chains.append(
-        _audio_graph_tail(audio_label, *([loud.filter_spec()] if loud else []))
-    )
+    chains.append(_audio_graph_tail(audio_label))
     audio_label = "[aenc]"
 
     run_ffmpeg(
