@@ -131,3 +131,34 @@ def test_the_picture_covers_the_song_and_the_song_is_whole(
     assert heard >= seconds - AAC_FRAME_S, (
         f"{case}: the song's tail was cut ({heard} s)"
     )
+
+
+@needs_ffmpeg_filter("showwaves")
+def test_a_callable_visual_gets_the_cover_and_the_normalized_song(media, tmp_path):
+    """A callable visual that draws no cover is composed over the image by the
+    renderer, and with ``normalize=True`` the normalized song is one more input.
+    Both indices come from one count: the first version of muvid#393's fix
+    added the song's input first and pointed the cover at it ("[1:v] matches no
+    streams")."""
+    from muvid.visualize import render_audio_video
+    from muvid.visualize.visuals import VisualPlan
+
+    def waves_only(ctx):
+        return VisualPlan(
+            filters=[f"[aviz]showwaves=s=320x180:rate={ctx.fps},scale=640:360[viz]"],
+            video="viz",
+            uses_audio=True,
+        )
+
+    song, cover = media
+    result = render_audio_video(
+        song(4.31),
+        cover,
+        visual=waves_only,
+        saveas=tmp_path / "out.mp4",
+        size=(640, 360),
+        fps=24,
+        normalize=True,
+    )
+    assert _probe(result.path) == math.ceil(4.31 * 24)
+    assert _audio_seconds(result.path, tmp_path) >= 4.31 - AAC_FRAME_S

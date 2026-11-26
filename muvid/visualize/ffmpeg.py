@@ -415,7 +415,8 @@ def apply_loudness(audio: PathLike, loudness: Loudness, out: PathLike) -> Path:
     lost its last 65-130 ms (muvid#393). Run alone, it flushes at its own EOF and
     the song is whole. 32-bit float, so nothing is clipped or requantized on the
     way to the AAC encoder; at :data:`AAC_SAMPLE_RATE`, because ``loudnorm``
-    otherwise hands on its internal 192 kHz.
+    otherwise hands on its internal 192 kHz; stereo, which is what the delivery
+    encode downmixes to after the loudness pass anyway.
     """
     out = Path(out)
     run_ffmpeg(
@@ -428,6 +429,10 @@ def apply_loudness(audio: PathLike, loudness: Loudness, out: PathLike) -> Path:
             loudness.filter_spec(),
             "-ar",
             str(AAC_SAMPLE_RATE),
+            # stereo now, as the encode will be anyway: a 5.1 source kept its six
+            # float channels, about 1 GB for 15 minutes (muvid#393's review)
+            "-ac",
+            "2",
             "-c:a",
             "pcm_f32le",
             str(out),

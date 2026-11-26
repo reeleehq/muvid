@@ -308,17 +308,19 @@ def _render_filtergraph(
     if plan.uses_audio:
         chains.append("[0:a]asplit=2[atrack][aviz]")
         audio_label = "[atrack]"
-    if separate:
-        if plan.uses_audio:
-            chains.append("[atrack]anullsink")
-        audio_label = f"{sum(1 for x in inputs if x == '-i')}:a"
-        inputs += ["-i", str(delivered)]
     chains += list(plan.filters)
+
+    def add_input(*args: str) -> int:
+        """Append one input; its index, from the ONE count every index uses."""
+        index = inputs.count("-i")
+        inputs.extend(args)
+        return index
 
     video = plan.video
     if ctx.image is not None and not plan.has_cover:
-        index = 1 + len(plan.inputs)
-        inputs += ["-loop", "1", "-framerate", str(ctx.fps), "-i", str(ctx.image)]
+        index = add_input(
+            "-loop", "1", "-framerate", str(ctx.fps), "-i", str(ctx.image)
+        )
         chains.append(cover_chain(ctx.size, ctx.layout, src=f"{index}:v", out="_fgc"))
         chains.append(
             overlay_chain(background=video, cover="_fgc", out="_vc", shortest=True)
@@ -343,6 +345,10 @@ def _render_filtergraph(
         f"trim=end_frame={n_frames},format=yuv420p[vout]"
     )
 
+    if separate:
+        if plan.uses_audio:
+            chains.append("[atrack]anullsink")
+        audio_label = f"{add_input('-i', str(delivered))}:a"
     chains.append(_audio_graph_tail(audio_label))
     audio_label = "[aenc]"
 
