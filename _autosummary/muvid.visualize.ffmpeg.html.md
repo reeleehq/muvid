@@ -22,17 +22,18 @@ substrate under [`muvid.visualize.canvas`](muvid.visualize.canvas.html.md#module
 
 ### Functions
 
-| [`decode_pcm`](#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels])   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.                                                                                                                                                                                |
-|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`has_filter`](#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
-| [`measure_loudness`](#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
-| [`media_duration`](#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
-| [`picture_duration`](#muvid.visualize.ffmpeg.picture_duration)(media)                          | Duration of `media`'s first VIDEO stream in seconds, or `None` when none can be told.                                                                                                                                                                                                      |
-| [`probe`](#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
-| [`require_ffmpeg`](#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
-| [`require_filter`](#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
-| [`run_ffmpeg`](#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])                | Run `ffmpeg` with `args`, raising a readable error on failure.                                                                                                                                                                                                                             |
-| [`stream_pcm`](#muvid.visualize.ffmpeg.stream_pcm)(audio, \*, sample_rate, channels)     | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at a time — [`decode_pcm()`](#muvid.visualize.ffmpeg.decode_pcm)'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219). |
+| [`apply_loudness`](#muvid.visualize.ffmpeg.apply_loudness)(audio, loudness, out)           | Write `audio` brought to `loudness` (loudnorm pass 2) as a wav at `out`.                                                                                                                                                                                                                   |
+|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`decode_pcm`](#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels]) | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.                                                                                                                                                                                |
+| [`has_filter`](#muvid.visualize.ffmpeg.has_filter)(name)                               | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
+| [`measure_loudness`](#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])              | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
+| [`media_duration`](#muvid.visualize.ffmpeg.media_duration)(media)                          | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
+| [`picture_duration`](#muvid.visualize.ffmpeg.picture_duration)(media)                        | Duration of `media`'s first VIDEO stream in seconds, or `None` when none can be told.                                                                                                                                                                                                      |
+| [`probe`](#muvid.visualize.ffmpeg.probe)(media)                                   | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
+| [`require_ffmpeg`](#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                        | Raise a helpful [`FfmpegError`](#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
+| [`require_filter`](#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)           | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
+| [`run_ffmpeg`](#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])              | Run `ffmpeg` with `args`, raising a readable error on failure.                                                                                                                                                                                                                             |
+| [`stream_pcm`](#muvid.visualize.ffmpeg.stream_pcm)(audio, \*, sample_rate, channels)   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at a time — [`decode_pcm()`](#muvid.visualize.ffmpeg.decode_pcm)'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219). |
 
 ### Classes
 
@@ -94,6 +95,22 @@ bytes straight into an array with no conversion step.
 ### muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S *= 10.0*
 
 Seconds of raw PCM each chunk of [`stream_pcm()`](#muvid.visualize.ffmpeg.stream_pcm) holds.
+
+### muvid.visualize.ffmpeg.apply_loudness(audio, loudness, out)
+
+Write `audio` brought to `loudness` (loudnorm pass 2) as a wav at `out`.
+
+A step of its own, never a link in a render’s filtergraph: `loudnorm` emits
+its output late, and a render whose picture ends (`trim`, `-frames:v`,
+`-t`) stopped the graph before that tail was flushed, so a normalized song
+lost its last 65-130 ms (muvid#393). Run alone, it flushes at its own EOF and
+the song is whole. 32-bit float, so nothing is clipped or requantized on the
+way to the AAC encoder; at `AAC_SAMPLE_RATE`, because `loudnorm`
+otherwise hands on its internal 192 kHz; stereo, which is what the delivery
+encode downmixes to after the loudness pass anyway.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
 ### muvid.visualize.ffmpeg.decode_pcm(audio, , sample_rate, channels=1)
 

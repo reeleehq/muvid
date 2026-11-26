@@ -17,6 +17,7 @@ muvid.visualize.ffmpeg
 
    .. autosummary::
    
+      apply_loudness
       decode_pcm
       has_filter
       measure_loudness

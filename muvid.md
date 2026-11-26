@@ -1,4 +1,4 @@
-> built 2026-11-26 16:30 UTC from e57cbe2 (main) · muvid 0.0.201. Details: build_info.json
+> built 2026-11-26 17:29 UTC from 78507fe (main) · muvid 0.0.202. Details: build_info.json
 
 # index.html.md
 
@@ -19859,17 +19859,18 @@ substrate under [`muvid.visualize.canvas`](_autosummary/muvid.visualize.canvas.h
 
 ### Functions
 
-| [`decode_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels])   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.                                                                                                                                                                                |
-|---------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`has_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.has_filter)(name)                                 | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
-| [`measure_loudness`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])                | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
-| [`media_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.media_duration)(media)                            | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
-| [`picture_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.picture_duration)(media)                          | Duration of `media`'s first VIDEO stream in seconds, or `None` when none can be told.                                                                                                                                                                                                      |
-| [`probe`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.probe)(media)                                     | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
-| [`require_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                          | Raise a helpful [`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
-| [`require_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)             | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
-| [`run_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])                | Run `ffmpeg` with `args`, raising a readable error on failure.                                                                                                                                                                                                                             |
-| [`stream_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm)(audio, \*, sample_rate, channels)     | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at a time — [`decode_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219). |
+| [`apply_loudness`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.apply_loudness)(audio, loudness, out)           | Write `audio` brought to `loudness` (loudnorm pass 2) as a wav at `out`.                                                                                                                                                                                                                   |
+|-------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`decode_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)(audio, \*, sample_rate[, channels]) | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples on stdout.                                                                                                                                                                                |
+| [`has_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.has_filter)(name)                               | Whether this ffmpeg build has the `name` filter compiled in.                                                                                                                                                                                                                               |
+| [`measure_loudness`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.measure_loudness)(audio[, target])              | Analyse `audio` (loudnorm pass 1) and return `target` with the result.                                                                                                                                                                                                                     |
+| [`media_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.media_duration)(media)                          | Duration of `media` in seconds.                                                                                                                                                                                                                                                            |
+| [`picture_duration`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.picture_duration)(media)                        | Duration of `media`'s first VIDEO stream in seconds, or `None` when none can be told.                                                                                                                                                                                                      |
+| [`probe`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.probe)(media)                                   | Return `ffprobe`'s `format` + `streams` JSON for `media`.                                                                                                                                                                                                                                  |
+| [`require_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_ffmpeg)(\*tools)                        | Raise a helpful [`FfmpegError`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.FfmpegError) if any of `tools` is not on PATH.                                                                                                                                                                             |
+| [`require_filter`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.require_filter)(name, \*, needed_for)           | Raise unless this ffmpeg build has the `name` filter.                                                                                                                                                                                                                                      |
+| [`run_ffmpeg`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.run_ffmpeg)(args, \*[, overwrite])              | Run `ffmpeg` with `args`, raising a readable error on failure.                                                                                                                                                                                                                             |
+| [`stream_pcm`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm)(audio, \*, sample_rate, channels)   | Decode `audio` to raw [`PCM_SAMPLE_FORMAT`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.PCM_SAMPLE_FORMAT) samples, yielded `chunk_s` at a time — [`decode_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.decode_pcm)'s streaming twin, for a pass that must not hold a whole track (a loudness meter, muvid#219). |
 
 ### Classes
 
@@ -19931,6 +19932,22 @@ bytes straight into an array with no conversion step.
 ### muvid.visualize.ffmpeg.PCM_STREAM_CHUNK_S *= 10.0*
 
 Seconds of raw PCM each chunk of [`stream_pcm()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.stream_pcm) holds.
+
+### muvid.visualize.ffmpeg.apply_loudness(audio, loudness, out)
+
+Write `audio` brought to `loudness` (loudnorm pass 2) as a wav at `out`.
+
+A step of its own, never a link in a render’s filtergraph: `loudnorm` emits
+its output late, and a render whose picture ends (`trim`, `-frames:v`,
+`-t`) stopped the graph before that tail was flushed, so a normalized song
+lost its last 65-130 ms (muvid#393). Run alone, it flushes at its own EOF and
+the song is whole. 32-bit float, so nothing is clipped or requantized on the
+way to the AAC encoder; at `AAC_SAMPLE_RATE`, because `loudnorm`
+otherwise hands on its internal 192 kHz; stereo, which is what the delivery
+encode downmixes to after the loudness pass anyway.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
 
 ### muvid.visualize.ffmpeg.decode_pcm(audio, , sample_rate, channels=1)
 
@@ -21712,7 +21729,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-26 16:30 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/e57cbe2ae198fd919fa82587f1992200af388fde"><code>e57cbe2</code></a> on branch <code>main</code>, for **muvid 0.0.201** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-26 17:29 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/78507fecd467d5421fce8d23fe462d675f57b3ca"><code>78507fe</code></a> on branch <code>main</code>, for **muvid 0.0.202** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -21721,9 +21738,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/e57cbe2ae198fd919fa82587f1992200af388fde"><code>e57cbe2ae198fd919fa82587f1992200af388fde</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/78507fecd467d5421fce8d23fe462d675f57b3ca"><code>78507fecd467d5421fce8d23fe462d675f57b3ca</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.201</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.202</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21732,9 +21749,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45857483767">45857483767</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45866327235">45866327235</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>d33b2b39b5e75563dbf59b3080382d8f7183cb3a</code> (in the history of the built commit) |
+| Event commit | <code>9dbaf5c7b7dd01b69a6d14cd10e34aa2655cbaac</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21759,13 +21776,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.201/">0.0.201</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.202/">0.0.202</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout e57cbe2ae198fd919fa82587f1992200af388fde
+git checkout 78507fecd467d5421fce8d23fe462d675f57b3ca
 pip install "epythet==0.2.25"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
