@@ -735,6 +735,11 @@ _HISTORICAL_ARGV = (
         "10.000000",
         "-c:v",
         "copy",
+        # muvid#379: every AAC encode trims the encoder's priming off the input, so
+        # the song plays on its picture (it landed 21 ms late). A deliberate change
+        # to this recording, not drift.
+        "-af",
+        "aresample=48000,atrim=start_sample=1024,apad=pad_len=1024",
         "-c:a",
         "aac",
         "-b:a",

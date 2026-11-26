@@ -369,6 +369,99 @@ def test_full_coverage_stream_copies_a_contract_master_bit_identically(tmp_path)
     assert _stream_md5(out1, "a") == _stream_md5(out2, "a")
 
 
+_CLICK_AT_S = 2.0  # in a 4 s master
+
+
+def _click_master(tmp_path, name, *, rate, codec):
+    """A 4 s stereo master, silent but for a 1 ms click at exactly 2.000 s."""
+    from muvid.footage.sound import write_wav
+
+    wav = tmp_path / f"{name}.wav"
+    x = np.zeros((48000 * 4, 2))
+    x[96000 : 96000 + 48] = 0.9
+    write_wav(str(wav), x, 48000)
+    if codec == "pcm":
+        return wav
+    out = tmp_path / f"{name}.m4a"
+    subprocess.run(
+        ["ffmpeg", "-y", "-v", "error", "-i", str(wav), "-ar", str(rate)]
+        + ["-c:a", "aac", "-b:a", "192k", str(out)],
+        check=True,
+    )
+    return out
+
+
+def _click_lateness_ms(tmp_path, song, *, start, end, fade=0.0):
+    """Render black over ``[start, end]`` of ``song``; how late the click plays (ms)."""
+    from muvid.footage.assemble import assemble_music_video
+    from muvid.footage.edl import AssemblyCut
+    from muvid.footage.sound import read_wav
+
+    out = tmp_path / f"{song.stem}-{start}-{end}-{fade}.mp4"
+    assemble_music_video(
+        [AssemblyCut(start, end, "", 0.0, "")],
+        str(song),
+        str(out),
+        canvas=(64, 48),
+        fps=25,
+        fade_out_s=fade,
+    )
+    back = out.with_suffix(".wav")
+    subprocess.run(
+        ["ffmpeg", "-y", "-v", "error", "-i", str(out), str(back)], check=True
+    )
+    y, sr = read_wav(str(back))
+    level = np.abs(y).mean(axis=1)
+    # the click's ONSET (first sample past half its peak), not its argmax: the
+    # argmax wanders across the 1 ms click with the codec, the onset does not
+    heard = int(np.argmax(level > level.max() / 2)) / sr
+    return (heard - (_CLICK_AT_S - start)) * 1000
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize(
+    "rate, codec", [(48000, "pcm"), (48000, "aac"), (44100, "aac")], ids=str
+)
+@pytest.mark.parametrize(
+    "start, end, fade",
+    [(0.0, 4.0, 0.0), (1.0, 4.0, 0.0), (0.0, 3.0, 0.5), (1.0, 3.0, 0.5)],
+    ids=["whole", "head", "fade", "head+fade"],
+)
+def test_a_reencoded_song_lands_on_its_frame_despite_aac_priming(
+    tmp_path, rate, codec, start, end, fade
+):
+    """muvid#379: every AAC encode of the song is put back on the picture.
+
+    The encoder primes 1024 samples and the delivery contract writes no edit list,
+    so before the fix each of these played the click 22.3 ms late, the wav master
+    even on a whole-song render. The 44.1 kHz master with a head trim read 0.3 ms
+    "early" only because ffmpeg's input seek on AAC is itself 21.7 ms early, which
+    is why the head is now cut by ``atrim`` and that case is in the grid.
+
+    ``whole`` on the 48 kHz AAC master is the stream-copy path, which no filter can
+    reach; it is pinned separately below (muvid#383). Within 3 ms, the bound
+    ``test_muxed_sound_lands_on_its_frame_despite_aac_priming`` uses: the click is
+    1 ms wide.
+    """
+    if codec == "aac" and rate == 48000 and start == 0.0 and not fade:
+        pytest.skip("stream-copy path: see test_a_copied_aac_master_still_lands_late")
+    song = _click_master(tmp_path, f"m{rate}{codec}", rate=rate, codec=codec)
+    late = _click_lateness_ms(tmp_path, song, start=start, end=end, fade=fade)
+    assert abs(late) < 3.0, f"the song plays {late:+.1f} ms off its picture"
+
+
+@needs_ffmpeg
+@pytest.mark.xfail(
+    strict=True,
+    reason="muvid#383: a stream-copied AAC master's edit list is dropped by "
+    "-use_editlist 0, so its priming plays (22 ms). Flips when #383 is decided.",
+)
+def test_a_copied_aac_master_still_lands_late(tmp_path):
+    song = _click_master(tmp_path, "contract", rate=48000, codec="aac")
+    late = _click_lateness_ms(tmp_path, song, start=0.0, end=4.0)
+    assert abs(late) < 3.0, f"the song plays {late:+.1f} ms off its picture"
+
+
 @needs_ffmpeg
 def test_a_portrait_render_passes_its_own_verify(tmp_path):
     """Adversarial-review finding 1: verify_video hard-coded 16:9/720p, so every use of
