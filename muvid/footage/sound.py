@@ -225,11 +225,46 @@ def _active(level, *, threshold_dbfs: float):
     return level > threshold_dbfs
 
 
-def _read(path):
-    import soundfile as sf
+def read_wav(path):
+    """``(samples, rate)`` of a PCM wav: float in [-1, 1], shape ``(n, channels)``.
+    Stdlib ``wave`` + numpy, so the stems need no audio library beyond ffmpeg."""
+    import wave
 
-    x, sr = sf.read(str(path), always_2d=True)
-    return x, sr
+    import numpy as np
+
+    with wave.open(str(path), "rb") as w:
+        rate, ch, width, n = w.getframerate(), w.getnchannels(), w.getsampwidth(), w.getnframes()
+        raw = w.readframes(n)
+    if width == 2:
+        x = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 32768.0
+    elif width == 4:
+        x = np.frombuffer(raw, dtype="<i4").astype(np.float64) / 2147483648.0
+    elif width == 1:
+        x = (np.frombuffer(raw, dtype=np.uint8).astype(np.float64) - 128.0) / 128.0
+    else:
+        raise ValueError(f"{path}: {8 * width}-bit wav is not read here")
+    return x.reshape(-1, ch), rate
+
+
+def write_wav(path, samples, rate: int) -> None:
+    """Write float samples (``(n, channels)`` or ``(n,)``, clipped to [-1, 1]) as 16-bit
+    PCM wav."""
+    import wave
+
+    import numpy as np
+
+    x = np.asarray(samples, dtype=np.float64)
+    if x.ndim == 1:
+        x = x[:, None]
+    pcm = np.round(np.clip(x, -1.0, 1.0) * 32767.0).astype("<i2")
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(x.shape[1])
+        w.setsampwidth(2)
+        w.setframerate(int(rate))
+        w.writeframes(pcm.tobytes())
+
+
+_read = read_wav
 
 
 def mix_under(
@@ -262,7 +297,6 @@ def mix_under(
     nat): with the ducked music it sums to the mix. Returns the parameters that made it
     (dialogue gain, duck depth, speech and music levels, the limiter's gain)."""
     import numpy as np
-    import soundfile as sf
     from mixing.audio import duck_audio
 
     m, sr = _read(music)
@@ -307,9 +341,9 @@ def mix_under(
     peak = float(np.max(np.abs(mix))) if mix.size else 0.0
     limit = 10 ** (peak_dbfs / 20)
     scale = min(1.0, limit / peak) if peak > 0 else 1.0
-    sf.write(str(out), mix * scale, sr, subtype="PCM_16")
+    write_wav(out, mix * scale, sr)
     if clips_out is not None:
-        sf.write(str(clips_out), np.clip(clips, -1.0, 1.0), sr, subtype="PCM_16")
+        write_wav(clips_out, clips, sr)
     params["limiter_gain_db"] = round(20 * np.log10(scale), 2)
     return params
 

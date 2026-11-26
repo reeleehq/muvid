@@ -242,9 +242,9 @@ def test_the_clips_sound_track_is_the_cuts_sound_in_order_and_exactly_as_long(tm
     assert abs(_duration(out) - 6.0) < 0.01
 
     import numpy as np
-    import soundfile as sf
+    from muvid.footage.sound import read_wav, write_wav
 
-    x, sr = sf.read(str(out))
+    x, sr = read_wav(str(out))
     x = np.abs(x).mean(axis=1)
     loud = lambda t0, t1: float(x[int(t0 * sr):int(t1 * sr)].mean())  # noqa: E731
     assert loud(0.2, 1.3) > 0.05  # the tone
@@ -254,11 +254,11 @@ def test_the_clips_sound_track_is_the_cuts_sound_in_order_and_exactly_as_long(tm
                     "sine=frequency=220:duration=6", "-ar", "48000", "-ac", "2", str(music)],
                    check=True)
     silent = tmp_path / "silent.wav"
-    sf.write(str(silent), np.zeros((6 * 48000, 2)), 48000)
+    write_wav(str(silent), np.zeros((6 * 48000, 2)), 48000)
     params = mix_under(music, out, silent, tmp_path / "mix.wav", clips_out=tmp_path / "c2.wav")
     assert abs(_duration(tmp_path / "mix.wav") - 6.0) < 0.02
     assert params["limiter_gain_db"] <= 0 and params["duck_db"] <= 0
-    y, _ = sf.read(str(tmp_path / "mix.wav"))
+    y, _ = read_wav(str(tmp_path / "mix.wav"))
     assert np.abs(y).max() <= 10 ** (-1 / 20) + 1e-3  # limited to -1 dBFS
 
 
@@ -302,7 +302,7 @@ def test_the_lacing_bridge_carries_a_cuts_sound_level():
 @needs_ffmpeg
 def test_a_cuts_sound_level_is_applied_to_its_stretch_of_the_track(tmp_path):
     import numpy as np
-    import soundfile as sf
+    from muvid.footage.sound import read_wav, write_wav
 
     from muvid.footage.edl import AssemblyCut
     from muvid.footage.sound import clip_sound_track
@@ -310,7 +310,7 @@ def test_a_cuts_sound_level_is_applied_to_its_stretch_of_the_track(tmp_path):
     a = _clip(tmp_path / "a.mp4", seconds=4, freq=440)
     cuts = [AssemblyCut(0.0, 1.5, "a", 0.0, str(a)),
             AssemblyCut(1.5, 3.0, "a", 1.5, str(a), sound_db=-20.0)]
-    x, sr = sf.read(str(clip_sound_track(cuts, tmp_path / "c.wav")))
+    x, sr = read_wav(str(clip_sound_track(cuts, tmp_path / "c.wav")))
     x = np.abs(x).mean(axis=1)
     full, bed = x[int(0.3 * sr):int(1.2 * sr)].mean(), x[int(1.8 * sr):int(2.7 * sr)].mean()
     assert abs(20 * np.log10(bed / full) + 20.0) < 1.0
@@ -359,19 +359,19 @@ def test_a_dissolve_never_reads_clip_the_in_point_does_not_have():
 @needs_ffmpeg
 def test_muxed_sound_lands_on_its_frame_despite_aac_priming(tmp_path):
     import numpy as np
-    import soundfile as sf
+    from muvid.footage.sound import read_wav, write_wav
 
     from muvid.footage.sound import mux_audio
 
     sr = 48000
     x = np.zeros((sr * 3, 2))
     x[sr: sr + 48] = 0.9  # a click at exactly 1.000 s
-    sf.write(str(tmp_path / "click.wav"), x, sr)
+    write_wav(str(tmp_path / "click.wav"), x, sr)
     video = _clip(tmp_path / "v.mp4", seconds=3, freq=0, audio=False)
     mux_audio(video, tmp_path / "click.wav", tmp_path / "out.mp4")
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(tmp_path / "out.mp4"),
                     str(tmp_path / "back.wav")], check=True)
-    y, sr2 = sf.read(str(tmp_path / "back.wav"))
+    y, sr2 = read_wav(str(tmp_path / "back.wav"))
     at = int(np.argmax(np.abs(y).mean(axis=1))) / sr2
     assert abs(at - 1.0) < 0.003, at
 
@@ -379,7 +379,7 @@ def test_muxed_sound_lands_on_its_frame_despite_aac_priming(tmp_path):
 @needs_ffmpeg
 def test_a_clip_whose_audio_starts_late_is_padded_not_pulled_early(tmp_path):
     import numpy as np
-    import soundfile as sf
+    from muvid.footage.sound import read_wav, write_wav
 
     from muvid.footage.edl import AssemblyCut
     from muvid.footage.sound import clip_sound_track
@@ -390,7 +390,7 @@ def test_a_clip_whose_audio_starts_late_is_padded_not_pulled_early(tmp_path):
                     "[1:a]adelay=500|500[a]", "-map", "0:v", "-map", "[a]", "-c:v", "libx264",
                     "-pix_fmt", "yuv420p", "-c:a", "aac", str(late)], check=True)
     out = clip_sound_track([AssemblyCut(0.0, 2.0, "late", 0.0, str(late))], tmp_path / "c.wav")
-    y, sr = sf.read(str(out))
+    y, sr = read_wav(str(out))
     y = np.abs(y).mean(axis=1)
     assert y[int(0.05 * sr):int(0.4 * sr)].mean() < 1e-3 < y[int(0.7 * sr):int(1.5 * sr)].mean()
 
@@ -410,7 +410,7 @@ def test_speech_is_raised_and_the_music_ducked_under_it_but_not_under_the_room(t
     """The flaw this guards: a room-tone bed keyed the ducker, holding the music 12 dB
     down for the whole video, while a quiet phone voice stayed under the ducked music."""
     import numpy as np
-    import soundfile as sf
+    from muvid.footage.sound import read_wav, write_wav
 
     from muvid.footage.sound import mix_under
 
@@ -423,9 +423,9 @@ def test_speech_is_raised_and_the_music_ducked_under_it_but_not_under_the_room(t
     room = 0.003 * np.random.default_rng(1).standard_normal(len(t))  # a room bed, all along
     room[2 * sr:4 * sr] = 0
     for name, x in (("m", music), ("d", voice), ("n", room)):
-        sf.write(str(tmp_path / f"{name}.wav"), np.stack([x, x], 1), sr)
+        write_wav(str(tmp_path / f"{name}.wav"), np.stack([x, x], 1), sr)
     p = mix_under(tmp_path / "m.wav", tmp_path / "d.wav", tmp_path / "n.wav", tmp_path / "x.wav")
-    y, _ = sf.read(str(tmp_path / "x.wav"))
+    y, _ = read_wav(str(tmp_path / "x.wav"))
     y = y.mean(axis=1)
 
     def db(a, b):
