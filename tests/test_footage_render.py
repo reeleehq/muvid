@@ -411,7 +411,10 @@ def _click_lateness_ms(tmp_path, song, *, start, end, fade=0.0):
         ["ffmpeg", "-y", "-v", "error", "-i", str(out), str(back)], check=True
     )
     y, sr = read_wav(str(back))
-    heard = int(np.argmax(np.abs(y).mean(axis=1))) / sr
+    level = np.abs(y).mean(axis=1)
+    # the click's ONSET (first sample past half its peak), not its argmax: the
+    # argmax wanders across the 1 ms click with the codec, the onset does not
+    heard = int(np.argmax(level > level.max() / 2)) / sr
     return (heard - (_CLICK_AT_S - start)) * 1000
 
 

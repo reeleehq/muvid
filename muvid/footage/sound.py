@@ -94,8 +94,9 @@ def aac_priming_filter(
     and padding them back at the tail keeps the length. ``aresample`` comes first so
     ``start_sample`` counts samples at the rate the encoder primes at, whatever rate
     the input has. Append it LAST to a chain whose timeline is the delivered one (a
-    fade's ``st`` is read before the trim). Every muvid AAC encode goes through it:
-    :func:`mux_audio` and :func:`muvid.footage.assemble._audio_args`."""
+    fade's ``st`` is read before the trim). Every FOOTAGE AAC encode goes through
+    it: :func:`mux_audio` and :func:`muvid.footage.assemble._audio_args`. The
+    visualizer and the lyric-video renderers do not yet (muvid#385)."""
     return (
         f"aresample={sample_rate},"
         f"atrim=start_sample={priming_samples},"
