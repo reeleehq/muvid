@@ -2694,6 +2694,7 @@ EDL_OPTIONAL_FIELDS = (
     ("source_in", float, None),
     ("source_in_by_hand", bool, False),
     ("source_in_by_cutter", bool, False),
+    ("sound_db", float, None),
 )
 
 
@@ -3236,6 +3237,117 @@ def _edits_locked(fn):
             return fn(fp, **params)
 
     return locked
+
+
+def propose_promo(
+    fp,
+    *,
+    shots: list[dict],
+    length_s: Optional[float] = None,
+    span: Optional[tuple[float, float]] = None,
+    name: str = "",
+    phrase_bars: int = 0,
+    dissolve_s: Optional[float] = None,
+) -> dict:
+    """Cut a promo: the shots you chose, in your order, each held for a phrase of the
+    music (a class, a studio, an event — not a music video). Saves it as a named edit.
+
+    ``shots`` is the ordered list of selects, each ``{clip_id}`` plus optionally
+    ``source_in`` (where in the clip, seconds; default: the stretch whose picture
+    changes land on the beats), ``hold_s`` (the length it aims at; default 3.5 s),
+    ``min_s``/``max_s`` (bounds — a soundbite's ``min_s`` is how long the words take),
+    ``role`` (your tag: hook, place, instructor, flow, detail, peak, soundbite, calm,
+    community, close ...), ``transition`` (``cut``/``dissolve``; default: a hard cut,
+    and a dissolve of about a beat (``dissolve_s`` to change it) into a calm, community
+    or close shot that starts on a phrase) and ``sound_db`` (the level of its own sound
+    under the music; default: full for a ``soundbite`` or ``nat`` shot, a quiet -8 dB
+    room bed for the rest). Any clip can be a shot, listened to or not: a promo
+    shows each from its own in-point and never needs the song in it.
+
+    Every boundary lands on a bar line, phrase starts (every ``phrase_bars`` bars,
+    default 4) and accented downbeats preferred, each shot as near its hold as the bars
+    allow and never past the end of its clip. ``length_s`` makes the video about that
+    long, ENDING where the song ends (its own ending, no fade) and starting on a phrase;
+    ``span`` (``[start_s, end_s]``) sets the window exactly; neither: the whole song.
+    Refused, with the reason, when the shots cannot fill the window within their holds.
+
+    Render it with ``render(edit_id=..., sound="song_and_clips")`` to keep the videos'
+    own sound under the music. Returns the saved edit plus ``promo``: per shot its
+    role, place on the song, hold and transition, and the average shot length.
+    """
+    from muvid.footage import promo as pr
+    from muvid.footage.edl import fill_gaps, free_length
+    from muvid.footage.music_cut import (
+        FreeSource,
+        choose_source_in,
+        cover_crop,
+        display_size,
+        extend_grid,
+    )
+
+    if not isinstance(shots, list) or not shots:
+        raise FootageError("shots must be a non-empty list of {clip_id, ...}")
+    try:
+        plan_shots = [pr.Shot.from_dict(s) for s in shots]
+    except (TypeError, ValueError) as e:
+        raise FootageError(f"bad shot: {e}") from None
+    placements = {a.clip_id: a for a in _require_song_and_alignment(fp)}
+    rows = {c["clip_id"]: c for c in fp.manifest().get("clips", [])}
+    unknown = sorted({s.clip_id for s in plan_shots} - set(rows))
+    if unknown:
+        raise FootageError(f"unknown clip(s) {unknown}; this project's clips: {sorted(rows)[:20]}...")
+    song_dur = fp.song_duration()
+    analysis, _ = extend_grid(song_analysis(fp), song_dur)
+    bars = phrase_bars or pr.PHRASE_BARS
+    if length_s is not None and float(length_s) <= 0:
+        raise FootageError(f"length_s must be positive, got {length_s}")
+    if span is not None:
+        window = _check_span(fp, span) or (0.0, song_dur)
+    elif length_s:
+        window = pr.ending_span(analysis, length_s=float(length_s), duration=song_dur, phrase_bars=bars)
+        window = _check_span(fp, window) or (0.0, song_dur)
+    else:
+        window = (0.0, song_dur)
+    durations = {
+        cid: (None if rows[cid].get("kind") == STILL_KIND else free_length(placements[cid]))
+        for cid in {s.clip_id for s in plan_shots}
+    }
+    paths = fp.clip_paths()
+    canvas = fp.canvas()
+
+    def choose_in(shot, start, end, room):
+        length = end - start
+        env = _activity_envelope(fp, FreeSource(shot.clip_id, paths[shot.clip_id]))
+        inner = [b - start for b in analysis.beats if start < b < end]
+        s_in, _ = choose_source_in(env, clip_duration=durations[shot.clip_id], length=length,
+                                   beat_offsets=inner, room=room)
+        return s_in
+
+    def crop_of(clip_id):
+        return cover_crop(display_size(paths[clip_id]), canvas)
+
+    try:
+        plan = pr.plan_promo(
+            analysis,
+            plan_shots,
+            clip_durations=durations,
+            span=window,
+            phrase_bars=bars,
+            choose_in=choose_in,
+            crop_of=crop_of,
+            dissolve_s=dissolve_s,
+        )
+    except ValueError as e:
+        raise FootageError(str(e)) from None
+    entries = fill_gaps(plan.entries, song_dur)
+    saved = save_edit(
+        fp,
+        edl=[edl_json(e) for e in entries],
+        name=name or _default_edit_name(fp),
+        how_made="promo cut",
+        span=None if window == (0.0, song_dur) else window,
+    )
+    return {**saved, "promo": plan.report}
 
 
 def explain_edit(
@@ -4508,6 +4620,55 @@ def resolve_canvas(fp, canvas: str) -> tuple[int, int]:
     return CANVASES[canvas]
 
 
+#: What a render's audio is: the song alone (a music video), or the song over the
+#: videos' own sound, with stems so the music can be replaced (``render(sound=)``).
+SOUNDS = ("song", "song_and_clips")
+
+
+def _with_clip_sound(fp, render_dir: Path, video: Path, cuts, *, fade_out_s: float = 0.0,
+                     should_cancel=None) -> tuple[dict, dict]:
+    """Build the stems of a ``song_and_clips`` render and put the mix on ``video``.
+
+    The music stem is cut from the song itself (the render's window and tail fade), not
+    decoded back out of ``video``; a clip that carries the song (a synced recording)
+    stays silent unless its cut names a ``sound_db``, since under the master it would
+    double the song. Returns ``(stems, mix)``: the absolute paths ``{music, clips, mix,
+    no_music}`` (plus ``dialogue`` and ``nat``, the clips' sound split by each cut's
+    level, which ``clips`` sums at the mix's dialogue gain) and the mix's parameters."""
+    from muvid.footage import sound as _sound
+    from muvid.footage.workspace import fresh_output
+
+    def stop_if_asked(where: str) -> None:
+        if should_cancel is not None and should_cancel():
+            from muvid.footage.errors import FootageCancelled
+
+            raise FootageCancelled(f"render stopped {where}")
+
+    stems_dir = render_dir / "stems"
+    stems_dir.mkdir(parents=True, exist_ok=True)
+    start, total = cuts[0].song_start, cuts[-1].song_end - cuts[0].song_start
+    synced = {cid for cid, role in footage_roles(fp).items() if role == SYNCED}
+    cuts = _sound.silent_unless_set(cuts, synced)
+    stop_if_asked("before the music stem")
+    music = _sound.song_stem(fp.song_path(), stems_dir / "music.wav", start_s=start,
+                             duration_s=total, fade_out_s=fade_out_s)
+    stop_if_asked("before the clips' sound")
+    dialogue = _sound.clip_sound_track(cuts, stems_dir / "dialogue.wav", keep=_sound.is_dialogue)
+    nat = _sound.clip_sound_track(cuts, stems_dir / "nat.wav", keep=_sound.is_nat)
+    stop_if_asked("before the mix")
+    mix, clips = stems_dir / "mix.wav", stems_dir / "clips.wav"
+    measured = _sound.mix_under(music, dialogue, nat, mix, clips_out=clips)
+    no_music = render_dir / "no_music.mp4"
+    with fresh_output(no_music) as tmp:
+        _sound.mux_audio(video, clips, tmp)
+    with fresh_output(video) as tmp:
+        _sound.mux_audio(video, mix, tmp)
+    stems = {"music": str(music), "dialogue": str(dialogue), "nat": str(nat),
+             "clips": str(clips), "mix": str(mix), "no_music": str(no_music)}
+    return stems, _sound.mix_params(**measured)
+
+
+
 def assemble(
     fp,
     *,
@@ -4523,6 +4684,7 @@ def assemble(
     annotate=None,
     span: Optional[tuple[float, float]] = None,
     should_cancel=None,
+    sound: str = "song",
 ) -> dict:
     """Assemble and render a music video — auto (a ``strategy``) or an explicit ``edl``.
 
@@ -4538,6 +4700,9 @@ def assemble(
     :data:`TAIL_FADE_S` when the span ends before the song does.
     """
     from muvid.footage.assemble import assemble_music_video as _assemble
+
+    if sound not in SOUNDS:
+        raise FootageError(f"sound must be one of {list(SOUNDS)}, got {sound!r}")
     from muvid.footage.edl import (
         UnreliableAlignmentError,
         derive_cuts,
@@ -4664,6 +4829,19 @@ def assemble(
             expected_canvas=canvas_wh,
             **({"expected_duration": rendered} if partial else {}),
         )
+        stems = mix = None
+        if sound != "song":
+            stems, mix = _with_clip_sound(
+                fp, render_dir, out, cuts,
+                fade_out_s=tail.get("fade_out_s", 0.0), should_cancel=should_cancel,
+            )
+            # the checks describe the file that ships: the one with the mix on it
+            checks = verify_video(
+                out,
+                audio=str(fp.song_path()),
+                expected_canvas=canvas_wh,
+                **({"expected_duration": rendered} if partial else {}),
+            )
     except Exception:
         import shutil
 
@@ -4707,6 +4885,17 @@ def assemble(
         meta["edit_id"] = edit_id
     if label:
         meta["label"] = label
+    if stems is not None:  # omit-when-absent: a song-only render's record is unchanged
+        meta["sound"] = sound
+        meta["stems"] = stems
+        meta["mix"] = mix
+        ids = {}
+        for k, path in stems.items():
+            aid = _register_media(fp, Path(path), kind="video" if k == "no_music" else "audio")
+            if aid:
+                ids[k] = aid
+        if ids:  # hosted: what each stem is fetched by
+            meta["stem_artifact_ids"] = ids
     if span is not None:
         # With the edl, what re-renders this exact video: `assemble(edl=, span=)`.
         meta["span"] = [span[0], span[1]]
@@ -4727,6 +4916,7 @@ def render(
     allow_unreliable: bool = False,
     annotate=None,
     should_cancel=None,
+    sound: Literal["song", "song_and_clips"] = "song",
 ) -> dict:
     """Make the video: render a saved edit onto the canvas, over the clean song.
 
@@ -4743,6 +4933,19 @@ def render(
     the render record: ``render_id``, ``edit_id``, its ``coverage``, ``ok`` and the
     ``checks`` behind it, ``warnings`` (read them — they are what the render plan found),
     and ``artifact_id`` to play it by when the project is hosted.
+
+    ``sound`` is what you hear. ``song`` (the default): the clean song alone, as a music
+    video has it. ``song_and_clips``: the videos' own sound too (people talking, breath,
+    the room), each cut's sound from its own stretch, with the song ducked under it where
+    someone speaks: for a promo, a class or a trip, where the people in the picture are
+    part of the story. The music stays removable: that render also writes ``stems``
+    (``music``, ``clips``, ``mix`` as wav, and ``no_music``, the same video with only the
+    clips' sound), listed in the record, so the song can be replaced later without
+    losing the voices. The clips' sound is split by each cut's ``sound_db`` into
+    ``dialogue`` (cuts at -6 dB or more, meant to be heard: raised toward speech level,
+    with the song ducked under them alone so the speech sits 12 dB over it) and ``nat``
+    (the room under the other shots: a bed that ducks nothing); ``clips`` is their sum
+    as mixed. ``mix`` in the record says how the mix was made.
     """
     record = _read_edit(fp, edit_id)
     meta = assemble(
@@ -4755,6 +4958,7 @@ def render(
         annotate=annotate,
         span=_span_of(record),
         should_cancel=should_cancel,
+        sound=sound,
     )
     return public_render(fp, meta)
 
@@ -4770,6 +4974,14 @@ def public_render(fp, meta: dict) -> dict:
             out["video"] = Path(video).relative_to(fp.root).as_posix()
         except ValueError:
             out.pop("video")
+    if out.get("stems"):
+        stems = {}
+        for k, v in out["stems"].items():
+            try:
+                stems[k] = Path(v).relative_to(fp.root).as_posix()
+            except ValueError:
+                pass
+        out["stems"] = stems
     return out
 
 
@@ -5545,6 +5757,7 @@ FOOTAGE_OP_SPECS: tuple[OpSpec, ...] = (
     OpSpec("score_candidates", "Compare how stretches of the videos score", "read"),
     OpSpec("strategies", "List the ways to cut", "read"),
     OpSpec("propose_edit", "Cut it for me", "write"),
+    OpSpec("propose_promo", "Cut a promo from chosen shots", "write"),
     OpSpec("save_edit", "Save a cut list as a new edit", "write"),
     OpSpec("edits", "List the edits", "read"),
     OpSpec("explain_edit", "Explain the cuts", "read"),

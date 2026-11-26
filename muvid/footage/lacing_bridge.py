@@ -214,6 +214,9 @@ def _edl_body(e) -> dict:
     # Omit-when-False; the cutter's half of the provenance (muvid#357).
     if getattr(e, "source_in_by_cutter", False):
         body["source_in_by_cutter"] = True
+    # Omit-when-None: a cut at the render's default sound level writes no key.
+    if getattr(e, "sound_db", None) is not None:
+        body["sound_db"] = float(e.sound_db)
     return body
 
 
@@ -360,6 +363,17 @@ def edl_from_annotations(
                 entry["source_in_by_hand"] = True
             elif a.body.get("source_in_by_cutter") is True:
                 entry["source_in_by_cutter"] = True
+        # A cut's own sound level: a number within the range is forwarded, anything
+        # else reads as the default level (skip, never crash).
+        from muvid.footage.edl import SOUND_DB_RANGE
+
+        raw = a.body.get("sound_db")
+        if (
+            isinstance(raw, (int, float))
+            and not isinstance(raw, bool)
+            and SOUND_DB_RANGE[0] <= raw <= SOUND_DB_RANGE[1]
+        ):
+            entry["sound_db"] = float(raw)
         out.append(entry)
     return sorted(out, key=lambda e: e["song_start"])
 

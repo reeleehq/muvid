@@ -1314,6 +1314,13 @@ class EdlEntry:
     #: detail, never false). Cleared with :attr:`source_in_by_hand` whenever a person
     #: sets or the swap re-picks the in-point. Omit-when-False.
     source_in_by_cutter: bool = False
+    #: **Sound level** of this cut's OWN audio (dB), heard only in a render that keeps
+    #: the clips' sound (``render(sound="song_and_clips")``): ``0`` as recorded, ``-12``
+    #: a quiet room bed under the music, ``-60`` silent. ``None`` (the default) is the
+    #: render's default level. A promo plays a soundbite at full level and the rest of
+    #: its shots as a bed, so the chatter behind a pose does not compete with the
+    #: instructor. Within :data:`SOUND_DB_RANGE`; omit-when-None, like the rest.
+    sound_db: "float | None" = None
 
     @property
     def is_gap(self) -> bool:
@@ -1368,6 +1375,9 @@ class AssemblyCut:
     #: probe says HDR AND this ffmpeg can (:func:`muvid.footage.colour.can_tonemap`);
     #: falsy (``None``) when it does not tone-map.
     source_tonemap: "ToneMap | None" = None
+    #: Carried through from the EDL entry: this cut's own sound level in a render
+    #: that keeps the clips' sound (:attr:`EdlEntry.sound_db`); ``None`` = default.
+    sound_db: "float | None" = None
 
     @property
     def duration(self) -> float:
@@ -1675,7 +1685,30 @@ def _as_entry(e) -> EdlEntry:
         source_in_by_cutter=_as_flag(
             e.get("source_in_by_cutter"), "source_in_by_cutter"
         ),
+        sound_db=_as_sound_db(e.get("sound_db")),
     )
+
+
+#: The levels a cut's own sound may be set to (dB): from silent to a modest boost.
+SOUND_DB_RANGE = (-60.0, 12.0)
+
+
+def _as_sound_db(raw) -> "float | None":
+    """A cut's sound level: absent/None is the render's default; else dB within
+    :data:`SOUND_DB_RANGE`. Raises on anything else, like the other request-side reads.
+
+    >>> _as_sound_db(None), _as_sound_db(-12)
+    (None, -12.0)
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ValueError(f"EDL entry sound_db is malformed ({raw!r}): it must be a number of dB.")
+    v = float(raw)
+    lo, hi = SOUND_DB_RANGE
+    if not lo <= v <= hi:
+        raise ValueError(f"EDL entry sound_db={v:g} is outside {lo:g}..{hi:g} dB.")
+    return v
 
 
 def _as_flag(raw, name: str) -> bool:
@@ -3444,6 +3477,7 @@ def derive_cuts(
                 look=e.look,
                 look_time_varying=e.look_time_varying,
                 rate=e.rate,
+                sound_db=e.sound_db,
             )
         )
     return cuts

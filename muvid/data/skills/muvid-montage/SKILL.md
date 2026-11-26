@@ -82,6 +82,8 @@ More visual channels [muvid#132](https://github.com/thorwhalen/muvid/issues/132)
 
 ## Neighbours in the fleet
 
+A **promo** (a class, a studio, an event: chosen shots held for phrases, the people's own sound kept under the music) is `muvid-promo`, not this skill.
+
 `tituli` for any text on screen (a title card, credits, captions; composite onto the finished video, never onto the stills). `arioso` to generate a song when the person has none (licence-clean for publishing). `burns` for Ken Burns motion specs and saliency. `mixing.audio.beat_grid` for the beat. `yb` to publish.
 
 ## References

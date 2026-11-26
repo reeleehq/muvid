@@ -1286,6 +1286,7 @@ def test_every_optional_edl_field_is_carried_by_the_returned_edl():
         "source_in",
         "source_in_by_hand",
         "source_in_by_cutter",
+        "sound_db",
     ], (
         f"EdlEntry grew or lost an optional field ({optional}). Decide whether it "
         "belongs in the returned/persisted edit, add it to "
@@ -1312,6 +1313,8 @@ def test_every_optional_edl_field_is_carried_by_the_returned_edl():
         # a provenance flag's ABSENT value is False; it rides beside the in-point it describes
         "source_in_by_hand": True,
         "source_in_by_cutter": True,
+        # a cut's own sound level: ABSENT is None (the render's default), so any number
+        "sound_db": -8.0,
     }
     for field in optional:
         kwargs = {field: values[field]}
