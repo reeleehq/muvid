@@ -406,6 +406,41 @@ def require_filter(name: str, *, needed_for: str) -> None:
         )
 
 
+def apply_loudness(audio: PathLike, loudness: Loudness, out: PathLike) -> Path:
+    """Write ``audio`` brought to ``loudness`` (loudnorm pass 2) as a wav at ``out``.
+
+    A step of its own, never a link in a render's filtergraph: ``loudnorm`` emits
+    its output late, and a render whose picture ends (``trim``, ``-frames:v``,
+    ``-t``) stopped the graph before that tail was flushed, so a normalized song
+    lost its last 65-130 ms (muvid#393). Run alone, it flushes at its own EOF and
+    the song is whole. 32-bit float, so nothing is clipped or requantized on the
+    way to the AAC encoder; at :data:`AAC_SAMPLE_RATE`, because ``loudnorm``
+    otherwise hands on its internal 192 kHz; stereo, which is what the delivery
+    encode downmixes to after the loudness pass anyway.
+    """
+    out = Path(out)
+    run_ffmpeg(
+        [
+            "-i",
+            str(audio),
+            "-map",
+            "0:a:0",
+            "-af",
+            loudness.filter_spec(),
+            "-ar",
+            str(AAC_SAMPLE_RATE),
+            # stereo now, as the encode will be anyway: a 5.1 source kept its six
+            # float channels, about 1 GB for 15 minutes (muvid#393's review)
+            "-ac",
+            "2",
+            "-c:a",
+            "pcm_f32le",
+            str(out),
+        ]
+    )
+    return out
+
+
 def measure_loudness(audio: PathLike, target: Loudness | None = None) -> Loudness:
     """Analyse ``audio`` (loudnorm pass 1) and return ``target`` with the result.
 

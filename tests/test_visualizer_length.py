@@ -8,6 +8,10 @@ Measured on main before the fix, for a 4.000 s song:
 - the ``still`` visual was two frames LONG at every rate (4.2 s at 10 fps). Its
   picture is a stream copy, cut by ``-t`` on packets.
 
+With ``normalize=True`` the song also lost its last 65-130 ms: ``loudnorm`` emits
+its output late, and a render whose picture ended stopped the graph before that
+tail was flushed (muvid#393). The loudness pass now runs as a step of its own.
+
 For songs that are not a whole number of frames long, ``-shortest`` and ``-t`` at
 the song's length also ended the picture a frame early and cut up to 60 ms off the
 song's tail (the review of #392).
@@ -81,25 +85,29 @@ def media(tmp_path_factory):
 
 @needs_ffmpeg_filter("showcqt")
 @pytest.mark.parametrize(
-    "visual, with_cover, fps, seconds",
+    "visual, with_cover, fps, seconds, normalize",
     [
         # the issue's cases, on a whole number of frames
-        ("cqt", True, 10, 4.0),
-        ("scope", True, 10, 4.0),
-        ("scope", True, 30, 4.0),
-        ("cqt", False, 24, 4.0),
-        ("still", True, 10, 4.0),
+        ("cqt", True, 10, 4.0, False),
+        ("scope", True, 10, 4.0, False),
+        ("scope", True, 30, 4.0, False),
+        ("cqt", False, 24, 4.0, False),
+        ("still", True, 10, 4.0, False),
         # fractional songs: -shortest / -t ended these a frame early
-        ("cqt", True, 10, 4.31),
-        ("scope", False, 30, 4.37),
-        ("waves", False, 30, 4.049),
-        ("waves", True, 24, 4.05),
-        ("still", True, 10, 4.049),
-        ("still", True, 24, 4.31),
+        ("cqt", True, 10, 4.31, False),
+        ("scope", False, 30, 4.37, False),
+        ("waves", False, 30, 4.049, False),
+        ("waves", True, 24, 4.05, False),
+        ("still", True, 10, 4.049, False),
+        ("still", True, 24, 4.31, False),
+        # normalize=True: loudnorm's late tail was cut by the picture's end (#393)
+        ("cqt", False, 24, 4.31, True),
+        ("waves", True, 24, 4.31, True),
+        ("still", True, 24, 4.31, True),
     ],
 )
 def test_the_picture_covers_the_song_and_the_song_is_whole(
-    media, tmp_path, visual, with_cover, fps, seconds
+    media, tmp_path, visual, with_cover, fps, seconds, normalize
 ):
     from muvid.visualize import render_audio_video
 
@@ -111,11 +119,46 @@ def test_the_picture_covers_the_song_and_the_song_is_whole(
         saveas=tmp_path / "out.mp4",
         size=(640, 360),
         fps=fps,
+        normalize=normalize,
     )
-    case = f"{visual}{' + cover' if with_cover else ''}, {seconds} s at {fps} fps"
+    case = (
+        f"{visual}{' + cover' if with_cover else ''}, {seconds} s at {fps} fps"
+        f"{', normalized' if normalize else ''}"
+    )
     got, want = _probe(result.path), math.ceil(seconds * fps - 1e-6)
     assert got == want, f"{case}: {got} frames, {want} cover the song"
     heard = _audio_seconds(result.path, tmp_path)
     assert heard >= seconds - AAC_FRAME_S, (
         f"{case}: the song's tail was cut ({heard} s)"
     )
+
+
+@needs_ffmpeg_filter("showwaves")
+def test_a_callable_visual_gets_the_cover_and_the_normalized_song(media, tmp_path):
+    """A callable visual that draws no cover is composed over the image by the
+    renderer, and with ``normalize=True`` the normalized song is one more input.
+    Both indices come from one count: the first version of muvid#393's fix
+    added the song's input first and pointed the cover at it ("[1:v] matches no
+    streams")."""
+    from muvid.visualize import render_audio_video
+    from muvid.visualize.visuals import VisualPlan
+
+    def waves_only(ctx):
+        return VisualPlan(
+            filters=[f"[aviz]showwaves=s=320x180:rate={ctx.fps},scale=640:360[viz]"],
+            video="viz",
+            uses_audio=True,
+        )
+
+    song, cover = media
+    result = render_audio_video(
+        song(4.31),
+        cover,
+        visual=waves_only,
+        saveas=tmp_path / "out.mp4",
+        size=(640, 360),
+        fps=24,
+        normalize=True,
+    )
+    assert _probe(result.path) == math.ceil(4.31 * 24)
+    assert _audio_seconds(result.path, tmp_path) >= 4.31 - AAC_FRAME_S
