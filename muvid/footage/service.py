@@ -2935,8 +2935,13 @@ def _check_span(fp, span) -> Optional[tuple[float, float]]:
     """``span`` as ``(start, end)`` inside the song, or ``None`` for the whole song.
 
     A span equal to the whole song is normalised to ``None``, so "the whole song" has
-    one spelling on disk and follows the song if its length is ever re-probed.
+    one spelling on disk and follows the song if its length is ever re-probed. An end
+    at most :data:`~muvid.footage.edl.SONG_END_TOLERANCE_S` past the song is its end,
+    as for an edit's cuts: a span saved at the end of a song that re-measures a few
+    ms shorter still renders (muvid#388).
     """
+    from muvid.footage.edl import SONG_END_TOLERANCE_S
+
     if span is None:
         return None
     try:
@@ -2944,7 +2949,9 @@ def _check_span(fp, span) -> Optional[tuple[float, float]]:
     except (TypeError, ValueError) as e:
         raise FootageError(f"span must be [start_s, end_s], got {span!r}") from e
     song_dur = fp.song_duration()
-    if not (0.0 - _EPS <= start < end <= song_dur + _EPS) or end - start <= _EPS:
+    if not (0.0 - _EPS <= start < end <= song_dur + SONG_END_TOLERANCE_S) or (
+        min(song_dur, end) - start <= _EPS
+    ):
         raise FootageError(
             f"span [{start:g}, {end:g}] is not a stretch of the song [0, {song_dur:.3f}]"
         )

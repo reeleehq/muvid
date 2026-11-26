@@ -419,6 +419,56 @@ def test_propose_edit_within_a_span(fp):
     assert service.get_edit(fp, edit_id=out["edit_id"])["span"] == [5.0, 25.0]
 
 
+def test_a_saved_edit_still_renders_after_the_song_measures_a_few_ms_shorter(
+    fp, monkeypatch
+):
+    """muvid#388: re-setting the SAME song re-measured 63.624 s as 63.620 s, and a
+    saved edit whose last cut ended at the old end was refused as "outside the
+    song" by 4 ms. An end within ``SONG_END_TOLERANCE_S`` of the song's end now
+    snaps to it; one further out is still refused."""
+    import muvid.footage.assemble as A
+    import muvid.visualize as V
+    from muvid.footage.edl import SONG_END_TOLERANCE_S
+
+    seen = {}
+
+    def fake_assemble(cuts, song, out, canvas, on_note=None, **kw):
+        seen["end"] = cuts[-1].song_end
+        Path(out).write_bytes(b"video")
+        return Path(out)
+
+    monkeypatch.setattr(A, "assemble_music_video", fake_assemble)
+    monkeypatch.setattr(V, "verify_video", lambda out, **kw: [])
+    monkeypatch.setattr(V, "failures", lambda c: [])
+    monkeypatch.setattr(V, "report", lambda c: "ok")
+    service.save_edit(fp, edl=_edl_ab(), edit_id="e")
+
+    def remeasure(seconds):
+        m = fp.manifest()
+        m["song_duration"] = seconds
+        fp._write_manifest(m)
+
+    remeasure(SONG_S - 0.004)
+    assert service.get_edit(fp, edit_id="e")["problem"] is None
+    meta = service.render(fp, edit_id="e")
+    assert seen["end"] == pytest.approx(SONG_S - 0.004)
+    assert meta["edl"][-1]["song_end"] == pytest.approx(SONG_S - 0.004)
+    # rendering does not rewrite the stored edit (the next edit to its cuts saves
+    # what it validated, the snapped end included, like any other change)
+    stored = json.loads((fp.root / "edits" / "e.json").read_text())
+    assert stored["edl"][-1]["song_end"] == SONG_S
+    # a span ending at the old end renders too ("Start at the player")
+    remeasure(SONG_S)
+    service.set_span(fp, edit_id="e", start_s=5.0, end_s=SONG_S)
+    remeasure(SONG_S - 0.004)
+    meta = service.render(fp, edit_id="e")
+    assert meta["edl"][0]["song_start"] == 5.0
+    assert meta["edl"][-1]["song_end"] == pytest.approx(SONG_S - 0.004)
+
+    remeasure(SONG_S - 2 * SONG_END_TOLERANCE_S)
+    assert "outside the song" in service.get_edit(fp, edit_id="e")["problem"]
+
+
 def test_render_of_a_trimmed_edit_renders_only_its_span(fp, monkeypatch):
     import muvid.footage.assemble as A
     import muvid.visualize as V
