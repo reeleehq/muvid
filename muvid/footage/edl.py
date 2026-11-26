@@ -57,6 +57,18 @@ _EPS = COINCIDENT_S
 #: read it as bounding work only to within that factor.
 MAX_EDL_ENTRIES = int(os.environ.get("MUVID_FOOTAGE_MAX_EDL_ENTRIES", "500"))
 
+#: How far past the song's end an entry may run and still be read as ending AT it
+#: (seconds, env-tunable). A song's duration is a measurement, and measuring the same
+#: song again moves it: re-setting an identical song re-measured 63.624 s as 63.620 s,
+#: and a saved edit whose last cut ended at the old end was refused as "outside the
+#: song" by 4 ms (muvid#388). Within this band an entry is SNAPPED to the song's end
+#: (:func:`fit_to_song_end`), never refused; beyond it the refusal stands, because a
+#: cut that far past the end was made against a different song. 50 ms is above any
+#: re-measure seen and below a frame at 20 fps, so the snap is never visible.
+SONG_END_TOLERANCE_S = float(
+    os.environ.get("MUVID_FOOTAGE_SONG_END_TOLERANCE_S", "0.05")
+)
+
 #: How many times the delivery canvas a ``look`` may ask for, PER DIMENSION
 #: (env-tunable). So the area bound is ``MAX_LOOK_SCALE ** 2`` — 16x the canvas.
 #:
@@ -1762,6 +1774,31 @@ def _as_look_spec(raw) -> "dict | None":
     return dict(raw)
 
 
+def fit_to_song_end(
+    entries: Sequence,
+    song_duration: float,
+    *,
+    tolerance_s: float = SONG_END_TOLERANCE_S,
+) -> list[EdlEntry]:
+    """``entries`` with every end that overruns ``song_duration`` by at most
+    ``tolerance_s`` snapped back to it (muvid#388).
+
+    An entry left with no length by the snap (it lay wholly in the band past the
+    song's end, where there is no song to cut to) is dropped. Anything else is
+    returned as it was, in order: an entry further out is :func:`validate_edl`'s and
+    :func:`fill_gaps`'s to refuse, by name. Both of them call this first, so a stored
+    edit and a fresh one are read the same way against the song as it measures now.
+    """
+    out = []
+    for e in (_as_entry(x) for x in entries):
+        if song_duration < e.song_end <= song_duration + tolerance_s:
+            if song_duration - e.song_start <= _EPS:
+                continue
+            e = replace(e, song_end=song_duration)
+        out.append(e)
+    return out
+
+
 def fill_gaps(
     entries: Sequence, song_duration: float, *, start: float = 0.0
 ) -> list[EdlEntry]:
@@ -1790,7 +1827,9 @@ def fill_gaps(
     from black when it does not (the head gap precedes it). Both follow from the same
     rule; the tests pin both so the coherence stays deliberate.
     """
-    ordered = sorted((_as_entry(e) for e in entries), key=lambda e: e.song_start)
+    ordered = sorted(
+        fit_to_song_end(entries, song_duration), key=lambda e: e.song_start
+    )
     if not ordered:
         return []
     # Range-check the CALLER's entries before inserting anything: a bogus span (say
@@ -1828,7 +1867,10 @@ def validate_edl(
     Enforces, raising ``ValueError`` with a specific message otherwise:
 
     - non-empty; every non-gap ``clip_id`` is a known alignment;
-    - each span is positive and lies within ``[0, song_duration]``;
+    - each span is positive and lies within ``[0, song_duration]`` — an end at most
+      :data:`SONG_END_TOLERANCE_S` past it is first snapped to it
+      (:func:`fit_to_song_end`, muvid#388), so the RETURNED entries can end earlier
+      than the ones passed in;
     - spans are in ascending order and **non-overlapping**;
     - spans are **contiguous** (gapless) — a hole must be an explicit gap entry
       (``clip_id`` empty/null, rendered as fill), which :func:`fill_gaps` inserts; an
@@ -1871,7 +1913,8 @@ def validate_edl(
             "delivery size a look's output frame is bounded against."
         )
     canvas = (w, h)
-    entries = [_as_entry(e) for e in edl]
+    # an end a re-measure of the song moved by a few ms is the song's end (muvid#388)
+    entries = fit_to_song_end(edl, song_duration)
     if not entries:
         raise ValueError("EDL is empty — nothing to assemble.")
     # Count FOOTAGE cuts only: fill_gaps can as much as double the entry count with gap
