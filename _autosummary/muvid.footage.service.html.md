@@ -75,6 +75,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 | [`score_candidates`](#muvid.footage.service.score_candidates)(fp, \*, candidates[, ...])      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                                                                                                                                                                                                           |
 | [`strategies`](#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment), with `titles`: each one's name in words, for a screen to label it with; and the `presets` (`{name: {title, description}}`, in order) that `propose_edit(preset=…)` and `scores(preset=…)` accept — a feel, so the cut and the scores a person reads rank the same way.                              |
 | [`propose_edit`](#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                                                                                                                                                                                                              |
+| [`propose_promo`](#muvid.footage.service.propose_promo)(fp, \*, shots[, length_s, ...])    | Cut a promo: the shots you chose, in your order, each held for a phrase of the music (a class, a studio, an event — not a music video).                                                                                                                                                                                                                                                                                                                |
 | [`save_edit`](#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | [`edits`](#muvid.footage.service.edits)(fp)                                        | The saved edits, oldest first: each one's `edit_id`, `name`, how it was made (`how_made`, a sentence, and `selection` — its `strategy` (with `fallback`/`cause` when the weighted cut could not run), `preset`, `pace`, `order` and `style` as data, and `recut_by_hand` once you changed its cuts; `null` for one made by hand), how many cuts it has, and `problem` — why it would not validate against the current alignment (`null` when it does). |
 | [`explain_edit`](#muvid.footage.service.explain_edit)(fp, \*, edit_id[, start_s, end_s])  | Why each cut of an edit is where it is — the post-mortem, in plain words.                                                                                                                                                                                                                                                                                                                                                                              |
@@ -122,7 +123,7 @@ trust refusal belongs where the encode does, in [`render()`](#muvid.footage.serv
 |-------------------------------------------------------------------|--------------------------------------------------------------------|
 | [`FootageCancelled`](#muvid.footage.service.FootageCancelled) | An operation stopped between steps because its host asked it to.   |
 
-### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None), ('source_in_by_hand', <class 'bool'>, False), ('source_in_by_cutter', <class 'bool'>, False))*
+### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None), ('source_in_by_hand', <class 'bool'>, False), ('source_in_by_cutter', <class 'bool'>, False), ('sound_db', <class 'float'>, None))*
 
 Every optional [`EdlEntry`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) field [`edl_json()`](#muvid.footage.service.edl_json) carries,
 and how to render it. **The list is the round trip.** `_as_entry` reads all of
@@ -266,7 +267,7 @@ Run this after adding/removing clips and before cutting.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.assemble(fp, , strategy='', edl=None, preset='', weights=None, config=None, canvas='', allow_unreliable=False, edit_id=None, label='', annotate=None, span=None, should_cancel=None)
+### muvid.footage.service.assemble(fp, , strategy='', edl=None, preset='', weights=None, config=None, canvas='', allow_unreliable=False, edit_id=None, label='', annotate=None, span=None, should_cancel=None, sound='song')
 
 Assemble and render a music video — auto (a `strategy`) or an explicit `edl`.
 
@@ -714,6 +715,37 @@ each cut is where it is.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.footage.service.propose_promo(fp, , shots, length_s=None, span=None, name='', phrase_bars=0, dissolve_s=None)
+
+Cut a promo: the shots you chose, in your order, each held for a phrase of the
+music (a class, a studio, an event — not a music video). Saves it as a named edit.
+
+`shots` is the ordered list of selects, each `{clip_id}` plus optionally
+`source_in` (where in the clip, seconds; default: the stretch whose picture
+changes land on the beats), `hold_s` (the length it aims at; default 3.5 s),
+`min_s`/`max_s` (bounds — a soundbite’s `min_s` is how long the words take),
+`role` (your tag: hook, place, instructor, flow, detail, peak, soundbite, calm,
+community, close …), `transition` (`cut`/`dissolve`; default: a hard cut,
+and a dissolve of about a beat (`dissolve_s` to change it) into a calm, community
+or close shot that starts on a phrase) and `sound_db` (the level of its own sound
+under the music; default: full for a `soundbite` or `nat` shot, a quiet -8 dB
+room bed for the rest). Any clip can be a shot, listened to or not: a promo
+shows each from its own in-point and never needs the song in it.
+
+Every boundary lands on a bar line, phrase starts (every `phrase_bars` bars,
+default 4) and accented downbeats preferred, each shot as near its hold as the bars
+allow and never past the end of its clip. `length_s` makes the video about that
+long, ENDING where the song ends (its own ending, no fade) and starting on a phrase;
+`span` (`[start_s, end_s]`) sets the window exactly; neither: the whole song.
+Refused, with the reason, when the shots cannot fill the window within their holds.
+
+Render it with `render(edit_id=..., sound="song_and_clips")` to keep the videos’
+own sound under the music. Returns the saved edit plus `promo`: per shot its
+role, place on the song, hold and transition, and the average shot length.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.footage.service.public_render(fp, meta)
 
 A render record as a HOSTED surface may return it: `video` made relative to the
@@ -787,7 +819,7 @@ the rename can be undone like any other change. Returns the edit.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.render(fp, , edit_id, canvas='', allow_unreliable=False, annotate=None, should_cancel=None)
+### muvid.footage.service.render(fp, , edit_id, canvas='', allow_unreliable=False, annotate=None, should_cancel=None, sound='song')
 
 Make the video: render a saved edit onto the canvas, over the clean song.
 
@@ -804,6 +836,19 @@ a wrong offset renders a video out of sync with the song (muvid#59) — unless
 the render record: `render_id`, `edit_id`, its `coverage`, `ok` and the
 `checks` behind it, `warnings` (read them — they are what the render plan found),
 and `artifact_id` to play it by when the project is hosted.
+
+`sound` is what you hear. `song` (the default): the clean song alone, as a music
+video has it. `song_and_clips`: the videos’ own sound too (people talking, breath,
+the room), each cut’s sound from its own stretch, with the song ducked under it where
+someone speaks: for a promo, a class or a trip, where the people in the picture are
+part of the story. The music stays removable: that render also writes `stems`
+(`music`, `clips`, `mix` as wav, and `no_music`, the same video with only the
+clips’ sound), listed in the record, so the song can be replaced later without
+losing the voices. The clips’ sound is split by each cut’s `sound_db` into
+`dialogue` (cuts at -6 dB or more, meant to be heard: raised toward speech level,
+with the song ducked under them alone so the speech sits 12 dB over it) and `nat`
+(the room under the other shots: a bed that ducks nothing); `clips` is their sum
+as mixed. `mix` in the record says how the mix was made.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

@@ -74,7 +74,7 @@ editorial — on a real 478x850 clip of dancers a whole body does not fit in a
 full-width 16:9 window at all (315-380px of subject into 269px), so “heads or
 feet” is a decision per cut, not a default.
 
-### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False)
+### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False, sound_db=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -205,6 +205,15 @@ property and needs no speed change. Bounded by `SLIP_MAX_S`; `0.0`
 
 * **Type:**
   **Slip**
+
+#### sound_db *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+**Sound level** of this cut’s OWN audio (dB), heard only in a render that keeps
+the clips’ sound (`render(sound="song_and_clips")`): `0` as recorded, `-12`
+a quiet room bed under the music, `-60` silent. `None` (the default) is the
+render’s default level. A promo plays a soundbite at full level and the rest of
+its shots as a bed, so the chatter behind a pose does not compete with the
+instructor. Within `SOUND_DB_RANGE`; omit-when-None, like the rest.
 
 #### source_in *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -875,9 +884,11 @@ Returns the normalized list of [`EdlEntry`](#muvid.footage.EdlEntry).
 | [`media_views`](muvid.footage.media_views.html.md#module-muvid.footage.media_views)     | What an editor draws: per-camera filmstrips and the song's waveform peaks.                                                                                          |
 | [`music_cut`](muvid.footage.music_cut.html.md#module-muvid.footage.music_cut)         | Cut footage to the music — the montage half of a music video.                                                                                                       |
 | [`named_looks`](muvid.footage.named_looks.html.md#module-muvid.footage.named_looks)     | Named looks — the camera moves and grades a person can pick for a cut.                                                                                              |
+| [`promo`](muvid.footage.promo.html.md#module-muvid.footage.promo)                 | A promo cut: chosen shots, in a chosen order, held for phrases of the music.                                                                                        |
 | [`scoring`](muvid.footage.scoring.html.md#module-muvid.footage.scoring)             | Footage scoring — per-clip score tracks on the shared song-time grid (thorwhalen/muvid#13).                                                                         |
 | [`select_score`](muvid.footage.select_score.html.md#module-muvid.footage.select_score)   | The score-driven `weighted` selection strategy: a beat-snapped semi-Markov Viterbi DP.                                                                              |
 | [`service`](muvid.footage.service.html.md#module-muvid.footage.service)             | The footage operations — one function per thing you can do to a music-video project.                                                                                |
+| [`sound`](muvid.footage.sound.html.md#module-muvid.footage.sound)                 | The clips' own sound under the song — and the song kept removable.                                                                                                  |
 | [`strategy`](muvid.footage.strategy.html.md#module-muvid.footage.strategy)           | The pluggable `SelectionStrategy` registry — alignments → an EDL.                                                                                                   |
 | [`trust`](muvid.footage.trust.html.md#module-muvid.footage.trust)                 | The trust tiers selection ranks footage by — one ordered table (muvid#255).                                                                                         |
 | [`workspace`](muvid.footage.workspace.html.md#module-muvid.footage.workspace)         | Per-user, STATEFUL project for the footage-aligned `music_video` genre.                                                                                             |

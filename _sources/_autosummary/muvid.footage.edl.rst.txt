@@ -33,6 +33,7 @@ muvid.footage.edl
       SLIP_MAX_S
       RATE_MAX_DEV
       EDGE_S
+      SOUND_DB_RANGE
       NO_VOUCHED_COVERAGE
       UNVOUCHED_SELECTION
       EXCLUSION_REASONS

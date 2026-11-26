@@ -1,0 +1,36 @@
+muvid.footage.sound
+===================
+
+.. automodule:: muvid.footage.sound
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      SAMPLE_RATE
+      EDGE_FADE_S
+      DEFAULT_CLIP_SOUND_DB
+      DIALOGUE_MIN_DB
+      SPEECH_TARGET_DBFS
+      SPEECH_OVER_MUSIC_DB
+      DIALOGUE_ACTIVE_DBFS
+      SPEECH_PERCENTILE
+      PEAK_DBFS
+      AAC_PRIMING_SAMPLES
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      clip_sound_track
+      is_dialogue
+      is_nat
+      mix_params
+      mix_under
+      mux_audio
+      read_wav
+      silent_unless_set
+      song_stem
+      write_wav
+   

@@ -50,6 +50,7 @@ alignment, exactly as `set_song` does.
 | [`footage_luts`](#muvid.mcp.footage_tools.footage_luts)(project_id)                             | The colour LUTs a look can load, each by the name a look gives it — `footage_set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether it can be used (`usable`; `problem` says why not), and `total` (the list is capped).                                                                                                                                                                                                       |
 | [`footage_merge_cut`](#muvid.mcp.footage_tools.footage_merge_cut)(project_id, \*, edit_id, index)    | Join cut `index` to its neighbour: the neighbour (`into` "previous" or "next") takes over its span, so the neighbour's video must cover it.                                                                                                                                                                                                                                                                                                            |
 | [`footage_peaks`](#muvid.mcp.footage_tools.footage_peaks)(project_id, \*[, n])                   | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                                                                                                                                                                                               |
+| [`footage_propose_promo`](#muvid.mcp.footage_tools.footage_propose_promo)(project_id, \*, shots)         | Cut a promo: the shots you chose, in your order, each held for a phrase of the music (a class, a studio, an event — not a music video).                                                                                                                                                                                                                                                                                                                |
 | [`footage_redo_edit`](#muvid.mcp.footage_tools.footage_redo_edit)(project_id, \*, edit_id)           | Redo the change `footage_undo_edit` last took back.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | [`footage_rename_edit`](#muvid.mcp.footage_tools.footage_rename_edit)(project_id, \*, edit_id, name)   | Give an edit a new name — what the edit picker and the renders made from it show.                                                                                                                                                                                                                                                                                                                                                                      |
 | [`footage_render`](#muvid.mcp.footage_tools.footage_render)(project_id, \*, edit_id[, ...])       | Render a SAVED edit (`propose_edit(save=true)` / `footage_save_edit`) into a music video.                                                                                                                                                                                                                                                                                                                                                              |
@@ -516,6 +517,37 @@ Returns `{duration_s, n, peaks: [0..1, ...]}`; slice `i` covers song time
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.mcp.footage_tools.footage_propose_promo(project_id, , shots, length_s=None, span=None, name='', phrase_bars=0, dissolve_s=None)
+
+Cut a promo: the shots you chose, in your order, each held for a phrase of the
+music (a class, a studio, an event — not a music video). Saves it as a named edit.
+
+`shots` is the ordered list of selects, each `{clip_id}` plus optionally
+`source_in` (where in the clip, seconds; default: the stretch whose picture
+changes land on the beats), `hold_s` (the length it aims at; default 3.5 s),
+`min_s`/`max_s` (bounds — a soundbite’s `min_s` is how long the words take),
+`role` (your tag: hook, place, instructor, flow, detail, peak, soundbite, calm,
+community, close …), `transition` (`cut`/`dissolve`; default: a hard cut,
+and a dissolve of about a beat (`dissolve_s` to change it) into a calm, community
+or close shot that starts on a phrase) and `sound_db` (the level of its own sound
+under the music; default: full for a `soundbite` or `nat` shot, a quiet -8 dB
+room bed for the rest). Any clip can be a shot, listened to or not: a promo
+shows each from its own in-point and never needs the song in it.
+
+Every boundary lands on a bar line, phrase starts (every `phrase_bars` bars,
+default 4) and accented downbeats preferred, each shot as near its hold as the bars
+allow and never past the end of its clip. `length_s` makes the video about that
+long, ENDING where the song ends (its own ending, no fade) and starting on a phrase;
+`span` (`[start_s, end_s]`) sets the window exactly; neither: the whole song.
+Refused, with the reason, when the shots cannot fill the window within their holds.
+
+Render it with `render(edit_id=..., sound="song_and_clips")` to keep the videos’
+own sound under the music. Returns the saved edit plus `promo`: per shot its
+role, place on the song, hold and transition, and the average shot length.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.mcp.footage_tools.footage_redo_edit(project_id, , edit_id)
 
 Redo the change `footage_undo_edit` last took back. A new change after an undo
@@ -534,7 +566,7 @@ the rename can be undone like any other change. Returns the edit.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.footage_render(project_id, , edit_id, canvas='', allow_unreliable=False)
+### muvid.mcp.footage_tools.footage_render(project_id, , edit_id, canvas='', allow_unreliable=False, sound='song')
 
 Render a SAVED edit (`propose_edit(save=true)` / `footage_save_edit`) into a
 music video. Free, minutes.
@@ -544,6 +576,9 @@ cut list as `edl` — plus `edit_id`, so the video says which edit it came from.
 `canvas` re-renders the same edit as “landscape”/”portrait”/”square”. Refused when
 the edit cuts to a clip whose offset the aligner will not vouch for, unless
 `allow_unreliable` (see `assemble_music_video`). Read the returned `warnings`.
+`sound`: `song` (the song alone) or `song_and_clips` (the videos’ own sound
+under the song, ducked when someone speaks, with `stems` so the music can be
+replaced later).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)

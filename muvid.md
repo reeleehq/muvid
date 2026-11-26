@@ -1,4 +1,4 @@
-> built 2026-11-24 10:42 UTC from 5d8e248 (main) · muvid 0.0.194. Details: build_info.json
+> built 2026-11-26 12:36 UTC from bb8d845 (main) · muvid 0.0.195. Details: build_info.json
 
 # index.html.md
 
@@ -3565,6 +3565,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`SLIP_MAX_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SLIP_MAX_S)                 | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.RATE_MAX_DEV)               | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
 | [`EDGE_S`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EDGE_S)                     | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
+| [`SOUND_DB_RANGE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SOUND_DB_RANGE)             | from silent to a modest boost.                                                                                                                                                                                                                                  |
 | [`NO_VOUCHED_COVERAGE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.NO_VOUCHED_COVERAGE)        | nothing the aligner vouches for covers it at all.                                                                                                                                                                                                               |
 | [`UNVOUCHED_SELECTION`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UNVOUCHED_SELECTION)        | A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.                                                                                                                          |
 | [`EXCLUSION_REASONS`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EXCLUSION_REASONS)          | Every reason [`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.                                                                                                                                 |
@@ -3623,7 +3624,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=None)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=None, sound_db=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3656,6 +3657,14 @@ where a moving look’s ramp restarts (muvid#73). See
 
 the assembler reads `duration * rate`
 seconds of source and retimes it (`setpts`, before `fps`) onto the span.
+
+* **Type:**
+  Carried through from the EDL entry
+
+#### sound_db *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+this cut’s own sound level in a render
+that keeps the clips’ sound ([`EdlEntry.sound_db`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.sound_db)); `None` = default.
 
 * **Type:**
   Carried through from the EDL entry
@@ -3756,7 +3765,7 @@ so the genre can publish all three without importing the cutter (numpy).
 
 Every reason [`exclude_unvouched()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.
 
-### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False)
+### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False, sound_db=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -3887,6 +3896,15 @@ property and needs no speed change. Bounded by [`SLIP_MAX_S`](_autosummary/muvid
 
 * **Type:**
   **Slip**
+
+#### sound_db *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+**Sound level** of this cut’s OWN audio (dB), heard only in a render that keeps
+the clips’ sound (`render(sound="song_and_clips")`): `0` as recorded, `-12`
+a quiet room bed under the music, `-60` silent. `None` (the default) is the
+render’s default level. A promo plays a soundbite at full level and the rest of
+its shots as a bed, so the chatter behind a pose does not compete with the
+instructor. Within [`SOUND_DB_RANGE`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.SOUND_DB_RANGE); omit-when-None, like the rest.
 
 #### source_in *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -4372,6 +4390,13 @@ one shoot, so a second unrelated shoot should be measured before these are trust
 further. A plain mapping (not `SongThresholds`) so this module stays numpy-free.
 Each bar is env-tunable (`MUVID_FOOTAGE_SONG_<NAME>`), the hedge against a false
 “absent” in production, as `MUVID_FOOTAGE_MIN_SUPPORT` is for the vote.
+
+### muvid.footage.edl.SOUND_DB_RANGE *= (-60.0, 12.0)*
+
+from silent to a modest boost.
+
+* **Type:**
+  The levels a cut’s own sound may be set to (dB)
 
 ### muvid.footage.edl.SPAN_EDGE_ACCURACY_S *= 20.0*
 
@@ -5661,7 +5686,7 @@ editorial — on a real 478x850 clip of dancers a whole body does not fit in a
 full-width 16:9 window at all (315-380px of subject into 269px), so “heads or
 feet” is a decision per cut, not a default.
 
-### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False)
+### *class* muvid.footage.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False, sound_db=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -5792,6 +5817,15 @@ property and needs no speed change. Bounded by `SLIP_MAX_S`; `0.0`
 
 * **Type:**
   **Slip**
+
+#### sound_db *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+**Sound level** of this cut’s OWN audio (dB), heard only in a render that keeps
+the clips’ sound (`render(sound="song_and_clips")`): `0` as recorded, `-12`
+a quiet room bed under the music, `-60` silent. `None` (the default) is the
+render’s default level. A promo plays a soundbite at full level and the rest of
+its shots as a bed, so the chatter behind a pose does not compete with the
+instructor. Within `SOUND_DB_RANGE`; omit-when-None, like the rest.
 
 #### source_in *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -6462,9 +6496,11 @@ Returns the normalized list of [`EdlEntry`](_autosummary/muvid.footage.html.md#m
 | [`media_views`](_autosummary/muvid.footage.media_views.html.md#module-muvid.footage.media_views)     | What an editor draws: per-camera filmstrips and the song's waveform peaks.                                                                                          |
 | [`music_cut`](_autosummary/muvid.footage.music_cut.html.md#module-muvid.footage.music_cut)         | Cut footage to the music — the montage half of a music video.                                                                                                       |
 | [`named_looks`](_autosummary/muvid.footage.named_looks.html.md#module-muvid.footage.named_looks)     | Named looks — the camera moves and grades a person can pick for a cut.                                                                                              |
+| [`promo`](_autosummary/muvid.footage.promo.html.md#module-muvid.footage.promo)                 | A promo cut: chosen shots, in a chosen order, held for phrases of the music.                                                                                        |
 | [`scoring`](_autosummary/muvid.footage.scoring.html.md#module-muvid.footage.scoring)             | Footage scoring — per-clip score tracks on the shared song-time grid (thorwhalen/muvid#13).                                                                         |
 | [`select_score`](_autosummary/muvid.footage.select_score.html.md#module-muvid.footage.select_score)   | The score-driven `weighted` selection strategy: a beat-snapped semi-Markov Viterbi DP.                                                                              |
 | [`service`](_autosummary/muvid.footage.service.html.md#module-muvid.footage.service)             | The footage operations — one function per thing you can do to a music-video project.                                                                                |
+| [`sound`](_autosummary/muvid.footage.sound.html.md#module-muvid.footage.sound)                 | The clips' own sound under the song — and the song kept removable.                                                                                                  |
 | [`strategy`](_autosummary/muvid.footage.strategy.html.md#module-muvid.footage.strategy)           | The pluggable `SelectionStrategy` registry — alignments → an EDL.                                                                                                   |
 | [`trust`](_autosummary/muvid.footage.trust.html.md#module-muvid.footage.trust)                 | The trust tiers selection ranks footage by — one ordered table (muvid#255).                                                                                         |
 | [`workspace`](_autosummary/muvid.footage.workspace.html.md#module-muvid.footage.workspace)         | Per-user, STATEFUL project for the footage-aligned `music_video` genre.                                                                                             |
@@ -7576,6 +7612,210 @@ defaults included) — the spec a cut records so a screen can show the choice.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+
+# _autosummary/muvid.footage.promo.html.md
+
+# muvid.footage.promo
+
+A promo cut: chosen shots, in a chosen order, held for phrases of the music.
+
+A music video cuts on the beat and lets the planner pick and reuse footage; a promo (a
+class, a studio, a venue, an event: a “sizzle” or “brand film” in the trade) is edited
+the other way round. An editor first pulls **selects** (the shots worth showing, each at
+its best stretch) and orders them into an arc (hook, place, people, practice, details,
+calm close), then lays them on the music so each shot is held long enough to be read
+(two to six seconds, not one beat) and every change lands on a bar, preferably on a
+phrase boundary, with the strongest musical moments taking the cuts and a dissolve
+where the music changes section.
+
+[`plan_promo()`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.plan_promo) is that second half, pure: given the song’s analysis, the shots in
+order and how long each clip is, it places the boundaries by dynamic programming over the
+song’s bar lines (each shot’s length near its target and inside its clip, phrase starts
+and accented downbeats preferred) and returns ordinary free cuts (`EdlEntry` with
+`source_in`), so every gate, render and explanation applies unchanged. Choosing the
+shots and their order is the caller’s (a person, an agent reading contact sheets, or
+later a content scorer), because it is the part that needs to know what is in them.
+
+The numbers come from `misc/docs/research/general/promo_video_editing_and_music.md`.
+
+### Module Attributes
+
+| [`DEFAULT_HOLD_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.DEFAULT_HOLD_S)      | The hold a shot aims for when it names none (seconds).                                                                                                                                                                       |
+|----------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`MIN_HOLD_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.MIN_HOLD_S)          | No shot shorter than this (it cannot be read) or longer than this (it stalls).                                                                                                                                               |
+| [`PHRASE_BARS`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.PHRASE_BARS)         | a change on a phrase start reads as "on the music".                                                                                                                                                                          |
+| [`PHRASE_BONUS`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.PHRASE_BONUS)        | Reward (in squared relative hold error) for a boundary on a phrase start, and per unit of the downbeat's accent rank (`Analysis.cut_rank`).                                                                                  |
+| [`DISSOLVE_ROLES`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.DISSOLVE_ROLES)      | the calm end of a class (research rule 25: hard cuts by default, dissolves of half a beat to a beat only in the calm and cool-down sections, only at phrase boundaries).                                                     |
+| [`DISSOLVE_BEATS`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.DISSOLVE_BEATS)      | A dissolve's length, in beats of the song (clamped to [0.4, 1.2] s).                                                                                                                                                         |
+| [`CUT_LEAD_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.CUT_LEAD_S)          | a cut one or two frames early reads as on the beat (research rule 11).                                                                                                                                                       |
+| [`FEATURE_SOUND_ROLES`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.FEATURE_SOUND_ROLES) | The sound level of a shot's own audio when it names none (dB, research rules 18-20): a soundbite (role `soundbite`) or a nat-sound pop (role `nat`) at full level, every other shot a quiet bed of its room under the music. |
+| [`EDGE_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.EDGE_S)              | Keep this much of each clip's head and tail unused when the planner picks the in-point (phone clips start and end with the thumb on the button).                                                                             |
+| [`FALLBACK_GRID_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.FALLBACK_GRID_S)     | Spacing of the even grid a promo falls back to on a song with no beat at all (s).                                                                                                                                            |
+
+### Functions
+
+| [`bar_lines`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.bar_lines)(analysis, span)                     | `(time, bar_index, accent)` for every candidate boundary strictly inside `span`: the downbeats (`bar_index` counted from the song's first, so phrase membership is the song's own, not the window's); on a song with no downbeats (free time: an ambient bed, an alap) the beats, and with no beats an even [`FALLBACK_GRID_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.FALLBACK_GRID_S) grid.   |
+|------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`ending_span`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.ending_span)(analysis, \*, length_s, duration) | A window of about `length_s` that ENDS where the song does (its own ending, no fade) and starts on a phrase boundary (else a bar line) near `duration - length_s`.                                                                                                                                                                                                                   |
+| [`plan_promo`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.plan_promo)(analysis, shots, \*, ...[, ...])   | Lay `shots` (in order) over `span` of the song, one after another, every boundary on a bar line.                                                                                                                                                                                                                                                                                     |
+
+### Classes
+
+| [`PromoPlan`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.PromoPlan)([entries, report])                   | The cuts, and how they were placed (one row per shot).                     |
+|-------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| [`Shot`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.Shot)(clip_id[, source_in, hold_s, min_s, ...]) | One select: a clip to show, where in it, and how long it wants to be held. |
+
+### muvid.footage.promo.CUT_LEAD_S *= 0.033*
+
+a cut one or two frames early reads as on
+the beat (research rule 11). The first and last boundary never move.
+
+* **Type:**
+  Cuts land this much BEFORE their bar line
+
+### muvid.footage.promo.DEFAULT_HOLD_S *= 3.5*
+
+The hold a shot aims for when it names none (seconds). Promos of a calm practice sit
+at an average shot length of about 3-4 s; a music video at 1-2.
+
+### muvid.footage.promo.DISSOLVE_BEATS *= 1.0*
+
+A dissolve’s length, in beats of the song (clamped to [0.4, 1.2] s).
+
+### muvid.footage.promo.DISSOLVE_ROLES *= frozenset({'calm', 'close', 'community', 'cooldown', 'savasana'})*
+
+the calm end
+of a class (research rule 25: hard cuts by default, dissolves of half a beat to a beat
+only in the calm and cool-down sections, only at phrase boundaries).
+
+* **Type:**
+  Roles whose shots come in with a dissolve when they start on a phrase
+
+### muvid.footage.promo.EDGE_S *= 0.4*
+
+Keep this much of each clip’s head and tail unused when the planner picks the
+in-point (phone clips start and end with the thumb on the button).
+
+### muvid.footage.promo.FALLBACK_GRID_S *= 0.5*
+
+Spacing of the even grid a promo falls back to on a song with no beat at all (s).
+
+### muvid.footage.promo.FEATURE_SOUND_ROLES *= frozenset({'nat', 'soundbite'})*
+
+The sound level of a shot’s own audio when it names none (dB, research rules 18-20):
+a soundbite (role `soundbite`) or a nat-sound pop (role `nat`) at full level,
+every other shot a quiet bed of its room under the music.
+
+### muvid.footage.promo.MIN_HOLD_S *= 1.6*
+
+No shot shorter than this (it cannot be read) or longer than this (it stalls).
+
+### muvid.footage.promo.PHRASE_BARS *= 4*
+
+a change on a phrase start reads as “on the music”.
+
+* **Type:**
+  Bars per musical phrase
+
+### muvid.footage.promo.PHRASE_BONUS *= 0.25*
+
+Reward (in squared relative hold error) for a boundary on a phrase start, and per
+unit of the downbeat’s accent rank (`Analysis.cut_rank`).
+
+### *class* muvid.footage.promo.PromoPlan(entries=list(), report=dict())
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+The cuts, and how they were placed (one row per shot).
+
+### *class* muvid.footage.promo.Shot(clip_id, source_in=None, hold_s=None, min_s=None, max_s=None, role='', transition='', sound_db=None)
+
+Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
+
+One select: a clip to show, where in it, and how long it wants to be held.
+
+`source_in` `None` lets the planner choose the stretch; `hold_s` is the target
+length (`DEFAULT_HOLD_S` when `None`); `min_s`/`max_s` bound it (a soundbite
+sets `min_s` to the length of what is said). `role` is the caller’s tag (`hook`,
+`place`, `instructor`, `detail`, `soundbite`, `close` …), reported back,
+never interpreted here. `transition` forces how this shot comes IN: `"cut"` or
+`"dissolve"`; `""` lets the music decide (a dissolve on a new section).
+
+#### *classmethod* from_dict(d)
+
+From the wire: `{"clip_id": ..., "source_in": ..., ...}`. Unknown keys and
+wrong types are refused with the field’s name, so a misspelt or mistyped field
+is never silently dropped or crashed on.
+
+* **Return type:**
+  [`Shot`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.Shot)
+
+#### *property* may_dissolve *: [bool](https://docs.python.org/3/builtins/functions.html#bool)*
+
+Whether this shot might come in with a dissolve (so its clip must hold the
+blend’s lead before its in-point): forced, or a calm role.
+
+#### *property* sound_level *: [float](https://docs.python.org/3/builtins/functions.html#float)*
+
+its `sound_db`, else full for a
+soundbite or nat pop, else `BED_SOUND_DB`.
+
+* **Type:**
+  This shot’s own sound level (dB)
+
+### muvid.footage.promo.bar_lines(analysis, span)
+
+`(time, bar_index, accent)` for every candidate boundary strictly inside
+`span`: the downbeats (`bar_index` counted from the song’s first, so phrase
+membership is the song’s own, not the window’s); on a song with no downbeats (free
+time: an ambient bed, an alap) the beats, and with no beats an even
+[`FALLBACK_GRID_S`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.FALLBACK_GRID_S) grid. Off the bars, no boundary is a phrase start.
+
+* **Return type:**
+  [`list`](https://docs.python.org/3/builtins/stdtypes.html#list)[[`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`int`](https://docs.python.org/3/builtins/functions.html#int), [`float`](https://docs.python.org/3/builtins/functions.html#float)]]
+
+### muvid.footage.promo.ending_span(analysis, , length_s, duration, phrase_bars=4)
+
+A window of about `length_s` that ENDS where the song does (its own ending, no
+fade) and starts on a phrase boundary (else a bar line) near `duration - length_s`.
+The whole song when it is no longer than `length_s`.
+
+```pycon
+>>> from muvid.montage.analysis import Analysis
+>>> a = Analysis(duration=100.0, tempo_bpm=120.0, beats=(), downbeats=tuple(float(i * 2) for i in range(50)))
+>>> ending_span(a, length_s=60.0, duration=100.0)
+(40.0, 100.0)
+```
+
+* **Return type:**
+  [`tuple`](https://docs.python.org/3/builtins/stdtypes.html#tuple)[[`float`](https://docs.python.org/3/builtins/functions.html#float), [`float`](https://docs.python.org/3/builtins/functions.html#float)]
+
+### muvid.footage.promo.plan_promo(analysis, shots, , clip_durations, span, phrase_bars=4, dissolve_s=None, cut_lead_s=0.033, choose_in=None, crop_of=None)
+
+Lay `shots` (in order) over `span` of the song, one after another, every
+boundary on a bar line. Returns a [`PromoPlan`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.PromoPlan) of free-cut `EdlEntry` s.
+
+`clip_durations`: each clip’s length (`None` for a photo: any hold fits).
+`choose_in(shot, start, end, room)` picks an in-point within `room` (the legal
+in-points, [`muvid.footage.edl.in_point_bounds()`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.in_point_bounds), blends included) when
+`shot.source_in` is `None` (default: the middle of the room); `crop_of(clip_id)` is the cover crop
+for the canvas (default: none). Refused, with the reason, when the shots cannot fill
+the span within their bounds (too few, too many, or clips too short).
+
+```pycon
+>>> from muvid.montage.analysis import Analysis
+>>> a = Analysis(duration=20.0, tempo_bpm=120.0, beats=tuple(i * 0.5 for i in range(40)),
+...              downbeats=tuple(float(i * 2) for i in range(10)))
+>>> p = plan_promo(a, [Shot("a"), Shot("b"), Shot("c", hold_s=6.0)],
+...                clip_durations={"a": 30.0, "b": 30.0, "c": 30.0}, span=(0.0, 12.0),
+...                cut_lead_s=0.0)
+>>> [(e.song_start, e.song_end, e.clip_id) for e in p.entries]
+[(0.0, 4.0, 'a'), (4.0, 8.0, 'b'), (8.0, 12.0, 'c')]
+```
+
+* **Return type:**
+  [`PromoPlan`](_autosummary/muvid.footage.promo.html.md#muvid.footage.promo.PromoPlan)
 
 
 # _autosummary/muvid.footage.scoring.frames.html.md
@@ -9121,6 +9361,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 | [`score_candidates`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.score_candidates)(fp, \*, candidates[, ...])      | How well each candidate stretch of a video scores — to choose between takes.                                                                                                                                                                                                                                                                                                                                                                           |
 | [`strategies`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.strategies)([fp])                                 | The ways to cut on offer — the selection strategies `propose_edit` accepts (`weighted` reads the footage scores; the rest use only the alignment), with `titles`: each one's name in words, for a screen to label it with; and the `presets` (`{name: {title, description}}`, in order) that `propose_edit(preset=…)` and `scores(preset=…)` accept — a feel, so the cut and the scores a person reads rank the same way.                              |
 | [`propose_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.propose_edit)(fp, \*[, strategy, preset, ...])    | Cut it for me: build an edit of the whole song — or of `span` (`[start_s, end_s]`, the part of the song the video covers) — from the placed videos, and (by default) save it as a named edit, without rendering anything.                                                                                                                                                                                                                              |
+| [`propose_promo`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.propose_promo)(fp, \*, shots[, length_s, ...])    | Cut a promo: the shots you chose, in your order, each held for a phrase of the music (a class, a studio, an event — not a music video).                                                                                                                                                                                                                                                                                                                |
 | [`save_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.save_edit)(fp, \*, edl[, name, how_made, ...])    | Save a cut list as a new named edit.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | [`edits`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.edits)(fp)                                        | The saved edits, oldest first: each one's `edit_id`, `name`, how it was made (`how_made`, a sentence, and `selection` — its `strategy` (with `fallback`/`cause` when the weighted cut could not run), `preset`, `pace`, `order` and `style` as data, and `recut_by_hand` once you changed its cuts; `null` for one made by hand), how many cuts it has, and `problem` — why it would not validate against the current alignment (`null` when it does). |
 | [`explain_edit`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.explain_edit)(fp, \*, edit_id[, start_s, end_s])  | Why each cut of an edit is where it is — the post-mortem, in plain words.                                                                                                                                                                                                                                                                                                                                                                              |
@@ -9168,7 +9409,7 @@ trust refusal belongs where the encode does, in [`render()`](_autosummary/muvid.
 |-------------------------------------------------------------------|--------------------------------------------------------------------|
 | [`FootageCancelled`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.FootageCancelled) | An operation stopped between steps because its host asked it to.   |
 
-### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None), ('source_in_by_hand', <class 'bool'>, False), ('source_in_by_cutter', <class 'bool'>, False))*
+### muvid.footage.service.EDL_OPTIONAL_FIELDS *= (('transition', <function <lambda>>, None), ('crop', <function <lambda>>, None), ('crop_end', <function <lambda>>, None), ('look', <class 'str'>, None), ('look_time_varying', <class 'bool'>, False), ('look_spec', <class 'dict'>, None), ('slip_s', <class 'float'>, 0.0), ('rate', <class 'float'>, 1.0), ('source_in', <class 'float'>, None), ('source_in_by_hand', <class 'bool'>, False), ('source_in_by_cutter', <class 'bool'>, False), ('sound_db', <class 'float'>, None))*
 
 Every optional [`EdlEntry`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry) field [`edl_json()`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.edl_json) carries,
 and how to render it. **The list is the round trip.** `_as_entry` reads all of
@@ -9312,7 +9553,7 @@ Run this after adding/removing clips and before cutting.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.assemble(fp, , strategy='', edl=None, preset='', weights=None, config=None, canvas='', allow_unreliable=False, edit_id=None, label='', annotate=None, span=None, should_cancel=None)
+### muvid.footage.service.assemble(fp, , strategy='', edl=None, preset='', weights=None, config=None, canvas='', allow_unreliable=False, edit_id=None, label='', annotate=None, span=None, should_cancel=None, sound='song')
 
 Assemble and render a music video — auto (a `strategy`) or an explicit `edl`.
 
@@ -9760,6 +10001,37 @@ each cut is where it is.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.footage.service.propose_promo(fp, , shots, length_s=None, span=None, name='', phrase_bars=0, dissolve_s=None)
+
+Cut a promo: the shots you chose, in your order, each held for a phrase of the
+music (a class, a studio, an event — not a music video). Saves it as a named edit.
+
+`shots` is the ordered list of selects, each `{clip_id}` plus optionally
+`source_in` (where in the clip, seconds; default: the stretch whose picture
+changes land on the beats), `hold_s` (the length it aims at; default 3.5 s),
+`min_s`/`max_s` (bounds — a soundbite’s `min_s` is how long the words take),
+`role` (your tag: hook, place, instructor, flow, detail, peak, soundbite, calm,
+community, close …), `transition` (`cut`/`dissolve`; default: a hard cut,
+and a dissolve of about a beat (`dissolve_s` to change it) into a calm, community
+or close shot that starts on a phrase) and `sound_db` (the level of its own sound
+under the music; default: full for a `soundbite` or `nat` shot, a quiet -8 dB
+room bed for the rest). Any clip can be a shot, listened to or not: a promo
+shows each from its own in-point and never needs the song in it.
+
+Every boundary lands on a bar line, phrase starts (every `phrase_bars` bars,
+default 4) and accented downbeats preferred, each shot as near its hold as the bars
+allow and never past the end of its clip. `length_s` makes the video about that
+long, ENDING where the song ends (its own ending, no fade) and starting on a phrase;
+`span` (`[start_s, end_s]`) sets the window exactly; neither: the whole song.
+Refused, with the reason, when the shots cannot fill the window within their holds.
+
+Render it with `render(edit_id=..., sound="song_and_clips")` to keep the videos’
+own sound under the music. Returns the saved edit plus `promo`: per shot its
+role, place on the song, hold and transition, and the average shot length.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.footage.service.public_render(fp, meta)
 
 A render record as a HOSTED surface may return it: `video` made relative to the
@@ -9833,7 +10105,7 @@ the rename can be undone like any other change. Returns the edit.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.footage.service.render(fp, , edit_id, canvas='', allow_unreliable=False, annotate=None, should_cancel=None)
+### muvid.footage.service.render(fp, , edit_id, canvas='', allow_unreliable=False, annotate=None, should_cancel=None, sound='song')
 
 Make the video: render a saved edit onto the canvas, over the clean song.
 
@@ -9850,6 +10122,19 @@ a wrong offset renders a video out of sync with the song (muvid#59) — unless
 the render record: `render_id`, `edit_id`, its `coverage`, `ok` and the
 `checks` behind it, `warnings` (read them — they are what the render plan found),
 and `artifact_id` to play it by when the project is hosted.
+
+`sound` is what you hear. `song` (the default): the clean song alone, as a music
+video has it. `song_and_clips`: the videos’ own sound too (people talking, breath,
+the room), each cut’s sound from its own stretch, with the song ducked under it where
+someone speaks: for a promo, a class or a trip, where the people in the picture are
+part of the story. The music stays removable: that render also writes `stems`
+(`music`, `clips`, `mix` as wav, and `no_music`, the same video with only the
+clips’ sound), listed in the record, so the song can be replaced later without
+losing the voices. The clips’ sound is split by each cut’s `sound_db` into
+`dialogue` (cuts at -6 dB or more, meant to be heard: raised toward speech level,
+with the song ducked under them alone so the speech sits 12 dB over it) and `nat`
+(the room under the other shots: a bed that ducks nothing); `clips` is their sum
+as mixed. `mix` in the record says how the mix was made.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -10174,6 +10459,234 @@ a candidate.
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+
+# _autosummary/muvid.footage.sound.html.md
+
+# muvid.footage.sound
+
+The clips’ own sound under the song — and the song kept removable.
+
+A music video’s audio is the clean song and nothing else (the assembler mutes every clip).
+A promo, a recap or a class video is different: the picture is cut to the music, but the
+people in it talk, breathe and laugh, and that sound (“production sound”, “nat sound”) is
+part of what sells it. Editors keep it on its own track under a music bed and duck the
+music when someone speaks; and because the music is the part most often replaced (a
+licence, a client’s taste, a better track found later), they deliver it as **stems** —
+the music, the production sound, and the mix — rather than one baked track.
+
+This module is that, for a rendered footage edit:
+
+- [`song_stem()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.song_stem) is the music as the render plays it (cut to the edit’s window, faded
+  at its tail when the window ends early), taken from the song itself, not decoded back
+  out of the render (each AAC pass shifts audio by the encoder’s priming).
+- [`clip_sound_track()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.clip_sound_track) builds the production-sound stem from the same cuts the
+  picture was rendered from: each video cut contributes its own audio for exactly its span
+  (from its in-point, on the clip’s own clock: an audio stream that starts after its
+  video is padded, not pulled early) at its own level (`EdlEntry.sound_db`), with a
+  short fade at each edge so a cut does not click; a photo, a gap, a retimed cut (slow
+  motion has no sync sound) or a clip with no audio stream is silence. Its length is the
+  render’s, sample for sample.
+- the clips’ sound is split in two stems by each cut’s level: **dialogue** (the cuts
+  meant to be heard: soundbites, nat pops) and **nat** (the room under every other
+  shot). [`mix_under()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mix_under) raises the dialogue toward a speech level, ducks the music
+  under it alone (`mixing.audio.duck_audio`, the fleet’s one ducker) by as much as
+  puts the speech [`SPEECH_OVER_MUSIC_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.SPEECH_OVER_MUSIC_DB) over the music, lays the nat sound in as a
+  bed, and limits the sum to [`PEAK_DBFS`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.PEAK_DBFS).
+- [`mux_audio()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mux_audio) puts one audio track on a picture, compensating the AAC encoder’s
+  priming so the sound lands on the frame it was cut to.
+
+The render op ([`muvid.footage.service.render()`](_autosummary/muvid.footage.service.html.md#muvid.footage.service.render), `sound="song_and_clips"`) is
+their one caller and records the stems and the mix parameters beside `final.mp4`.
+Research behind the numbers: `misc/docs/research/general/promo_video_editing_and_music.md`.
+
+### Module Attributes
+
+| [`SAMPLE_RATE`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.SAMPLE_RATE)           | Sample rate and channel count of every stem — the delivery contract's (aac 48 kHz 2ch).                                                                                                                |
+|------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`EDGE_FADE_S`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.EDGE_FADE_S)           | Fade at each edge of a cut's sound, so a hard cut in the picture is not a click in the sound.                                                                                                          |
+| [`DEFAULT_CLIP_SOUND_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DEFAULT_CLIP_SOUND_DB) | The level of a cut's own sound when its edit entry names none (`sound_db` `None`).                                                                                                                     |
+| [`DIALOGUE_MIN_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DIALOGUE_MIN_DB)       | what the people in it say is meant to be heard (a soundbite, a nat-sound pop).                                                                                                                         |
+| [`SPEECH_TARGET_DBFS`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.SPEECH_TARGET_DBFS)    | Dialogue is raised (never lowered) toward this speech level (dBFS, median RMS of its active frames) — a phone held across a room records a voice at -35..-30 dBFS — by at most `MAX_DIALOGUE_GAIN_DB`. |
+| [`SPEECH_OVER_MUSIC_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.SPEECH_OVER_MUSIC_DB)  | speech 12-15 LU over the music, at least 10).                                                                                                                                                          |
+| [`DIALOGUE_ACTIVE_DBFS`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DIALOGUE_ACTIVE_DBFS)  | Inside the dialogue stem (only the cuts meant to be heard), a frame louder than this (dBFS) is speech for the ducker: the whole of a soundbite, its pauses included, holds the music down.             |
+| [`SPEECH_PERCENTILE`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.SPEECH_PERCENTILE)     | this percentile of its active frames' RMS (dB), high enough that the pauses between words do not drag it down.                                                                                         |
+| [`PEAK_DBFS`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.PEAK_DBFS)             | headroom for the AAC encode, the research's -1 dBTP delivery rule approximated on samples.                                                                                                             |
+| [`AAC_PRIMING_SAMPLES`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.AAC_PRIMING_SAMPLES)   | Samples the AAC encoder prepends ("priming").                                                                                                                                                          |
+
+### Functions
+
+| [`clip_sound_track`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.clip_sound_track)(cuts, out_path, \*[, ...])      | Write the production-sound stem of `cuts` (`AssemblyCut`-like: `song_start`, `song_end`, `clip_id`, `clip_in`, `clip_path`, `rate`, `sound_db`) to `out_path` (wav).                                                        |
+|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`is_dialogue`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.is_dialogue)(cut, level)                          | A cut whose sound is meant to be heard (at or over [`DIALOGUE_MIN_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DIALOGUE_MIN_DB)).                                                                                                       |
+| `is_nat`(cut, level)                                                                              |                                                                                                                                                                                                                             |
+| [`mix_params`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mix_params)(\*[, default_db])                     | What a `song_and_clips` render records about its mix, so a later change of these defaults is visible against an old render (and a re-render can reproduce it).                                                              |
+| [`mix_under`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mix_under)(music, dialogue, nat, out_path, \*)    | Mix `music` over the clips' sound, split as `dialogue` and `nat` (wav stems of equal length), into `out_path`:                                                                                                              |
+| [`mux_audio`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mux_audio)(video, audio, out_path, \*[, ...])     | `video`'s picture (stream-copied) with `audio` as its one audio track (aac), at the video's length; the encoder's priming is trimmed off the input (and the tail padded back), so the sound is where it was on the picture. |
+| [`read_wav`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.read_wav)(path)                                   | `(samples, rate)` of a PCM wav: float in [-1, 1], shape `(n, channels)`.                                                                                                                                                    |
+| [`silent_unless_set`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.silent_unless_set)(cuts, mute, \*[, level])       | `cuts` with every cut of a `mute` clip that names no `sound_db` set to `level` — the clips whose own audio is a recording of the song (a music video's synced footage), which under the master would double it.             |
+| [`song_stem`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.song_stem)(song_path, out_path, \*, start_s, ...) | The music stem: `duration_s` of the song from `start_s` (wav), faded out over its last `fade_out_s` seconds — the same window and fade the render applies.                                                                  |
+| [`write_wav`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.write_wav)(path, samples, rate)                   | Write float samples (`(n, channels)` or `(n,)`, clipped to [-1, 1]) as 16-bit PCM wav.                                                                                                                                      |
+
+### muvid.footage.sound.AAC_PRIMING_SAMPLES *= 1024*
+
+Samples the AAC encoder prepends (“priming”). Without an edit list (muvid’s delivery
+contract writes none) a player plays them, so the sound would land 21.3 ms late at
+48 kHz; [`mux_audio()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mux_audio) trims them off the input to compensate.
+
+### muvid.footage.sound.DEFAULT_CLIP_SOUND_DB *= 0.0*
+
+The level of a cut’s own sound when its edit entry names none (`sound_db` `None`).
+
+### muvid.footage.sound.DIALOGUE_ACTIVE_DBFS *= -55.0*
+
+Inside the dialogue stem (only the cuts meant to be heard), a frame louder than this
+(dBFS) is speech for the ducker: the whole of a soundbite, its pauses included, holds
+the music down. Silence (the other cuts) is far below it.
+
+### muvid.footage.sound.DIALOGUE_MIN_DB *= -6.0*
+
+what
+the people in it say is meant to be heard (a soundbite, a nat-sound pop). Quieter cuts
+are NAT sound: the room as a bed under the music. `None` (the default level, 0 dB)
+is dialogue, so a render whose cuts name no level ducks on all of them, as before.
+
+* **Type:**
+  A cut whose own sound is at least this loud (dB, its `sound_db`) is DIALOGUE
+
+### muvid.footage.sound.EDGE_FADE_S *= 0.04*
+
+Fade at each edge of a cut’s sound, so a hard cut in the picture is not a click in the
+sound. Short enough to keep a word that starts on the cut intelligible.
+
+### muvid.footage.sound.PEAK_DBFS *= -1.0*
+
+headroom for the AAC encode, the
+research’s -1 dBTP delivery rule approximated on samples.
+
+* **Type:**
+  The mix’s sample peak never exceeds this (dBFS)
+
+### muvid.footage.sound.SAMPLE_RATE *= 48000*
+
+Sample rate and channel count of every stem — the delivery contract’s (aac 48 kHz 2ch).
+
+### muvid.footage.sound.SPEECH_OVER_MUSIC_DB *= 12.0*
+
+speech
+12-15 LU over the music, at least 10). The duck is sized to reach it, between
+`DUCK_DB` (the least it ducks) and `MAX_DUCK_DB` (the most).
+
+* **Type:**
+  Speech sits at least this far over the music under it (dB; research rule 17
+
+### muvid.footage.sound.SPEECH_PERCENTILE *= 75.0*
+
+this percentile of its active frames’ RMS (dB), high
+enough that the pauses between words do not drag it down.
+
+* **Type:**
+  The speech level of the dialogue
+
+### muvid.footage.sound.SPEECH_TARGET_DBFS *= -20.0*
+
+Dialogue is raised (never lowered) toward this speech level (dBFS, median RMS of its
+active frames) — a phone held across a room records a voice at -35..-30 dBFS — by at
+most `MAX_DIALOGUE_GAIN_DB`.
+
+### muvid.footage.sound.clip_sound_track(cuts, out_path, , edge_fade_s=0.04, default_db=0.0, sample_rate=48000, keep=None)
+
+Write the production-sound stem of `cuts` (`AssemblyCut`-like: `song_start`,
+`song_end`, `clip_id`, `clip_in`, `clip_path`, `rate`, `sound_db`) to
+`out_path` (wav).
+
+The stem starts at `cuts[0].song_start` and is exactly as long as the cuts span: each
+sounding cut is its clip’s audio from `clip_in` for the cut’s duration at its
+`sound_db` (`default_db` when `None`), padded with silence where the clip’s
+audio starts late or runs out; every other cut is silence, and so is every cut
+`keep(cut, level)` rejects (how the dialogue and nat stems are split).
+
+```pycon
+>>> clip_sound_track([], "x.wav")
+Traceback (most recent call last):
+...
+ValueError: no cuts
+```
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.footage.sound.is_dialogue(cut, level)
+
+A cut whose sound is meant to be heard (at or over [`DIALOGUE_MIN_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DIALOGUE_MIN_DB)).
+
+* **Return type:**
+  [`bool`](https://docs.python.org/3/builtins/functions.html#bool)
+
+### muvid.footage.sound.mix_params(, default_db=0.0, \*\*measured)
+
+What a `song_and_clips` render records about its mix, so a later change of these
+defaults is visible against an old render (and a re-render can reproduce it).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.sound.mix_under(music, dialogue, nat, out_path, , clips_out=None, speech_target_dbfs=-20.0, speech_over_music_db=12.0, duck_db=-8.0, max_duck_db=-30.0, active_dbfs=-55.0, peak_dbfs=-1.0)
+
+Mix `music` over the clips’ sound, split as `dialogue` and `nat` (wav
+stems of equal length), into `out_path`:
+
+- the dialogue is raised toward `speech_target_dbfs` (never lowered), and the music
+  ducked under it (`mixing.audio.duck_audio`, keyed on the dialogue alone) by as much
+  as puts the speech `speech_over_music_db` over the music, between `duck_db` and
+  `max_duck_db`;
+- the nat sound (the room under the other shots) is laid in as it is, never ducking
+  anything;
+- all of it summed in floating point and scaled down (never up) so the peak stays
+  at or under `peak_dbfs`.
+
+`clips_out` (optional) receives the clips’ sound as mixed (dialogue at its gain +
+nat): with the ducked music it sums to the mix. Returns the parameters that made it
+(dialogue gain, duck depth, speech and music levels, the limiter’s gain).
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
+### muvid.footage.sound.mux_audio(video, audio, out_path, , bitrate='192k', priming_samples=1024)
+
+`video`’s picture (stream-copied) with `audio` as its one audio track (aac),
+at the video’s length; the encoder’s priming is trimmed off the input (and the tail
+padded back), so the sound is where it was on the picture.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.footage.sound.read_wav(path)
+
+`(samples, rate)` of a PCM wav: float in [-1, 1], shape `(n, channels)`.
+Stdlib `wave` + numpy, so the stems need no audio library beyond ffmpeg.
+
+### muvid.footage.sound.silent_unless_set(cuts, mute, , level=-60.0)
+
+`cuts` with every cut of a `mute` clip that names no `sound_db` set to
+`level` — the clips whose own audio is a recording of the song (a music video’s
+synced footage), which under the master would double it.
+
+### muvid.footage.sound.song_stem(song_path, out_path, , start_s, duration_s, fade_out_s=0.0, sample_rate=48000)
+
+The music stem: `duration_s` of the song from `start_s` (wav), faded out over
+its last `fade_out_s` seconds — the same window and fade the render applies.
+
+* **Return type:**
+  [`Path`](https://docs.python.org/3/library/pathlib.html#pathlib.Path)
+
+### muvid.footage.sound.write_wav(path, samples, rate)
+
+Write float samples (`(n, channels)` or `(n,)`, clipped to [-1, 1]) as 16-bit
+PCM wav.
+
+* **Return type:**
+  [`None`](https://docs.python.org/3/builtins/constants.html#None)
 
 
 # _autosummary/muvid.footage.strategy.html.md
@@ -14907,6 +15420,7 @@ alignment, exactly as `set_song` does.
 | [`footage_luts`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_luts)(project_id)                             | The colour LUTs a look can load, each by the name a look gives it — `footage_set_cut(look="lut3d=file=<name>")` — with its size (`LUT_3D_SIZE`) and whether it can be used (`usable`; `problem` says why not), and `total` (the list is capped).                                                                                                                                                                                                       |
 | [`footage_merge_cut`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_merge_cut)(project_id, \*, edit_id, index)    | Join cut `index` to its neighbour: the neighbour (`into` "previous" or "next") takes over its span, so the neighbour's video must cover it.                                                                                                                                                                                                                                                                                                            |
 | [`footage_peaks`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_peaks)(project_id, \*[, n])                   | The song's waveform, to draw under the timeline: `n` equal slices of the song, each the loudest moment in it (mono), scaled so the loudest slice is 1.0.                                                                                                                                                                                                                                                                                               |
+| [`footage_propose_promo`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_propose_promo)(project_id, \*, shots)         | Cut a promo: the shots you chose, in your order, each held for a phrase of the music (a class, a studio, an event — not a music video).                                                                                                                                                                                                                                                                                                                |
 | [`footage_redo_edit`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_redo_edit)(project_id, \*, edit_id)           | Redo the change `footage_undo_edit` last took back.                                                                                                                                                                                                                                                                                                                                                                                                    |
 | [`footage_rename_edit`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_rename_edit)(project_id, \*, edit_id, name)   | Give an edit a new name — what the edit picker and the renders made from it show.                                                                                                                                                                                                                                                                                                                                                                      |
 | [`footage_render`](_autosummary/muvid.mcp.footage_tools.html.md#muvid.mcp.footage_tools.footage_render)(project_id, \*, edit_id[, ...])       | Render a SAVED edit (`propose_edit(save=true)` / `footage_save_edit`) into a music video.                                                                                                                                                                                                                                                                                                                                                              |
@@ -15373,6 +15887,37 @@ Returns `{duration_s, n, peaks: [0..1, ...]}`; slice `i` covers song time
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
+### muvid.mcp.footage_tools.footage_propose_promo(project_id, , shots, length_s=None, span=None, name='', phrase_bars=0, dissolve_s=None)
+
+Cut a promo: the shots you chose, in your order, each held for a phrase of the
+music (a class, a studio, an event — not a music video). Saves it as a named edit.
+
+`shots` is the ordered list of selects, each `{clip_id}` plus optionally
+`source_in` (where in the clip, seconds; default: the stretch whose picture
+changes land on the beats), `hold_s` (the length it aims at; default 3.5 s),
+`min_s`/`max_s` (bounds — a soundbite’s `min_s` is how long the words take),
+`role` (your tag: hook, place, instructor, flow, detail, peak, soundbite, calm,
+community, close …), `transition` (`cut`/`dissolve`; default: a hard cut,
+and a dissolve of about a beat (`dissolve_s` to change it) into a calm, community
+or close shot that starts on a phrase) and `sound_db` (the level of its own sound
+under the music; default: full for a `soundbite` or `nat` shot, a quiet -8 dB
+room bed for the rest). Any clip can be a shot, listened to or not: a promo
+shows each from its own in-point and never needs the song in it.
+
+Every boundary lands on a bar line, phrase starts (every `phrase_bars` bars,
+default 4) and accented downbeats preferred, each shot as near its hold as the bars
+allow and never past the end of its clip. `length_s` makes the video about that
+long, ENDING where the song ends (its own ending, no fade) and starting on a phrase;
+`span` (`[start_s, end_s]`) sets the window exactly; neither: the whole song.
+Refused, with the reason, when the shots cannot fill the window within their holds.
+
+Render it with `render(edit_id=..., sound="song_and_clips")` to keep the videos’
+own sound under the music. Returns the saved edit plus `promo`: per shot its
+role, place on the song, hold and transition, and the average shot length.
+
+* **Return type:**
+  [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
+
 ### muvid.mcp.footage_tools.footage_redo_edit(project_id, , edit_id)
 
 Redo the change `footage_undo_edit` last took back. A new change after an undo
@@ -15391,7 +15936,7 @@ the rename can be undone like any other change. Returns the edit.
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
 
-### muvid.mcp.footage_tools.footage_render(project_id, , edit_id, canvas='', allow_unreliable=False)
+### muvid.mcp.footage_tools.footage_render(project_id, , edit_id, canvas='', allow_unreliable=False, sound='song')
 
 Render a SAVED edit (`propose_edit(save=true)` / `footage_save_edit`) into a
 music video. Free, minutes.
@@ -15401,6 +15946,9 @@ cut list as `edl` — plus `edit_id`, so the video says which edit it came from.
 `canvas` re-renders the same edit as “landscape”/”portrait”/”square”. Refused when
 the edit cuts to a clip whose offset the aligner will not vouch for, unless
 `allow_unreliable` (see `assemble_music_video`). Read the returned `warnings`.
+`sound`: `song` (the song alone) or `song_and_clips` (the videos’ own sound
+under the song, ducked when someone speaks, with `stems` so the music can be
+replaced later).
 
 * **Return type:**
   [`dict`](https://docs.python.org/3/builtins/stdtypes.html#dict)
@@ -15856,15 +16404,15 @@ an unpriced call must force approval (muvid#47).
 | [`VisualizerWorkspace`](_autosummary/muvid.mcp.html.md#muvid.mcp.VisualizerWorkspace)(email, root)   | A single caller's private visualizer area, addressed by `email`.   |
 |-------------------------------------------------------------------------------------|--------------------------------------------------------------------|
 
-### muvid.mcp.FREE_TOOLS *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_luts', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
+### muvid.mcp.FREE_TOOLS *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_propose_promo', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_luts', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
 
 Alias — muvid has no costed tools.
 
-### muvid.mcp.TOOL_NAMES *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_luts', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'propose_lyric_treatments_ai', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
+### muvid.mcp.TOOL_NAMES *= ['list_visuals', 'list_projects', 'project_status', 'render_visualizer', 'footage_status', 'set_song', 'add_footage', 'remove_footage', 'align_footage', 'footage_set_offset', 'footage_clear_offset', 'footage_set_has_song', 'footage_timeline', 'beat_grid', 'footage_set_beat_grid', 'footage_clear_beat_grid', 'footage_peaks', 'footage_beat_signals', 'footage_filmstrips', 'footage_filmstrip', 'footage_score_candidates', 'list_strategies', 'propose_edit', 'footage_propose_promo', 'footage_save_edit', 'footage_edits', 'footage_explain_edit', 'footage_get_edit', 'footage_replace_edit', 'footage_set_cut', 'footage_split_cut', 'footage_merge_cut', 'footage_fit_to_beat', 'footage_set_span', 'footage_rename_edit', 'footage_looks', 'footage_luts', 'footage_undo_edit', 'footage_redo_edit', 'footage_delete_edit', 'footage_render', 'footage_renders', 'footage_editor_document', 'add_footage_folder', 'assemble_music_video', 'list_music_video_projects', 'footage_edl_from_annotations', 'score_footage', 'footage_scores', 'footage_score_status', 'list_archetypes', 'analyze_song_lyrics', 'propose_lyric_treatments', 'propose_lyric_treatments_ai', 'validate_lyric_treatment', 'render_lyric_video', 'list_subgenres', 'render_subgenre']*
 
 All tools this package exposes (all free). Bare names; a host may prefix them.
 
-### muvid.mcp.TOOL_REFS *= {'add_footage': 'muvid.mcp.footage_tools:add_footage', 'add_footage_folder': 'muvid.mcp.footage_tools:add_footage_folder', 'align_footage': 'muvid.mcp.footage_tools:align_footage', 'analyze_song_lyrics': 'muvid.mcp.lyricvid_tools:analyze_song_lyrics', 'assemble_music_video': 'muvid.mcp.footage_tools:assemble_music_video', 'beat_grid': 'muvid.mcp.footage_tools:beat_grid', 'footage_beat_signals': 'muvid.mcp.footage_tools:footage_beat_signals', 'footage_clear_beat_grid': 'muvid.mcp.footage_tools:footage_clear_beat_grid', 'footage_clear_offset': 'muvid.mcp.footage_tools:footage_clear_offset', 'footage_delete_edit': 'muvid.mcp.footage_tools:footage_delete_edit', 'footage_editor_document': 'muvid.mcp.footage_tools:footage_editor_document', 'footage_edits': 'muvid.mcp.footage_tools:footage_edits', 'footage_edl_from_annotations': 'muvid.mcp.footage_tools:footage_edl_from_annotations', 'footage_explain_edit': 'muvid.mcp.footage_tools:footage_explain_edit', 'footage_filmstrip': 'muvid.mcp.footage_tools:footage_filmstrip', 'footage_filmstrips': 'muvid.mcp.footage_tools:footage_filmstrips', 'footage_fit_to_beat': 'muvid.mcp.footage_tools:footage_fit_to_beat', 'footage_get_edit': 'muvid.mcp.footage_tools:footage_get_edit', 'footage_looks': 'muvid.mcp.footage_tools:footage_looks', 'footage_luts': 'muvid.mcp.footage_tools:footage_luts', 'footage_merge_cut': 'muvid.mcp.footage_tools:footage_merge_cut', 'footage_peaks': 'muvid.mcp.footage_tools:footage_peaks', 'footage_redo_edit': 'muvid.mcp.footage_tools:footage_redo_edit', 'footage_rename_edit': 'muvid.mcp.footage_tools:footage_rename_edit', 'footage_render': 'muvid.mcp.footage_tools:footage_render', 'footage_renders': 'muvid.mcp.footage_tools:footage_renders', 'footage_replace_edit': 'muvid.mcp.footage_tools:footage_replace_edit', 'footage_save_edit': 'muvid.mcp.footage_tools:footage_save_edit', 'footage_score_candidates': 'muvid.mcp.footage_tools:footage_score_candidates', 'footage_score_status': 'muvid.mcp.scoring_tools:footage_score_status', 'footage_scores': 'muvid.mcp.scoring_tools:footage_scores', 'footage_set_beat_grid': 'muvid.mcp.footage_tools:footage_set_beat_grid', 'footage_set_cut': 'muvid.mcp.footage_tools:footage_set_cut', 'footage_set_has_song': 'muvid.mcp.footage_tools:footage_set_has_song', 'footage_set_offset': 'muvid.mcp.footage_tools:footage_set_offset', 'footage_set_span': 'muvid.mcp.footage_tools:footage_set_span', 'footage_split_cut': 'muvid.mcp.footage_tools:footage_split_cut', 'footage_status': 'muvid.mcp.footage_tools:footage_status', 'footage_timeline': 'muvid.mcp.footage_tools:footage_timeline', 'footage_undo_edit': 'muvid.mcp.footage_tools:footage_undo_edit', 'list_archetypes': 'muvid.mcp.lyricvid_tools:list_archetypes', 'list_music_video_projects': 'muvid.mcp.footage_tools:list_music_video_projects', 'list_projects': 'muvid.mcp.tools:list_projects', 'list_strategies': 'muvid.mcp.footage_tools:list_strategies', 'list_subgenres': 'muvid.mcp.subgenre_tools:list_subgenres', 'list_visuals': 'muvid.mcp.tools:list_visuals', 'project_status': 'muvid.mcp.tools:project_status', 'propose_edit': 'muvid.mcp.footage_tools:propose_edit', 'propose_lyric_treatments': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments', 'propose_lyric_treatments_ai': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments_ai', 'remove_footage': 'muvid.mcp.footage_tools:remove_footage', 'render_lyric_video': 'muvid.mcp.lyricvid_tools:render_lyric_video', 'render_subgenre': 'muvid.mcp.subgenre_tools:render_subgenre', 'render_visualizer': 'muvid.mcp.tools:render_visualizer', 'score_footage': 'muvid.mcp.scoring_tools:score_footage', 'set_song': 'muvid.mcp.footage_tools:set_song', 'validate_lyric_treatment': 'muvid.mcp.lyricvid_tools:validate_lyric_treatment'}*
+### muvid.mcp.TOOL_REFS *= {'add_footage': 'muvid.mcp.footage_tools:add_footage', 'add_footage_folder': 'muvid.mcp.footage_tools:add_footage_folder', 'align_footage': 'muvid.mcp.footage_tools:align_footage', 'analyze_song_lyrics': 'muvid.mcp.lyricvid_tools:analyze_song_lyrics', 'assemble_music_video': 'muvid.mcp.footage_tools:assemble_music_video', 'beat_grid': 'muvid.mcp.footage_tools:beat_grid', 'footage_beat_signals': 'muvid.mcp.footage_tools:footage_beat_signals', 'footage_clear_beat_grid': 'muvid.mcp.footage_tools:footage_clear_beat_grid', 'footage_clear_offset': 'muvid.mcp.footage_tools:footage_clear_offset', 'footage_delete_edit': 'muvid.mcp.footage_tools:footage_delete_edit', 'footage_editor_document': 'muvid.mcp.footage_tools:footage_editor_document', 'footage_edits': 'muvid.mcp.footage_tools:footage_edits', 'footage_edl_from_annotations': 'muvid.mcp.footage_tools:footage_edl_from_annotations', 'footage_explain_edit': 'muvid.mcp.footage_tools:footage_explain_edit', 'footage_filmstrip': 'muvid.mcp.footage_tools:footage_filmstrip', 'footage_filmstrips': 'muvid.mcp.footage_tools:footage_filmstrips', 'footage_fit_to_beat': 'muvid.mcp.footage_tools:footage_fit_to_beat', 'footage_get_edit': 'muvid.mcp.footage_tools:footage_get_edit', 'footage_looks': 'muvid.mcp.footage_tools:footage_looks', 'footage_luts': 'muvid.mcp.footage_tools:footage_luts', 'footage_merge_cut': 'muvid.mcp.footage_tools:footage_merge_cut', 'footage_peaks': 'muvid.mcp.footage_tools:footage_peaks', 'footage_propose_promo': 'muvid.mcp.footage_tools:footage_propose_promo', 'footage_redo_edit': 'muvid.mcp.footage_tools:footage_redo_edit', 'footage_rename_edit': 'muvid.mcp.footage_tools:footage_rename_edit', 'footage_render': 'muvid.mcp.footage_tools:footage_render', 'footage_renders': 'muvid.mcp.footage_tools:footage_renders', 'footage_replace_edit': 'muvid.mcp.footage_tools:footage_replace_edit', 'footage_save_edit': 'muvid.mcp.footage_tools:footage_save_edit', 'footage_score_candidates': 'muvid.mcp.footage_tools:footage_score_candidates', 'footage_score_status': 'muvid.mcp.scoring_tools:footage_score_status', 'footage_scores': 'muvid.mcp.scoring_tools:footage_scores', 'footage_set_beat_grid': 'muvid.mcp.footage_tools:footage_set_beat_grid', 'footage_set_cut': 'muvid.mcp.footage_tools:footage_set_cut', 'footage_set_has_song': 'muvid.mcp.footage_tools:footage_set_has_song', 'footage_set_offset': 'muvid.mcp.footage_tools:footage_set_offset', 'footage_set_span': 'muvid.mcp.footage_tools:footage_set_span', 'footage_split_cut': 'muvid.mcp.footage_tools:footage_split_cut', 'footage_status': 'muvid.mcp.footage_tools:footage_status', 'footage_timeline': 'muvid.mcp.footage_tools:footage_timeline', 'footage_undo_edit': 'muvid.mcp.footage_tools:footage_undo_edit', 'list_archetypes': 'muvid.mcp.lyricvid_tools:list_archetypes', 'list_music_video_projects': 'muvid.mcp.footage_tools:list_music_video_projects', 'list_projects': 'muvid.mcp.tools:list_projects', 'list_strategies': 'muvid.mcp.footage_tools:list_strategies', 'list_subgenres': 'muvid.mcp.subgenre_tools:list_subgenres', 'list_visuals': 'muvid.mcp.tools:list_visuals', 'project_status': 'muvid.mcp.tools:project_status', 'propose_edit': 'muvid.mcp.footage_tools:propose_edit', 'propose_lyric_treatments': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments', 'propose_lyric_treatments_ai': 'muvid.mcp.lyricvid_tools:propose_lyric_treatments_ai', 'remove_footage': 'muvid.mcp.footage_tools:remove_footage', 'render_lyric_video': 'muvid.mcp.lyricvid_tools:render_lyric_video', 'render_subgenre': 'muvid.mcp.subgenre_tools:render_subgenre', 'render_visualizer': 'muvid.mcp.tools:render_visualizer', 'score_footage': 'muvid.mcp.scoring_tools:score_footage', 'set_song': 'muvid.mcp.footage_tools:set_song', 'validate_lyric_treatment': 'muvid.mcp.lyricvid_tools:validate_lyric_treatment'}*
 
 Bare tool name → its `module:function` reference (tools live in three modules).
 
@@ -21065,7 +21613,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-24 10:42 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/5d8e2483f0e05d1a756b2f015b7ba0ff47524175"><code>5d8e248</code></a> on branch <code>main</code>, for **muvid 0.0.194** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-26 12:36 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/bb8d84528c68f3d55d08034dec30918d1dbde34b"><code>bb8d845</code></a> on branch <code>main</code>, for **muvid 0.0.195** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -21074,9 +21622,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/5d8e2483f0e05d1a756b2f015b7ba0ff47524175"><code>5d8e2483f0e05d1a756b2f015b7ba0ff47524175</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/bb8d84528c68f3d55d08034dec30918d1dbde34b"><code>bb8d84528c68f3d55d08034dec30918d1dbde34b</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.194</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.195</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21085,9 +21633,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45375443708">45375443708</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45819775227">45819775227</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>415f55787e53f39b57f592b5f151929cd791f110</code> (in the history of the built commit) |
+| Event commit | <code>d46be06e202340b5a92d1b5ad157c48588e8f362</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21112,13 +21660,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.194/">0.0.194</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.195/">0.0.195</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 5d8e2483f0e05d1a756b2f015b7ba0ff47524175
+git checkout bb8d84528c68f3d55d08034dec30918d1dbde34b
 pip install "epythet==0.2.25"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```
@@ -21159,6 +21707,16 @@ gh skill install thorwhalen/muvid muvid-montage --agent claude-code
 ```
 
 Source: [`muvid/data/skills/muvid-montage`](https://github.com/thorwhalen/muvid/tree/HEAD/muvid/data/skills/muvid-montage) (bundled with the pip package).
+
+### `muvid-promo`
+
+Cut a short promo, sizzle reel or brand film from phone footage to a music bed, keeping the people’s own sound (talking, breath, the room) under the music and the music removable. A yoga or fitness class, a studio, a venue, a workshop, an event, a retreat. Not a music video. Use on “make a promo/marketing video from these clips”, “a 60 s / 150 s short for the class/studio”, “an Instagram reel or YouTube Short advertising X”, “keep the talking but put music over it”, “music I can replace later”, “stems”, “selects”, “an arc”, “hook, establish, flow, peak, calm”. It covers pulling selects, ordering them into an arc, `propose_promo` (holds on bars and phrases), and `render(sound="song_and_clips")` (ducked music, stems, a no-music version).
+
+```bash
+gh skill install thorwhalen/muvid muvid-promo --agent claude-code
+```
+
+Source: [`muvid/data/skills/muvid-promo`](https://github.com/thorwhalen/muvid/tree/HEAD/muvid/data/skills/muvid-promo) (bundled with the pip package).
 
 ### `muvid`
 

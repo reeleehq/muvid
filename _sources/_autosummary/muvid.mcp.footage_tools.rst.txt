@@ -29,6 +29,7 @@ muvid.mcp.footage\_tools
       footage_luts
       footage_merge_cut
       footage_peaks
+      footage_propose_promo
       footage_redo_edit
       footage_rename_edit
       footage_render

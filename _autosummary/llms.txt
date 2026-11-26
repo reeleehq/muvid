@@ -41,6 +41,7 @@
 - [muvid.footage.media_views](muvid.footage.media_views.html.md): What an editor draws: per-camera filmstrips and the song’s waveform peaks.
 - [muvid.footage.music_cut](muvid.footage.music_cut.html.md): Cut footage to the music — the montage half of a music video.
 - [muvid.footage.named_looks](muvid.footage.named_looks.html.md): Named looks — the camera moves and grades a person can pick for a cut.
+- [muvid.footage.promo](muvid.footage.promo.html.md): A promo cut: chosen shots, in a chosen order, held for phrases of the music.
 - [muvid.footage.scoring](muvid.footage.scoring.html.md): Footage scoring — per-clip score tracks on the shared song-time grid (thorwhalen/muvid#13).
 - [muvid.footage.scoring.frames](muvid.footage.scoring.frames.html.md): One decode pass per clip → the shared per-frame artifacts the quality + motion extractors
 - [muvid.footage.scoring.grid](muvid.footage.scoring.grid.html.md): The song-time score grid: &#96;ScoreTrack&#96;, resample-to-grid, robust normalization,
@@ -52,6 +53,7 @@
 - [muvid.footage.scoring.segment](muvid.footage.scoring.segment.html.md): Shot boundaries + the per-clip coverage mask.
 - [muvid.footage.select_score](muvid.footage.select_score.html.md): The score-driven &#96;weighted&#96; selection strategy: a beat-snapped semi-Markov Viterbi DP.
 - [muvid.footage.service](muvid.footage.service.html.md): The footage operations — one function per thing you can do to a music-video project.
+- [muvid.footage.sound](muvid.footage.sound.html.md): The clips’ own sound under the song — and the song kept removable.
 - [muvid.footage.strategy](muvid.footage.strategy.html.md): The pluggable &#96;SelectionStrategy&#96; registry — alignments → an EDL.
 - [muvid.footage.trust](muvid.footage.trust.html.md): The trust tiers selection ranks footage by — one ordered table (muvid#255).
 - [muvid.footage.workspace](muvid.footage.workspace.html.md): Per-user, STATEFUL project for the footage-aligned &#96;music_video&#96; genre.

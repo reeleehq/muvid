@@ -31,6 +31,16 @@ gh skill install thorwhalen/muvid muvid-montage --agent claude-code
 
 Source: [`muvid/data/skills/muvid-montage`](https://github.com/thorwhalen/muvid/tree/HEAD/muvid/data/skills/muvid-montage) (bundled with the pip package).
 
+### `muvid-promo`
+
+Cut a short promo, sizzle reel or brand film from phone footage to a music bed, keeping the people's own sound (talking, breath, the room) under the music and the music removable. A yoga or fitness class, a studio, a venue, a workshop, an event, a retreat. Not a music video. Use on "make a promo/marketing video from these clips", "a 60 s / 150 s short for the class/studio", "an Instagram reel or YouTube Short advertising X", "keep the talking but put music over it", "music I can replace later", "stems", "selects", "an arc", "hook, establish, flow, peak, calm". It covers pulling selects, ordering them into an arc, `propose_promo` (holds on bars and phrases), and `render(sound="song_and_clips")` (ducked music, stems, a no-music version).
+
+```bash
+gh skill install thorwhalen/muvid muvid-promo --agent claude-code
+```
+
+Source: [`muvid/data/skills/muvid-promo`](https://github.com/thorwhalen/muvid/tree/HEAD/muvid/data/skills/muvid-promo) (bundled with the pip package).
+
 ### `muvid`
 
 Use when the user wants to make a music video from a song. Triggers on "make a music video", "turn this song into a video", "/muvid", or any work inside a muvid project folder (look for project.json with muvid schema_version). Drives muvid's NARRATIVE, shot-by-shot pipeline: transcribing the lyrics off the audio, aligning them, casting characters, establishing environments, writing the script, rendering shots. Also the router to muvid's one-command surfaces — song in, video out, no project folder: lyric video, karaoke, kinetic typography, concrete poem, CALLIGRAM, audio visualizer, and assembling N phone recordings of one gig. If the user has no audio file, muvid cannot make one — see "muvid needs a song" below.

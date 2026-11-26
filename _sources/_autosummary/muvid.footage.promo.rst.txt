@@ -1,0 +1,36 @@
+muvid.footage.promo
+===================
+
+.. automodule:: muvid.footage.promo
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      DEFAULT_HOLD_S
+      MIN_HOLD_S
+      PHRASE_BARS
+      PHRASE_BONUS
+      DISSOLVE_ROLES
+      DISSOLVE_BEATS
+      CUT_LEAD_S
+      FEATURE_SOUND_ROLES
+      EDGE_S
+      FALLBACK_GRID_S
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      bar_lines
+      ending_span
+      plan_promo
+   
+   .. rubric:: Classes
+
+   .. autosummary::
+   
+      PromoPlan
+      Shot
+   

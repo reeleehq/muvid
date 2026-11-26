@@ -62,9 +62,11 @@ muvid.footage
    media_views
    music_cut
    named_looks
+   promo
    scoring
    select_score
    service
+   sound
    strategy
    trust
    workspace

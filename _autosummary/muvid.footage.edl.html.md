@@ -58,6 +58,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`SLIP_MAX_S`](#muvid.footage.edl.SLIP_MAX_S)                 | about one beat at 128 BPM.                                                                                                                                                                                                                                      |
 | [`RATE_MAX_DEV`](#muvid.footage.edl.RATE_MAX_DEV)               | 8 %, a nudge that keeps a dancer looking like themselves.                                                                                                                                                                                                       |
 | [`EDGE_S`](#muvid.footage.edl.EDGE_S)                     | phone clips start and stop with the shake of a thumb on the button.                                                                                                                                                                                             |
+| [`SOUND_DB_RANGE`](#muvid.footage.edl.SOUND_DB_RANGE)             | from silent to a modest boost.                                                                                                                                                                                                                                  |
 | [`NO_VOUCHED_COVERAGE`](#muvid.footage.edl.NO_VOUCHED_COVERAGE)        | nothing the aligner vouches for covers it at all.                                                                                                                                                                                                               |
 | [`UNVOUCHED_SELECTION`](#muvid.footage.edl.UNVOUCHED_SELECTION)        | A vouched clip DOES cover the span and the strategy cut to an unvouched one anyway — so the loss is the SELECTOR's, not the footage's.                                                                                                                          |
 | [`EXCLUSION_REASONS`](#muvid.footage.edl.EXCLUSION_REASONS)          | Every reason [`exclude_unvouched()`](#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.                                                                                                                                 |
@@ -116,7 +117,7 @@ implicitly, so spans stay one-per-song-span and nothing about reading an EDL cha
 | [`UnreliableAlignmentError`](#muvid.footage.edl.UnreliableAlignmentError)(unvouched)   | An edit cuts to a clip whose OFFSET the aligner could not vouch for (muvid#59).   |
 |----------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
 
-### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=None)
+### *class* muvid.footage.edl.AssemblyCut(song_start, song_end, clip_id, clip_in, clip_path, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, rate=1.0, source_colour=None, source_tonemap=None, sound_db=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -149,6 +150,14 @@ where a moving look’s ramp restarts (muvid#73). See
 
 the assembler reads `duration * rate`
 seconds of source and retimes it (`setpts`, before `fps`) onto the span.
+
+* **Type:**
+  Carried through from the EDL entry
+
+#### sound_db *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+this cut’s own sound level in a render
+that keeps the clips’ sound ([`EdlEntry.sound_db`](#muvid.footage.edl.EdlEntry.sound_db)); `None` = default.
 
 * **Type:**
   Carried through from the EDL entry
@@ -249,7 +258,7 @@ so the genre can publish all three without importing the cutter (numpy).
 
 Every reason [`exclude_unvouched()`](#muvid.footage.edl.exclude_unvouched) can give, for a caller matching on the value.
 
-### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False)
+### *class* muvid.footage.edl.EdlEntry(song_start, song_end, clip_id, transition=None, crop=None, crop_end=None, look=None, look_time_varying=False, look_spec=None, slip_s=0.0, rate=1.0, source_in=None, source_in_by_hand=False, source_in_by_cutter=False, sound_db=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
@@ -380,6 +389,15 @@ property and needs no speed change. Bounded by [`SLIP_MAX_S`](#muvid.footage.edl
 
 * **Type:**
   **Slip**
+
+#### sound_db *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+**Sound level** of this cut’s OWN audio (dB), heard only in a render that keeps
+the clips’ sound (`render(sound="song_and_clips")`): `0` as recorded, `-12`
+a quiet room bed under the music, `-60` silent. `None` (the default) is the
+render’s default level. A promo plays a soundbite at full level and the rest of
+its shots as a bed, so the chatter behind a pose does not compete with the
+instructor. Within [`SOUND_DB_RANGE`](#muvid.footage.edl.SOUND_DB_RANGE); omit-when-None, like the rest.
 
 #### source_in *: [float](https://docs.python.org/3/builtins/functions.html#float) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
 
@@ -865,6 +883,13 @@ one shoot, so a second unrelated shoot should be measured before these are trust
 further. A plain mapping (not `SongThresholds`) so this module stays numpy-free.
 Each bar is env-tunable (`MUVID_FOOTAGE_SONG_<NAME>`), the hedge against a false
 “absent” in production, as `MUVID_FOOTAGE_MIN_SUPPORT` is for the vote.
+
+### muvid.footage.edl.SOUND_DB_RANGE *= (-60.0, 12.0)*
+
+from silent to a modest boost.
+
+* **Type:**
+  The levels a cut’s own sound may be set to (dB)
 
 ### muvid.footage.edl.SPAN_EDGE_ACCURACY_S *= 20.0*
 
