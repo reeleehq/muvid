@@ -453,9 +453,17 @@ def test_a_saved_edit_still_renders_after_the_song_measures_a_few_ms_shorter(
     meta = service.render(fp, edit_id="e")
     assert seen["end"] == pytest.approx(SONG_S - 0.004)
     assert meta["edl"][-1]["song_end"] == pytest.approx(SONG_S - 0.004)
-    # the stored edit is not rewritten: the snap is a reading, like a span
+    # rendering does not rewrite the stored edit (the next edit to its cuts saves
+    # what it validated, the snapped end included, like any other change)
     stored = json.loads((fp.root / "edits" / "e.json").read_text())
     assert stored["edl"][-1]["song_end"] == SONG_S
+    # a span ending at the old end renders too ("Start at the player")
+    remeasure(SONG_S)
+    service.set_span(fp, edit_id="e", start_s=5.0, end_s=SONG_S)
+    remeasure(SONG_S - 0.004)
+    meta = service.render(fp, edit_id="e")
+    assert meta["edl"][0]["song_start"] == 5.0
+    assert meta["edl"][-1]["song_end"] == pytest.approx(SONG_S - 0.004)
 
     remeasure(SONG_S - 2 * SONG_END_TOLERANCE_S)
     assert "outside the song" in service.get_edit(fp, edit_id="e")["problem"]
