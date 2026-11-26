@@ -194,8 +194,8 @@
 </span><span id="line-7"><span class="sd">:mod:`muvid.footage.look` (so every fragment is ``looks``' and passes</span>
 </span><span id="line-8"><span class="sd">``validate_edl``'s allowlist):</span>
 </span><span id="line-9">
-</span><span id="line-10"><span class="sd">- camera moves, which read the clock (``look_time_varying``): ``punch_in`` (a steady</span>
-</span><span id="line-11"><span class="sd">  tighter framing), ``slow_push`` / ``slow_pull`` (zoom in / out across the cut),</span>
+</span><span id="line-10"><span class="sd">- camera framings: ``punch_in`` (a steady tighter framing, static), and the moves,</span>
+</span><span id="line-11"><span class="sd">  which read the clock (``look_time_varying``): ``slow_push`` / ``slow_pull`` (zoom in / out across the cut),</span>
 </span><span id="line-12"><span class="sd">  ``pan_left`` / ``pan_right`` (drift sideways at a slight zoom);</span>
 </span><span id="line-13"><span class="sd">- grades, which do not: ``vivid``, ``black_and_white``, ``posterize`` and ``cartoon``</span>
 </span><span id="line-14"><span class="sd">  (a little colour + flatten + posterize — in the spirit of Que Calor's V2, whose real</span>
@@ -273,243 +273,252 @@
 </span><span id="line-81">    <span class="n">kind</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># "camera" | "grade"</span>
 </span><span id="line-82">    <span class="n">build</span><span class="p">:</span> <span class="n">Callable</span>
 </span><span id="line-83">    <span class="n">params</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Param</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
-</span><span id="line-84">
-</span><span id="line-85">    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-86">        <span class="k">return</span> <span class="p">{</span>
-</span><span id="line-87">            <span class="s2">"name"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-</span><span id="line-88">            <span class="s2">"title"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">,</span>
-</span><span id="line-89">            <span class="s2">"description"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
-</span><span id="line-90">            <span class="s2">"kind"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span>
-</span><span id="line-91">            <span class="s2">"time_varying"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"camera"</span><span class="p">,</span>
-</span><span id="line-92">            <span class="s2">"params_schema"</span><span class="p">:</span> <span class="p">{</span>
-</span><span id="line-93">                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
-</span><span id="line-94">                <span class="s2">"additionalProperties"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-</span><span id="line-95">                <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">schema</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
-</span><span id="line-96">            <span class="p">},</span>
-</span><span id="line-97">        <span class="p">}</span></div>
+</span><span id="line-84">    <span class="c1">#: Whether the compiled look reads the clock. ``None``: every camera look does.</span>
+</span><span id="line-85">    <span class="c1">#: ``punch_in`` holds one window, compiles to a static crop and says ``False``,</span>
+</span><span id="line-86">    <span class="c1">#: so the assembler does not re-decode its cuts at a blend (muvid#376).</span>
+</span><span id="line-87">    <span class="n">time_varying</span><span class="p">:</span> <span class="s2">"bool | None"</span> <span class="o">=</span> <span class="kc">None</span>
+</span><span id="line-88">
+</span><span id="line-89">    <span class="k">def</span><span class="w"> </span><span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-90">        <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-91">            <span class="s2">"name"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+</span><span id="line-92">            <span class="s2">"title"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">title</span><span class="p">,</span>
+</span><span id="line-93">            <span class="s2">"description"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+</span><span id="line-94">            <span class="s2">"kind"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span>
+</span><span id="line-95">            <span class="s2">"time_varying"</span><span class="p">:</span> <span class="p">(</span>
+</span><span id="line-96">                <span class="bp">self</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"camera"</span>
+</span><span id="line-97">                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_varying</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="line-98">                <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">time_varying</span>
+</span><span id="line-99">            <span class="p">),</span>
+</span><span id="line-100">            <span class="s2">"params_schema"</span><span class="p">:</span> <span class="p">{</span>
+</span><span id="line-101">                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"object"</span><span class="p">,</span>
+</span><span id="line-102">                <span class="s2">"additionalProperties"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+</span><span id="line-103">                <span class="s2">"properties"</span><span class="p">:</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">schema</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+</span><span id="line-104">            <span class="p">},</span>
+</span><span id="line-105">        <span class="p">}</span></div>
 
-</span><span id="line-98">
-</span><span id="line-99">
-</span><span id="line-100"><span class="n">_ZOOM</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">DFLT_ZOOM</span><span class="p">,</span> <span class="mf">1.01</span><span class="p">,</span> <span class="n">MAX_ZOOM</span><span class="p">,</span> <span class="s2">"How far in (1.08 = 8</span><span class="si">% c</span><span class="s2">loser)"</span><span class="p">)</span>
-</span><span id="line-101"><span class="n">_ANCHOR_X</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">"Where to zoom toward, across (0 left, 1 right)"</span><span class="p">)</span>
-</span><span id="line-102"><span class="n">_ANCHOR_Y</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">"Where to zoom toward, down (0 top, 1 bottom)"</span><span class="p">)</span>
-</span><span id="line-103">
-</span><span id="line-104">
-</span><span id="line-105"><span class="k">def</span><span class="w"> </span><span class="nf">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-</span><span id="line-106"><span class="w">    </span><span class="sd">"""The canvas-fraction window of magnification ``zoom`` whose fixed point is (x, y)."""</span>
-</span><span id="line-107">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropWindow</span>
-</span><span id="line-108">
-</span><span id="line-109">    <span class="n">side</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">zoom</span>
-</span><span id="line-110">    <span class="k">return</span> <span class="n">CropWindow</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">w</span><span class="o">=</span><span class="n">side</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">side</span><span class="p">)</span>
+</span><span id="line-106">
+</span><span id="line-107">
+</span><span id="line-108"><span class="n">_ZOOM</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="n">DFLT_ZOOM</span><span class="p">,</span> <span class="mf">1.01</span><span class="p">,</span> <span class="n">MAX_ZOOM</span><span class="p">,</span> <span class="s2">"How far in (1.08 = 8</span><span class="si">% c</span><span class="s2">loser)"</span><span class="p">)</span>
+</span><span id="line-109"><span class="n">_ANCHOR_X</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">"Where to zoom toward, across (0 left, 1 right)"</span><span class="p">)</span>
+</span><span id="line-110"><span class="n">_ANCHOR_Y</span> <span class="o">=</span> <span class="n">Param</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s2">"Where to zoom toward, down (0 top, 1 bottom)"</span><span class="p">)</span>
 </span><span id="line-111">
 </span><span id="line-112">
-</span><span id="line-113"><span class="k">def</span><span class="w"> </span><span class="nf">_full</span><span class="p">():</span>
-</span><span id="line-114">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropWindow</span>
-</span><span id="line-115">
-</span><span id="line-116">    <span class="k">return</span> <span class="n">CropWindow</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
-</span><span id="line-117">
-</span><span id="line-118">
-</span><span id="line-119"><span class="k">def</span><span class="w"> </span><span class="nf">_move</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">):</span>
-</span><span id="line-120">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.look</span><span class="w"> </span><span class="kn">import</span> <span class="n">motion</span>
-</span><span id="line-121">
-</span><span id="line-122">    <span class="k">return</span> <span class="n">motion</span><span class="p">([(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">start</span><span class="p">),</span> <span class="p">(</span><span class="n">duration_s</span><span class="p">,</span> <span class="n">end</span><span class="p">)],</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">)</span>
+</span><span id="line-113"><span class="k">def</span><span class="w"> </span><span class="nf">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">y</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+</span><span id="line-114"><span class="w">    </span><span class="sd">"""The canvas-fraction window of magnification ``zoom`` whose fixed point is (x, y)."""</span>
+</span><span id="line-115">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropWindow</span>
+</span><span id="line-116">
+</span><span id="line-117">    <span class="n">side</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">zoom</span>
+</span><span id="line-118">    <span class="k">return</span> <span class="n">CropWindow</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">y</span><span class="o">=</span><span class="n">y</span> <span class="o">*</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="n">side</span><span class="p">),</span> <span class="n">w</span><span class="o">=</span><span class="n">side</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="n">side</span><span class="p">)</span>
+</span><span id="line-119">
+</span><span id="line-120">
+</span><span id="line-121"><span class="k">def</span><span class="w"> </span><span class="nf">_full</span><span class="p">():</span>
+</span><span id="line-122">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.edl</span><span class="w"> </span><span class="kn">import</span> <span class="n">CropWindow</span>
 </span><span id="line-123">
-</span><span id="line-124">
-</span><span id="line-125"><span class="k">def</span><span class="w"> </span><span class="nf">_punch_in</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">):</span>
-</span><span id="line-126">    <span class="n">w</span> <span class="o">=</span> <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">)</span>
-</span><span id="line-127">    <span class="k">return</span> <span class="n">_move</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">)</span>
-</span><span id="line-128">
+</span><span id="line-124">    <span class="k">return</span> <span class="n">CropWindow</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+</span><span id="line-125">
+</span><span id="line-126">
+</span><span id="line-127"><span class="k">def</span><span class="w"> </span><span class="nf">_move</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">):</span>
+</span><span id="line-128">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.look</span><span class="w"> </span><span class="kn">import</span> <span class="n">motion</span>
 </span><span id="line-129">
-</span><span id="line-130"><span class="k">def</span><span class="w"> </span><span class="nf">_slow_push</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">):</span>
-</span><span id="line-131">    <span class="k">return</span> <span class="n">_move</span><span class="p">(</span>
-</span><span id="line-132">        <span class="n">_full</span><span class="p">(),</span>
-</span><span id="line-133">        <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">),</span>
-</span><span id="line-134">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
-</span><span id="line-135">        <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-136">        <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span>
-</span><span id="line-137">    <span class="p">)</span>
-</span><span id="line-138">
-</span><span id="line-139">
-</span><span id="line-140"><span class="k">def</span><span class="w"> </span><span class="nf">_slow_pull</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">):</span>
-</span><span id="line-141">    <span class="k">return</span> <span class="n">_move</span><span class="p">(</span>
-</span><span id="line-142">        <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">),</span>
-</span><span id="line-143">        <span class="n">_full</span><span class="p">(),</span>
-</span><span id="line-144">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
-</span><span id="line-145">        <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-146">        <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span>
-</span><span id="line-147">    <span class="p">)</span>
-</span><span id="line-148">
-</span><span id="line-149">
-</span><span id="line-150"><span class="k">def</span><span class="w"> </span><span class="nf">_pan</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-</span><span id="line-151">    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">):</span>
-</span><span id="line-152">        <span class="c1"># Camera pans left = the window slides from the right edge to the left one.</span>
-</span><span id="line-153">        <span class="n">right</span><span class="p">,</span> <span class="n">left</span> <span class="o">=</span> <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
-</span><span id="line-154">        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="p">(</span><span class="n">right</span><span class="p">,</span> <span class="n">left</span><span class="p">)</span> <span class="k">if</span> <span class="n">direction</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
-</span><span id="line-155">        <span class="k">return</span> <span class="n">_move</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">)</span>
+</span><span id="line-130">    <span class="k">return</span> <span class="n">motion</span><span class="p">([(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">start</span><span class="p">),</span> <span class="p">(</span><span class="n">duration_s</span><span class="p">,</span> <span class="n">end</span><span class="p">)],</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">)</span>
+</span><span id="line-131">
+</span><span id="line-132">
+</span><span id="line-133"><span class="k">def</span><span class="w"> </span><span class="nf">_punch_in</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">):</span>
+</span><span id="line-134">    <span class="n">w</span> <span class="o">=</span> <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">)</span>
+</span><span id="line-135">    <span class="k">return</span> <span class="n">_move</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">)</span>
+</span><span id="line-136">
+</span><span id="line-137">
+</span><span id="line-138"><span class="k">def</span><span class="w"> </span><span class="nf">_slow_push</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">):</span>
+</span><span id="line-139">    <span class="k">return</span> <span class="n">_move</span><span class="p">(</span>
+</span><span id="line-140">        <span class="n">_full</span><span class="p">(),</span>
+</span><span id="line-141">        <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">),</span>
+</span><span id="line-142">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
+</span><span id="line-143">        <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-144">        <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span>
+</span><span id="line-145">    <span class="p">)</span>
+</span><span id="line-146">
+</span><span id="line-147">
+</span><span id="line-148"><span class="k">def</span><span class="w"> </span><span class="nf">_slow_pull</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">):</span>
+</span><span id="line-149">    <span class="k">return</span> <span class="n">_move</span><span class="p">(</span>
+</span><span id="line-150">        <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="n">anchor_x</span><span class="p">,</span> <span class="n">anchor_y</span><span class="p">),</span>
+</span><span id="line-151">        <span class="n">_full</span><span class="p">(),</span>
+</span><span id="line-152">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span>
+</span><span id="line-153">        <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-154">        <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span>
+</span><span id="line-155">    <span class="p">)</span>
 </span><span id="line-156">
-</span><span id="line-157">    <span class="k">return</span> <span class="n">build</span>
-</span><span id="line-158">
-</span><span id="line-159">
-</span><span id="line-160"><span class="k">def</span><span class="w"> </span><span class="nf">_grade</span><span class="p">(</span><span class="o">*</span><span class="n">steps</span><span class="p">):</span>
-</span><span id="line-161">    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">):</span>
-</span><span id="line-162">        <span class="kn">import</span><span class="w"> </span><span class="nn">looks</span>
-</span><span id="line-163">
-</span><span id="line-164">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.look</span><span class="w"> </span><span class="kn">import</span> <span class="n">stylize</span>
-</span><span id="line-165">
-</span><span id="line-166">        <span class="n">effects</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
-</span><span id="line-167">            <span class="n">looks</span><span class="o">.</span><span class="n">Effect</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">make</span><span class="p">(</span><span class="n">params</span><span class="p">))</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">make</span> <span class="ow">in</span> <span class="n">steps</span>
-</span><span id="line-168">        <span class="p">)</span>
-</span><span id="line-169">        <span class="k">return</span> <span class="n">stylize</span><span class="p">(</span>
-</span><span id="line-170">            <span class="n">looks</span><span class="o">.</span><span class="n">Look</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="n">effects</span><span class="p">),</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span>
-</span><span id="line-171">        <span class="p">)</span>
-</span><span id="line-172">
-</span><span id="line-173">    <span class="k">return</span> <span class="n">build</span>
-</span><span id="line-174">
-</span><span id="line-175">
-</span><span id="line-176"><span class="n">_MOVE_PARAMS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"zoom"</span><span class="p">:</span> <span class="n">_ZOOM</span><span class="p">,</span> <span class="s2">"anchor_x"</span><span class="p">:</span> <span class="n">_ANCHOR_X</span><span class="p">,</span> <span class="s2">"anchor_y"</span><span class="p">:</span> <span class="n">_ANCHOR_Y</span><span class="p">}</span>
-</span><span id="line-177">
-</span><span id="line-178"><span class="n">NAMED_LOOKS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NamedLook</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-</span><span id="line-179">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-180">        <span class="s2">"punch_in"</span><span class="p">,</span>
-</span><span id="line-181">        <span class="s2">"Punch in"</span><span class="p">,</span>
-</span><span id="line-182">        <span class="s2">"Hold a slightly closer framing for the whole cut."</span><span class="p">,</span>
-</span><span id="line-183">        <span class="s2">"camera"</span><span class="p">,</span>
-</span><span id="line-184">        <span class="n">_punch_in</span><span class="p">,</span>
-</span><span id="line-185">        <span class="n">_MOVE_PARAMS</span><span class="p">,</span>
-</span><span id="line-186">    <span class="p">),</span>
+</span><span id="line-157">
+</span><span id="line-158"><span class="k">def</span><span class="w"> </span><span class="nf">_pan</span><span class="p">(</span><span class="n">direction</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+</span><span id="line-159">    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="n">zoom</span><span class="p">):</span>
+</span><span id="line-160">        <span class="c1"># Camera pans left = the window slides from the right edge to the left one.</span>
+</span><span id="line-161">        <span class="n">right</span><span class="p">,</span> <span class="n">left</span> <span class="o">=</span> <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="n">_window</span><span class="p">(</span><span class="n">zoom</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+</span><span id="line-162">        <span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="p">(</span><span class="n">right</span><span class="p">,</span> <span class="n">left</span><span class="p">)</span> <span class="k">if</span> <span class="n">direction</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="p">(</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">)</span>
+</span><span id="line-163">        <span class="k">return</span> <span class="n">_move</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">)</span>
+</span><span id="line-164">
+</span><span id="line-165">    <span class="k">return</span> <span class="n">build</span>
+</span><span id="line-166">
+</span><span id="line-167">
+</span><span id="line-168"><span class="k">def</span><span class="w"> </span><span class="nf">_grade</span><span class="p">(</span><span class="o">*</span><span class="n">steps</span><span class="p">):</span>
+</span><span id="line-169">    <span class="k">def</span><span class="w"> </span><span class="nf">build</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">):</span>
+</span><span id="line-170">        <span class="kn">import</span><span class="w"> </span><span class="nn">looks</span>
+</span><span id="line-171">
+</span><span id="line-172">        <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.footage.look</span><span class="w"> </span><span class="kn">import</span> <span class="n">stylize</span>
+</span><span id="line-173">
+</span><span id="line-174">        <span class="n">effects</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span>
+</span><span id="line-175">            <span class="n">looks</span><span class="o">.</span><span class="n">Effect</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">make</span><span class="p">(</span><span class="n">params</span><span class="p">))</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">make</span> <span class="ow">in</span> <span class="n">steps</span>
+</span><span id="line-176">        <span class="p">)</span>
+</span><span id="line-177">        <span class="k">return</span> <span class="n">stylize</span><span class="p">(</span>
+</span><span id="line-178">            <span class="n">looks</span><span class="o">.</span><span class="n">Look</span><span class="p">(</span><span class="n">steps</span><span class="o">=</span><span class="n">effects</span><span class="p">),</span> <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span>
+</span><span id="line-179">        <span class="p">)</span>
+</span><span id="line-180">
+</span><span id="line-181">    <span class="k">return</span> <span class="n">build</span>
+</span><span id="line-182">
+</span><span id="line-183">
+</span><span id="line-184"><span class="n">_MOVE_PARAMS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"zoom"</span><span class="p">:</span> <span class="n">_ZOOM</span><span class="p">,</span> <span class="s2">"anchor_x"</span><span class="p">:</span> <span class="n">_ANCHOR_X</span><span class="p">,</span> <span class="s2">"anchor_y"</span><span class="p">:</span> <span class="n">_ANCHOR_Y</span><span class="p">}</span>
+</span><span id="line-185">
+</span><span id="line-186"><span class="n">NAMED_LOOKS</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">NamedLook</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
 </span><span id="line-187">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-188">        <span class="s2">"slow_push"</span><span class="p">,</span>
-</span><span id="line-189">        <span class="s2">"Slow push in"</span><span class="p">,</span>
-</span><span id="line-190">        <span class="s2">"Ease in toward a point across the cut."</span><span class="p">,</span>
+</span><span id="line-188">        <span class="s2">"punch_in"</span><span class="p">,</span>
+</span><span id="line-189">        <span class="s2">"Punch in"</span><span class="p">,</span>
+</span><span id="line-190">        <span class="s2">"Hold a slightly closer framing for the whole cut."</span><span class="p">,</span>
 </span><span id="line-191">        <span class="s2">"camera"</span><span class="p">,</span>
-</span><span id="line-192">        <span class="n">_slow_push</span><span class="p">,</span>
+</span><span id="line-192">        <span class="n">_punch_in</span><span class="p">,</span>
 </span><span id="line-193">        <span class="n">_MOVE_PARAMS</span><span class="p">,</span>
-</span><span id="line-194">    <span class="p">),</span>
-</span><span id="line-195">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-196">        <span class="s2">"slow_pull"</span><span class="p">,</span>
-</span><span id="line-197">        <span class="s2">"Slow pull out"</span><span class="p">,</span>
-</span><span id="line-198">        <span class="s2">"Start close and ease back to the full frame."</span><span class="p">,</span>
-</span><span id="line-199">        <span class="s2">"camera"</span><span class="p">,</span>
-</span><span id="line-200">        <span class="n">_slow_pull</span><span class="p">,</span>
-</span><span id="line-201">        <span class="n">_MOVE_PARAMS</span><span class="p">,</span>
-</span><span id="line-202">    <span class="p">),</span>
-</span><span id="line-203">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-204">        <span class="s2">"pan_left"</span><span class="p">,</span>
-</span><span id="line-205">        <span class="s2">"Pan left"</span><span class="p">,</span>
-</span><span id="line-206">        <span class="s2">"Drift left across the frame at a slight zoom."</span><span class="p">,</span>
-</span><span id="line-207">        <span class="s2">"camera"</span><span class="p">,</span>
-</span><span id="line-208">        <span class="n">_pan</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
-</span><span id="line-209">        <span class="p">{</span><span class="s2">"zoom"</span><span class="p">:</span> <span class="n">_ZOOM</span><span class="p">},</span>
-</span><span id="line-210">    <span class="p">),</span>
-</span><span id="line-211">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-212">        <span class="s2">"pan_right"</span><span class="p">,</span>
-</span><span id="line-213">        <span class="s2">"Pan right"</span><span class="p">,</span>
-</span><span id="line-214">        <span class="s2">"Drift right across the frame at a slight zoom."</span><span class="p">,</span>
-</span><span id="line-215">        <span class="s2">"camera"</span><span class="p">,</span>
-</span><span id="line-216">        <span class="n">_pan</span><span class="p">(</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span>
-</span><span id="line-217">        <span class="p">{</span><span class="s2">"zoom"</span><span class="p">:</span> <span class="n">_ZOOM</span><span class="p">},</span>
-</span><span id="line-218">    <span class="p">),</span>
-</span><span id="line-219">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-220">        <span class="s2">"vivid"</span><span class="p">,</span>
-</span><span id="line-221">        <span class="s2">"Vivid"</span><span class="p">,</span>
-</span><span id="line-222">        <span class="s2">"Richer colour and a touch more contrast."</span><span class="p">,</span>
-</span><span id="line-223">        <span class="s2">"grade"</span><span class="p">,</span>
-</span><span id="line-224">        <span class="n">_grade</span><span class="p">(</span>
-</span><span id="line-225">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">"amount"</span><span class="p">]}),</span>
-</span><span id="line-226">            <span class="p">(</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">1.05</span><span class="p">}),</span>
-</span><span id="line-227">        <span class="p">),</span>
-</span><span id="line-228">        <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.6</span><span class="p">,</span> <span class="s2">"How much more colour"</span><span class="p">)},</span>
-</span><span id="line-229">    <span class="p">),</span>
-</span><span id="line-230">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-231">        <span class="s2">"black_and_white"</span><span class="p">,</span>
-</span><span id="line-232">        <span class="s2">"Black and white"</span><span class="p">,</span>
-</span><span id="line-233">        <span class="s2">"Monochrome with a little contrast."</span><span class="p">,</span>
-</span><span id="line-234">        <span class="s2">"grade"</span><span class="p">,</span>
-</span><span id="line-235">        <span class="n">_grade</span><span class="p">(</span>
-</span><span id="line-236">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}),</span>
-</span><span id="line-237">            <span class="p">(</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">"contrast"</span><span class="p">]}),</span>
-</span><span id="line-238">        <span class="p">),</span>
-</span><span id="line-239">        <span class="p">{</span><span class="s2">"contrast"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="s2">"Contrast"</span><span class="p">)},</span>
-</span><span id="line-240">    <span class="p">),</span>
-</span><span id="line-241">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-242">        <span class="s2">"posterize"</span><span class="p">,</span>
-</span><span id="line-243">        <span class="s2">"Posterize"</span><span class="p">,</span>
-</span><span id="line-244">        <span class="s2">"Flat bands of colour."</span><span class="p">,</span>
-</span><span id="line-245">        <span class="s2">"grade"</span><span class="p">,</span>
-</span><span id="line-246">        <span class="n">_grade</span><span class="p">((</span><span class="s2">"posterize"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"levels"</span><span class="p">])})),</span>
-</span><span id="line-247">        <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"Colour levels"</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
-</span><span id="line-248">    <span class="p">),</span>
-</span><span id="line-249">    <span class="n">NamedLook</span><span class="p">(</span>
-</span><span id="line-250">        <span class="s2">"cartoon"</span><span class="p">,</span>
-</span><span id="line-251">        <span class="s2">"Cartoon"</span><span class="p">,</span>
-</span><span id="line-252">        <span class="s2">"Smoothed, banded, a little brighter in colour — a painted look."</span><span class="p">,</span>
-</span><span id="line-253">        <span class="s2">"grade"</span><span class="p">,</span>
-</span><span id="line-254">        <span class="c1"># looks' canonical stage order: the grade (saturation) before the</span>
-</span><span id="line-255">        <span class="c1"># flatten, the flatten before the posterize. ``flatten`` keeps looks'</span>
-</span><span id="line-256">        <span class="c1"># own measured defaults (spatial, range, all three planes).</span>
-</span><span id="line-257">        <span class="n">_grade</span><span class="p">(</span>
-</span><span id="line-258">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">1.15</span><span class="p">}),</span>
-</span><span id="line-259">            <span class="p">(</span><span class="s2">"flatten"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{}),</span>
-</span><span id="line-260">            <span class="p">(</span><span class="s2">"posterize"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"levels"</span><span class="p">])}),</span>
-</span><span id="line-261">        <span class="p">),</span>
-</span><span id="line-262">        <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"Colour levels"</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
-</span><span id="line-263">    <span class="p">),</span>
-</span><span id="line-264"><span class="p">)</span>
-</span><span id="line-265">
-</span><span id="line-266"><span class="n">_BY_NAME</span> <span class="o">=</span> <span class="p">{</span><span class="n">look</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">look</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">}</span>
-</span><span id="line-267">
-</span><span id="line-268">
+</span><span id="line-194">        <span class="n">time_varying</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+</span><span id="line-195">    <span class="p">),</span>
+</span><span id="line-196">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-197">        <span class="s2">"slow_push"</span><span class="p">,</span>
+</span><span id="line-198">        <span class="s2">"Slow push in"</span><span class="p">,</span>
+</span><span id="line-199">        <span class="s2">"Ease in toward a point across the cut."</span><span class="p">,</span>
+</span><span id="line-200">        <span class="s2">"camera"</span><span class="p">,</span>
+</span><span id="line-201">        <span class="n">_slow_push</span><span class="p">,</span>
+</span><span id="line-202">        <span class="n">_MOVE_PARAMS</span><span class="p">,</span>
+</span><span id="line-203">    <span class="p">),</span>
+</span><span id="line-204">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-205">        <span class="s2">"slow_pull"</span><span class="p">,</span>
+</span><span id="line-206">        <span class="s2">"Slow pull out"</span><span class="p">,</span>
+</span><span id="line-207">        <span class="s2">"Start close and ease back to the full frame."</span><span class="p">,</span>
+</span><span id="line-208">        <span class="s2">"camera"</span><span class="p">,</span>
+</span><span id="line-209">        <span class="n">_slow_pull</span><span class="p">,</span>
+</span><span id="line-210">        <span class="n">_MOVE_PARAMS</span><span class="p">,</span>
+</span><span id="line-211">    <span class="p">),</span>
+</span><span id="line-212">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-213">        <span class="s2">"pan_left"</span><span class="p">,</span>
+</span><span id="line-214">        <span class="s2">"Pan left"</span><span class="p">,</span>
+</span><span id="line-215">        <span class="s2">"Drift left across the frame at a slight zoom."</span><span class="p">,</span>
+</span><span id="line-216">        <span class="s2">"camera"</span><span class="p">,</span>
+</span><span id="line-217">        <span class="n">_pan</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span>
+</span><span id="line-218">        <span class="p">{</span><span class="s2">"zoom"</span><span class="p">:</span> <span class="n">_ZOOM</span><span class="p">},</span>
+</span><span id="line-219">    <span class="p">),</span>
+</span><span id="line-220">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-221">        <span class="s2">"pan_right"</span><span class="p">,</span>
+</span><span id="line-222">        <span class="s2">"Pan right"</span><span class="p">,</span>
+</span><span id="line-223">        <span class="s2">"Drift right across the frame at a slight zoom."</span><span class="p">,</span>
+</span><span id="line-224">        <span class="s2">"camera"</span><span class="p">,</span>
+</span><span id="line-225">        <span class="n">_pan</span><span class="p">(</span><span class="o">+</span><span class="mi">1</span><span class="p">),</span>
+</span><span id="line-226">        <span class="p">{</span><span class="s2">"zoom"</span><span class="p">:</span> <span class="n">_ZOOM</span><span class="p">},</span>
+</span><span id="line-227">    <span class="p">),</span>
+</span><span id="line-228">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-229">        <span class="s2">"vivid"</span><span class="p">,</span>
+</span><span id="line-230">        <span class="s2">"Vivid"</span><span class="p">,</span>
+</span><span id="line-231">        <span class="s2">"Richer colour and a touch more contrast."</span><span class="p">,</span>
+</span><span id="line-232">        <span class="s2">"grade"</span><span class="p">,</span>
+</span><span id="line-233">        <span class="n">_grade</span><span class="p">(</span>
+</span><span id="line-234">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">"amount"</span><span class="p">]}),</span>
+</span><span id="line-235">            <span class="p">(</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">1.05</span><span class="p">}),</span>
+</span><span id="line-236">        <span class="p">),</span>
+</span><span id="line-237">        <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.6</span><span class="p">,</span> <span class="s2">"How much more colour"</span><span class="p">)},</span>
+</span><span id="line-238">    <span class="p">),</span>
+</span><span id="line-239">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-240">        <span class="s2">"black_and_white"</span><span class="p">,</span>
+</span><span id="line-241">        <span class="s2">"Black and white"</span><span class="p">,</span>
+</span><span id="line-242">        <span class="s2">"Monochrome with a little contrast."</span><span class="p">,</span>
+</span><span id="line-243">        <span class="s2">"grade"</span><span class="p">,</span>
+</span><span id="line-244">        <span class="n">_grade</span><span class="p">(</span>
+</span><span id="line-245">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">}),</span>
+</span><span id="line-246">            <span class="p">(</span><span class="s2">"contrast"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">"contrast"</span><span class="p">]}),</span>
+</span><span id="line-247">        <span class="p">),</span>
+</span><span id="line-248">        <span class="p">{</span><span class="s2">"contrast"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mf">1.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="s2">"Contrast"</span><span class="p">)},</span>
+</span><span id="line-249">    <span class="p">),</span>
+</span><span id="line-250">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-251">        <span class="s2">"posterize"</span><span class="p">,</span>
+</span><span id="line-252">        <span class="s2">"Posterize"</span><span class="p">,</span>
+</span><span id="line-253">        <span class="s2">"Flat bands of colour."</span><span class="p">,</span>
+</span><span id="line-254">        <span class="s2">"grade"</span><span class="p">,</span>
+</span><span id="line-255">        <span class="n">_grade</span><span class="p">((</span><span class="s2">"posterize"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"levels"</span><span class="p">])})),</span>
+</span><span id="line-256">        <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"Colour levels"</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+</span><span id="line-257">    <span class="p">),</span>
+</span><span id="line-258">    <span class="n">NamedLook</span><span class="p">(</span>
+</span><span id="line-259">        <span class="s2">"cartoon"</span><span class="p">,</span>
+</span><span id="line-260">        <span class="s2">"Cartoon"</span><span class="p">,</span>
+</span><span id="line-261">        <span class="s2">"Smoothed, banded, a little brighter in colour — a painted look."</span><span class="p">,</span>
+</span><span id="line-262">        <span class="s2">"grade"</span><span class="p">,</span>
+</span><span id="line-263">        <span class="c1"># looks' canonical stage order: the grade (saturation) before the</span>
+</span><span id="line-264">        <span class="c1"># flatten, the flatten before the posterize. ``flatten`` keeps looks'</span>
+</span><span id="line-265">        <span class="c1"># own measured defaults (spatial, range, all three planes).</span>
+</span><span id="line-266">        <span class="n">_grade</span><span class="p">(</span>
+</span><span id="line-267">            <span class="p">(</span><span class="s2">"saturation"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"amount"</span><span class="p">:</span> <span class="mf">1.15</span><span class="p">}),</span>
+</span><span id="line-268">            <span class="p">(</span><span class="s2">"flatten"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{}),</span>
+</span><span id="line-269">            <span class="p">(</span><span class="s2">"posterize"</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="s2">"levels"</span><span class="p">])}),</span>
+</span><span id="line-270">        <span class="p">),</span>
+</span><span id="line-271">        <span class="p">{</span><span class="s2">"levels"</span><span class="p">:</span> <span class="n">Param</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">16</span><span class="p">,</span> <span class="s2">"Colour levels"</span><span class="p">,</span> <span class="n">integer</span><span class="o">=</span><span class="kc">True</span><span class="p">)},</span>
+</span><span id="line-272">    <span class="p">),</span>
+</span><span id="line-273"><span class="p">)</span>
+</span><span id="line-274">
+</span><span id="line-275"><span class="n">_BY_NAME</span> <span class="o">=</span> <span class="p">{</span><span class="n">look</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">look</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">}</span>
+</span><span id="line-276">
+</span><span id="line-277">
 <div class="viewcode-block" id="named_look_catalogue">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.named_looks.html#muvid.footage.named_looks.named_look_catalogue">[docs]</a>
-</span><span id="line-269"><span class="k">def</span><span class="w"> </span><span class="nf">named_look_catalogue</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
-</span><span id="line-270"><span class="w">    </span><span class="sd">"""The menu as JSON rows (name, title, description, kind, params_schema)."""</span>
-</span><span id="line-271">    <span class="k">return</span> <span class="p">[</span><span class="n">look</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">]</span></div>
+</span><span id="line-278"><span class="k">def</span><span class="w"> </span><span class="nf">named_look_catalogue</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+</span><span id="line-279"><span class="w">    </span><span class="sd">"""The menu as JSON rows (name, title, description, kind, params_schema)."""</span>
+</span><span id="line-280">    <span class="k">return</span> <span class="p">[</span><span class="n">look</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span> <span class="k">for</span> <span class="n">look</span> <span class="ow">in</span> <span class="n">NAMED_LOOKS</span><span class="p">]</span></div>
 
-</span><span id="line-272">
-</span><span id="line-273">
+</span><span id="line-281">
+</span><span id="line-282">
 <div class="viewcode-block" id="resolve_named_look">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.named_looks.html#muvid.footage.named_looks.resolve_named_look">[docs]</a>
-</span><span id="line-274"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-275"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` checked, with every parameter's value filled in (the</span>
-</span><span id="line-276"><span class="sd">    defaults included) — the spec a cut records so a screen can show the choice."""</span>
-</span><span id="line-277">    <span class="n">spec</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
-</span><span id="line-278">    <span class="n">name</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
-</span><span id="line-279">    <span class="n">look</span> <span class="o">=</span> <span class="n">_BY_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
-</span><span id="line-280">    <span class="k">if</span> <span class="n">look</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-</span><span id="line-281">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; the looks are </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_BY_NAME</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-282">    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">))</span>
-</span><span id="line-283">    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
-</span><span id="line-284">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span>
-</span><span id="line-285">            <span class="sa">f</span><span class="s2">"look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> takes </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'no parameters'</span><span class="si">}</span><span class="s2">, "</span>
-</span><span id="line-286">            <span class="sa">f</span><span class="s2">"not </span><span class="si">{</span><span class="n">unknown</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-287">        <span class="p">)</span>
-</span><span id="line-288">    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">coerce</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">default</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-</span><span id="line-289">    <span class="k">return</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">}</span></div>
+</span><span id="line-283"><span class="k">def</span><span class="w"> </span><span class="nf">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-284"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` checked, with every parameter's value filled in (the</span>
+</span><span id="line-285"><span class="sd">    defaults included) — the spec a cut records so a screen can show the choice."""</span>
+</span><span id="line-286">    <span class="n">spec</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+</span><span id="line-287">    <span class="n">name</span> <span class="o">=</span> <span class="n">spec</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</span><span id="line-288">    <span class="n">look</span> <span class="o">=</span> <span class="n">_BY_NAME</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+</span><span id="line-289">    <span class="k">if</span> <span class="n">look</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="line-290">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2">; the looks are </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">_BY_NAME</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+</span><span id="line-291">    <span class="n">unknown</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">))</span>
+</span><span id="line-292">    <span class="k">if</span> <span class="n">unknown</span><span class="p">:</span>
+</span><span id="line-293">        <span class="k">raise</span> <span class="n">NamedLookError</span><span class="p">(</span>
+</span><span id="line-294">            <span class="sa">f</span><span class="s2">"look </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> takes </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="p">)</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'no parameters'</span><span class="si">}</span><span class="s2">, "</span>
+</span><span id="line-295">            <span class="sa">f</span><span class="s2">"not </span><span class="si">{</span><span class="n">unknown</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-296">        <span class="p">)</span>
+</span><span id="line-297">    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">coerce</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">spec</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">p</span><span class="o">.</span><span class="n">default</span><span class="p">))</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">look</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+</span><span id="line-298">    <span class="k">return</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">}</span></div>
 
-</span><span id="line-290">
-</span><span id="line-291">
+</span><span id="line-299">
+</span><span id="line-300">
 <div class="viewcode-block" id="compile_named_look">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.named_looks.html#muvid.footage.named_looks.compile_named_look">[docs]</a>
-</span><span id="line-292"><span class="k">def</span><span class="w"> </span><span class="nf">compile_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
-</span><span id="line-293"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` → the cut's filter fragment (a ``LookFragment``,</span>
-</span><span id="line-294"><span class="sd">    which says whether it is time-varying). Unknown names and parameters are refused."""</span>
-</span><span id="line-295">    <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
-</span><span id="line-296">    <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
-</span><span id="line-297">    <span class="k">return</span> <span class="n">_BY_NAME</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
-</span><span id="line-298">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span> <span class="o">**</span><span class="n">resolved</span>
-</span><span id="line-299">    <span class="p">)</span></div>
+</span><span id="line-301"><span class="k">def</span><span class="w"> </span><span class="nf">compile_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">duration_s</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+</span><span id="line-302"><span class="w">    </span><span class="sd">"""``{"name": ..., **params}`` → the cut's filter fragment (a ``LookFragment``,</span>
+</span><span id="line-303"><span class="sd">    which says whether it is time-varying). Unknown names and parameters are refused."""</span>
+</span><span id="line-304">    <span class="n">resolved</span> <span class="o">=</span> <span class="n">resolve_named_look</span><span class="p">(</span><span class="n">spec</span><span class="p">)</span>
+</span><span id="line-305">    <span class="n">name</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"name"</span><span class="p">)</span>
+</span><span id="line-306">    <span class="k">return</span> <span class="n">_BY_NAME</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">build</span><span class="p">(</span>
+</span><span id="line-307">        <span class="n">canvas</span><span class="o">=</span><span class="n">canvas</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">fps</span><span class="p">,</span> <span class="n">duration_s</span><span class="o">=</span><span class="n">duration_s</span><span class="p">,</span> <span class="o">**</span><span class="n">resolved</span>
+</span><span id="line-308">    <span class="p">)</span></div>
 
-</span><span id="line-300">
-</span><span id="line-301">
-</span><span id="line-302"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
-</span><span id="line-303">    <span class="s2">"NAMED_LOOKS"</span><span class="p">,</span>
-</span><span id="line-304">    <span class="s2">"NamedLook"</span><span class="p">,</span>
-</span><span id="line-305">    <span class="s2">"NamedLookError"</span><span class="p">,</span>
-</span><span id="line-306">    <span class="s2">"MAX_ZOOM"</span><span class="p">,</span>
-</span><span id="line-307">    <span class="s2">"named_look_catalogue"</span><span class="p">,</span>
-</span><span id="line-308">    <span class="s2">"resolve_named_look"</span><span class="p">,</span>
-</span><span id="line-309">    <span class="s2">"compile_named_look"</span><span class="p">,</span>
-</span><span id="line-310"><span class="p">]</span>
+</span><span id="line-309">
+</span><span id="line-310">
+</span><span id="line-311"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="line-312">    <span class="s2">"NAMED_LOOKS"</span><span class="p">,</span>
+</span><span id="line-313">    <span class="s2">"NamedLook"</span><span class="p">,</span>
+</span><span id="line-314">    <span class="s2">"NamedLookError"</span><span class="p">,</span>
+</span><span id="line-315">    <span class="s2">"MAX_ZOOM"</span><span class="p">,</span>
+</span><span id="line-316">    <span class="s2">"named_look_catalogue"</span><span class="p">,</span>
+</span><span id="line-317">    <span class="s2">"resolve_named_look"</span><span class="p">,</span>
+</span><span id="line-318">    <span class="s2">"compile_named_look"</span><span class="p">,</span>
+</span><span id="line-319"><span class="p">]</span>
 </span></code></pre></div>
     </div></div>
           </main>
@@ -523,7 +532,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=0c777d31"></script>
+    <script src="../../../_static/documentation_options.js?v=3b8ff75b"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

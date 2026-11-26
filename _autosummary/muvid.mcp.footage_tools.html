@@ -412,11 +412,12 @@ while declaring no size a bound can read (590 MB and 941 MB measured on a
 1920x1080 canvas). Compile one with <code class="docutils literal notranslate"><span class="pre">muvid.footage.look</span></code>
 (<code class="docutils literal notranslate"><span class="pre">punch_in</span></code> / <code class="docutils literal notranslate"><span class="pre">motion</span></code> / <code class="docutils literal notranslate"><span class="pre">stylize</span></code>) rather than hand-writing it.</p></li>
 <li><p>an entry carrying a MOVING look (a punch-in, a pan) should also set
-<code class="docutils literal notranslate"><span class="pre">look_time_varying:</span> <span class="pre">true</span></code>. It changes no pixels; it puts a line in the
-reply’s <code class="docutils literal notranslate"><span class="pre">warnings</span></code> when a blended boundary restarts the move’s ramp,
-which it does because the blend is a separate seek (muvid#73). Leave it
-off — the default — for a grade, a LUT or a posterise, which never read the
-clock.</p></li>
+<code class="docutils literal notranslate"><span class="pre">look_time_varying:</span> <span class="pre">true</span></code>. It keeps the move on ONE clock across the
+cut’s blends: without it, a blend is a separate seek and the move starts
+again there, so the picture snaps back at the first frame of a fade
+(muvid#376). It costs a second decode of a VIDEO cut on a blended boundary
+(a photo is free), so leave it off — the default — for a grade, a LUT or a
+posterise, which never read the clock.</p></li>
 <li><p>an entry may carry <code class="docutils literal notranslate"><span class="pre">slip_s</span></code> (seconds, at most one beat either way,
 <code class="docutils literal notranslate"><span class="pre">muvid.footage.edl.SLIP_MAX_S</span></code>): the cut shows its video that much LATER
 (negative: earlier) without moving on the song — a local correction on top
@@ -466,9 +467,9 @@ song audio runs under it all. Returns the render + the same coverage report
 <code class="docutils literal notranslate"><span class="pre">propose_edit</span></code> gives.</p>
 <p>**Read the returned <code class="docutils literal notranslate"><span class="pre">warnings</span></code> list.** It is always present and usually
 empty, and it is what the render PLAN found: a transition that rounded to
-zero frames at this fps, or a moving look on a blended boundary whose ramp
-therefore restarts (muvid#73). Neither fails the render — <code class="docutils literal notranslate"><span class="pre">ok</span></code> stays true —
-so this list is the only place either one is ever said. It exists because
+zero frames at this fps, or an HDR clip this ffmpeg cannot tone-map. Neither
+fails the render — <code class="docutils literal notranslate"><span class="pre">ok</span></code> stays true — so this list is the only place either
+one is ever said. It exists because
 these findings used to be Python warnings on the server’s stderr, which a
 remote caller has no access to.</p>
 <dl class="field-list simple">
@@ -1261,7 +1262,7 @@ video uses. Replaces any previous song. Duration/size-capped.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0c777d31"></script>
+<script src="../_static/documentation_options.js?v=3b8ff75b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

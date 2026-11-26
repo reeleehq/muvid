@@ -139,8 +139,8 @@ each side of a blended boundary. See [`EdlEntry.look`](#muvid.footage.edl.EdlEnt
 #### look_time_varying *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
 
 only it
-knows which boundaries become a separate two-input invocation, which is
-where a moving look’s ramp restarts (muvid#73). See
+knows which boundaries become a separate invocation, which is where a
+moving look’s clock must be carried across (muvid#73, muvid#376). See
 [`EdlEntry.look_time_varying`](#muvid.footage.edl.EdlEntry.look_time_varying) for the measurement.
 
 * **Type:**
@@ -348,13 +348,15 @@ drawn at zoom 1.109 (mean
 with no look), the blend part’s first frame at zoom 1.000 (0.7/255 —
 indistinguishable from no punch at all). muvid cannot rebase the fragment
 without rewriting an arbitrary ffmpeg expression, which is exactly what
-`looks` refuses to do for itself (its rule 27), so the assembler WARNS
-rather than silently rendering the hitch
-(`muvid.footage.assemble._part_plan()`) — the same “never a silent
-no-op” posture as the zero-frame-transition warning beside it.
+`looks` refuses to do for itself (its rule 27). The assembler first WARNED
+about it; since muvid#376 it renders such a cut’s every part from the cut’s
+first on-screen frame through the look and trims afterwards, so the clock
+runs on across the blend and the fragment is never touched
+(`muvid.footage.assemble._part_plan()`). This flag is what tells it
+which cuts need that (a static look would pay the extra decode for nothing).
 
 \*\*A caller-supplied look defaults to `False`, so an UNDECLARED moving
-look stays silent.\*\* That is the known limit of the chosen shape, not an
+look still restarts on a blend.\*\* That is the known limit of the chosen shape, not an
 oversight: the alternative is muvid deciding by reading the fragment,
 which is the same rewriting-an-arbitrary-expression problem one step
 earlier. muvid’s own compilers declare it for you —

@@ -164,13 +164,15 @@ drawn at zoom 1.109 (mean
 with no look), the blend part’s first frame at zoom 1.000 (0.7/255 —
 indistinguishable from no punch at all). muvid cannot rebase the fragment
 without rewriting an arbitrary ffmpeg expression, which is exactly what
-`looks` refuses to do for itself (its rule 27), so the assembler WARNS
-rather than silently rendering the hitch
-(`muvid.footage.assemble._part_plan()`) — the same “never a silent
-no-op” posture as the zero-frame-transition warning beside it.
+`looks` refuses to do for itself (its rule 27). The assembler first WARNED
+about it; since muvid#376 it renders such a cut’s every part from the cut’s
+first on-screen frame through the look and trims afterwards, so the clock
+runs on across the blend and the fragment is never touched
+(`muvid.footage.assemble._part_plan()`). This flag is what tells it
+which cuts need that (a static look would pay the extra decode for nothing).
 
 \*\*A caller-supplied look defaults to `False`, so an UNDECLARED moving
-look stays silent.\*\* That is the known limit of the chosen shape, not an
+look still restarts on a blend.\*\* That is the known limit of the chosen shape, not an
 oversight: the alternative is muvid deciding by reading the fragment,
 which is the same rewriting-an-arbitrary-expression problem one step
 earlier. muvid’s own compilers declare it for you —
@@ -615,9 +617,11 @@ A camera path over the cut, as a filter fragment. `looks` picks the filter.
   itself **time-varying** — a camera path is a ramp in the filter’s own
   clock (`in_time` under `zoompan`, `t` under `crop`), whichever
   filter `looks` picks, so it is muvid#73’s affected kind. A path whose
-  keyframes happen to hold still is still declared moving: the fragment
-  reads the clock either way, and that is the property the warning is
-  about.
+  keyframes all hold the SAME window is declared static: `looks` compiles
+  it to a constant `crop,scale` that never reads the clock, and declaring
+  it moving would make the assembler re-decode a video cut on every blended
+  boundary for nothing (muvid#376’s review measured a 30 s 4K blend going
+  from 0.8 s to 10 s). That is the named `punch_in`.
 
 **The windows are fractions of the CANVAS, not of the source.** That follows
 from where the fragment is spliced: after `scale`/`pad`, so the frame it
@@ -667,8 +671,8 @@ six lines of geometry and no ffmpeg.
   One linear ffmpeg filter chain, ready for the `look` field, declaring
   itself **time-varying** (it goes through [`motion()`](#muvid.footage.motion)). Put that on the
   entry as `look_time_varying` — [`punch_in_cuts()`](#muvid.footage.punch_in_cuts) does — or the
-  assembler cannot warn you when the cut borders a transition and the move
-  restarts (muvid#73).
+  assembler renders a blended boundary on a fresh clock and the move
+  restarts there (muvid#73, fixed for declared looks by muvid#376).
 
 A move is a ramp between two windows, and the windows are fractions of the
 canvas (see [`motion()`](#muvid.footage.motion)). The end window keeps the canvas’s aspect ratio,
@@ -723,9 +727,8 @@ seconds-based interval would drift off it.
   fragment via [`is_time_varying()`](#muvid.footage.is_time_varying) rather than written as a literal
   `True` beside the `punch_in` call. The two would agree today and the
   literal is the one that would stop agreeing — this is the same reason
-  `_edl_json` is a table rather than four `if`s. Without it the
-  assembler cannot warn that a punch bordering a transition restarts its
-  ramp (muvid#73).
+  `_edl_json` is a table rather than four `if`s. Without it a punch
+  bordering a transition restarts its ramp on the blend (muvid#73, #376).
 
 ### muvid.footage.register_selection_strategy(slug, fn, , title=None)
 

@@ -191,12 +191,12 @@ to resolve one — the environment is an argument — and muvid is the party ent
 to answer, because muvid owns the invocation. muvid runs the bare name <code class="docutils literal notranslate"><span class="pre">ffmpeg</span></code>
 from <code class="docutils literal notranslate"><span class="pre">PATH</span></code> (<a class="reference internal" href="muvid.visualize.ffmpeg.html#muvid.visualize.ffmpeg.run_ffmpeg" title="muvid.visualize.ffmpeg.run_ffmpeg"><code class="xref py py-func docutils literal notranslate"><span class="pre">muvid.visualize.ffmpeg.run_ffmpeg()</span></code></a>), so that is what
 <a class="reference internal" href="#muvid.footage.look.stylize" title="muvid.footage.look.stylize"><code class="xref py py-func docutils literal notranslate"><span class="pre">stylize()</span></code></a> probes. Pass <code class="docutils literal notranslate"><span class="pre">env=</span></code> to compile against a different one.</p>
-<p>**One limitation, measured rather than guessed at, and not fixable here — but no
-longer silent.** A <em>time-varying</em> look on a cut that borders a
-<a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.Transition" title="muvid.footage.edl.Transition"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transition</span></code></a> <strong>restarts its ramp on the blended part</strong>.
+<p>**One limitation, measured rather than guessed at, not fixable here, and fixed in
+the assembler instead (muvid#376).** A <em>time-varying</em> look on a cut that borders a
+<a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.Transition" title="muvid.footage.edl.Transition"><code class="xref py py-class docutils literal notranslate"><span class="pre">Transition</span></code></a> <strong>restarted its ramp on the blended part</strong>.
 The assembler renders a transitioned boundary as a separate two-input invocation
 whose inputs are input-side-seeked to the blend window, so the filter clock there
-begins at 0 again instead of continuing the cut’s.</p>
+began at 0 again instead of continuing the cut’s.</p>
 <p>Measured on a 3.0 s cut at 25 fps with a 0.4 s fade and a 1.12x punch: the solo
 part’s last frame is drawn at zoom 1.109 (mean <a href="#id1"><span class="problematic" id="id2">|diff|</span></a> 28.1/255 against the same
 frame rendered without the look), while the blend part’s first frame is drawn at
@@ -210,13 +210,15 @@ exactly what <code class="docutils literal notranslate"><span class="pre">looks<
 is worse than a documented one — it would exit 0 having moved the effect to a
 different second of the clip.</p>
 <p>What muvid <em>can</em> do, and now does (muvid#73), is <strong>say which kind a look is</strong> so
-the assembler can warn instead of rendering the hitch quietly. Every function
+the assembler can treat a moving one differently: since muvid#376 it runs such a
+look over the cut’s whole on-screen run and trims afterwards, so the move carries
+on through a blend without the fragment being rewritten. Every function
 here returns a <a class="reference internal" href="#muvid.footage.look.LookFragment" title="muvid.footage.look.LookFragment"><code class="xref py py-class docutils literal notranslate"><span class="pre">LookFragment</span></code></a> — a plain <code class="docutils literal notranslate"><span class="pre">str</span></code> that also answers
 <code class="docutils literal notranslate"><span class="pre">.time_varying</span></code> — and <a class="reference internal" href="#muvid.footage.look.punch_in_cuts" title="muvid.footage.look.punch_in_cuts"><code class="xref py py-func docutils literal notranslate"><span class="pre">punch_in_cuts()</span></code></a> copies that answer onto
 <a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.EdlEntry.look_time_varying" title="muvid.footage.edl.EdlEntry.look_time_varying"><code class="xref py py-attr docutils literal notranslate"><span class="pre">look_time_varying</span></code></a>, which is what the
 assembler reads. A caller assembling entries by hand should do the same; the flag
-defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>, so an <em>undeclared</em> moving look is still silent, and that
-limit is stated on the field rather than left to be discovered.</p>
+defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>, so an <em>undeclared</em> moving look still restarts on a blend,
+and that limit is stated on the field rather than left to be discovered.</p>
 <p class="rubric">Module Attributes</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
@@ -410,9 +412,11 @@ convention on purpose.</p></li>
 itself <strong>time-varying</strong> — a camera path is a ramp in the filter’s own
 clock (<code class="docutils literal notranslate"><span class="pre">in_time</span></code> under <code class="docutils literal notranslate"><span class="pre">zoompan</span></code>, <code class="docutils literal notranslate"><span class="pre">t</span></code> under <code class="docutils literal notranslate"><span class="pre">crop</span></code>), whichever
 filter <code class="docutils literal notranslate"><span class="pre">looks</span></code> picks, so it is muvid#73’s affected kind. A path whose
-keyframes happen to hold still is still declared moving: the fragment
-reads the clock either way, and that is the property the warning is
-about.</p>
+keyframes all hold the SAME window is declared static: <code class="docutils literal notranslate"><span class="pre">looks</span></code> compiles
+it to a constant <code class="docutils literal notranslate"><span class="pre">crop,scale</span></code> that never reads the clock, and declaring
+it moving would make the assembler re-decode a video cut on every blended
+boundary for nothing (muvid#376’s review measured a 30 s 4K blend going
+from 0.8 s to 10 s). That is the named <code class="docutils literal notranslate"><span class="pre">punch_in</span></code>.</p>
 </dd>
 </dl>
 <p><strong>The windows are fractions of the CANVAS, not of the source.</strong> That follows
@@ -469,8 +473,8 @@ centres it; <code class="docutils literal notranslate"><span class="pre">(0.5,</
 <dd class="field-odd"><p>One linear ffmpeg filter chain, ready for the <code class="docutils literal notranslate"><span class="pre">look</span></code> field, declaring
 itself <strong>time-varying</strong> (it goes through <a class="reference internal" href="#muvid.footage.look.motion" title="muvid.footage.look.motion"><code class="xref py py-func docutils literal notranslate"><span class="pre">motion()</span></code></a>). Put that on the
 entry as <code class="docutils literal notranslate"><span class="pre">look_time_varying</span></code> — <a class="reference internal" href="#muvid.footage.look.punch_in_cuts" title="muvid.footage.look.punch_in_cuts"><code class="xref py py-func docutils literal notranslate"><span class="pre">punch_in_cuts()</span></code></a> does — or the
-assembler cannot warn you when the cut borders a transition and the move
-restarts (muvid#73).</p>
+assembler renders a blended boundary on a fresh clock and the move
+restarts there (muvid#73, fixed for declared looks by muvid#376).</p>
 </dd>
 </dl>
 <p>A move is a ramp between two windows, and the windows are fractions of the
@@ -530,9 +534,8 @@ direction is the failure this package guards against elsewhere.</p>
 fragment via <a class="reference internal" href="#muvid.footage.look.is_time_varying" title="muvid.footage.look.is_time_varying"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_time_varying()</span></code></a> rather than written as a literal
 <code class="docutils literal notranslate"><span class="pre">True</span></code> beside the <code class="docutils literal notranslate"><span class="pre">punch_in</span></code> call. The two would agree today and the
 literal is the one that would stop agreeing — this is the same reason
-<code class="docutils literal notranslate"><span class="pre">_edl_json</span></code> is a table rather than four <code class="docutils literal notranslate"><span class="pre">if</span></code>s. Without it the
-assembler cannot warn that a punch bordering a transition restarts its
-ramp (muvid#73).</p>
+<code class="docutils literal notranslate"><span class="pre">_edl_json</span></code> is a table rather than four <code class="docutils literal notranslate"><span class="pre">if</span></code>s. Without it a punch
+bordering a transition restarts its ramp on the blend (muvid#73, #376).</p>
 </p>
 </dd>
 </dl>
@@ -634,7 +637,7 @@ a laptop and quietly raising the licence tier of a shipped product.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0c777d31"></script>
+<script src="../_static/documentation_options.js?v=3b8ff75b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

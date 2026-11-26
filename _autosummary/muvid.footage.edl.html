@@ -424,8 +424,8 @@ each side of a blended boundary. See <a class="reference internal" href="#muvid.
 <dt class="sig sig-object py" id="muvid.footage.edl.AssemblyCut.look_time_varying">
 <span class="sig-name descname"><span class="pre">look_time_varying</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#bool" rel="nofollow noopener" title="(in Python v3.15)"><span class="pre">bool</span><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.edl.AssemblyCut.look_time_varying" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.edl.AssemblyCut.look_time_varying'">¶</a></dt>
 <dd><p>only it
-knows which boundaries become a separate two-input invocation, which is
-where a moving look’s ramp restarts (muvid#73). See
+knows which boundaries become a separate invocation, which is where a
+moving look’s clock must be carried across (muvid#73, muvid#376). See
 <a class="reference internal" href="#muvid.footage.edl.EdlEntry.look_time_varying" title="muvid.footage.edl.EdlEntry.look_time_varying"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EdlEntry.look_time_varying</span></code></a> for the measurement.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
@@ -650,12 +650,14 @@ drawn at zoom 1.109 (mean <a href="#id1"><span class="problematic" id="id2">|dif
 with no look), the blend part’s first frame at zoom 1.000 (0.7/255 —
 indistinguishable from no punch at all). muvid cannot rebase the fragment
 without rewriting an arbitrary ffmpeg expression, which is exactly what
-<code class="docutils literal notranslate"><span class="pre">looks</span></code> refuses to do for itself (its rule 27), so the assembler WARNS
-rather than silently rendering the hitch
-(<code class="xref py py-func docutils literal notranslate"><span class="pre">muvid.footage.assemble._part_plan()</span></code>) — the same “never a silent
-no-op” posture as the zero-frame-transition warning beside it.</p>
+<code class="docutils literal notranslate"><span class="pre">looks</span></code> refuses to do for itself (its rule 27). The assembler first WARNED
+about it; since muvid#376 it renders such a cut’s every part from the cut’s
+first on-screen frame through the look and trims afterwards, so the clock
+runs on across the blend and the fragment is never touched
+(<code class="xref py py-func docutils literal notranslate"><span class="pre">muvid.footage.assemble._part_plan()</span></code>). This flag is what tells it
+which cuts need that (a static look would pay the extra decode for nothing).</p>
 <p>**A caller-supplied look defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>, so an UNDECLARED moving
-look stays silent.** That is the known limit of the chosen shape, not an
+look still restarts on a blend.** That is the known limit of the chosen shape, not an
 oversight: the alternative is muvid deciding by reading the fragment,
 which is the same rewriting-an-arbitrary-expression problem one step
 earlier. muvid’s own compilers declare it for you —
@@ -2277,7 +2279,7 @@ render-time window that is never stored.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0c777d31"></script>
+<script src="../_static/documentation_options.js?v=3b8ff75b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

@@ -9,8 +9,8 @@ each entry a function of a few bounded parameters compiled through
 [`muvid.footage.look`](muvid.footage.look.html.md#module-muvid.footage.look) (so every fragment is `looks`’ and passes
 `validate_edl`’s allowlist):
 
-- camera moves, which read the clock (`look_time_varying`): `punch_in` (a steady
-  tighter framing), `slow_push` / `slow_pull` (zoom in / out across the cut),
+- camera framings: `punch_in` (a steady tighter framing, static), and the moves,
+  which read the clock (`look_time_varying`): `slow_push` / `slow_pull` (zoom in / out across the cut),
   `pan_left` / `pan_right` (drift sideways at a slight zoom);
 - grades, which do not: `vivid`, `black_and_white`, `posterize` and `cartoon`
   (a little colour + flatten + posterize — in the spirit of Que Calor’s V2, whose real
@@ -52,11 +52,20 @@ Import-light: the menu is data, and `looks` is imported only to compile.
 
 The largest magnification any named move may ask for.
 
-### *class* muvid.footage.named_looks.NamedLook(name, title, description, kind, build, params=dict())
+### *class* muvid.footage.named_looks.NamedLook(name, title, description, kind, build, params=dict(), time_varying=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 A menu entry: `build(canvas=, fps=, duration_s=, **params) -> fragment`.
+
+#### time_varying *: [bool](https://docs.python.org/3/builtins/functions.html#bool) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+every camera look does.
+`punch_in` holds one window, compiles to a static crop and says `False`,
+so the assembler does not re-decode its cuts at a blend (muvid#376).
+
+* **Type:**
+  Whether the compiled look reads the clock. `None`
 
 ### *exception* muvid.footage.named_looks.NamedLookError
 

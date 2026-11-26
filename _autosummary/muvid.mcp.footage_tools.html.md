@@ -188,11 +188,12 @@ Assemble the music video — auto (a selection `strategy`) or an explicit `edl`.
   1920x1080 canvas). Compile one with `muvid.footage.look`
   (`punch_in` / `motion` / `stylize`) rather than hand-writing it.
 - an entry carrying a MOVING look (a punch-in, a pan) should also set
-  `look_time_varying: true`. It changes no pixels; it puts a line in the
-  reply’s `warnings` when a blended boundary restarts the move’s ramp,
-  which it does because the blend is a separate seek (muvid#73). Leave it
-  off — the default — for a grade, a LUT or a posterise, which never read the
-  clock.
+  `look_time_varying: true`. It keeps the move on ONE clock across the
+  cut’s blends: without it, a blend is a separate seek and the move starts
+  again there, so the picture snaps back at the first frame of a fade
+  (muvid#376). It costs a second decode of a VIDEO cut on a blended boundary
+  (a photo is free), so leave it off — the default — for a grade, a LUT or a
+  posterise, which never read the clock.
 - an entry may carry `slip_s` (seconds, at most one beat either way,
   `muvid.footage.edl.SLIP_MAX_S`): the cut shows its video that much LATER
   (negative: earlier) without moving on the song — a local correction on top
@@ -243,9 +244,9 @@ song audio runs under it all. Returns the render + the same coverage report
 
 \*\*Read the returned `warnings` list.\*\* It is always present and usually
 empty, and it is what the render PLAN found: a transition that rounded to
-zero frames at this fps, or a moving look on a blended boundary whose ramp
-therefore restarts (muvid#73). Neither fails the render — `ok` stays true —
-so this list is the only place either one is ever said. It exists because
+zero frames at this fps, or an HDR clip this ffmpeg cannot tone-map. Neither
+fails the render — `ok` stays true — so this list is the only place either
+one is ever said. It exists because
 these findings used to be Python warnings on the server’s stderr, which a
 remote caller has no access to.
 

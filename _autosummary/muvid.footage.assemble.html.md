@@ -63,16 +63,17 @@ size bound refuses (590 MB and 941 MB against 403 MB). So the four filters that
 can change the output geometry are allowlisted per OPTION and per positional
 slot — see `_LOOK_GEOMETRY_FILTERS`.
 
-A cut whose look is **time-varying** — a punch-in, a pan, anything reading the
-filter clock — additionally makes `_part_plan()` **warn** when the cut borders
-a transition: the blend is a separate invocation whose inputs are
-input-side-seeked, so the clock restarts and the move plays again from the start
-(muvid#73). The EDL says which kind a look is
+A cut whose look is **time-varying** — a punch-in, a pan, a photo’s Ken Burns move,
+anything reading the filter clock — keeps ONE clock across the parts its
+transitions split it into (muvid#376). Each part is an invocation whose timeline
+starts at 0, so the move used to start again at every blend (muvid#73 only warned);
+now such a part is fed from the cut’s first on-screen frame, runs the look over
+that whole run and is trimmed to its window afterwards (`_part_filter()`’s
+`trim`), so muvid never rewrites the fragment. The EDL says which kind a look is
 ([`look_time_varying`](muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.look_time_varying)) because the fragment is a
-bare string muvid did not author; rebasing it would mean rewriting an arbitrary
-ffmpeg expression, which is what `looks`’ rule 27 refuses.
+bare string muvid did not author.
 
-\*\*Both of `_part_plan()`’s findings go to two places\*\*, and the second half
+**:func:\`_part_plan\`’s findings go to two places**, and the second half
 was missing until now: a [`AssemblyWarning`](#muvid.footage.assemble.AssemblyWarning) on stderr, *and* the `on_note`
 sink the caller’s reply is built from. `assemble_music_video` is a live
 per-caller MCP tool and its caller has no stderr, so a warning that reached only
@@ -142,8 +143,8 @@ Returns `out_path`.
 
 * **Parameters:**
   * **on_note** – optional `str -> None` sink for the render-plan findings
-    `_part_plan()` raises (a transition that rounds to zero frames; a
-    time-varying look on a blended boundary — muvid#73). They are ALWAYS
+    `_part_plan()` raises (a transition that rounds to zero frames).
+    They are ALWAYS
     raised as [`AssemblyWarning`](#muvid.footage.assemble.AssemblyWarning) as well; this is the additional
     path, and the only one a remote caller can see. `assemble_music_video`
     is a live per-caller MCP tool, so a finding that reaches only the

@@ -1,4 +1,4 @@
-> built 2026-11-26 12:36 UTC from bb8d845 (main) · muvid 0.0.195. Details: build_info.json
+> built 2026-11-26 14:12 UTC from 8a38fe9 (main) · muvid 0.0.196. Details: build_info.json
 
 # index.html.md
 
@@ -2575,16 +2575,17 @@ size bound refuses (590 MB and 941 MB against 403 MB). So the four filters that
 can change the output geometry are allowlisted per OPTION and per positional
 slot — see `_LOOK_GEOMETRY_FILTERS`.
 
-A cut whose look is **time-varying** — a punch-in, a pan, anything reading the
-filter clock — additionally makes `_part_plan()` **warn** when the cut borders
-a transition: the blend is a separate invocation whose inputs are
-input-side-seeked, so the clock restarts and the move plays again from the start
-(muvid#73). The EDL says which kind a look is
+A cut whose look is **time-varying** — a punch-in, a pan, a photo’s Ken Burns move,
+anything reading the filter clock — keeps ONE clock across the parts its
+transitions split it into (muvid#376). Each part is an invocation whose timeline
+starts at 0, so the move used to start again at every blend (muvid#73 only warned);
+now such a part is fed from the cut’s first on-screen frame, runs the look over
+that whole run and is trimmed to its window afterwards (`_part_filter()`’s
+`trim`), so muvid never rewrites the fragment. The EDL says which kind a look is
 ([`look_time_varying`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.look_time_varying)) because the fragment is a
-bare string muvid did not author; rebasing it would mean rewriting an arbitrary
-ffmpeg expression, which is what `looks`’ rule 27 refuses.
+bare string muvid did not author.
 
-\*\*Both of `_part_plan()`’s findings go to two places\*\*, and the second half
+**:func:\`_part_plan\`’s findings go to two places**, and the second half
 was missing until now: a [`AssemblyWarning`](_autosummary/muvid.footage.assemble.html.md#muvid.footage.assemble.AssemblyWarning) on stderr, *and* the `on_note`
 sink the caller’s reply is built from. `assemble_music_video` is a live
 per-caller MCP tool and its caller has no stderr, so a warning that reached only
@@ -2654,8 +2655,8 @@ Returns `out_path`.
 
 * **Parameters:**
   * **on_note** – optional `str -> None` sink for the render-plan findings
-    `_part_plan()` raises (a transition that rounds to zero frames; a
-    time-varying look on a blended boundary — muvid#73). They are ALWAYS
+    `_part_plan()` raises (a transition that rounds to zero frames).
+    They are ALWAYS
     raised as [`AssemblyWarning`](_autosummary/muvid.footage.assemble.html.md#muvid.footage.assemble.AssemblyWarning) as well; this is the additional
     path, and the only one a remote caller can see. `assemble_music_video`
     is a live per-caller MCP tool, so a finding that reaches only the
@@ -3646,8 +3647,8 @@ each side of a blended boundary. See [`EdlEntry.look`](_autosummary/muvid.footag
 #### look_time_varying *: [bool](https://docs.python.org/3/builtins/functions.html#bool)* *= False*
 
 only it
-knows which boundaries become a separate two-input invocation, which is
-where a moving look’s ramp restarts (muvid#73). See
+knows which boundaries become a separate invocation, which is where a
+moving look’s clock must be carried across (muvid#73, muvid#376). See
 [`EdlEntry.look_time_varying`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.look_time_varying) for the measurement.
 
 * **Type:**
@@ -3855,13 +3856,15 @@ drawn at zoom 1.109 (mean
 with no look), the blend part’s first frame at zoom 1.000 (0.7/255 —
 indistinguishable from no punch at all). muvid cannot rebase the fragment
 without rewriting an arbitrary ffmpeg expression, which is exactly what
-`looks` refuses to do for itself (its rule 27), so the assembler WARNS
-rather than silently rendering the hitch
-(`muvid.footage.assemble._part_plan()`) — the same “never a silent
-no-op” posture as the zero-frame-transition warning beside it.
+`looks` refuses to do for itself (its rule 27). The assembler first WARNED
+about it; since muvid#376 it renders such a cut’s every part from the cut’s
+first on-screen frame through the look and trims afterwards, so the clock
+runs on across the blend and the fragment is never touched
+(`muvid.footage.assemble._part_plan()`). This flag is what tells it
+which cuts need that (a static look would pay the extra decode for nothing).
 
 \*\*A caller-supplied look defaults to `False`, so an UNDECLARED moving
-look stays silent.\*\* That is the known limit of the chosen shape, not an
+look still restarts on a blend.\*\* That is the known limit of the chosen shape, not an
 oversight: the alternative is muvid deciding by reading the fragment,
 which is the same rewriting-an-arbitrary-expression problem one step
 earlier. muvid’s own compilers declare it for you —
@@ -5776,13 +5779,15 @@ drawn at zoom 1.109 (mean
 with no look), the blend part’s first frame at zoom 1.000 (0.7/255 —
 indistinguishable from no punch at all). muvid cannot rebase the fragment
 without rewriting an arbitrary ffmpeg expression, which is exactly what
-`looks` refuses to do for itself (its rule 27), so the assembler WARNS
-rather than silently rendering the hitch
-(`muvid.footage.assemble._part_plan()`) — the same “never a silent
-no-op” posture as the zero-frame-transition warning beside it.
+`looks` refuses to do for itself (its rule 27). The assembler first WARNED
+about it; since muvid#376 it renders such a cut’s every part from the cut’s
+first on-screen frame through the look and trims afterwards, so the clock
+runs on across the blend and the fragment is never touched
+(`muvid.footage.assemble._part_plan()`). This flag is what tells it
+which cuts need that (a static look would pay the extra decode for nothing).
 
 \*\*A caller-supplied look defaults to `False`, so an UNDECLARED moving
-look stays silent.\*\* That is the known limit of the chosen shape, not an
+look still restarts on a blend.\*\* That is the known limit of the chosen shape, not an
 oversight: the alternative is muvid deciding by reading the fragment,
 which is the same rewriting-an-arbitrary-expression problem one step
 earlier. muvid’s own compilers declare it for you —
@@ -6227,9 +6232,11 @@ A camera path over the cut, as a filter fragment. `looks` picks the filter.
   itself **time-varying** — a camera path is a ramp in the filter’s own
   clock (`in_time` under `zoompan`, `t` under `crop`), whichever
   filter `looks` picks, so it is muvid#73’s affected kind. A path whose
-  keyframes happen to hold still is still declared moving: the fragment
-  reads the clock either way, and that is the property the warning is
-  about.
+  keyframes all hold the SAME window is declared static: `looks` compiles
+  it to a constant `crop,scale` that never reads the clock, and declaring
+  it moving would make the assembler re-decode a video cut on every blended
+  boundary for nothing (muvid#376’s review measured a 30 s 4K blend going
+  from 0.8 s to 10 s). That is the named `punch_in`.
 
 **The windows are fractions of the CANVAS, not of the source.** That follows
 from where the fragment is spliced: after `scale`/`pad`, so the frame it
@@ -6279,8 +6286,8 @@ six lines of geometry and no ffmpeg.
   One linear ffmpeg filter chain, ready for the `look` field, declaring
   itself **time-varying** (it goes through [`motion()`](_autosummary/muvid.footage.html.md#muvid.footage.motion)). Put that on the
   entry as `look_time_varying` — [`punch_in_cuts()`](_autosummary/muvid.footage.html.md#muvid.footage.punch_in_cuts) does — or the
-  assembler cannot warn you when the cut borders a transition and the move
-  restarts (muvid#73).
+  assembler renders a blended boundary on a fresh clock and the move
+  restarts there (muvid#73, fixed for declared looks by muvid#376).
 
 A move is a ramp between two windows, and the windows are fractions of the
 canvas (see [`motion()`](_autosummary/muvid.footage.html.md#muvid.footage.motion)). The end window keeps the canvas’s aspect ratio,
@@ -6335,9 +6342,8 @@ seconds-based interval would drift off it.
   fragment via [`is_time_varying()`](_autosummary/muvid.footage.html.md#muvid.footage.is_time_varying) rather than written as a literal
   `True` beside the `punch_in` call. The two would agree today and the
   literal is the one that would stop agreeing — this is the same reason
-  `_edl_json` is a table rather than four `if`s. Without it the
-  assembler cannot warn that a punch bordering a transition restarts its
-  ramp (muvid#73).
+  `_edl_json` is a table rather than four `if`s. Without it a punch
+  bordering a transition restarts its ramp on the blend (muvid#73, #376).
 
 ### muvid.footage.register_selection_strategy(slug, fn, , title=None)
 
@@ -6711,12 +6717,12 @@ to answer, because muvid owns the invocation. muvid runs the bare name `ffmpeg`
 from `PATH` ([`muvid.visualize.ffmpeg.run_ffmpeg()`](_autosummary/muvid.visualize.ffmpeg.html.md#muvid.visualize.ffmpeg.run_ffmpeg)), so that is what
 [`stylize()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.stylize) probes. Pass `env=` to compile against a different one.
 
-\*\*One limitation, measured rather than guessed at, and not fixable here — but no
-longer silent.\*\* A *time-varying* look on a cut that borders a
-[`Transition`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition) **restarts its ramp on the blended part**.
+\*\*One limitation, measured rather than guessed at, not fixable here, and fixed in
+the assembler instead (muvid#376).\*\* A *time-varying* look on a cut that borders a
+[`Transition`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.Transition) **restarted its ramp on the blended part**.
 The assembler renders a transitioned boundary as a separate two-input invocation
 whose inputs are input-side-seeked to the blend window, so the filter clock there
-begins at 0 again instead of continuing the cut’s.
+began at 0 again instead of continuing the cut’s.
 
 Measured on a 3.0 s cut at 25 fps with a 0.4 s fade and a 1.12x punch: the solo
 part’s last frame is drawn at zoom 1.109 (mean 
@@ -6745,13 +6751,15 @@ is worse than a documented one — it would exit 0 having moved the effect to a
 different second of the clip.
 
 What muvid *can* do, and now does (muvid#73), is **say which kind a look is** so
-the assembler can warn instead of rendering the hitch quietly. Every function
+the assembler can treat a moving one differently: since muvid#376 it runs such a
+look over the cut’s whole on-screen run and trims afterwards, so the move carries
+on through a blend without the fragment being rewritten. Every function
 here returns a [`LookFragment`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.LookFragment) — a plain `str` that also answers
 `.time_varying` — and [`punch_in_cuts()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.punch_in_cuts) copies that answer onto
 [`look_time_varying`](_autosummary/muvid.footage.edl.html.md#muvid.footage.edl.EdlEntry.look_time_varying), which is what the
 assembler reads. A caller assembling entries by hand should do the same; the flag
-defaults to `False`, so an *undeclared* moving look is still silent, and that
-limit is stated on the field rather than left to be discovered.
+defaults to `False`, so an *undeclared* moving look still restarts on a blend,
+and that limit is stated on the field rather than left to be discovered.
 
 ### Module Attributes
 
@@ -6917,9 +6925,11 @@ A camera path over the cut, as a filter fragment. `looks` picks the filter.
   itself **time-varying** — a camera path is a ramp in the filter’s own
   clock (`in_time` under `zoompan`, `t` under `crop`), whichever
   filter `looks` picks, so it is muvid#73’s affected kind. A path whose
-  keyframes happen to hold still is still declared moving: the fragment
-  reads the clock either way, and that is the property the warning is
-  about.
+  keyframes all hold the SAME window is declared static: `looks` compiles
+  it to a constant `crop,scale` that never reads the clock, and declaring
+  it moving would make the assembler re-decode a video cut on every blended
+  boundary for nothing (muvid#376’s review measured a 30 s 4K blend going
+  from 0.8 s to 10 s). That is the named `punch_in`.
 
 **The windows are fractions of the CANVAS, not of the source.** That follows
 from where the fragment is spliced: after `scale`/`pad`, so the frame it
@@ -6969,8 +6979,8 @@ six lines of geometry and no ffmpeg.
   One linear ffmpeg filter chain, ready for the `look` field, declaring
   itself **time-varying** (it goes through [`motion()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.motion)). Put that on the
   entry as `look_time_varying` — [`punch_in_cuts()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.punch_in_cuts) does — or the
-  assembler cannot warn you when the cut borders a transition and the move
-  restarts (muvid#73).
+  assembler renders a blended boundary on a fresh clock and the move
+  restarts there (muvid#73, fixed for declared looks by muvid#376).
 
 A move is a ramp between two windows, and the windows are fractions of the
 canvas (see [`motion()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.motion)). The end window keeps the canvas’s aspect ratio,
@@ -7025,9 +7035,8 @@ seconds-based interval would drift off it.
   fragment via [`is_time_varying()`](_autosummary/muvid.footage.look.html.md#muvid.footage.look.is_time_varying) rather than written as a literal
   `True` beside the `punch_in` call. The two would agree today and the
   literal is the one that would stop agreeing — this is the same reason
-  `_edl_json` is a table rather than four `if`s. Without it the
-  assembler cannot warn that a punch bordering a transition restarts its
-  ramp (muvid#73).
+  `_edl_json` is a table rather than four `if`s. Without it a punch
+  bordering a transition restarts its ramp on the blend (muvid#73, #376).
 
 ### muvid.footage.look.stylize(look, , canvas, fps, duration_s=None, ffmpeg='ffmpeg', env=None, policy=None)
 
@@ -7538,8 +7547,8 @@ each entry a function of a few bounded parameters compiled through
 [`muvid.footage.look`](_autosummary/muvid.footage.look.html.md#module-muvid.footage.look) (so every fragment is `looks`’ and passes
 `validate_edl`’s allowlist):
 
-- camera moves, which read the clock (`look_time_varying`): `punch_in` (a steady
-  tighter framing), `slow_push` / `slow_pull` (zoom in / out across the cut),
+- camera framings: `punch_in` (a steady tighter framing, static), and the moves,
+  which read the clock (`look_time_varying`): `slow_push` / `slow_pull` (zoom in / out across the cut),
   `pan_left` / `pan_right` (drift sideways at a slight zoom);
 - grades, which do not: `vivid`, `black_and_white`, `posterize` and `cartoon`
   (a little colour + flatten + posterize — in the spirit of Que Calor’s V2, whose real
@@ -7581,11 +7590,20 @@ Import-light: the menu is data, and `looks` is imported only to compile.
 
 The largest magnification any named move may ask for.
 
-### *class* muvid.footage.named_looks.NamedLook(name, title, description, kind, build, params=dict())
+### *class* muvid.footage.named_looks.NamedLook(name, title, description, kind, build, params=dict(), time_varying=None)
 
 Bases: [`object`](https://docs.python.org/3/builtins/functions.html#object)
 
 A menu entry: `build(canvas=, fps=, duration_s=, **params) -> fragment`.
+
+#### time_varying *: [bool](https://docs.python.org/3/builtins/functions.html#bool) | [None](https://docs.python.org/3/builtins/constants.html#None)* *= None*
+
+every camera look does.
+`punch_in` holds one window, compiles to a static crop and says `False`,
+so the assembler does not re-decode its cuts at a blend (muvid#376).
+
+* **Type:**
+  Whether the compiled look reads the clock. `None`
 
 ### *exception* muvid.footage.named_looks.NamedLookError
 
@@ -15558,11 +15576,12 @@ Assemble the music video — auto (a selection `strategy`) or an explicit `edl`.
   1920x1080 canvas). Compile one with `muvid.footage.look`
   (`punch_in` / `motion` / `stylize`) rather than hand-writing it.
 - an entry carrying a MOVING look (a punch-in, a pan) should also set
-  `look_time_varying: true`. It changes no pixels; it puts a line in the
-  reply’s `warnings` when a blended boundary restarts the move’s ramp,
-  which it does because the blend is a separate seek (muvid#73). Leave it
-  off — the default — for a grade, a LUT or a posterise, which never read the
-  clock.
+  `look_time_varying: true`. It keeps the move on ONE clock across the
+  cut’s blends: without it, a blend is a separate seek and the move starts
+  again there, so the picture snaps back at the first frame of a fade
+  (muvid#376). It costs a second decode of a VIDEO cut on a blended boundary
+  (a photo is free), so leave it off — the default — for a grade, a LUT or a
+  posterise, which never read the clock.
 - an entry may carry `slip_s` (seconds, at most one beat either way,
   `muvid.footage.edl.SLIP_MAX_S`): the cut shows its video that much LATER
   (negative: earlier) without moving on the song — a local correction on top
@@ -15613,9 +15632,9 @@ song audio runs under it all. Returns the render + the same coverage report
 
 \*\*Read the returned `warnings` list.\*\* It is always present and usually
 empty, and it is what the render PLAN found: a transition that rounded to
-zero frames at this fps, or a moving look on a blended boundary whose ramp
-therefore restarts (muvid#73). Neither fails the render — `ok` stays true —
-so this list is the only place either one is ever said. It exists because
+zero frames at this fps, or an HDR clip this ffmpeg cannot tone-map. Neither
+fails the render — `ok` stays true — so this list is the only place either
+one is ever said. It exists because
 these findings used to be Python warnings on the server’s stderr, which a
 remote caller has no access to.
 
@@ -21613,18 +21632,20 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-26 12:36 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/bb8d84528c68f3d55d08034dec30918d1dbde34b"><code>bb8d845</code></a> on branch <code>main</code>, for **muvid 0.0.195** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-26 14:12 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/8a38fe99b926bff155a1702d902089db87835480"><code>8a38fe9</code></a> on branch <code>main</code>, for **muvid 0.0.196** (from <code>pyproject.toml</code>).
 
-#### NOTE
-Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
+#### WARNING
+The documentation and the package may be misaligned:
+
+- The documented version (0.0.196) is ahead of the latest release on PyPI (0.0.195): these docs describe unreleased code.
 
 ## Source
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/bb8d84528c68f3d55d08034dec30918d1dbde34b"><code>bb8d84528c68f3d55d08034dec30918d1dbde34b</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/8a38fe99b926bff155a1702d902089db87835480"><code>8a38fe99b926bff155a1702d902089db87835480</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.195</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.196</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21633,9 +21654,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45819775227">45819775227</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45834575555">45834575555</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>d46be06e202340b5a92d1b5ad157c48588e8f362</code> (in the history of the built commit) |
+| Event commit | <code>cd85bd9f578425e69e99ea0967730322fc980056</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21660,13 +21681,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.195/">0.0.195</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.195/">0.0.195</a>, older than the documented version (0.0.196).
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout bb8d84528c68f3d55d08034dec30918d1dbde34b
+git checkout 8a38fe99b926bff155a1702d902089db87835480
 pip install "epythet==0.2.25"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

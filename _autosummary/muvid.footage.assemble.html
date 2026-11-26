@@ -199,15 +199,16 @@ a bound can read, and on the production canvas both are larger than the case the
 size bound refuses (590 MB and 941 MB against 403 MB). So the four filters that
 can change the output geometry are allowlisted per OPTION and per positional
 slot — see <code class="xref py py-data docutils literal notranslate"><span class="pre">_LOOK_GEOMETRY_FILTERS</span></code>.</p>
-<p>A cut whose look is <strong>time-varying</strong> — a punch-in, a pan, anything reading the
-filter clock — additionally makes <code class="xref py py-func docutils literal notranslate"><span class="pre">_part_plan()</span></code> <strong>warn</strong> when the cut borders
-a transition: the blend is a separate invocation whose inputs are
-input-side-seeked, so the clock restarts and the move plays again from the start
-(muvid#73). The EDL says which kind a look is
+<p>A cut whose look is <strong>time-varying</strong> — a punch-in, a pan, a photo’s Ken Burns move,
+anything reading the filter clock — keeps ONE clock across the parts its
+transitions split it into (muvid#376). Each part is an invocation whose timeline
+starts at 0, so the move used to start again at every blend (muvid#73 only warned);
+now such a part is fed from the cut’s first on-screen frame, runs the look over
+that whole run and is trimmed to its window afterwards (<code class="xref py py-func docutils literal notranslate"><span class="pre">_part_filter()</span></code>’s
+<code class="docutils literal notranslate"><span class="pre">trim</span></code>), so muvid never rewrites the fragment. The EDL says which kind a look is
 (<a class="reference internal" href="muvid.footage.edl.html#muvid.footage.edl.EdlEntry.look_time_varying" title="muvid.footage.edl.EdlEntry.look_time_varying"><code class="xref py py-attr docutils literal notranslate"><span class="pre">look_time_varying</span></code></a>) because the fragment is a
-bare string muvid did not author; rebasing it would mean rewriting an arbitrary
-ffmpeg expression, which is what <code class="docutils literal notranslate"><span class="pre">looks</span></code>’ rule 27 refuses.</p>
-<p>**Both of <code class="xref py py-func docutils literal notranslate"><span class="pre">_part_plan()</span></code>’s findings go to two places**, and the second half
+bare string muvid did not author.</p>
+<p><strong>:func:`_part_plan`’s findings go to two places</strong>, and the second half
 was missing until now: a <a class="reference internal" href="#muvid.footage.assemble.AssemblyWarning" title="muvid.footage.assemble.AssemblyWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssemblyWarning</span></code></a> on stderr, <em>and</em> the <code class="docutils literal notranslate"><span class="pre">on_note</span></code>
 sink the caller’s reply is built from. <code class="docutils literal notranslate"><span class="pre">assemble_music_video</span></code> is a live
 per-caller MCP tool and its caller has no stderr, so a warning that reached only
@@ -289,8 +290,8 @@ Returns <code class="docutils literal notranslate"><span class="pre">out_path</s
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>on_note</strong> – optional <code class="docutils literal notranslate"><span class="pre">str</span> <span class="pre">-&gt;</span> <span class="pre">None</span></code> sink for the render-plan findings
-<code class="xref py py-func docutils literal notranslate"><span class="pre">_part_plan()</span></code> raises (a transition that rounds to zero frames; a
-time-varying look on a blended boundary — muvid#73). They are ALWAYS
+<code class="xref py py-func docutils literal notranslate"><span class="pre">_part_plan()</span></code> raises (a transition that rounds to zero frames).
+They are ALWAYS
 raised as <a class="reference internal" href="#muvid.footage.assemble.AssemblyWarning" title="muvid.footage.assemble.AssemblyWarning"><code class="xref py py-class docutils literal notranslate"><span class="pre">AssemblyWarning</span></code></a> as well; this is the additional
 path, and the only one a remote caller can see. <code class="docutils literal notranslate"><span class="pre">assemble_music_video</span></code>
 is a live per-caller MCP tool, so a finding that reaches only the
@@ -339,7 +340,7 @@ muvid#201; an SDR source never reads it.</p></li>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=0c777d31"></script>
+<script src="../_static/documentation_options.js?v=3b8ff75b"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
