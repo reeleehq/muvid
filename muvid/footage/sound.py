@@ -462,7 +462,9 @@ def mux_audio(
             "-use_editlist",
             "0",
             "-movflags",
-            "+faststart",
+            # keeps the copied video starting at 0 (muvid#384); without it the
+            # B-frame delay is a start offset and -shortest drops the last frames
+            "+faststart+negative_cts_offsets",
             str(out),
         ]
     )

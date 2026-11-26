@@ -751,7 +751,9 @@ _HISTORICAL_ARGV = (
         "-use_editlist",
         "0",
         "-movflags",
-        "+faststart",
+        # muvid#384: without negative CTS offsets the B-frame delay became the
+        # video's start time (2 frames late). A deliberate change, not drift.
+        "+faststart+negative_cts_offsets",
         "<out>",
     ],
 )

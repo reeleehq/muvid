@@ -1084,10 +1084,13 @@ def assemble_music_video(
                     song_start=song_start,
                 ),
                 # Delivery contract (muvid#24 B3): no edit lists, moov up front.
+                # Negative CTS offsets carry the parts' B-frame delay that an edit
+                # list would have hidden; without them it became the video's start
+                # time and every frame played 2 frames late (muvid#384).
                 "-use_editlist",
                 "0",
                 "-movflags",
-                "+faststart",
+                "+faststart+negative_cts_offsets",
                 str(out),
             ]
         )
