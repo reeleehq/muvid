@@ -603,6 +603,42 @@ def test_a_transition_that_rounds_away_rewinds_nothing():
     assert all(p.look_from == 0 for p in _plan(cuts))
 
 
+def test_the_plan_hands_its_finding_to_the_reply_sink_as_well():
+    """``warnings.warn`` reaches stderr; ``on_note`` reaches the caller.
+
+    Both, never either, and with the SAME text. The zero-frame transition is the
+    finding ``_part_plan`` still makes (the moving-look one went with muvid#376),
+    so it is what keeps the sink path guarded: forwarding ``None`` instead of
+    ``note`` must fail here.
+    """
+    cuts = [
+        _cut(song_end=4.0),
+        _cut(
+            song_start=4.0,
+            song_end=8.0,
+            clip_id="B",
+            transition=Transition(0.02, "fade"),
+        ),
+    ]
+    notes = []
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        _part_plan(cuts, 25, notes.append)
+    assert notes == [str(w.message) for w in caught]
+    assert len(notes) == 1 and "rounds to zero frames" in notes[0]
+
+
+def test_a_path_that_holds_still_is_declared_static():
+    """One window compiles to a constant crop, which never reads the clock; a
+    moving declaration there would buy a re-decode of every blended video cut."""
+    pytest.importorskip("looks")
+    w = CropWindow(0.05, 0.05, 0.9, 0.9)
+    assert not motion([(0.0, w), (3.0, w)], canvas=(640, 360), fps=25).time_varying
+    assert motion(
+        [(0.0, CropWindow(0, 0, 1, 1)), (3.0, w)], canvas=(640, 360), fps=25
+    ).time_varying
+
+
 def test_the_trim_comes_after_the_look_and_only_when_asked():
     cut = _cut(look=_PUNCH, look_time_varying=True)
     plain = _part_filter(cut, w=640, h=360, fps=25)
@@ -727,6 +763,12 @@ def test_rewinding_never_moves_the_footage_in_time(tmp_path):
     look that is declared moving but draws every frame the same way: the rewind
     path runs on both sides of both blends, and the render must match the
     undeclared one frame for frame (to encode noise).
+
+    This holds where source frames sit on the delivery grid (here 25 fps at 25,
+    rate 1). Off the grid (24 -> 30, or ``rate != 1``) the review of muvid#376
+    measured a rewound solo one output frame AHEAD of the unrewound one, because
+    ``fps`` now resamples from the incoming blend's phase; it is the blend's phase
+    that the solo continues, so the junction is smoother, not worse.
     """
     w, h, fps = 320, 180, 25
     src = tmp_path / "v.mp4"

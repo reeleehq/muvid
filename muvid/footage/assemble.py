@@ -653,7 +653,10 @@ def _render_part(
 
     ``look_from`` frames are read BEFORE ``cut.clip_in`` and trimmed after the look, so
     a cut that runs on the clock keeps the clock it had in the previous part
-    (:func:`_part_filter`, muvid#376). ``0`` is the historical part, unchanged."""
+    (:func:`_part_filter`, muvid#376). ``0`` is the historical part, unchanged. One
+    consequence, on purpose: a rewound part whose window lies past its clip's last
+    video frame finds earlier frames to clone (``tpad``) where an unrewound one finds
+    none and falls back to black, so a moving cut holds its last frame instead."""
     from muvid.visualize.ffmpeg import run_ffmpeg
 
     # tpad at the tail: -frames:v alone is a CAP, not a guarantee — a clip whose audio

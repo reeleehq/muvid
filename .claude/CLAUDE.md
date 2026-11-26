@@ -783,8 +783,10 @@ bridge before muvid#37.
   (muvid#376) needs no rebasing: every part of a cut the flag (or a moving `crop_end`)
   marks is fed from the cut's FIRST on-screen frame, runs the look, and is trimmed after
   it (`_Part.look_from`, `_part_filter`'s `trim`), so one clock runs through the blend.
-  The flag is what keeps static cuts off that path, which re-decodes a video cut's head
-  (a photo's is a looped still and free). The compilers answer instead — `punch_in`/`motion`/`stylize` return a `LookFragment`, a
+  The flag is what keeps static cuts off that path: the outgoing blend of a video cut
+  re-decodes the cut's whole on-screen run, about as much work as its solo part (a
+  photo's is a looped still and free). So a look that holds still must say `False`:
+  `motion()` declares a path with one window static, which is the named `punch_in`. The compilers answer instead — `punch_in`/`motion`/`stylize` return a `LookFragment`, a
   `str` that also carries `.time_varying`, so `punch_in_cuts` *copies* the answer rather
   than hardcoding it. `stylize` derives it from the compiled plan rather than declaring
   itself static: `looks`' `motion` effect and any step with an `at` span both reach the

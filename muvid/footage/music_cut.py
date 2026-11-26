@@ -1448,7 +1448,7 @@ def _one_cut(
 ):
     from dataclasses import replace
 
-    from muvid.footage.edl import still_in_point
+    from muvid.footage.edl import TRANSITION_SPLIT, still_in_point
     from muvid.footage.named_looks import compile_named_look, resolve_named_look
 
     length = end - start
@@ -1471,7 +1471,14 @@ def _one_cut(
             ax, ay = anchors[src.clip_id]
             spec |= {"anchor_x": round(ax, 3), "anchor_y": round(ay, 3)}
         resolved = resolve_named_look(spec)
-        look = compile_named_look(resolved, canvas=canvas, fps=fps, duration_s=length)
+        # The move runs over the photo's whole time ON SCREEN, not its span: the
+        # assembler starts a moving look's clock at the first frame of the incoming
+        # blend and keeps it through the outgoing one (muvid#376), so a move timed
+        # to the span alone would finish early and stand still through the fade.
+        on_screen = fade * TRANSITION_SPLIT + length + trail * (1 - TRANSITION_SPLIT)
+        look = compile_named_look(
+            resolved, canvas=canvas, fps=fps, duration_s=on_screen
+        )
         return replace(
             draft,
             look=look,
