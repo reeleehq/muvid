@@ -19,6 +19,7 @@ import looks
 from tests.ffmpeg_support import needs_ffmpeg, needs_ffmpeg_filter
 from muvid.footage.assemble import (
     AssemblyWarning,
+    _has_video_frames,
     _render_part,
     _with_source_colour,
     assemble_music_video,
@@ -472,3 +473,19 @@ def test_a_tone_map_that_is_not_a_tone_map_is_refused_before_any_work(tmp_path, 
             str(tmp_path / "out.mp4"),
             tone_map=bad,
         )
+
+
+@needs_ffmpeg_filter("zscale", "tonemap")
+def test_an_hdr_landscape_clip_cover_cropped_to_portrait_still_renders(tmp_path):
+    """A 1280x720 HLG clip cropped to a 9:16 column fits a 1080x1920 canvas at an odd
+    width or height, which zscale refuses on 4:2:0; the part rendered no frame at all
+    (a real 150 s promo stopped there). The HDR fit is kept to even sizes."""
+    from muvid.footage.edl import CropWindow
+
+    _, clip = _hlg_clip(tmp_path)
+    (cut,) = _with_source_colour([AssemblyCut(0.0, 0.4, "cam", 0.0, str(clip))])
+    cut = replace(cut, crop=CropWindow(x=0.3418, y=0.0, w=0.3164, h=1.0))
+    part = tmp_path / "portrait.mp4"
+    _render_part(cut, part, w=1080, h=1920, fps=_FPS, n_frames=int(0.4 * _FPS), crf=20,
+                 preset="veryfast")
+    assert _has_video_frames(part)

@@ -31,6 +31,7 @@ import inspect
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Literal
 from urllib.parse import urlparse
 
 from muvid.footage import service
@@ -788,7 +789,12 @@ def assemble_music_video(
 
 
 def footage_render(
-    project_id: str, *, edit_id: str, canvas: str = "", allow_unreliable: bool = False
+    project_id: str,
+    *,
+    edit_id: str,
+    canvas: str = "",
+    allow_unreliable: bool = False,
+    sound: Literal["song", "song_and_clips"] = "song",
 ) -> dict:
     """Render a SAVED edit (``propose_edit(save=true)`` / ``footage_save_edit``) into a
     music video. Free, minutes.
@@ -798,6 +804,9 @@ def footage_render(
     ``canvas`` re-renders the same edit as "landscape"/"portrait"/"square". Refused when
     the edit cuts to a clip whose offset the aligner will not vouch for, unless
     ``allow_unreliable`` (see ``assemble_music_video``). Read the returned ``warnings``.
+    ``sound``: ``song`` (the song alone) or ``song_and_clips`` (the videos' own sound
+    under the song, ducked when someone speaks, with ``stems`` so the music can be
+    replaced later).
     """
     proj = _open(project_id)
     with _refusals():
@@ -807,6 +816,7 @@ def footage_render(
             canvas=canvas,
             allow_unreliable=allow_unreliable,
             annotate=_render_claims(project_id),
+            sound=sound,
         )
 
 

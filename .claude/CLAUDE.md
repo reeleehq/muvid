@@ -170,6 +170,8 @@ Pipeline: `align → score → select → EDL → assemble`.
 | `muvid/footage/select_score.py` | the `weighted` strategy: beat-snapped semi-Markov Viterbi over the score tensor |
 | `muvid/footage/scoring/` | `grid.py` (`ScoreTrack`/`ScoreTensor` + resample + robust-normalize + `.npz` persistence), `frames.py` (ONE decode pass per clip), `quality.py`, `motionbeat.py`, `segment.py`, `lipsync.py`, `orchestrator.py` (`score_project`) |
 | `muvid/footage/assemble.py` | three bounded stages (one ffmpeg per cut → concat demuxer stream-copy → mux) — memory O(1) in cut count |
+| `muvid/footage/promo.py` | the promo cut (`service.propose_promo`): caller-chosen shots in order, boundaries on bar lines by DP (phrases and accents preferred, holds near target, never past a clip's end); research in `misc/docs/research/general/promo_video_editing_and_music.md`; skill `muvid-promo` |
+| `muvid/footage/sound.py` | `render(sound="song_and_clips")`: the clips' own sound as a stem cut for cut with the picture, the song ducked under it (`mixing.audio.duck_audio`), stems + a `no_music.mp4` so the music stays replaceable |
 | `muvid/footage/workspace.py` | `FootageWorkspace` / `MusicVideoFootageProject` — the stateful on-disk project |
 | `muvid/footage/lacing_bridge.py` | project ⇄ lacing standoff annotations for the multichannel editor |
 | `muvid/downloads.py` | `claim()` / `resolve()` — muvid owns *resolution*, the connector owns *transport* |
