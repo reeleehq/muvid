@@ -1062,7 +1062,13 @@ a laptop and quietly raising the licence tier of a shipped product.</p>
 <p>Enforces, raising <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> with a specific message otherwise:</p>
 <ul>
 <li><p>non-empty; every non-gap <code class="docutils literal notranslate"><span class="pre">clip_id</span></code> is a known alignment;</p></li>
-<li><p>each span is positive and lies within <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">song_duration]</span></code>;</p></li>
+<li><p>each span is positive and lies within <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">song_duration]</span></code> — an end at most
+<code class="xref py py-data docutils literal notranslate"><span class="pre">SONG_END_TOLERANCE_S</span></code> past it is first snapped to it</p>
+<blockquote>
+<div><p>(<code class="xref py py-func docutils literal notranslate"><span class="pre">fit_to_song_end()</span></code>, muvid#388), so the RETURNED entries can end earlier
+than the ones passed in;</p>
+</div></blockquote>
+</li>
 <li><p>spans are in ascending order and <strong>non-overlapping</strong>;</p></li>
 <li><p>spans are <strong>contiguous</strong> (gapless) — a hole must be an explicit gap entry
 (<code class="docutils literal notranslate"><span class="pre">clip_id</span></code> empty/null, rendered as fill), which <code class="xref py py-func docutils literal notranslate"><span class="pre">fill_gaps()</span></code> inserts; an
@@ -1257,7 +1263,7 @@ the loosest bound rather than an absent one.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=9ff77342"></script>
+<script src="../_static/documentation_options.js?v=77edd080"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

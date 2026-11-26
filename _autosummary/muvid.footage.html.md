@@ -828,7 +828,10 @@ Validate an EDL (from a strategy OR a caller) — the ONE gate before any cuttin
 Enforces, raising `ValueError` with a specific message otherwise:
 
 - non-empty; every non-gap `clip_id` is a known alignment;
-- each span is positive and lies within `[0, song_duration]`;
+- each span is positive and lies within `[0, song_duration]` — an end at most
+  `SONG_END_TOLERANCE_S` past it is first snapped to it
+  > (`fit_to_song_end()`, muvid#388), so the RETURNED entries can end earlier
+  > than the ones passed in;
 - spans are in ascending order and **non-overlapping**;
 - spans are **contiguous** (gapless) — a hole must be an explicit gap entry
   (`clip_id` empty/null, rendered as fill), which `fill_gaps()` inserts; an

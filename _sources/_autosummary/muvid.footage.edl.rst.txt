@@ -10,6 +10,7 @@ muvid.footage.edl
    
       COINCIDENT_S
       MAX_EDL_ENTRIES
+      SONG_END_TOLERANCE_S
       MAX_LOOK_SCALE
       MAX_LOOK_LINKS
       MAX_LOOK_COST
@@ -53,6 +54,7 @@ muvid.footage.edl
       derive_cuts
       exclude_unvouched
       fill_gaps
+      fit_to_song_end
       free_length
       in_point_bounds
       judge_song_match

@@ -1276,16 +1276,19 @@
 </span><span id="line-1084">                    <span class="n">song_start</span><span class="o">=</span><span class="n">song_start</span><span class="p">,</span>
 </span><span id="line-1085">                <span class="p">),</span>
 </span><span id="line-1086">                <span class="c1"># Delivery contract (muvid#24 B3): no edit lists, moov up front.</span>
-</span><span id="line-1087">                <span class="s2">"-use_editlist"</span><span class="p">,</span>
-</span><span id="line-1088">                <span class="s2">"0"</span><span class="p">,</span>
-</span><span id="line-1089">                <span class="s2">"-movflags"</span><span class="p">,</span>
-</span><span id="line-1090">                <span class="s2">"+faststart"</span><span class="p">,</span>
-</span><span id="line-1091">                <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">),</span>
-</span><span id="line-1092">            <span class="p">]</span>
-</span><span id="line-1093">        <span class="p">)</span>
-</span><span id="line-1094">    <span class="k">finally</span><span class="p">:</span>
-</span><span id="line-1095">        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">parts_dir</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-1096">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-1087">                <span class="c1"># Negative CTS offsets carry the parts' B-frame delay that an edit</span>
+</span><span id="line-1088">                <span class="c1"># list would have hidden; without them it became the video's start</span>
+</span><span id="line-1089">                <span class="c1"># time and every frame played 2 frames late (muvid#384).</span>
+</span><span id="line-1090">                <span class="s2">"-use_editlist"</span><span class="p">,</span>
+</span><span id="line-1091">                <span class="s2">"0"</span><span class="p">,</span>
+</span><span id="line-1092">                <span class="s2">"-movflags"</span><span class="p">,</span>
+</span><span id="line-1093">                <span class="s2">"+faststart+negative_cts_offsets"</span><span class="p">,</span>
+</span><span id="line-1094">                <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">),</span>
+</span><span id="line-1095">            <span class="p">]</span>
+</span><span id="line-1096">        <span class="p">)</span>
+</span><span id="line-1097">    <span class="k">finally</span><span class="p">:</span>
+</span><span id="line-1098">        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">parts_dir</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-1099">    <span class="k">return</span> <span class="n">out</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -1300,7 +1303,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=9ff77342"></script>
+    <script src="../../../_static/documentation_options.js?v=77edd080"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

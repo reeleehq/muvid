@@ -672,45 +672,47 @@
 </span><span id="line-462">            <span class="s2">"-use_editlist"</span><span class="p">,</span>
 </span><span id="line-463">            <span class="s2">"0"</span><span class="p">,</span>
 </span><span id="line-464">            <span class="s2">"-movflags"</span><span class="p">,</span>
-</span><span id="line-465">            <span class="s2">"+faststart"</span><span class="p">,</span>
-</span><span id="line-466">            <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">),</span>
-</span><span id="line-467">        <span class="p">]</span>
-</span><span id="line-468">    <span class="p">)</span>
-</span><span id="line-469">    <span class="k">return</span> <span class="n">out</span></div>
+</span><span id="line-465">            <span class="c1"># keeps the copied video starting at 0 (muvid#384); without it the</span>
+</span><span id="line-466">            <span class="c1"># B-frame delay is a start offset and -shortest drops the last frames</span>
+</span><span id="line-467">            <span class="s2">"+faststart+negative_cts_offsets"</span><span class="p">,</span>
+</span><span id="line-468">            <span class="nb">str</span><span class="p">(</span><span class="n">out</span><span class="p">),</span>
+</span><span id="line-469">        <span class="p">]</span>
+</span><span id="line-470">    <span class="p">)</span>
+</span><span id="line-471">    <span class="k">return</span> <span class="n">out</span></div>
 
-</span><span id="line-470">
-</span><span id="line-471">
+</span><span id="line-472">
+</span><span id="line-473">
 <div class="viewcode-block" id="mix_params">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.sound.html#muvid.footage.sound.mix_params">[docs]</a>
-</span><span id="line-472"><span class="k">def</span><span class="w"> </span><span class="nf">mix_params</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">default_db</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_CLIP_SOUND_DB</span><span class="p">,</span> <span class="o">**</span><span class="n">measured</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
-</span><span id="line-473"><span class="w">    </span><span class="sd">"""What a ``song_and_clips`` render records about its mix, so a later change of these</span>
-</span><span id="line-474"><span class="sd">    defaults is visible against an old render (and a re-render can reproduce it)."""</span>
-</span><span id="line-475">    <span class="k">return</span> <span class="p">{</span>
-</span><span id="line-476">        <span class="s2">"default_clip_db"</span><span class="p">:</span> <span class="n">default_db</span><span class="p">,</span>
-</span><span id="line-477">        <span class="s2">"dialogue_min_db"</span><span class="p">:</span> <span class="n">DIALOGUE_MIN_DB</span><span class="p">,</span>
-</span><span id="line-478">        <span class="s2">"speech_target_dbfs"</span><span class="p">:</span> <span class="n">SPEECH_TARGET_DBFS</span><span class="p">,</span>
-</span><span id="line-479">        <span class="s2">"speech_over_music_db"</span><span class="p">:</span> <span class="n">SPEECH_OVER_MUSIC_DB</span><span class="p">,</span>
-</span><span id="line-480">        <span class="s2">"edge_fade_s"</span><span class="p">:</span> <span class="n">EDGE_FADE_S</span><span class="p">,</span>
-</span><span id="line-481">        <span class="s2">"peak_dbfs"</span><span class="p">:</span> <span class="n">PEAK_DBFS</span><span class="p">,</span>
-</span><span id="line-482">        <span class="o">**</span><span class="n">measured</span><span class="p">,</span>
-</span><span id="line-483">    <span class="p">}</span></div>
+</span><span id="line-474"><span class="k">def</span><span class="w"> </span><span class="nf">mix_params</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">default_db</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">DEFAULT_CLIP_SOUND_DB</span><span class="p">,</span> <span class="o">**</span><span class="n">measured</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+</span><span id="line-475"><span class="w">    </span><span class="sd">"""What a ``song_and_clips`` render records about its mix, so a later change of these</span>
+</span><span id="line-476"><span class="sd">    defaults is visible against an old render (and a re-render can reproduce it)."""</span>
+</span><span id="line-477">    <span class="k">return</span> <span class="p">{</span>
+</span><span id="line-478">        <span class="s2">"default_clip_db"</span><span class="p">:</span> <span class="n">default_db</span><span class="p">,</span>
+</span><span id="line-479">        <span class="s2">"dialogue_min_db"</span><span class="p">:</span> <span class="n">DIALOGUE_MIN_DB</span><span class="p">,</span>
+</span><span id="line-480">        <span class="s2">"speech_target_dbfs"</span><span class="p">:</span> <span class="n">SPEECH_TARGET_DBFS</span><span class="p">,</span>
+</span><span id="line-481">        <span class="s2">"speech_over_music_db"</span><span class="p">:</span> <span class="n">SPEECH_OVER_MUSIC_DB</span><span class="p">,</span>
+</span><span id="line-482">        <span class="s2">"edge_fade_s"</span><span class="p">:</span> <span class="n">EDGE_FADE_S</span><span class="p">,</span>
+</span><span id="line-483">        <span class="s2">"peak_dbfs"</span><span class="p">:</span> <span class="n">PEAK_DBFS</span><span class="p">,</span>
+</span><span id="line-484">        <span class="o">**</span><span class="n">measured</span><span class="p">,</span>
+</span><span id="line-485">    <span class="p">}</span></div>
 
-</span><span id="line-484">
-</span><span id="line-485">
+</span><span id="line-486">
+</span><span id="line-487">
 <div class="viewcode-block" id="silent_unless_set">
 <a class="viewcode-back" href="../../../_autosummary/muvid.footage.sound.html#muvid.footage.sound.silent_unless_set">[docs]</a>
-</span><span id="line-486"><span class="k">def</span><span class="w"> </span><span class="nf">silent_unless_set</span><span class="p">(</span><span class="n">cuts</span><span class="p">,</span> <span class="n">mute</span><span class="p">:</span> <span class="s2">"set[str]"</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">60.0</span><span class="p">):</span>
-</span><span id="line-487"><span class="w">    </span><span class="sd">"""``cuts`` with every cut of a ``mute`` clip that names no ``sound_db`` set to</span>
-</span><span id="line-488"><span class="sd">    ``level`` — the clips whose own audio is a recording of the song (a music video's</span>
-</span><span id="line-489"><span class="sd">    synced footage), which under the master would double it."""</span>
-</span><span id="line-490">    <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
-</span><span id="line-491">
-</span><span id="line-492">    <span class="k">return</span> <span class="p">[</span>
-</span><span id="line-493">        <span class="n">replace</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">sound_db</span><span class="o">=</span><span class="n">level</span><span class="p">)</span>
-</span><span id="line-494">        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">clip_id</span> <span class="ow">in</span> <span class="n">mute</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s2">"sound_db"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
-</span><span id="line-495">        <span class="k">else</span> <span class="n">c</span>
-</span><span id="line-496">        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cuts</span>
-</span><span id="line-497">    <span class="p">]</span></div>
+</span><span id="line-488"><span class="k">def</span><span class="w"> </span><span class="nf">silent_unless_set</span><span class="p">(</span><span class="n">cuts</span><span class="p">,</span> <span class="n">mute</span><span class="p">:</span> <span class="s2">"set[str]"</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">level</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">60.0</span><span class="p">):</span>
+</span><span id="line-489"><span class="w">    </span><span class="sd">"""``cuts`` with every cut of a ``mute`` clip that names no ``sound_db`` set to</span>
+</span><span id="line-490"><span class="sd">    ``level`` — the clips whose own audio is a recording of the song (a music video's</span>
+</span><span id="line-491"><span class="sd">    synced footage), which under the master would double it."""</span>
+</span><span id="line-492">    <span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">replace</span>
+</span><span id="line-493">
+</span><span id="line-494">    <span class="k">return</span> <span class="p">[</span>
+</span><span id="line-495">        <span class="n">replace</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">sound_db</span><span class="o">=</span><span class="n">level</span><span class="p">)</span>
+</span><span id="line-496">        <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">clip_id</span> <span class="ow">in</span> <span class="n">mute</span> <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="s2">"sound_db"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span>
+</span><span id="line-497">        <span class="k">else</span> <span class="n">c</span>
+</span><span id="line-498">        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">cuts</span>
+</span><span id="line-499">    <span class="p">]</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -725,7 +727,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=9ff77342"></script>
+    <script src="../../../_static/documentation_options.js?v=77edd080"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
