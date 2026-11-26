@@ -262,7 +262,8 @@ def _render_still(
             ),
             # -t alone let the copied picture run two frames past the song (4.2 s
             # for 4.0 s at 10 fps): a copy is cut on packets, after B-frame
-            # reordering. The frame count is the exact bound (muvid#392).
+            # reordering. The frame count that covers the song is the bound
+            # (muvid#392), and -t still ends the audio at the song's end.
             "-frames:v",
             str(_frame_count(ctx)),
             "-t",
@@ -312,12 +313,12 @@ def _render_filtergraph(
         )
         video = "_vt"
 
-    # Exactly the song's frame count, whatever the visual emits (muvid#392):
-    # showcqt/avectorscope flush their last frame only at the audio's EOF, and
-    # beside an endless looping cover that frame was lost — a 4.000 s song
-    # rendered 3.900 s at 10 fps. The last frame is cloned forward and the
-    # stream cut at the count, so a visual one frame short or long cannot move
-    # the end.
+    # Exactly the frames that cover the song, whatever the visual emits
+    # (muvid#392): showcqt/avectorscope flush their last frame only at the
+    # audio's EOF, and beside an endless looping cover that frame was lost — a
+    # 4.000 s song rendered 3.900 s at 10 fps. The last frame is cloned forward
+    # and the stream cut at the count (with no -shortest below to end it first),
+    # so a visual one frame short or long cannot move the end.
     n_frames = _frame_count(ctx)
     chains.append(
         f"[{video}]fps={ctx.fps},tpad=stop=-1:stop_mode=clone,"
@@ -345,12 +346,20 @@ def _render_filtergraph(
                 gop=_gop_frames(ctx.fps, gop_seconds),
             ),
             *_audio_encode_args(audio_bitrate, filtered=True),
-            # -t bounds the render; -shortest ends it with the audio. Note we do
-            # NOT pass `-fflags +shortest`: the widely copied incantation cuts
-            # tens of milliseconds off the end of the song.
+            # -t bounds the render and the picture's `trim` its frames. -t is the
+            # covering frames' length, not the song's: at the song's length it
+            # dropped a last frame that starts inside the song (43 of 44 for
+            # 4.31 s at 10 fps); the audio is finite and ends at the song's end on
+            # its own. No -shortest: it ended the render a frame early and cut the
+            # song's tail (muvid#392). Nor `-fflags +shortest`, the widely copied
+            # incantation that cuts tens of milliseconds off the end of the song.
             "-t",
-            f"{ctx.duration:.3f}",
-            "-shortest",
+            f"{n_frames / ctx.fps:.6f}",
+            # and the encoder's -r may duplicate one frame onto a stream whose
+            # timestamps sit off its grid (waves at 30 fps gave 123 for 122):
+            # the count is the cap
+            "-frames:v",
+            str(n_frames),
             *_container_args(),
             str(out),
         ]
@@ -439,8 +448,14 @@ def _audio_encode_args(
 
 
 def _frame_count(ctx: VisualContext) -> int:
-    """The song's length in frames at the render rate (at least one)."""
-    return max(1, round(ctx.duration * ctx.fps))
+    """The frames that cover the whole song at the render rate (at least one).
+
+    ``ceil``, not ``round``: the picture may run under one frame past the song, but
+    never stops before it, because whatever ends the picture also ended the audio
+    there — ``round`` cut a 4.049 s song's last 60 ms (muvid#392's review). The
+    small epsilon keeps an exact whole number of frames from gaining one.
+    """
+    return max(1, math.ceil(ctx.duration * ctx.fps - 1e-6))
 
 
 def _audio_graph_tail(label: str, *links: str, out: str = "aenc") -> str:
