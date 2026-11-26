@@ -228,7 +228,7 @@ def test_every_encoder_without_an_edit_list_compensates_the_priming():
     exempt = {"visualize/verify.py", "visualize/ffmpeg.py", "aac.py"}
     missing = []
     for p in root.rglob("*.py"):
-        rel = str(p.relative_to(root))
+        rel = p.relative_to(root).as_posix()  # "/" on Windows too
         if rel in exempt:
             continue
         src = p.read_text(encoding="utf-8")
