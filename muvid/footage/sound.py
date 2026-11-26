@@ -122,10 +122,26 @@ def song_stem(
     out = Path(out_path)
     af = [f"aresample={sample_rate}", "apad", f"atrim=0:{duration_s:.6f}"]
     if fade_out_s > 0:
-        af.append(f"afade=t=out:st={max(0.0, duration_s - fade_out_s):.6f}:d={fade_out_s:.6f}")
+        af.append(
+            f"afade=t=out:st={max(0.0, duration_s - fade_out_s):.6f}:d={fade_out_s:.6f}"
+        )
     head = ["-ss", f"{start_s:.6f}"] if start_s > 1e-3 else []
-    run_ffmpeg([*head, "-i", str(song_path), "-map", "0:a:0", "-af", ",".join(af),
-                "-ac", str(CHANNELS), "-c:a", "pcm_s16le", str(out)])
+    run_ffmpeg(
+        [
+            *head,
+            "-i",
+            str(song_path),
+            "-map",
+            "0:a:0",
+            "-af",
+            ",".join(af),
+            "-ac",
+            str(CHANNELS),
+            "-c:a",
+            "pcm_s16le",
+            str(out),
+        ]
+    )
     return out
 
 
@@ -193,8 +209,20 @@ def clip_sound_track(
         labels.append(f"[s{i}]")
     graph = ";".join(chains) + f";{''.join(labels)}concat=n={len(labels)}:v=0:a=1[out]"
     run_ffmpeg(
-        [*inputs, "-filter_complex", graph, "-map", "[out]", "-ar", str(sample_rate),
-         "-ac", str(CHANNELS), "-c:a", "pcm_s16le", str(out)]
+        [
+            *inputs,
+            "-filter_complex",
+            graph,
+            "-map",
+            "[out]",
+            "-ar",
+            str(sample_rate),
+            "-ac",
+            str(CHANNELS),
+            "-c:a",
+            "pcm_s16le",
+            str(out),
+        ]
     )
     return out
 
@@ -233,7 +261,12 @@ def read_wav(path):
     import numpy as np
 
     with wave.open(str(path), "rb") as w:
-        rate, ch, width, n = w.getframerate(), w.getnchannels(), w.getsampwidth(), w.getnframes()
+        rate, ch, width, n = (
+            w.getframerate(),
+            w.getnchannels(),
+            w.getsampwidth(),
+            w.getnframes(),
+        )
         raw = w.readframes(n)
     if width == 2:
         x = np.frombuffer(raw, dtype="<i2").astype(np.float64) / 32768.0
@@ -313,7 +346,11 @@ def mix_under(
     d_level = _frame_db(d.mean(axis=1), sr)
     active = _active(d_level, threshold_dbfs=active_dbfs)
     threshold = active_dbfs
-    params = {"dialogue_gain_db": 0.0, "duck_db": 0.0, "threshold_db": round(threshold, 2)}
+    params = {
+        "dialogue_gain_db": 0.0,
+        "duck_db": 0.0,
+        "threshold_db": round(threshold, 2),
+    }
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     bed = m
@@ -322,20 +359,31 @@ def mix_under(
         speech = float(np.percentile(d_level[active], SPEECH_PERCENTILE))
         g_db = float(np.clip(speech_target_dbfs - speech, 0.0, MAX_DIALOGUE_GAIN_DB))
         m_level = _frame_db(m.mean(axis=1), sr)[: len(d_level)]
-        music_there = float(np.median(m_level[active[: len(m_level)]])) if len(m_level) else -80.0
+        music_there = (
+            float(np.median(m_level[active[: len(m_level)]])) if len(m_level) else -80.0
+        )
         want = (speech + g_db) - speech_over_music_db - music_there
         depth = float(np.clip(min(duck_db, want), max_duck_db, 0.0))
         ducked = out.with_name(f".{out.stem}.ducked.wav")
         try:
-            duck_audio(str(music), str(dialogue), duck_db=depth, threshold_db=threshold,
-                       output=str(ducked))
+            duck_audio(
+                str(music),
+                str(dialogue),
+                duck_db=depth,
+                threshold_db=threshold,
+                output=str(ducked),
+            )
             bed, _ = _read(ducked)
             bed = fit(bed)
         finally:
             ducked.unlink(missing_ok=True)
         gain = 10 ** (g_db / 20)
-        params.update(dialogue_gain_db=round(g_db, 2), duck_db=round(depth, 2),
-                      speech_dbfs=round(speech, 2), music_under_speech_dbfs=round(music_there, 2))
+        params.update(
+            dialogue_gain_db=round(g_db, 2),
+            duck_db=round(depth, 2),
+            speech_dbfs=round(speech, 2),
+            music_under_speech_dbfs=round(music_there, 2),
+        )
     clips = d * gain + n_
     mix = bed + clips
     peak = float(np.max(np.abs(mix))) if mix.size else 0.0
@@ -348,8 +396,14 @@ def mix_under(
     return params
 
 
-def mux_audio(video, audio, out_path, *, bitrate: str = "192k",
-              priming_samples: int = AAC_PRIMING_SAMPLES) -> Path:
+def mux_audio(
+    video,
+    audio,
+    out_path,
+    *,
+    bitrate: str = "192k",
+    priming_samples: int = AAC_PRIMING_SAMPLES,
+) -> Path:
     """``video``'s picture (stream-copied) with ``audio`` as its one audio track (aac),
     at the video's length; the encoder's priming is trimmed off the input (and the tail
     padded back), so the sound is where it was on the picture."""
@@ -358,10 +412,34 @@ def mux_audio(video, audio, out_path, *, bitrate: str = "192k",
     out = Path(out_path)
     af = f"atrim=start_sample={priming_samples},apad=pad_len={priming_samples}"
     run_ffmpeg(
-        ["-i", str(video), "-i", str(audio), "-map", "0:v", "-map", "1:a:0", "-c:v",
-         "copy", "-af", af, "-c:a", "aac", "-b:a", bitrate, "-ar", str(SAMPLE_RATE),
-         "-ac", str(CHANNELS), "-shortest", "-use_editlist", "0", "-movflags",
-         "+faststart", str(out)]
+        [
+            "-i",
+            str(video),
+            "-i",
+            str(audio),
+            "-map",
+            "0:v",
+            "-map",
+            "1:a:0",
+            "-c:v",
+            "copy",
+            "-af",
+            af,
+            "-c:a",
+            "aac",
+            "-b:a",
+            bitrate,
+            "-ar",
+            str(SAMPLE_RATE),
+            "-ac",
+            str(CHANNELS),
+            "-shortest",
+            "-use_editlist",
+            "0",
+            "-movflags",
+            "+faststart",
+            str(out),
+        ]
     )
     return out
 
@@ -369,10 +447,15 @@ def mux_audio(video, audio, out_path, *, bitrate: str = "192k",
 def mix_params(*, default_db: float = DEFAULT_CLIP_SOUND_DB, **measured) -> dict:
     """What a ``song_and_clips`` render records about its mix, so a later change of these
     defaults is visible against an old render (and a re-render can reproduce it)."""
-    return {"default_clip_db": default_db, "dialogue_min_db": DIALOGUE_MIN_DB,
-            "speech_target_dbfs": SPEECH_TARGET_DBFS,
-            "speech_over_music_db": SPEECH_OVER_MUSIC_DB, "edge_fade_s": EDGE_FADE_S,
-            "peak_dbfs": PEAK_DBFS, **measured}
+    return {
+        "default_clip_db": default_db,
+        "dialogue_min_db": DIALOGUE_MIN_DB,
+        "speech_target_dbfs": SPEECH_TARGET_DBFS,
+        "speech_over_music_db": SPEECH_OVER_MUSIC_DB,
+        "edge_fade_s": EDGE_FADE_S,
+        "peak_dbfs": PEAK_DBFS,
+        **measured,
+    }
 
 
 def silent_unless_set(cuts, mute: "set[str]", *, level: Optional[float] = -60.0):
@@ -382,7 +465,8 @@ def silent_unless_set(cuts, mute: "set[str]", *, level: Optional[float] = -60.0)
     from dataclasses import replace
 
     return [
-        replace(c, sound_db=level) if c.clip_id in mute and getattr(c, "sound_db", None) is None
+        replace(c, sound_db=level)
+        if c.clip_id in mute and getattr(c, "sound_db", None) is None
         else c
         for c in cuts
     ]

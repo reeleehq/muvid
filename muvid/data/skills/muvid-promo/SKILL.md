@@ -17,16 +17,27 @@ A promo is edited the other way round from a music video. In a music video the p
 
    Within a section go wide → medium → close. Tag each shot's `role`: calm, cooldown, savasana, community and close come in with a dissolve when they start on a phrase, and everything else is a hard cut. Then:
    ```python
-   out = service.propose_promo(fp, shots=[{"clip_id": "IMG_1", "role": "hook", "hold_s": 2.5}, ...],
-                               length_s=60, phrase_bars=8, name="Promo 60 s")
-   out["promo"]   # per shot: role, place on the song, hold, transition; the average shot length
+   out = service.propose_promo(
+       fp,
+       shots=[{"clip_id": "IMG_1", "role": "hook", "hold_s": 2.5}, ...],
+       length_s=60,
+       phrase_bars=8,
+       name="Promo 60 s",
+   )
+   out[
+       "promo"
+   ]  # per shot: role, place on the song, hold, transition; the average shot length
    ```
    `length_s` makes the video end where the song ends and start on the nearest phrase. `span=[a, b]` sets the window exactly. Aim at about 3.5 s a shot (60 s: 16–22 shots; 150 s: 35–50). A refusal says why (too many shots for the window, or clips too short); add or drop shots, or relax `hold_s`/`min_s`/`max_s`.
 4. **Render with the sound.**
    ```python
    r = service.render(fp, edit_id=out["edit_id"], sound="song_and_clips")
-   r["stems"]   # music, dialogue, nat, clips (= dialogue as mixed + nat), mix (wav); no_music.mp4
-   r["mix"]     # how it was mixed: dialogue gain, duck depth, speech and music levels, limiter
+   r[
+       "stems"
+   ]  # music, dialogue, nat, clips (= dialogue as mixed + nat), mix (wav); no_music.mp4
+   r[
+       "mix"
+   ]  # how it was mixed: dialogue gain, duck depth, speech and music levels, limiter
    ```
    Each cut's own sound follows the picture cut for cut (40 ms edge fades), at its `sound_db`. A `soundbite` or `nat` shot is at 0 dB and goes in the **dialogue** stem. Every other shot is at −8 dB and goes in the **nat** stem: the room as a bed, which never ducks anything. The dialogue is raised toward −20 dBFS speech level, and the music is ducked under the dialogue alone, by as much as puts the speech 12 dB over it (8–30 dB; env `MUVID_SOUND_*`). A photo, a gap, a retimed cut, a silent clip and a clip that recorded the song itself are all silence. **To replace the music**, keep `no_music.mp4` (or the `dialogue` + `nat` stems) and lay the new track under it. Re-cutting to the new track's bars is a new `propose_promo` with the same shots.
 

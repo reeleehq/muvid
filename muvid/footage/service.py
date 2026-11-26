@@ -3295,7 +3295,9 @@ def propose_promo(
     rows = {c["clip_id"]: c for c in fp.manifest().get("clips", [])}
     unknown = sorted({s.clip_id for s in plan_shots} - set(rows))
     if unknown:
-        raise FootageError(f"unknown clip(s) {unknown}; this project's clips: {sorted(rows)[:20]}...")
+        raise FootageError(
+            f"unknown clip(s) {unknown}; this project's clips: {sorted(rows)[:20]}..."
+        )
     song_dur = fp.song_duration()
     analysis, _ = extend_grid(song_analysis(fp), song_dur)
     bars = phrase_bars or pr.PHRASE_BARS
@@ -3304,12 +3306,18 @@ def propose_promo(
     if span is not None:
         window = _check_span(fp, span) or (0.0, song_dur)
     elif length_s:
-        window = pr.ending_span(analysis, length_s=float(length_s), duration=song_dur, phrase_bars=bars)
+        window = pr.ending_span(
+            analysis, length_s=float(length_s), duration=song_dur, phrase_bars=bars
+        )
         window = _check_span(fp, window) or (0.0, song_dur)
     else:
         window = (0.0, song_dur)
     durations = {
-        cid: (None if rows[cid].get("kind") == STILL_KIND else free_length(placements[cid]))
+        cid: (
+            None
+            if rows[cid].get("kind") == STILL_KIND
+            else free_length(placements[cid])
+        )
         for cid in {s.clip_id for s in plan_shots}
     }
     paths = fp.clip_paths()
@@ -3319,8 +3327,13 @@ def propose_promo(
         length = end - start
         env = _activity_envelope(fp, FreeSource(shot.clip_id, paths[shot.clip_id]))
         inner = [b - start for b in analysis.beats if start < b < end]
-        s_in, _ = choose_source_in(env, clip_duration=durations[shot.clip_id], length=length,
-                                   beat_offsets=inner, room=room)
+        s_in, _ = choose_source_in(
+            env,
+            clip_duration=durations[shot.clip_id],
+            length=length,
+            beat_offsets=inner,
+            room=room,
+        )
         return s_in
 
     def crop_of(clip_id):
@@ -4625,8 +4638,15 @@ def resolve_canvas(fp, canvas: str) -> tuple[int, int]:
 SOUNDS = ("song", "song_and_clips")
 
 
-def _with_clip_sound(fp, render_dir: Path, video: Path, cuts, *, fade_out_s: float = 0.0,
-                     should_cancel=None) -> tuple[dict, dict]:
+def _with_clip_sound(
+    fp,
+    render_dir: Path,
+    video: Path,
+    cuts,
+    *,
+    fade_out_s: float = 0.0,
+    should_cancel=None,
+) -> tuple[dict, dict]:
     """Build the stems of a ``song_and_clips`` render and put the mix on ``video``.
 
     The music stem is cut from the song itself (the render's window and tail fade), not
@@ -4650,10 +4670,17 @@ def _with_clip_sound(fp, render_dir: Path, video: Path, cuts, *, fade_out_s: flo
     synced = {cid for cid, role in footage_roles(fp).items() if role == SYNCED}
     cuts = _sound.silent_unless_set(cuts, synced)
     stop_if_asked("before the music stem")
-    music = _sound.song_stem(fp.song_path(), stems_dir / "music.wav", start_s=start,
-                             duration_s=total, fade_out_s=fade_out_s)
+    music = _sound.song_stem(
+        fp.song_path(),
+        stems_dir / "music.wav",
+        start_s=start,
+        duration_s=total,
+        fade_out_s=fade_out_s,
+    )
     stop_if_asked("before the clips' sound")
-    dialogue = _sound.clip_sound_track(cuts, stems_dir / "dialogue.wav", keep=_sound.is_dialogue)
+    dialogue = _sound.clip_sound_track(
+        cuts, stems_dir / "dialogue.wav", keep=_sound.is_dialogue
+    )
     nat = _sound.clip_sound_track(cuts, stems_dir / "nat.wav", keep=_sound.is_nat)
     stop_if_asked("before the mix")
     mix, clips = stems_dir / "mix.wav", stems_dir / "clips.wav"
@@ -4663,10 +4690,15 @@ def _with_clip_sound(fp, render_dir: Path, video: Path, cuts, *, fade_out_s: flo
         _sound.mux_audio(video, clips, tmp)
     with fresh_output(video) as tmp:
         _sound.mux_audio(video, mix, tmp)
-    stems = {"music": str(music), "dialogue": str(dialogue), "nat": str(nat),
-             "clips": str(clips), "mix": str(mix), "no_music": str(no_music)}
+    stems = {
+        "music": str(music),
+        "dialogue": str(dialogue),
+        "nat": str(nat),
+        "clips": str(clips),
+        "mix": str(mix),
+        "no_music": str(no_music),
+    }
     return stems, _sound.mix_params(**measured)
-
 
 
 def assemble(
@@ -4832,8 +4864,12 @@ def assemble(
         stems = mix = None
         if sound != "song":
             stems, mix = _with_clip_sound(
-                fp, render_dir, out, cuts,
-                fade_out_s=tail.get("fade_out_s", 0.0), should_cancel=should_cancel,
+                fp,
+                render_dir,
+                out,
+                cuts,
+                fade_out_s=tail.get("fade_out_s", 0.0),
+                should_cancel=should_cancel,
             )
             # the checks describe the file that ships: the one with the mix on it
             checks = verify_video(
@@ -4891,7 +4927,9 @@ def assemble(
         meta["mix"] = mix
         ids = {}
         for k, path in stems.items():
-            aid = _register_media(fp, Path(path), kind="video" if k == "no_music" else "audio")
+            aid = _register_media(
+                fp, Path(path), kind="video" if k == "no_music" else "audio"
+            )
             if aid:
                 ids[k] = aid
         if ids:  # hosted: what each stem is fetched by

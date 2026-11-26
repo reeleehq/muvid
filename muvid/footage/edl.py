@@ -1703,7 +1703,9 @@ def _as_sound_db(raw) -> "float | None":
     if raw is None:
         return None
     if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-        raise ValueError(f"EDL entry sound_db is malformed ({raw!r}): it must be a number of dB.")
+        raise ValueError(
+            f"EDL entry sound_db is malformed ({raw!r}): it must be a number of dB."
+        )
     v = float(raw)
     lo, hi = SOUND_DB_RANGE
     if not lo <= v <= hi:

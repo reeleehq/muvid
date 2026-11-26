@@ -507,7 +507,9 @@ def _part_filter(
         # zscale refuses an odd width or height on 4:2:0 ("image dimensions must be
         # divisible by subsampling factor"): a landscape clip cover-cropped to portrait
         # fits at 1080x1921, and the part rendered no frame at all. Even sizes only.
-        convert = f"{fit}:force_divisible_by=2,{tonemap_chain(fill, tone_map=tone_map)},"
+        convert = (
+            f"{fit}:force_divisible_by=2,{tonemap_chain(fill, tone_map=tone_map)},"
+        )
     else:
         in_matrix = colour.in_matrix if colour else None
         convert = (
