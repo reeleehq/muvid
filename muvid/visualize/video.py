@@ -260,6 +260,11 @@ def _render_still(
             *_audio_encode_args(
                 audio_bitrate, before=(loud.filter_spec(),) if loud else ()
             ),
+            # -t alone let the copied picture run two frames past the song (4.2 s
+            # for 4.0 s at 10 fps): a copy is cut on packets, after B-frame
+            # reordering. The frame count is the exact bound (muvid#392).
+            "-frames:v",
+            str(_frame_count(ctx)),
             "-t",
             f"{ctx.duration:.3f}",
             *_container_args(),
@@ -307,7 +312,17 @@ def _render_filtergraph(
         )
         video = "_vt"
 
-    chains.append(f"[{video}]fps={ctx.fps},format=yuv420p[vout]")
+    # Exactly the song's frame count, whatever the visual emits (muvid#392):
+    # showcqt/avectorscope flush their last frame only at the audio's EOF, and
+    # beside an endless looping cover that frame was lost — a 4.000 s song
+    # rendered 3.900 s at 10 fps. The last frame is cloned forward and the
+    # stream cut at the count, so a visual one frame short or long cannot move
+    # the end.
+    n_frames = _frame_count(ctx)
+    chains.append(
+        f"[{video}]fps={ctx.fps},tpad=stop=-1:stop_mode=clone,"
+        f"trim=end_frame={n_frames},format=yuv420p[vout]"
+    )
 
     chains.append(
         _audio_graph_tail(audio_label, *([loud.filter_spec()] if loud else []))
@@ -421,6 +436,11 @@ def _audio_encode_args(
         "-ac",
         "2",
     ]
+
+
+def _frame_count(ctx: VisualContext) -> int:
+    """The song's length in frames at the render rate (at least one)."""
+    return max(1, round(ctx.duration * ctx.fps))
 
 
 def _audio_graph_tail(label: str, *links: str, out: str = "aenc") -> str:
