@@ -55,12 +55,12 @@ to answer, because muvid owns the invocation. muvid runs the bare name ``ffmpeg`
 from ``PATH`` (:func:`muvid.visualize.ffmpeg.run_ffmpeg`), so that is what
 :func:`stylize` probes. Pass ``env=`` to compile against a different one.
 
-**One limitation, measured rather than guessed at, and not fixable here — but no
-longer silent.** A *time-varying* look on a cut that borders a
-:class:`~muvid.footage.edl.Transition` **restarts its ramp on the blended part**.
+**One limitation, measured rather than guessed at, not fixable here, and fixed in
+the assembler instead (muvid#376).** A *time-varying* look on a cut that borders a
+:class:`~muvid.footage.edl.Transition` **restarted its ramp on the blended part**.
 The assembler renders a transitioned boundary as a separate two-input invocation
 whose inputs are input-side-seeked to the blend window, so the filter clock there
-begins at 0 again instead of continuing the cut's.
+began at 0 again instead of continuing the cut's.
 
 Measured on a 3.0 s cut at 25 fps with a 0.4 s fade and a 1.12x punch: the solo
 part's last frame is drawn at zoom 1.109 (mean |diff| 28.1/255 against the same
@@ -77,13 +77,15 @@ is worse than a documented one — it would exit 0 having moved the effect to a
 different second of the clip.
 
 What muvid *can* do, and now does (muvid#73), is **say which kind a look is** so
-the assembler can warn instead of rendering the hitch quietly. Every function
+the assembler can treat a moving one differently: since muvid#376 it runs such a
+look over the cut's whole on-screen run and trims afterwards, so the move carries
+on through a blend without the fragment being rewritten. Every function
 here returns a :class:`LookFragment` — a plain ``str`` that also answers
 ``.time_varying`` — and :func:`punch_in_cuts` copies that answer onto
 :attr:`~muvid.footage.edl.EdlEntry.look_time_varying`, which is what the
 assembler reads. A caller assembling entries by hand should do the same; the flag
-defaults to ``False``, so an *undeclared* moving look is still silent, and that
-limit is stated on the field rather than left to be discovered.
+defaults to ``False``, so an *undeclared* moving look still restarts on a blend,
+and that limit is stated on the field rather than left to be discovered.
 """
 
 from __future__ import annotations

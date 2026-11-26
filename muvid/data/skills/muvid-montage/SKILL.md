@@ -68,7 +68,7 @@ why = service.explain_edit(
 
 ## Traps
 
-- **Fades over photos pop.** Each photo carries a moving camera look, and a fade's blend restarts it, so the outgoing photo snaps back to its unzoomed framing at every fade ([muvid#376](https://github.com/reeleehq/muvid/issues/376)). Until that lands, cut a photo montage with `style="cuts"`; the render's warnings name each affected cut.
+- **Fades over photos used to pop** ([muvid#376](https://github.com/reeleehq/muvid/issues/376), fixed): a fade's blend restarted each photo's camera move, so the outgoing photo snapped back to its unzoomed framing. The assembler now runs a declared moving look (`look_time_varying`, which the music cut sets) on one clock across the blend, so `style="fades"` is safe over photos. A hand-written moving look that does not set the flag still restarts.
 
 - **A short video cannot hold a long slot.** When it runs out, the rest of the slot goes to the least-used source that can hold it (`_take_over`), never to its neighbours; a blend with no footage either side is dropped (`_feasible_blends`).
 - **Footage shorter than the song** is reused: each stretch at most once before repeats, with different stretches on each return. v1 fills the whole song rather than trimming it. Trimming to a section boundary is the UX recommendation, deferred to [reelee-web#402](https://github.com/thorwhalen/reelee-web/issues/402); `set_span` does it by hand today.
