@@ -864,7 +864,12 @@ def render(
             filter (it is a libass build option, so a working ffmpeg is not
             enough), or the burn failed.
     """
-    from muvid.visualize.ffmpeg import media_duration, require_filter, run_ffmpeg
+    from muvid.visualize.ffmpeg import (
+        aac_priming_filter,
+        media_duration,
+        require_filter,
+        run_ffmpeg,
+    )
     from muvid.visualize.verify import verify_video
 
     require_filter("subtitles", needed_for="lyric video rendering")
@@ -896,6 +901,10 @@ def render(
             "1:a",
             "-vf",
             _subtitles_filter(ass_path),
+            # the AAC encoder's priming, trimmed: with no edit list a player plays
+            # it, and every word showed 21 ms before it was sung (muvid#385)
+            "-af",
+            aac_priming_filter(),
             *_video_args(crf=crf, fps=canvas.fps),
             "-shortest",
             str(output),

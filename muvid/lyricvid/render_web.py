@@ -47,7 +47,7 @@ from typing import Any, Iterable
 
 from muvid.lyricvid.scene import Cue, Scene
 from muvid.subgenres import RenderResult
-from muvid.visualize.ffmpeg import media_duration, run_ffmpeg
+from muvid.visualize.ffmpeg import aac_priming_filter, media_duration, run_ffmpeg
 
 __all__ = ["scene_to_html", "render", "WebRenderUnavailable", "INSTALL_HINT"]
 
@@ -605,6 +605,10 @@ def _encode(
             "1:a:0",
             "-t",
             f"{max(0.0, duration):.3f}",
+            # the AAC encoder's priming, trimmed: with no edit list a player plays
+            # it, and every word showed 21 ms before it was sung (muvid#385)
+            "-af",
+            aac_priming_filter(),
             *VIDEO_CODEC_ARGS,
             "-crf",
             str(crf),
