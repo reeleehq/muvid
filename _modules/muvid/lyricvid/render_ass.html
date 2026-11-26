@@ -114,6 +114,7 @@
   <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../api.html">API reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../_autosummary/muvid.html">muvid</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.aac.html">muvid.aac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.align.html">muvid.align</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.characters.html">muvid.characters</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.choreo.html">muvid.choreo</a></li>
@@ -1062,68 +1063,77 @@
 </span><span id="line-864"><span class="sd">            filter (it is a libass build option, so a working ffmpeg is not</span>
 </span><span id="line-865"><span class="sd">            enough), or the burn failed.</span>
 </span><span id="line-866"><span class="sd">    """</span>
-</span><span id="line-867">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">media_duration</span><span class="p">,</span> <span class="n">require_filter</span><span class="p">,</span> <span class="n">run_ffmpeg</span>
-</span><span id="line-868">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.verify</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify_video</span>
-</span><span id="line-869">
-</span><span id="line-870">    <span class="n">require_filter</span><span class="p">(</span><span class="s2">"subtitles"</span><span class="p">,</span> <span class="n">needed_for</span><span class="o">=</span><span class="s2">"lyric video rendering"</span><span class="p">)</span>
-</span><span id="line-871">
-</span><span id="line-872">    <span class="n">audio</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">output</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
-</span><span id="line-873">    <span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-874">    <span class="n">output</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-875">    <span class="n">ass_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ass_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">ass_path</span> <span class="k">else</span> <span class="n">workdir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">output</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s2">.ass"</span>
-</span><span id="line-876">    <span class="n">ass_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-877">
-</span><span id="line-878">    <span class="n">family</span><span class="p">,</span> <span class="n">substituted</span> <span class="o">=</span> <span class="n">_resolve_font</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">typography</span><span class="o">.</span><span class="n">family</span><span class="p">)</span>
-</span><span id="line-879">    <span class="n">document</span> <span class="o">=</span> <span class="n">scene_to_ass</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="n">family</span><span class="p">)</span>
-</span><span id="line-880">    <span class="n">ass_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
-</span><span id="line-881">
-</span><span id="line-882">    <span class="n">canvas</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span>
-</span><span id="line-883">    <span class="n">song_s</span> <span class="o">=</span> <span class="n">media_duration</span><span class="p">(</span><span class="n">audio</span><span class="p">)</span>
-</span><span id="line-884">    <span class="n">run_ffmpeg</span><span class="p">(</span>
-</span><span id="line-885">        <span class="p">[</span>
-</span><span id="line-886">            <span class="s2">"-f"</span><span class="p">,</span>
-</span><span id="line-887">            <span class="s2">"lavfi"</span><span class="p">,</span>
-</span><span id="line-888">            <span class="s2">"-i"</span><span class="p">,</span>
-</span><span id="line-889">            <span class="sa">f</span><span class="s2">"color=c=</span><span class="si">{</span><span class="n">_ffmpeg_colour</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">background</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
-</span><span id="line-890">            <span class="sa">f</span><span class="s2">":s=</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2">:r=</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="si">}</span><span class="s2">:d=</span><span class="si">{</span><span class="n">song_s</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-</span><span id="line-891">            <span class="s2">"-i"</span><span class="p">,</span>
-</span><span id="line-892">            <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
-</span><span id="line-893">            <span class="s2">"-map"</span><span class="p">,</span>
-</span><span id="line-894">            <span class="s2">"0:v"</span><span class="p">,</span>
-</span><span id="line-895">            <span class="s2">"-map"</span><span class="p">,</span>
-</span><span id="line-896">            <span class="s2">"1:a"</span><span class="p">,</span>
-</span><span id="line-897">            <span class="s2">"-vf"</span><span class="p">,</span>
-</span><span id="line-898">            <span class="n">_subtitles_filter</span><span class="p">(</span><span class="n">ass_path</span><span class="p">),</span>
-</span><span id="line-899">            <span class="o">*</span><span class="n">_video_args</span><span class="p">(</span><span class="n">crf</span><span class="o">=</span><span class="n">crf</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">),</span>
-</span><span id="line-900">            <span class="s2">"-shortest"</span><span class="p">,</span>
-</span><span id="line-901">            <span class="nb">str</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
-</span><span id="line-902">        <span class="p">]</span>
-</span><span id="line-903">    <span class="p">)</span>
-</span><span id="line-904">
-</span><span id="line-905">    <span class="n">checks</span> <span class="o">=</span> <span class="n">verify_video</span><span class="p">(</span>
-</span><span id="line-906">        <span class="n">output</span><span class="p">,</span> <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">,</span> <span class="n">expected_canvas</span><span class="o">=</span><span class="p">(</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
-</span><span id="line-907">    <span class="p">)</span>
-</span><span id="line-908">    <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-</span><span id="line-909">        <span class="s2">"renderer"</span><span class="p">:</span> <span class="n">RENDERER_NAME</span><span class="p">,</span>
-</span><span id="line-910">        <span class="s2">"font"</span><span class="p">:</span> <span class="n">family</span><span class="p">,</span>
-</span><span id="line-911">        <span class="s2">"n_cues"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">cues</span><span class="p">),</span>
-</span><span id="line-912">        <span class="s2">"n_events"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Dialogue:"</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">document</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()),</span>
-</span><span id="line-913">        <span class="s2">"canvas"</span><span class="p">:</span> <span class="p">[</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="p">],</span>
-</span><span id="line-914">        <span class="s2">"fps"</span><span class="p">:</span> <span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-915">        <span class="s2">"crf"</span><span class="p">:</span> <span class="n">crf</span><span class="p">,</span>
-</span><span id="line-916">        <span class="s2">"verify_failures"</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">detail</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">checks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="p">],</span>
-</span><span id="line-917">    <span class="p">}</span>
-</span><span id="line-918">    <span class="k">if</span> <span class="n">substituted</span><span class="p">:</span>
-</span><span id="line-919">        <span class="c1"># Reported rather than raised: the type is a preference, the video is the</span>
-</span><span id="line-920">        <span class="c1"># deliverable — but a caller comparing two treatments has to be able to</span>
-</span><span id="line-921">        <span class="c1"># see that it is comparing two fallbacks.</span>
-</span><span id="line-922">        <span class="n">meta</span><span class="p">[</span><span class="s2">"font_requested"</span><span class="p">]</span> <span class="o">=</span> <span class="n">substituted</span>
-</span><span id="line-923">    <span class="k">return</span> <span class="n">RenderResult</span><span class="p">(</span>
-</span><span id="line-924">        <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
-</span><span id="line-925">        <span class="n">duration_s</span><span class="o">=</span><span class="n">media_duration</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
-</span><span id="line-926">        <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="s2">"ass"</span><span class="p">:</span> <span class="n">ass_path</span><span class="p">},</span>
-</span><span id="line-927">        <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">,</span>
-</span><span id="line-928">    <span class="p">)</span></div>
+</span><span id="line-867">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="line-868">        <span class="n">aac_priming_filter</span><span class="p">,</span>
+</span><span id="line-869">        <span class="n">media_duration</span><span class="p">,</span>
+</span><span id="line-870">        <span class="n">require_filter</span><span class="p">,</span>
+</span><span id="line-871">        <span class="n">run_ffmpeg</span><span class="p">,</span>
+</span><span id="line-872">    <span class="p">)</span>
+</span><span id="line-873">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.verify</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify_video</span>
+</span><span id="line-874">
+</span><span id="line-875">    <span class="n">require_filter</span><span class="p">(</span><span class="s2">"subtitles"</span><span class="p">,</span> <span class="n">needed_for</span><span class="o">=</span><span class="s2">"lyric video rendering"</span><span class="p">)</span>
+</span><span id="line-876">
+</span><span id="line-877">    <span class="n">audio</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">output</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+</span><span id="line-878">    <span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-879">    <span class="n">output</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-880">    <span class="n">ass_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">ass_path</span><span class="p">)</span> <span class="k">if</span> <span class="n">ass_path</span> <span class="k">else</span> <span class="n">workdir</span> <span class="o">/</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">output</span><span class="o">.</span><span class="n">stem</span><span class="si">}</span><span class="s2">.ass"</span>
+</span><span id="line-881">    <span class="n">ass_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-882">
+</span><span id="line-883">    <span class="n">family</span><span class="p">,</span> <span class="n">substituted</span> <span class="o">=</span> <span class="n">_resolve_font</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">typography</span><span class="o">.</span><span class="n">family</span><span class="p">)</span>
+</span><span id="line-884">    <span class="n">document</span> <span class="o">=</span> <span class="n">scene_to_ass</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">font</span><span class="o">=</span><span class="n">family</span><span class="p">)</span>
+</span><span id="line-885">    <span class="n">ass_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">document</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><span id="line-886">
+</span><span id="line-887">    <span class="n">canvas</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span>
+</span><span id="line-888">    <span class="n">song_s</span> <span class="o">=</span> <span class="n">media_duration</span><span class="p">(</span><span class="n">audio</span><span class="p">)</span>
+</span><span id="line-889">    <span class="n">run_ffmpeg</span><span class="p">(</span>
+</span><span id="line-890">        <span class="p">[</span>
+</span><span id="line-891">            <span class="s2">"-f"</span><span class="p">,</span>
+</span><span id="line-892">            <span class="s2">"lavfi"</span><span class="p">,</span>
+</span><span id="line-893">            <span class="s2">"-i"</span><span class="p">,</span>
+</span><span id="line-894">            <span class="sa">f</span><span class="s2">"color=c=</span><span class="si">{</span><span class="n">_ffmpeg_colour</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">background</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
+</span><span id="line-895">            <span class="sa">f</span><span class="s2">":s=</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="si">}</span><span class="s2">x</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="si">}</span><span class="s2">:r=</span><span class="si">{</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="si">}</span><span class="s2">:d=</span><span class="si">{</span><span class="n">song_s</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+</span><span id="line-896">            <span class="s2">"-i"</span><span class="p">,</span>
+</span><span id="line-897">            <span class="nb">str</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span>
+</span><span id="line-898">            <span class="s2">"-map"</span><span class="p">,</span>
+</span><span id="line-899">            <span class="s2">"0:v"</span><span class="p">,</span>
+</span><span id="line-900">            <span class="s2">"-map"</span><span class="p">,</span>
+</span><span id="line-901">            <span class="s2">"1:a"</span><span class="p">,</span>
+</span><span id="line-902">            <span class="s2">"-vf"</span><span class="p">,</span>
+</span><span id="line-903">            <span class="n">_subtitles_filter</span><span class="p">(</span><span class="n">ass_path</span><span class="p">),</span>
+</span><span id="line-904">            <span class="c1"># the AAC encoder's priming, trimmed: with no edit list a player plays</span>
+</span><span id="line-905">            <span class="c1"># it, and every word showed 21 ms before it was sung (muvid#385)</span>
+</span><span id="line-906">            <span class="s2">"-af"</span><span class="p">,</span>
+</span><span id="line-907">            <span class="n">aac_priming_filter</span><span class="p">(),</span>
+</span><span id="line-908">            <span class="o">*</span><span class="n">_video_args</span><span class="p">(</span><span class="n">crf</span><span class="o">=</span><span class="n">crf</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">),</span>
+</span><span id="line-909">            <span class="s2">"-shortest"</span><span class="p">,</span>
+</span><span id="line-910">            <span class="nb">str</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
+</span><span id="line-911">        <span class="p">]</span>
+</span><span id="line-912">    <span class="p">)</span>
+</span><span id="line-913">
+</span><span id="line-914">    <span class="n">checks</span> <span class="o">=</span> <span class="n">verify_video</span><span class="p">(</span>
+</span><span id="line-915">        <span class="n">output</span><span class="p">,</span> <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">,</span> <span class="n">expected_canvas</span><span class="o">=</span><span class="p">(</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+</span><span id="line-916">    <span class="p">)</span>
+</span><span id="line-917">    <span class="n">meta</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="line-918">        <span class="s2">"renderer"</span><span class="p">:</span> <span class="n">RENDERER_NAME</span><span class="p">,</span>
+</span><span id="line-919">        <span class="s2">"font"</span><span class="p">:</span> <span class="n">family</span><span class="p">,</span>
+</span><span id="line-920">        <span class="s2">"n_cues"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">cues</span><span class="p">),</span>
+</span><span id="line-921">        <span class="s2">"n_events"</span><span class="p">:</span> <span class="nb">sum</span><span class="p">(</span><span class="n">l</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">"Dialogue:"</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">document</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()),</span>
+</span><span id="line-922">        <span class="s2">"canvas"</span><span class="p">:</span> <span class="p">[</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="p">],</span>
+</span><span id="line-923">        <span class="s2">"fps"</span><span class="p">:</span> <span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-924">        <span class="s2">"crf"</span><span class="p">:</span> <span class="n">crf</span><span class="p">,</span>
+</span><span id="line-925">        <span class="s2">"verify_failures"</span><span class="p">:</span> <span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">c</span><span class="o">.</span><span class="n">detail</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">checks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="p">],</span>
+</span><span id="line-926">    <span class="p">}</span>
+</span><span id="line-927">    <span class="k">if</span> <span class="n">substituted</span><span class="p">:</span>
+</span><span id="line-928">        <span class="c1"># Reported rather than raised: the type is a preference, the video is the</span>
+</span><span id="line-929">        <span class="c1"># deliverable — but a caller comparing two treatments has to be able to</span>
+</span><span id="line-930">        <span class="c1"># see that it is comparing two fallbacks.</span>
+</span><span id="line-931">        <span class="n">meta</span><span class="p">[</span><span class="s2">"font_requested"</span><span class="p">]</span> <span class="o">=</span> <span class="n">substituted</span>
+</span><span id="line-932">    <span class="k">return</span> <span class="n">RenderResult</span><span class="p">(</span>
+</span><span id="line-933">        <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+</span><span id="line-934">        <span class="n">duration_s</span><span class="o">=</span><span class="n">media_duration</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
+</span><span id="line-935">        <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="s2">"ass"</span><span class="p">:</span> <span class="n">ass_path</span><span class="p">},</span>
+</span><span id="line-936">        <span class="n">meta</span><span class="o">=</span><span class="n">meta</span><span class="p">,</span>
+</span><span id="line-937">    <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -1138,7 +1148,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=d3955499"></script>
+    <script src="../../../_static/documentation_options.js?v=32526382"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>

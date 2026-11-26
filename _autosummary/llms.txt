@@ -6,6 +6,7 @@
 ## Pages in this subsection
 
 - [muvid](muvid.html.md): muvid — tools to make music videos.
+- [muvid.aac](muvid.aac.html.md): The AAC encoder’s priming, compensated (muvid#379, muvid#385).
 - [muvid.align](muvid.align.html.md): Lyric → audio alignment.
 - [muvid.characters](muvid.characters.html.md): Character cards + reference image curation via lookbook.
 - [muvid.choreo](muvid.choreo.html.md): Choreo — event-driven visual music, muvid’s second subgenre plugin.

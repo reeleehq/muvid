@@ -246,8 +246,9 @@ tags. Returns the path to the lyrics markdown.
 
 ### Modules
 
-| [`align`](muvid.align.html.md#module-muvid.align)               | Lyric → audio alignment.                                                             |
+| [`aac`](muvid.aac.html.md#module-muvid.aac)                   | The AAC encoder's priming, compensated (muvid#379, muvid#385).                       |
 |-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [`align`](muvid.align.html.md#module-muvid.align)               | Lyric → audio alignment.                                                             |
 | [`characters`](muvid.characters.html.md#module-muvid.characters)     | Character cards + reference image curation via lookbook.                             |
 | [`choreo`](muvid.choreo.html.md#module-muvid.choreo)             | Choreo — event-driven visual music, muvid's second subgenre plugin.                  |
 | [`compose`](muvid.compose.html.md#module-muvid.compose)           | Compose all rendered shots into the final music video.                               |

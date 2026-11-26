@@ -1,0 +1,19 @@
+muvid.aac
+=========
+
+.. automodule:: muvid.aac
+
+   
+   .. rubric:: Module Attributes
+
+   .. autosummary::
+   
+      AAC_SAMPLE_RATE
+      AAC_PRIMING_SAMPLES
+   
+   .. rubric:: Functions
+
+   .. autosummary::
+   
+      aac_priming_filter
+   

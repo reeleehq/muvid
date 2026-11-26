@@ -10,6 +10,7 @@
    :toctree:
    :recursive:
 
+   aac
    align
    catalog
    characters

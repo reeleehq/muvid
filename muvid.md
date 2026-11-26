@@ -1,4 +1,4 @@
-> built 2026-11-26 14:56 UTC from 6c5cd71 (main) · muvid 0.0.199. Details: build_info.json
+> built 2026-11-26 15:21 UTC from 9945c3c (main) · muvid 0.0.200. Details: build_info.json
 
 # index.html.md
 
@@ -511,6 +511,58 @@ misc/docs/improvement_ideas.md  v0 audit + post-audit follow-through
 ```
 
 <p class="epythet-aggregates">This documentation as a single file: <a href="muvid.md">muvid.md</a> (Markdown, for agents).</p>
+
+
+# _autosummary/muvid.aac.html.md
+
+# muvid.aac
+
+The AAC encoder’s priming, compensated (muvid#379, muvid#385).
+
+Stdlib-only and import-free on purpose: the footage sound module, the visualizer
+and the lyric renderers all need it, and none should load another’s package to get
+it. `muvid.visualize.ffmpeg` and `muvid.footage.sound` re-export it.
+
+### Module Attributes
+
+| [`AAC_SAMPLE_RATE`](_autosummary/muvid.aac.html.md#muvid.aac.AAC_SAMPLE_RATE)     | The rate every muvid AAC delivery is encoded at (and so primes at).   |
+|----------------------------------------------------------------------|-----------------------------------------------------------------------|
+| [`AAC_PRIMING_SAMPLES`](_autosummary/muvid.aac.html.md#muvid.aac.AAC_PRIMING_SAMPLES) | Samples the AAC encoder prepends ("priming").                         |
+
+### Functions
+
+| [`aac_priming_filter`](_autosummary/muvid.aac.html.md#muvid.aac.aac_priming_filter)(\*[, priming_samples, ...])   | The `-af` links that put an AAC encode's sound back on its picture (muvid#379).   |
+|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+
+### muvid.aac.AAC_PRIMING_SAMPLES *= 1024*
+
+Samples the AAC encoder prepends (“priming”). Without an edit list (muvid’s delivery
+contract writes none) a player plays them, so the sound would land 21.3 ms late at
+48 kHz; [`aac_priming_filter()`](_autosummary/muvid.aac.html.md#muvid.aac.aac_priming_filter) trims them off the input to compensate.
+
+### muvid.aac.AAC_SAMPLE_RATE *= 48000*
+
+The rate every muvid AAC delivery is encoded at (and so primes at).
+
+### muvid.aac.aac_priming_filter(, priming_samples=1024, sample_rate=48000)
+
+The `-af` links that put an AAC encode’s sound back on its picture (muvid#379).
+
+The encoder prepends `priming_samples` of priming, and a file with no edit list
+(the delivery contract) plays them, so every AAC pass lands the sound 21.3 ms
+late at 48 kHz; measured with a click at 1.000 s, decoded at 1.021 s after one
+pass and 1.043 s after two. Trimming as many samples off the INPUT cancels it,
+and padding them back at the tail keeps the length. `aresample` comes first so
+`start_sample` counts samples at the rate the encoder primes at, whatever rate
+the input has. Append it LAST to a chain whose timeline is the delivered one (a
+fade’s `st` is read before the trim). Every muvid AAC encode under
+`-use_editlist 0` goes through it: the footage assembler and
+[`muvid.footage.sound.mux_audio()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mux_audio) (muvid#379), the visualizer and the
+subgenres that share its encode (montage, choreo), and both lyric-video
+renderers (muvid#385). `tests/test_aac_priming.py` checks every one.
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 
 # _autosummary/muvid.align.html.md
@@ -10564,13 +10616,11 @@ Research behind the numbers: `misc/docs/research/general/promo_video_editing_and
 | [`DIALOGUE_ACTIVE_DBFS`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DIALOGUE_ACTIVE_DBFS)  | Inside the dialogue stem (only the cuts meant to be heard), a frame louder than this (dBFS) is speech for the ducker: the whole of a soundbite, its pauses included, holds the music down.             |
 | [`SPEECH_PERCENTILE`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.SPEECH_PERCENTILE)     | this percentile of its active frames' RMS (dB), high enough that the pauses between words do not drag it down.                                                                                         |
 | [`PEAK_DBFS`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.PEAK_DBFS)             | headroom for the AAC encode, the research's -1 dBTP delivery rule approximated on samples.                                                                                                             |
-| [`AAC_PRIMING_SAMPLES`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.AAC_PRIMING_SAMPLES)   | Samples the AAC encoder prepends ("priming").                                                                                                                                                          |
 
 ### Functions
 
-| [`aac_priming_filter`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.aac_priming_filter)(\*[, priming_samples, ...])   | The `-af` links that put an AAC encode's sound back on its picture (muvid#379).                                                                                                                                             |
-|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`clip_sound_track`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.clip_sound_track)(cuts, out_path, \*[, ...])      | Write the production-sound stem of `cuts` (`AssemblyCut`-like: `song_start`, `song_end`, `clip_id`, `clip_in`, `clip_path`, `rate`, `sound_db`) to `out_path` (wav).                                                        |
+|---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`is_dialogue`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.is_dialogue)(cut, level)                          | A cut whose sound is meant to be heard (at or over [`DIALOGUE_MIN_DB`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.DIALOGUE_MIN_DB)).                                                                                                       |
 | `is_nat`(cut, level)                                                                              |                                                                                                                                                                                                                             |
 | [`mix_params`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mix_params)(\*[, default_db])                     | What a `song_and_clips` render records about its mix, so a later change of these defaults is visible against an old render (and a re-render can reproduce it).                                                              |
@@ -10580,12 +10630,6 @@ Research behind the numbers: `misc/docs/research/general/promo_video_editing_and
 | [`silent_unless_set`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.silent_unless_set)(cuts, mute, \*[, level])       | `cuts` with every cut of a `mute` clip that names no `sound_db` set to `level` — the clips whose own audio is a recording of the song (a music video's synced footage), which under the master would double it.             |
 | [`song_stem`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.song_stem)(song_path, out_path, \*, start_s, ...) | The music stem: `duration_s` of the song from `start_s` (wav), faded out over its last `fade_out_s` seconds — the same window and fade the render applies.                                                                  |
 | [`write_wav`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.write_wav)(path, samples, rate)                   | Write float samples (`(n, channels)` or `(n,)`, clipped to [-1, 1]) as 16-bit PCM wav.                                                                                                                                      |
-
-### muvid.footage.sound.AAC_PRIMING_SAMPLES *= 1024*
-
-Samples the AAC encoder prepends (“priming”). Without an edit list (muvid’s delivery
-contract writes none) a player plays them, so the sound would land 21.3 ms late at
-48 kHz; [`aac_priming_filter()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.aac_priming_filter) trims them off the input to compensate.
 
 ### muvid.footage.sound.DEFAULT_CLIP_SOUND_DB *= 0.0*
 
@@ -10646,24 +10690,6 @@ enough that the pauses between words do not drag it down.
 Dialogue is raised (never lowered) toward this speech level (dBFS, median RMS of its
 active frames) — a phone held across a room records a voice at -35..-30 dBFS — by at
 most `MAX_DIALOGUE_GAIN_DB`.
-
-### muvid.footage.sound.aac_priming_filter(, priming_samples=1024, sample_rate=48000)
-
-The `-af` links that put an AAC encode’s sound back on its picture (muvid#379).
-
-The encoder prepends `priming_samples` of priming, and a file with no edit list
-(the delivery contract) plays them, so every AAC pass lands the sound 21.3 ms
-late at 48 kHz; measured with a click at 1.000 s, decoded at 1.021 s after one
-pass and 1.043 s after two. Trimming as many samples off the INPUT cancels it,
-and padding them back at the tail keeps the length. `aresample` comes first so
-`start_sample` counts samples at the rate the encoder primes at, whatever rate
-the input has. Append it LAST to a chain whose timeline is the delivered one (a
-fade’s `st` is read before the trim). Every FOOTAGE AAC encode goes through
-it: [`mux_audio()`](_autosummary/muvid.footage.sound.html.md#muvid.footage.sound.mux_audio) and `muvid.footage.assemble._audio_args()`. The
-visualizer and the lyric-video renderers do not yet (muvid#385).
-
-* **Return type:**
-  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.sound.clip_sound_track(cuts, out_path, , edge_fade_s=0.04, default_db=0.0, sample_rate=48000, keep=None)
 
@@ -11904,8 +11930,9 @@ tags. Returns the path to the lyrics markdown.
 
 ### Modules
 
-| [`align`](_autosummary/muvid.align.html.md#module-muvid.align)               | Lyric → audio alignment.                                                             |
+| [`aac`](_autosummary/muvid.aac.html.md#module-muvid.aac)                   | The AAC encoder's priming, compensated (muvid#379, muvid#385).                       |
 |-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| [`align`](_autosummary/muvid.align.html.md#module-muvid.align)               | Lyric → audio alignment.                                                             |
 | [`characters`](_autosummary/muvid.characters.html.md#module-muvid.characters)     | Character cards + reference image curation via lookbook.                             |
 | [`choreo`](_autosummary/muvid.choreo.html.md#module-muvid.choreo)             | Choreo — event-driven visual music, muvid's second subgenre plugin.                  |
 | [`compose`](_autosummary/muvid.compose.html.md#module-muvid.compose)           | Compose all rendered shots into the final music video.                               |
@@ -21685,7 +21712,7 @@ Rendered white; colour comes from the accent `tint`. `options={"mode":
 
 # About this build
 
-This documentation was built on **2026-11-26 14:56 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/6c5cd7166989f779e80f574e3d4ddd04048148a5"><code>6c5cd71</code></a> on branch <code>main</code>, for **muvid 0.0.199** (from <code>pyproject.toml</code>).
+This documentation was built on **2026-11-26 15:21 UTC** from commit <a href="https://github.com/reeleehq/muvid/commit/9945c3ce613fdda7339d50afab4dd0a023434028"><code>9945c3c</code></a> on branch <code>main</code>, for **muvid 0.0.200** (from <code>pyproject.toml</code>).
 
 #### NOTE
 Nothing suggests a mismatch: the tree was clean at the commit above, and the documented version is the one on PyPI.
@@ -21694,9 +21721,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 |                     |                                                                                                                                                       |
 |---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Commit              | <a href="https://github.com/reeleehq/muvid/commit/6c5cd7166989f779e80f574e3d4ddd04048148a5"><code>6c5cd7166989f779e80f574e3d4ddd04048148a5</code></a> |
+| Commit              | <a href="https://github.com/reeleehq/muvid/commit/9945c3ce613fdda7339d50afab4dd0a023434028"><code>9945c3ce613fdda7339d50afab4dd0a023434028</code></a> |
 | Branch              | <code>main</code>                                                                                                                                     |
-| Tags at this commit | <code>0.0.199</code>                                                                                                                                  |
+| Tags at this commit | <code>0.0.200</code>                                                                                                                                  |
 | Working tree        | clean                                                                                                                                                 |
 | Remote              | <code>https://github.com/reeleehq/muvid</code>                                                                                                        |
 
@@ -21705,9 +21732,9 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 |              |                                                                                            |
 |--------------|--------------------------------------------------------------------------------------------|
 | Repository   | <code>reeleehq/muvid</code>                                                                |
-| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45841947512">45841947512</a>       |
+| Run          | <a href="https://github.com/reeleehq/muvid/actions/runs/45846686199">45846686199</a>       |
 | Ref          | <code>refs/heads/main</code>                                                               |
-| Event commit | <code>a0c758349bca7f4ce6224268e59e1f0ecb5f7a7f</code> (in the history of the built commit) |
+| Event commit | <code>e3ff4d94f5f28f2518bd3f6a2272b709a9abbd67</code> (in the history of the built commit) |
 
 ## Tools
 
@@ -21732,13 +21759,13 @@ Nothing suggests a mismatch: the tree was clean at the commit above, and the doc
 
 ## Package on PyPI
 
-Latest release: <a href="https://pypi.org/project/muvid/0.0.199/">0.0.199</a>, the same as the documented version.
+Latest release: <a href="https://pypi.org/project/muvid/0.0.200/">0.0.200</a>, the same as the documented version.
 
 ## Reproduce
 
 ```bash
 git clone https://github.com/reeleehq/muvid && cd muvid
-git checkout 6c5cd7166989f779e80f574e3d4ddd04048148a5
+git checkout 9945c3ce613fdda7339d50afab4dd0a023434028
 pip install "epythet==0.2.25"
 epythet quickstart . --ignore tests/ scrap/ examples/
 ```

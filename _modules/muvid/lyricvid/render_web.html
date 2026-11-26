@@ -114,6 +114,7 @@
   <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../api.html">API reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../../_autosummary/muvid.html">muvid</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.aac.html">muvid.aac</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.align.html">muvid.align</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.characters.html">muvid.characters</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../_autosummary/muvid.choreo.html">muvid.choreo</a></li>
@@ -234,7 +235,7 @@
 </span><span id="line-47">
 </span><span id="line-48"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.lyricvid.scene</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cue</span><span class="p">,</span> <span class="n">Scene</span>
 </span><span id="line-49"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.subgenres</span><span class="w"> </span><span class="kn">import</span> <span class="n">RenderResult</span>
-</span><span id="line-50"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">media_duration</span><span class="p">,</span> <span class="n">run_ffmpeg</span>
+</span><span id="line-50"><span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.ffmpeg</span><span class="w"> </span><span class="kn">import</span> <span class="n">aac_priming_filter</span><span class="p">,</span> <span class="n">media_duration</span><span class="p">,</span> <span class="n">run_ffmpeg</span>
 </span><span id="line-51">
 </span><span id="line-52"><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"scene_to_html"</span><span class="p">,</span> <span class="s2">"render"</span><span class="p">,</span> <span class="s2">"WebRenderUnavailable"</span><span class="p">,</span> <span class="s2">"INSTALL_HINT"</span><span class="p">]</span>
 </span><span id="line-53">
@@ -798,117 +799,121 @@
 </span><span id="line-605">            <span class="s2">"1:a:0"</span><span class="p">,</span>
 </span><span id="line-606">            <span class="s2">"-t"</span><span class="p">,</span>
 </span><span id="line-607">            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="p">)</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
-</span><span id="line-608">            <span class="o">*</span><span class="n">VIDEO_CODEC_ARGS</span><span class="p">,</span>
-</span><span id="line-609">            <span class="s2">"-crf"</span><span class="p">,</span>
-</span><span id="line-610">            <span class="nb">str</span><span class="p">(</span><span class="n">crf</span><span class="p">),</span>
-</span><span id="line-611">            <span class="s2">"-g"</span><span class="p">,</span>
-</span><span id="line-612">            <span class="nb">str</span><span class="p">(</span><span class="n">fps</span> <span class="o">*</span> <span class="mi">2</span><span class="p">),</span>
-</span><span id="line-613">            <span class="o">*</span><span class="n">AUDIO_CODEC_ARGS</span><span class="p">,</span>
-</span><span id="line-614">            <span class="c1"># +faststart for streaming; +negative_cts_offsets WITH -use_editlist 0</span>
-</span><span id="line-615">            <span class="c1"># is the pair render_ass uses and the one that matters here: with</span>
-</span><span id="line-616">            <span class="c1"># B-frames (x264's default reorder delay of two frames) and no edit</span>
-</span><span id="line-617">            <span class="c1"># list, the muxer otherwise shifts every video pts UP by the delay,</span>
-</span><span id="line-618">            <span class="c1"># so the video started 2 frames late and the audio was front-padded</span>
-</span><span id="line-619">            <span class="c1"># to match — the container came out exactly 2 frames longer than</span>
-</span><span id="line-620">            <span class="c1"># the song at every fps (0.2 s at 10, 0.067 s at 30). Negative CTS</span>
-</span><span id="line-621">            <span class="c1"># offsets let the first frame present at 0 without an elst box.</span>
-</span><span id="line-622">            <span class="s2">"-movflags"</span><span class="p">,</span>
-</span><span id="line-623">            <span class="s2">"+faststart+negative_cts_offsets"</span><span class="p">,</span>
-</span><span id="line-624">            <span class="c1"># -use_editlist 0: keep ffmpeg from writing the elst boxes some</span>
-</span><span id="line-625">            <span class="c1"># platforms (YouTube) trip on.</span>
-</span><span id="line-626">            <span class="s2">"-use_editlist"</span><span class="p">,</span>
-</span><span id="line-627">            <span class="s2">"0"</span><span class="p">,</span>
-</span><span id="line-628">            <span class="s2">"-shortest"</span><span class="p">,</span>
-</span><span id="line-629">            <span class="nb">str</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
-</span><span id="line-630">        <span class="p">]</span>
-</span><span id="line-631">    <span class="p">)</span>
-</span><span id="line-632">
-</span><span id="line-633">
+</span><span id="line-608">            <span class="c1"># the AAC encoder's priming, trimmed: with no edit list a player plays</span>
+</span><span id="line-609">            <span class="c1"># it, and every word showed 21 ms before it was sung (muvid#385)</span>
+</span><span id="line-610">            <span class="s2">"-af"</span><span class="p">,</span>
+</span><span id="line-611">            <span class="n">aac_priming_filter</span><span class="p">(),</span>
+</span><span id="line-612">            <span class="o">*</span><span class="n">VIDEO_CODEC_ARGS</span><span class="p">,</span>
+</span><span id="line-613">            <span class="s2">"-crf"</span><span class="p">,</span>
+</span><span id="line-614">            <span class="nb">str</span><span class="p">(</span><span class="n">crf</span><span class="p">),</span>
+</span><span id="line-615">            <span class="s2">"-g"</span><span class="p">,</span>
+</span><span id="line-616">            <span class="nb">str</span><span class="p">(</span><span class="n">fps</span> <span class="o">*</span> <span class="mi">2</span><span class="p">),</span>
+</span><span id="line-617">            <span class="o">*</span><span class="n">AUDIO_CODEC_ARGS</span><span class="p">,</span>
+</span><span id="line-618">            <span class="c1"># +faststart for streaming; +negative_cts_offsets WITH -use_editlist 0</span>
+</span><span id="line-619">            <span class="c1"># is the pair render_ass uses and the one that matters here: with</span>
+</span><span id="line-620">            <span class="c1"># B-frames (x264's default reorder delay of two frames) and no edit</span>
+</span><span id="line-621">            <span class="c1"># list, the muxer otherwise shifts every video pts UP by the delay,</span>
+</span><span id="line-622">            <span class="c1"># so the video started 2 frames late and the audio was front-padded</span>
+</span><span id="line-623">            <span class="c1"># to match — the container came out exactly 2 frames longer than</span>
+</span><span id="line-624">            <span class="c1"># the song at every fps (0.2 s at 10, 0.067 s at 30). Negative CTS</span>
+</span><span id="line-625">            <span class="c1"># offsets let the first frame present at 0 without an elst box.</span>
+</span><span id="line-626">            <span class="s2">"-movflags"</span><span class="p">,</span>
+</span><span id="line-627">            <span class="s2">"+faststart+negative_cts_offsets"</span><span class="p">,</span>
+</span><span id="line-628">            <span class="c1"># -use_editlist 0: keep ffmpeg from writing the elst boxes some</span>
+</span><span id="line-629">            <span class="c1"># platforms (YouTube) trip on.</span>
+</span><span id="line-630">            <span class="s2">"-use_editlist"</span><span class="p">,</span>
+</span><span id="line-631">            <span class="s2">"0"</span><span class="p">,</span>
+</span><span id="line-632">            <span class="s2">"-shortest"</span><span class="p">,</span>
+</span><span id="line-633">            <span class="nb">str</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
+</span><span id="line-634">        <span class="p">]</span>
+</span><span id="line-635">    <span class="p">)</span>
+</span><span id="line-636">
+</span><span id="line-637">
 <div class="viewcode-block" id="render">
 <a class="viewcode-back" href="../../../_autosummary/muvid.lyricvid.render_web.html#muvid.lyricvid.render_web.render">[docs]</a>
-</span><span id="line-634"><span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span>
-</span><span id="line-635">    <span class="n">scene</span><span class="p">:</span> <span class="n">Scene</span><span class="p">,</span>
-</span><span id="line-636">    <span class="o">*</span><span class="p">,</span>
-</span><span id="line-637">    <span class="n">audio</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-</span><span id="line-638">    <span class="n">output</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-</span><span id="line-639">    <span class="n">workdir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-</span><span id="line-640">    <span class="n">crf</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">18</span><span class="p">,</span>
-</span><span id="line-641">    <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
-</span><span id="line-642"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RenderResult</span><span class="p">:</span>
-</span><span id="line-643"><span class="w">    </span><span class="sd">"""Capture the scene's page with Playwright and mux the song.</span>
-</span><span id="line-644">
-</span><span id="line-645"><span class="sd">    Args:</span>
-</span><span id="line-646"><span class="sd">        scene: the compiled scene. Its canvas fixes the size and frame rate.</span>
-</span><span id="line-647"><span class="sd">        audio: the song. Its stream is copied in unmodified.</span>
-</span><span id="line-648"><span class="sd">        output: where the mp4 goes.</span>
-</span><span id="line-649"><span class="sd">        workdir: scratch space owned by this render. The page is left behind as</span>
-</span><span id="line-650"><span class="sd">            an artifact; the frames are deleted.</span>
-</span><span id="line-651"><span class="sd">        crf: libx264 quality (lower is better; 18 is visually lossless-ish).</span>
-</span><span id="line-652"><span class="sd">        scale: device pixel ratio for the capture. The viewport is</span>
-</span><span id="line-653"><span class="sd">            ``canvas / scale`` CSS pixels and the screenshot comes back at the</span>
-</span><span id="line-654"><span class="sd">            canvas size either way, so the output resolution and the (all-``vh``)</span>
-</span><span id="line-655"><span class="sd">            layout are unchanged — what moves is the CSS pixel grid the browser</span>
-</span><span id="line-656"><span class="sd">            lays out and rasterises on. Leave it at ``1`` unless a font is</span>
-</span><span id="line-657"><span class="sd">            rasterising badly at the canvas's own grid.</span>
-</span><span id="line-658">
-</span><span id="line-659"><span class="sd">    Returns:</span>
-</span><span id="line-660"><span class="sd">        A :class:`~muvid.subgenres.RenderResult` whose ``artifacts['page']`` is</span>
-</span><span id="line-661"><span class="sd">        the HTML that produced it — open it in a browser and call ``setTime``.</span>
+</span><span id="line-638"><span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span>
+</span><span id="line-639">    <span class="n">scene</span><span class="p">:</span> <span class="n">Scene</span><span class="p">,</span>
+</span><span id="line-640">    <span class="o">*</span><span class="p">,</span>
+</span><span id="line-641">    <span class="n">audio</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+</span><span id="line-642">    <span class="n">output</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+</span><span id="line-643">    <span class="n">workdir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+</span><span id="line-644">    <span class="n">crf</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">18</span><span class="p">,</span>
+</span><span id="line-645">    <span class="n">scale</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+</span><span id="line-646"><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RenderResult</span><span class="p">:</span>
+</span><span id="line-647"><span class="w">    </span><span class="sd">"""Capture the scene's page with Playwright and mux the song.</span>
+</span><span id="line-648">
+</span><span id="line-649"><span class="sd">    Args:</span>
+</span><span id="line-650"><span class="sd">        scene: the compiled scene. Its canvas fixes the size and frame rate.</span>
+</span><span id="line-651"><span class="sd">        audio: the song. Its stream is copied in unmodified.</span>
+</span><span id="line-652"><span class="sd">        output: where the mp4 goes.</span>
+</span><span id="line-653"><span class="sd">        workdir: scratch space owned by this render. The page is left behind as</span>
+</span><span id="line-654"><span class="sd">            an artifact; the frames are deleted.</span>
+</span><span id="line-655"><span class="sd">        crf: libx264 quality (lower is better; 18 is visually lossless-ish).</span>
+</span><span id="line-656"><span class="sd">        scale: device pixel ratio for the capture. The viewport is</span>
+</span><span id="line-657"><span class="sd">            ``canvas / scale`` CSS pixels and the screenshot comes back at the</span>
+</span><span id="line-658"><span class="sd">            canvas size either way, so the output resolution and the (all-``vh``)</span>
+</span><span id="line-659"><span class="sd">            layout are unchanged — what moves is the CSS pixel grid the browser</span>
+</span><span id="line-660"><span class="sd">            lays out and rasterises on. Leave it at ``1`` unless a font is</span>
+</span><span id="line-661"><span class="sd">            rasterising badly at the canvas's own grid.</span>
 </span><span id="line-662">
-</span><span id="line-663"><span class="sd">    Raises:</span>
-</span><span id="line-664"><span class="sd">        WebRenderUnavailable: Playwright or its Chromium build is missing.</span>
-</span><span id="line-665"><span class="sd">        FileNotFoundError: ``audio`` does not exist.</span>
-</span><span id="line-666"><span class="sd">        ValueError: the canvas cannot be captured or encoded as asked.</span>
-</span><span id="line-667"><span class="sd">    """</span>
-</span><span id="line-668">    <span class="n">audio</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">output</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
-</span><span id="line-669">    <span class="n">_check_geometry</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">)</span>
-</span><span id="line-670">    <span class="k">if</span> <span class="ow">not</span> <span class="n">audio</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-</span><span id="line-671">        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"audio not found: </span><span class="si">{</span><span class="n">audio</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-</span><span id="line-672">
-</span><span id="line-673">    <span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-674">    <span class="n">page</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="n">PAGE_NAME</span>
-</span><span id="line-675">    <span class="n">page</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">scene_to_html</span><span class="p">(</span><span class="n">scene</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><span id="line-663"><span class="sd">    Returns:</span>
+</span><span id="line-664"><span class="sd">        A :class:`~muvid.subgenres.RenderResult` whose ``artifacts['page']`` is</span>
+</span><span id="line-665"><span class="sd">        the HTML that produced it — open it in a browser and call ``setTime``.</span>
+</span><span id="line-666">
+</span><span id="line-667"><span class="sd">    Raises:</span>
+</span><span id="line-668"><span class="sd">        WebRenderUnavailable: Playwright or its Chromium build is missing.</span>
+</span><span id="line-669"><span class="sd">        FileNotFoundError: ``audio`` does not exist.</span>
+</span><span id="line-670"><span class="sd">        ValueError: the canvas cannot be captured or encoded as asked.</span>
+</span><span id="line-671"><span class="sd">    """</span>
+</span><span id="line-672">    <span class="n">audio</span><span class="p">,</span> <span class="n">output</span><span class="p">,</span> <span class="n">workdir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">audio</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">output</span><span class="p">),</span> <span class="n">Path</span><span class="p">(</span><span class="n">workdir</span><span class="p">)</span>
+</span><span id="line-673">    <span class="n">_check_geometry</span><span class="p">(</span><span class="n">scene</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">)</span>
+</span><span id="line-674">    <span class="k">if</span> <span class="ow">not</span> <span class="n">audio</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+</span><span id="line-675">        <span class="k">raise</span> <span class="ne">FileNotFoundError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"audio not found: </span><span class="si">{</span><span class="n">audio</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 </span><span id="line-676">
-</span><span id="line-677">    <span class="n">frames</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="n">FRAMES_DIRNAME</span>
-</span><span id="line-678">    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-679">    <span class="n">frames</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-680">    <span class="k">try</span><span class="p">:</span>
-</span><span id="line-681">        <span class="n">n_frames</span> <span class="o">=</span> <span class="n">_capture</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">frames</span><span class="p">,</span> <span class="n">scene</span><span class="o">=</span><span class="n">scene</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">)</span>
-</span><span id="line-682">        <span class="n">_encode</span><span class="p">(</span>
-</span><span id="line-683">            <span class="n">frames</span><span class="p">,</span>
-</span><span id="line-684">            <span class="n">audio</span><span class="p">,</span>
-</span><span id="line-685">            <span class="n">output</span><span class="p">,</span>
-</span><span id="line-686">            <span class="n">fps</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-687">            <span class="n">crf</span><span class="o">=</span><span class="n">crf</span><span class="p">,</span>
-</span><span id="line-688">            <span class="n">duration</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">duration</span><span class="p">,</span>
-</span><span id="line-689">        <span class="p">)</span>
-</span><span id="line-690">    <span class="k">finally</span><span class="p">:</span>
-</span><span id="line-691">        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-</span><span id="line-692">
-</span><span id="line-693">    <span class="c1"># Self-check the way render_ass does, and REPORT rather than raise: the file</span>
-</span><span id="line-694">    <span class="c1"># exists and plays; a failed check is something the caller should see in</span>
-</span><span id="line-695">    <span class="c1"># meta, not a reason to throw away a render.</span>
-</span><span id="line-696">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.verify</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify_video</span>
-</span><span id="line-697">
-</span><span id="line-698">    <span class="n">checks</span> <span class="o">=</span> <span class="n">verify_video</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">)</span>
-</span><span id="line-699">    <span class="n">verify_failures</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">checks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="o">.</span><span class="n">ok</span><span class="p">]</span>
-</span><span id="line-700">
-</span><span id="line-701">    <span class="k">return</span> <span class="n">RenderResult</span><span class="p">(</span>
-</span><span id="line-702">        <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
-</span><span id="line-703">        <span class="n">duration_s</span><span class="o">=</span><span class="n">media_duration</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
-</span><span id="line-704">        <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="s2">"page"</span><span class="p">:</span> <span class="n">page</span><span class="p">},</span>
-</span><span id="line-705">        <span class="n">meta</span><span class="o">=</span><span class="p">{</span>
-</span><span id="line-706">            <span class="s2">"backend"</span><span class="p">:</span> <span class="s2">"web"</span><span class="p">,</span>
-</span><span id="line-707">            <span class="s2">"verify_failures"</span><span class="p">:</span> <span class="n">verify_failures</span><span class="p">,</span>
-</span><span id="line-708">            <span class="s2">"frames"</span><span class="p">:</span> <span class="n">n_frames</span><span class="p">,</span>
-</span><span id="line-709">            <span class="s2">"fps"</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span>
-</span><span id="line-710">            <span class="s2">"width"</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
-</span><span id="line-711">            <span class="s2">"height"</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
-</span><span id="line-712">            <span class="s2">"scale"</span><span class="p">:</span> <span class="n">scale</span><span class="p">,</span>
-</span><span id="line-713">            <span class="s2">"crf"</span><span class="p">:</span> <span class="n">crf</span><span class="p">,</span>
-</span><span id="line-714">            <span class="s2">"n_cues"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">cues</span><span class="p">),</span>
-</span><span id="line-715">        <span class="p">},</span>
-</span><span id="line-716">    <span class="p">)</span></div>
+</span><span id="line-677">    <span class="n">workdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-678">    <span class="n">page</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="n">PAGE_NAME</span>
+</span><span id="line-679">    <span class="n">page</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">scene_to_html</span><span class="p">(</span><span class="n">scene</span><span class="p">),</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span>
+</span><span id="line-680">
+</span><span id="line-681">    <span class="n">frames</span> <span class="o">=</span> <span class="n">workdir</span> <span class="o">/</span> <span class="n">FRAMES_DIRNAME</span>
+</span><span id="line-682">    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-683">    <span class="n">frames</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-684">    <span class="k">try</span><span class="p">:</span>
+</span><span id="line-685">        <span class="n">n_frames</span> <span class="o">=</span> <span class="n">_capture</span><span class="p">(</span><span class="n">page</span><span class="p">,</span> <span class="n">frames</span><span class="p">,</span> <span class="n">scene</span><span class="o">=</span><span class="n">scene</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">scale</span><span class="p">)</span>
+</span><span id="line-686">        <span class="n">_encode</span><span class="p">(</span>
+</span><span id="line-687">            <span class="n">frames</span><span class="p">,</span>
+</span><span id="line-688">            <span class="n">audio</span><span class="p">,</span>
+</span><span id="line-689">            <span class="n">output</span><span class="p">,</span>
+</span><span id="line-690">            <span class="n">fps</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-691">            <span class="n">crf</span><span class="o">=</span><span class="n">crf</span><span class="p">,</span>
+</span><span id="line-692">            <span class="n">duration</span><span class="o">=</span><span class="n">scene</span><span class="o">.</span><span class="n">duration</span><span class="p">,</span>
+</span><span id="line-693">        <span class="p">)</span>
+</span><span id="line-694">    <span class="k">finally</span><span class="p">:</span>
+</span><span id="line-695">        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">ignore_errors</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="line-696">
+</span><span id="line-697">    <span class="c1"># Self-check the way render_ass does, and REPORT rather than raise: the file</span>
+</span><span id="line-698">    <span class="c1"># exists and plays; a failed check is something the caller should see in</span>
+</span><span id="line-699">    <span class="c1"># meta, not a reason to throw away a render.</span>
+</span><span id="line-700">    <span class="kn">from</span><span class="w"> </span><span class="nn">muvid.visualize.verify</span><span class="w"> </span><span class="kn">import</span> <span class="n">verify_video</span>
+</span><span id="line-701">
+</span><span id="line-702">    <span class="n">checks</span> <span class="o">=</span> <span class="n">verify_video</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">audio</span><span class="o">=</span><span class="n">audio</span><span class="p">)</span>
+</span><span id="line-703">    <span class="n">verify_failures</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">checks</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">c</span><span class="o">.</span><span class="n">ok</span><span class="p">]</span>
+</span><span id="line-704">
+</span><span id="line-705">    <span class="k">return</span> <span class="n">RenderResult</span><span class="p">(</span>
+</span><span id="line-706">        <span class="n">output</span><span class="o">=</span><span class="n">output</span><span class="p">,</span>
+</span><span id="line-707">        <span class="n">duration_s</span><span class="o">=</span><span class="n">media_duration</span><span class="p">(</span><span class="n">output</span><span class="p">),</span>
+</span><span id="line-708">        <span class="n">artifacts</span><span class="o">=</span><span class="p">{</span><span class="s2">"page"</span><span class="p">:</span> <span class="n">page</span><span class="p">},</span>
+</span><span id="line-709">        <span class="n">meta</span><span class="o">=</span><span class="p">{</span>
+</span><span id="line-710">            <span class="s2">"backend"</span><span class="p">:</span> <span class="s2">"web"</span><span class="p">,</span>
+</span><span id="line-711">            <span class="s2">"verify_failures"</span><span class="p">:</span> <span class="n">verify_failures</span><span class="p">,</span>
+</span><span id="line-712">            <span class="s2">"frames"</span><span class="p">:</span> <span class="n">n_frames</span><span class="p">,</span>
+</span><span id="line-713">            <span class="s2">"fps"</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span>
+</span><span id="line-714">            <span class="s2">"width"</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">width</span><span class="p">,</span>
+</span><span id="line-715">            <span class="s2">"height"</span><span class="p">:</span> <span class="n">scene</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">height</span><span class="p">,</span>
+</span><span id="line-716">            <span class="s2">"scale"</span><span class="p">:</span> <span class="n">scale</span><span class="p">,</span>
+</span><span id="line-717">            <span class="s2">"crf"</span><span class="p">:</span> <span class="n">crf</span><span class="p">,</span>
+</span><span id="line-718">            <span class="s2">"n_cues"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">cues</span><span class="p">),</span>
+</span><span id="line-719">        <span class="p">},</span>
+</span><span id="line-720">    <span class="p">)</span></div>
 
 </span></code></pre></div>
     </div></div>
@@ -923,7 +928,7 @@
 </footer>
     </div>
     
-    <script src="../../../_static/documentation_options.js?v=d3955499"></script>
+    <script src="../../../_static/documentation_options.js?v=32526382"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
