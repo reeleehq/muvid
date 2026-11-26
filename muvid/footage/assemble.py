@@ -61,16 +61,17 @@ size bound refuses (590 MB and 941 MB against 403 MB). So the four filters that
 can change the output geometry are allowlisted per OPTION and per positional
 slot — see :data:`~muvid.footage.edl._LOOK_GEOMETRY_FILTERS`.
 
-A cut whose look is **time-varying** — a punch-in, a pan, anything reading the
-filter clock — additionally makes :func:`_part_plan` **warn** when the cut borders
-a transition: the blend is a separate invocation whose inputs are
-input-side-seeked, so the clock restarts and the move plays again from the start
-(muvid#73). The EDL says which kind a look is
+A cut whose look is **time-varying** — a punch-in, a pan, a photo's Ken Burns move,
+anything reading the filter clock — keeps ONE clock across the parts its
+transitions split it into (muvid#376). Each part is an invocation whose timeline
+starts at 0, so the move used to start again at every blend (muvid#73 only warned);
+now such a part is fed from the cut's first on-screen frame, runs the look over
+that whole run and is trimmed to its window afterwards (:func:`_part_filter`'s
+``trim``), so muvid never rewrites the fragment. The EDL says which kind a look is
 (:attr:`~muvid.footage.edl.EdlEntry.look_time_varying`) because the fragment is a
-bare string muvid did not author; rebasing it would mean rewriting an arbitrary
-ffmpeg expression, which is what ``looks``' rule 27 refuses.
+bare string muvid did not author.
 
-**Both of :func:`_part_plan`'s findings go to two places**, and the second half
+**:func:`_part_plan`'s findings go to two places**, and the second half
 was missing until now: a :class:`AssemblyWarning` on stderr, *and* the ``on_note``
 sink the caller's reply is built from. ``assemble_music_video`` is a live
 per-caller MCP tool and its caller has no stderr, so a warning that reached only
@@ -148,6 +149,13 @@ class _Part:
     prev: AssemblyCut | None = None  # xfade only: the outgoing cut
     prev_in: float = 0.0  # xfade only
     curve: str = "fade"
+    #: Frames of THIS cut already on screen before this part's first frame, when the
+    #: cut runs on the filter clock (:func:`_runs_on_clock`); ``0`` otherwise. The
+    #: part is rendered from the cut's first on-screen frame through its look and
+    #: trimmed by this many frames, so the look's clock runs on across the parts
+    #: instead of restarting in each (muvid#376). See :func:`_part_filter`.
+    look_from: int = 0
+    prev_look_from: int = 0  # xfade only: the same, for the outgoing cut
 
 
 class AssemblyWarning(RuntimeWarning):
@@ -182,74 +190,30 @@ def _emit(message: str, note=None, *, stacklevel: int = 4) -> None:
         note(message)
 
 
-def _warn_time_varying_looks_on_transitions(
-    cuts: Sequence[AssemblyCut], n_trans: Sequence[int], note=None
-) -> None:
-    """Warn per cut whose MOVING look borders a blended boundary (muvid#73).
+def _runs_on_clock(cut: AssemblyCut) -> bool:
+    """Whether this cut's picture depends on how long the cut has been on screen.
 
-    A transitioned boundary is rendered as a separate two-input invocation whose
-    inputs are input-side-seeked to the blend window (:func:`_xfade_input`), and
-    input-side ``-ss`` rebases the filter timeline to 0 — so a look whose
-    expressions read that clock **starts its ramp again** for the length of the
-    blend. Measured on a 3.0 s cut at 25 fps with a 0.4 s fade and
-    ``punch_in(zoom=1.12)``: the solo part's last frame is drawn at zoom 1.109
-    (mean |diff| 28.1/255 against the same frame rendered with no look), the
-    blend part's first frame at zoom 1.000 (0.7/255 — indistinguishable from no
-    punch at all).
+    Two things read the filter clock (or a frame counter, which is the same thing
+    here): a look the EDL DECLARES time-varying
+    (:attr:`~muvid.footage.edl.EdlEntry.look_time_varying` — a punch-in, a pan, a
+    photo's Ken Burns move), and a MOVING crop window (``crop_end``, whose ramp
+    :func:`_crop_filter` writes in ``t``). A cut split across parts — a blend in, a
+    solo, a blend out — must run either one continuously through all of them, or
+    the move snaps back to its start at every blend (muvid#73, muvid#376).
 
-    Warning rather than fixing is the decision recorded in muvid#73: rebasing
-    means rewriting an ffmpeg expression muvid did not author and cannot parse,
-    which is exactly what ``looks`` refuses to do for itself (its rule 27), and a
-    wrong rebase moves the effect to a different second of the clip at exit 0
-    with an empty stderr. A documented hitch beats that.
-
-    Three things it deliberately does NOT warn about, each of which is the reason
-    :attr:`~muvid.footage.edl.EdlEntry.look_time_varying` had to exist at all:
-
-    - a **static** look on a transitioned boundary — a grade, a LUT, a posterise
-      never reads the clock, and warning on every graded transitioned cut is what
-      made this warning unimplementable while the seam was a bare string;
-    - a **moving** look on a plain cut — one invocation, one clock, nothing to
-      restart;
-    - a moving look a caller did not DECLARE. The flag defaults to ``False``, so
-      an undeclared moving look stays silent. That is the known limit of the
-      chosen shape (see the field's own docstring), not an oversight.
-
-    One warning per affected CUT, not per side of a boundary: a cut between two
-    transitions has its ramp restarted on both, but that is one thing wrong with
-    one cut and the caller acts on it once.
+    A static look and a fixed crop return ``False``, and so does a moving look the
+    caller did not declare: muvid cannot tell a punch from a grade by reading the
+    fragment (that is why the flag exists). For those the parts render exactly as
+    they always did.
     """
-    for i, cut in enumerate(cuts):
-        if not (cut.look and cut.look_time_varying):
-            continue
-        # Its own incoming blend, or the one its successor pulls out of its tail.
-        # Both render THIS cut through `_part_filter` in a freshly-seeked
-        # invocation, so either is enough to restart the ramp.
-        incoming = n_trans[i] > 0
-        outgoing = i + 1 < len(cuts) and n_trans[i + 1] > 0
-        if not (incoming or outgoing):
-            continue
-        where = (
-            "both of its boundaries are blended"
-            if incoming and outgoing
-            else (
-                "it blends IN from the previous cut"
-                if incoming
-                else "the next cut blends IN from it"
-            )
-        )
-        _emit(
-            f"cut {i}: a time-varying look ({cut.look!r}) borders a transition — "
-            f"{where}. The blended part is a separate invocation whose inputs are "
-            "input-side-seeked, which rebases the filter clock to 0, so the move "
-            "RESTARTS for the length of the blend (measured: a 1.12x punch reaches "
-            "zoom 1.109 on the solo part and is redrawn at 1.000 on the blend). "
-            "Either drop the transition on this boundary or use a static look "
-            "(a grade/LUT is unaffected). muvid cannot rebase the fragment — see "
-            "muvid#73.",
-            note,
-            stacklevel=5,
-        )
+    if cut.look and cut.look_time_varying:
+        return True
+    c, e = cut.crop, cut.crop_end
+    return (
+        c is not None
+        and e is not None
+        and (abs(e.x - c.x) >= 1e-9 or abs(e.y - c.y) >= 1e-9)
+    )
 
 
 def _part_plan(cuts: Sequence[AssemblyCut], fps: int, note=None) -> list[_Part]:
@@ -275,19 +239,30 @@ def _part_plan(cuts: Sequence[AssemblyCut], fps: int, note=None) -> list[_Part]:
     with a 1 ms tolerance and cannot know the render rate, so a span within a frame
     of the limit can still fail here.
 
-    It also WARNS twice, and both warnings are the same "never a silent no-op"
-    posture: a transition that rounds to zero frames at this rate, and a cut whose
-    **time-varying look borders a blended boundary** — see
-    :func:`_warn_time_varying_looks_on_transitions`. This is the one place that
-    can say either, because both are properties of the render PLAN rather than of
-    the EDL: only here is it known that a transitioned boundary becomes a separate
-    two-input invocation, and only here is the fps known at all.
+    **A cut that runs on the clock keeps ONE clock across its parts** (muvid#376).
+    A cut split by its transitions into a blend in, a solo and a blend out is three
+    invocations, and each one's filter timeline starts at 0 — so a moving look (a
+    photo's Ken Burns move, a punch-in) used to start its move again at every blend
+    and the picture snapped back to its unzoomed framing on the blend's first frame
+    (muvid#73 warned about it; in a photo montage cut with fades it was every cut).
+    Each part of such a cut now carries ``look_from``: how many frames of the cut
+    were on screen before the part's first frame, counted from the cut's FIRST
+    on-screen frame (the start of its incoming blend, else its song start). The
+    part is rendered from that first frame through the look and trimmed afterwards
+    (:func:`_part_filter`), so the look sees one continuous run and muvid never
+    rewrites the fragment. For a photo the extra frames are a looped still and cost
+    nothing; for a video they are decoded again, which is the price of the move
+    being right and is paid only by cuts :func:`_runs_on_clock` names. Every other
+    part keeps ``look_from == 0`` and renders byte for byte as before.
+
+    It also WARNS, in the same "never a silent no-op" posture, about a transition
+    that rounds to zero frames at this rate. Only here is the fps known at all.
 
     ``note`` is the reply sink — a ``str -> None`` callable that receives the same
     text. It exists because ``warnings.warn`` reaches a developer's stderr and
-    stops there: the only production caller of either of these findings is a
-    remote MCP caller who has no stderr, so before it, an ``ok`` render came back
-    with the hitch in it and no way to know. See :func:`_emit`.
+    stops there: the only production caller of this finding is a remote MCP caller
+    who has no stderr, so before it, an ``ok`` render came back with the hitch in it
+    and no way to know. See :func:`_emit`.
     """
     counts = _frame_counts(cuts, fps)
 
@@ -308,7 +283,10 @@ def _part_plan(cuts: Sequence[AssemblyCut], fps: int, note=None) -> list[_Part]:
         return n
 
     n_trans = [_n_transition(i) for i in range(len(cuts))]
-    _warn_time_varying_looks_on_transitions(cuts, n_trans, note)
+    on_clock = [_runs_on_clock(c) for c in cuts]
+    # Frames each cut is on screen BEFORE its song start: the head of its own
+    # incoming blend. A cut's look clock starts there (see the docstring).
+    head = [round(n * TRANSITION_SPLIT) for n in n_trans]
     parts: list[_Part] = []
     for i, (cut, n) in enumerate(zip(cuts, counts)):
         d = n_trans[i]
@@ -345,6 +323,13 @@ def _part_plan(cuts: Sequence[AssemblyCut], fps: int, note=None) -> list[_Part]:
                     # the seek and the filter.
                     prev_in=prev.clip_in + (prev.duration - pre / fps) * prev.rate,
                     curve=cut.transition.curve,
+                    # The incoming cut's first on-screen frame IS this window's
+                    # first frame, so its clock already starts here. The outgoing
+                    # cut has been on screen for its own head, its whole span, less
+                    # the `pre` frames of it this blend replaces.
+                    prev_look_from=(
+                        head[i - 1] + counts[i - 1] - pre if on_clock[i - 1] else 0
+                    ),
                 )
             )
         solo = n - post - tail
@@ -364,6 +349,8 @@ def _part_plan(cuts: Sequence[AssemblyCut], fps: int, note=None) -> list[_Part]:
                     # showed. Without this the solo REPLAYS them and then runs
                     # post/fps behind the song for the rest of the cut.
                     clip_in=cut.clip_in + post / fps * cut.rate,
+                    # The incoming blend showed this cut's first `d` frames.
+                    look_from=d if on_clock[i] else 0,
                 )
             )
     return parts
@@ -426,6 +413,7 @@ def _part_filter(
     h: int,
     fps: int,
     tail: str = "",
+    look_from: int = 0,
 ) -> str:
     """THE per-cut filter chain. ONE implementation, used by BOTH render sites.
 
@@ -440,8 +428,17 @@ def _part_filter(
 
     The order is the contract:
 
-    ``[retime,] [crop,] scale [, tonemap], pad, setsar, fps, tpad [, look [, conform]],
-    setparams [, tail]``
+    ``[retime,] [crop,] scale [, tonemap], pad, setsar, fps, tpad [, look [, conform]]
+    [, trim], setparams [, tail]``
+
+    ``trim`` (``look_from`` frames, then ``setpts`` back to 0) is there only for a part
+    that does not start at its cut's first on-screen frame and whose cut runs on the
+    clock (:func:`_runs_on_clock`): the caller feeds the source from that first frame,
+    the crop ramp and the look run over the whole run, and the frames an earlier part
+    already showed are dropped AFTER them (muvid#376). It counts frames, not seconds,
+    because ``fps`` has put every frame on the grid by then, and it sits after the look
+    and before the tag and ``tail`` so neither the look nor ``xfade`` sees a timeline
+    that does not start at 0.
 
     ``conform`` (:func:`_canvas_conform`) follows a look that can change the frame size
     (:func:`~muvid.footage.edl.look_may_resize`), so every part reaches the encoder and
@@ -525,6 +522,7 @@ def _part_filter(
         f"tpad=stop=-1:stop_mode=clone"
         f"{',' + cut.look if cut.look else ''}"
         f"{',' + _canvas_conform(w, h) if cut.look and look_may_resize(cut.look) else ''}"
+        f"{f',trim=start_frame={look_from},setpts=PTS-STARTPTS' if look_from else ''}"
         f",{DELIVERY_TAG}"
         f"{tail}"
     )
@@ -649,8 +647,16 @@ def _render_part(
     n_frames: int,
     crf: int,
     preset: str,
+    look_from: int = 0,
 ) -> None:
-    """Render ONE cut (footage or gap) to an intermediate — the single-decoder stage."""
+    """Render ONE cut (footage or gap) to an intermediate — the single-decoder stage.
+
+    ``look_from`` frames are read BEFORE ``cut.clip_in`` and trimmed after the look, so
+    a cut that runs on the clock keeps the clock it had in the previous part
+    (:func:`_part_filter`, muvid#376). ``0`` is the historical part, unchanged. One
+    consequence, on purpose: a rewound part whose window lies past its clip's last
+    video frame finds earlier frames to clone (``tpad``) where an unrewound one finds
+    none and falls back to black, so a moving cut holds its last frame instead."""
     from muvid.visualize.ffmpeg import run_ffmpeg
 
     # tpad at the tail: -frames:v alone is a CAP, not a guarantee — a clip whose audio
@@ -658,16 +664,17 @@ def _render_part(
     # validates a span past the last video frame, and without tpad that part comes up
     # short, silently desyncing every later cut. Cloning the last frame makes the frame
     # count exact whenever the source yields at least one frame.
-    vf = _part_filter(cut, w=w, h=h, fps=fps)
+    vf = _part_filter(cut, w=w, h=h, fps=fps, look_from=look_from)
     if cut.clip_path:
         # Input-side seek: lands on the keyframe before clip_in and decodes forward to
         # it, so a cut 3 minutes into a clip does not decode 3 minutes of video. One
         # spare frame of input beyond the target; -frames:v is the exact cap. At speed
         # `rate` the span consumes `duration * rate` s of source.
+        rate = getattr(cut, "rate", 1.0)
         args = _source_input(
             str(cut.clip_path),
-            cut.clip_in,
-            (cut.duration + 1.0 / fps) * getattr(cut, "rate", 1.0),
+            _rewound(cut.clip_in, look_from, fps=fps, rate=rate),
+            (cut.duration + (look_from + 1.0) / fps) * rate,
             fps=fps,
         ) + ["-vf", vf]
     else:  # a gap entry: no footage for this span — fill black on the same grid
@@ -690,7 +697,19 @@ def _render_part(
     run_ffmpeg(args)
 
 
-def _xfade_input(cut: AssemblyCut, clip_in: float, n_frames: int, *, w, h, fps):
+def _rewound(clip_in: float, look_from: int, *, fps: int, rate: float) -> float:
+    """The source in-point ``look_from`` output frames before ``clip_in`` (muvid#376).
+
+    Clamped at 0: the rewound point of an outgoing cut is computed from its frame
+    counts, which can sit a sub-frame before a source's first frame."""
+    if not look_from:
+        return clip_in
+    return max(clip_in - look_from / fps * rate, 0.0)
+
+
+def _xfade_input(
+    cut: AssemblyCut, clip_in: float, n_frames: int, *, w, h, fps, look_from: int = 0
+):
     """One decoder for the transition stage — a real clip, or a gap's black source.
 
     A gap side is always satisfiable: its ``color`` source is synthetic and
@@ -699,10 +718,11 @@ def _xfade_input(cut: AssemblyCut, clip_in: float, n_frames: int, *, w, h, fps):
     skips gap sides — not because anything at HEAD is unbounded.
     """
     if cut.clip_path:
+        rate = getattr(cut, "rate", 1.0)
         return _source_input(
             str(cut.clip_path),
-            clip_in,
-            (n_frames + 1) / fps * getattr(cut, "rate", 1.0),
+            _rewound(clip_in, look_from, fps=fps, rate=rate),
+            (look_from + n_frames + 1) / fps * rate,
             fps=fps,
         )
     return [
@@ -735,16 +755,27 @@ def _render_transition(part, out: Path, *, w, h, fps, crf: int, preset: str) -> 
     # cuts and may carry different crops. A single `norm` would silently apply the
     # A-side framing to the B-side — the blend would still render, at the wrong
     # framing, which is exactly the kind of failure nothing downstream can see.
-    def _norm(cut) -> str:
-        return _part_filter(cut, w=w, h=h, fps=fps, tail=",format=yuv420p")
+    #
+    # Each side also keeps its own cut's clock (`look_from`, muvid#376): the outgoing
+    # side of a photo's Ken Burns move is read from the photo's first on-screen frame
+    # and trimmed, so the blend's first frame is the solo's next frame, not frame 0.
+    def _norm(cut, look_from: int) -> str:
+        return _part_filter(
+            cut, w=w, h=h, fps=fps, tail=",format=yuv420p", look_from=look_from
+        )
 
     n = part.n_frames
+    prev_from, cut_from = part.prev_look_from, part.look_from
     run_ffmpeg(
         [
-            *_xfade_input(part.prev, part.prev_in, n, w=w, h=h, fps=fps),
-            *_xfade_input(part.cut, part.clip_in, n, w=w, h=h, fps=fps),
+            *_xfade_input(
+                part.prev, part.prev_in, n, w=w, h=h, fps=fps, look_from=prev_from
+            ),
+            *_xfade_input(
+                part.cut, part.clip_in, n, w=w, h=h, fps=fps, look_from=cut_from
+            ),
             "-filter_complex",
-            f"[0:v]{_norm(part.prev)}[a];[1:v]{_norm(part.cut)}[b];"
+            f"[0:v]{_norm(part.prev, prev_from)}[a];[1:v]{_norm(part.cut, cut_from)}[b];"
             f"[a][b]xfade=transition={part.curve}:duration={n / fps:.6f}:offset=0[v]",
             "-map",
             "[v]",
@@ -759,6 +790,10 @@ def _render_transition(part, out: Path, *, w, h, fps, crf: int, preset: str) -> 
 
 def _render_first_usable(candidates, part: Path, **render_kwargs) -> None:
     """Render the first candidate that actually yields frames; black if none does.
+
+    A candidate is a ``(cut, look_from)`` pair — the cut at the part's in-point and
+    the clock offset its look must keep (:func:`_part_filter`, muvid#376), so a side
+    that carries a blend alone still moves on from where its solo left off.
 
     ONE implementation, used by both part kinds, and that is the point. The
     per-cut and the transition-fallback paths were doing the same three things —
@@ -781,10 +816,10 @@ def _render_first_usable(candidates, part: Path, **render_kwargs) -> None:
       last resort, not the second option — a 0.4 s black flash where the surviving
       clip could have carried the boundary is a visible defect, not a graceful one.
     """
-    for cut in candidates:
+    for cut, look_from in candidates:
         if not cut.clip_path:
             continue
-        _render_part(cut, part, **render_kwargs)
+        _render_part(cut, part, look_from=look_from, **render_kwargs)
         if not part.exists() or _has_video_frames(part):
             # A part that does not exist at all is a DIFFERENT failure — ffmpeg
             # did not write one — and degrading it to black here would cost a
@@ -796,7 +831,7 @@ def _render_first_usable(candidates, part: Path, **render_kwargs) -> None:
             return
         part.unlink(missing_ok=True)
     _render_part(
-        replace(candidates[0], clip_path="", clip_in=0.0), part, **render_kwargs
+        replace(candidates[0][0], clip_path="", clip_in=0.0), part, **render_kwargs
     )
 
 
@@ -889,8 +924,8 @@ def assemble_music_video(
 
     Args:
         on_note: optional ``str -> None`` sink for the render-plan findings
-            :func:`_part_plan` raises (a transition that rounds to zero frames; a
-            time-varying look on a blended boundary — muvid#73). They are ALWAYS
+            :func:`_part_plan` raises (a transition that rounds to zero frames).
+            They are ALWAYS
             raised as :class:`AssemblyWarning` as well; this is the additional
             path, and the only one a remote caller can see. ``assemble_music_video``
             is a live per-caller MCP tool, so a finding that reaches only the
@@ -970,8 +1005,8 @@ def assemble_music_video(
                     part.unlink()
                     _render_first_usable(
                         [
-                            replace(p.cut, clip_in=p.clip_in),
-                            replace(p.prev, clip_in=p.prev_in),
+                            (replace(p.cut, clip_in=p.clip_in), p.look_from),
+                            (replace(p.prev, clip_in=p.prev_in), p.prev_look_from),
                         ],
                         part,
                         **render_kwargs,
@@ -980,7 +1015,9 @@ def assemble_music_video(
                 # `clip_in` is the PART's in-point, not the cut's: a cut whose head
                 # was consumed by an incoming transition starts later in its clip.
                 _render_first_usable(
-                    [replace(p.cut, clip_in=p.clip_in)], part, **render_kwargs
+                    [(replace(p.cut, clip_in=p.clip_in), p.look_from)],
+                    part,
+                    **render_kwargs,
                 )
             names.append(name)
         if not names:

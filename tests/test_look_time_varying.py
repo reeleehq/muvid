@@ -1,24 +1,25 @@
-"""A moving look declares itself, so the assembler can warn about it (muvid#73).
+"""A moving look declares itself, so the assembler can keep its clock (muvid#73, #376).
 
-The behaviour being warned about is real and measured here rather than quoted: a
-transitioned boundary renders as a separate two-input invocation whose inputs are
+The behaviour is real and measured here rather than quoted: a transitioned
+boundary renders as a separate two-input invocation whose inputs are
 input-side-seeked to the blend window, and input-side ``-ss`` rebases the filter
-timeline to 0 — so a look whose expressions read that clock starts its ramp
-AGAIN for the length of the blend.
-``test_the_ramp_really_does_restart_on_a_blended_boundary`` is that measurement,
-against decoded pixels; everything else here is the declaration and the warning
-built on top of it.
+timeline to 0 — so a part rendered on its own clock starts a moving look's ramp
+AGAIN. ``test_the_ramp_really_does_restart_on_a_blended_boundary`` is that
+measurement, against decoded pixels.
 
-The shape is the maintainer's decision (muvid#73 option 3): the EDL says which
-kind a look is, because the seam is a bare string and muvid cannot tell a punch
-from a grade by looking at it. Rebasing the fragment — option 4 — is refused for
-the reason ``looks``' rule 27 gives: it means rewriting an arbitrary ffmpeg
-expression, and a wrong rebase moves the effect to a different second of the clip
-at exit 0.
+muvid#73 answered it with a declaration (the EDL says which kind a look is,
+because the seam is a bare string and muvid cannot tell a punch from a grade by
+looking at it) and a warning. muvid#376 replaced the warning with the fix: every
+part of a cut that runs on the clock is fed from the cut's first on-screen frame,
+runs the look over that whole run and is trimmed afterwards, so the move carries
+on through the blend and the fragment is never rewritten (``looks``' rule 27
+still holds). ``test_a_photos_move_carries_on_through_the_fade`` is the
+acceptance, with the unfixed render as its positive control;
+``test_rewinding_never_moves_the_footage_in_time`` pins that the rewind changes
+the look's clock and nothing else.
 
-What the warning must NOT do is fire on a static look at a transitioned boundary.
-That was the whole obstacle to implementing it before the flag existed, and a
-warning on every graded transitioned cut is one nobody reads.
+A static look (and an undeclared moving one) is untouched: its parts render
+exactly as before, at no extra decode.
 """
 
 from __future__ import annotations
@@ -210,8 +211,8 @@ def test_the_ramp_really_does_restart_on_a_blended_boundary(tmp_path):
     )
     assert blend_diff < 2, (
         f"the blend's first frame differs from its unlooked twin by "
-        f"{blend_diff:.2f}/255, so the ramp did NOT restart and the warning "
-        "below is about nothing."
+        f"{blend_diff:.2f}/255, so the ramp did NOT restart on a part rendered on "
+        "its own clock, and the rewind (muvid#376) is fixing nothing."
     )
 
 
@@ -501,183 +502,121 @@ def test_the_flag_reaches_the_assembly_cut():
     assert AssemblyCut(0.0, 1.0, "A", 0.0, "/x").look_time_varying is False
 
 
-# -- the warning -------------------------------------------------------------
+# -- the fix: one clock per cut (muvid#376) ----------------------------------
 
 
-def test_a_moving_look_on_a_transitioned_boundary_warns_naming_the_cut():
+def _fade(i, start, end, **kw):
+    return _cut(
+        song_start=start,
+        song_end=end,
+        clip_id="ABC"[i],
+        transition=Transition(0.4, "fade") if i else None,
+        **kw,
+    )
+
+
+def _plan(cuts, fps=25):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return _part_plan(cuts, fps)
+
+
+def test_every_part_of_a_moving_cut_counts_from_its_first_on_screen_frame():
+    """A -> B -> C, fades of 10 frames (5 + 5) at 25 fps, the move on B.
+
+    B is on screen from its incoming blend's first frame. That blend is B's
+    frame 0 (``look_from`` 0), its solo starts 10 frames in, and the outgoing
+    blend starts where the solo ends: 5 (head) + 100 (its span) - 5 (what C's
+    blend takes) = 100. Those three numbers are the continuity.
+    """
     cuts = [
-        _cut(song_end=4.0, look=_PUNCH, look_time_varying=True),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade"),
-        ),
+        _fade(0, 0.0, 4.0),
+        _fade(1, 4.0, 8.0, look=_PUNCH, look_time_varying=True),
+        _fade(2, 8.0, 12.0),
     ]
-    [msg] = _restart_warnings(cuts)
-    assert msg.startswith("cut 0:"), msg
-    assert "the next cut blends IN from it" in msg
-    assert "muvid#73" in msg
+    plan = _plan(cuts)
+    assert [p.kind for p in plan] == ["solo", "xfade", "solo", "xfade", "solo"]
+    _, b_in, b_solo, c_in, _ = plan
+    assert b_in.look_from == 0 and b_in.prev_look_from == 0  # A does not move
+    assert b_solo.look_from == 10
+    assert c_in.prev_look_from == b_solo.look_from + b_solo.n_frames == 100
+    assert c_in.look_from == 0  # C does not move
+    assert all(p.look_from == 0 for p in (plan[0], plan[4]))
 
 
-def test_the_incoming_side_warns_too_and_says_which_side_it_is():
-    cuts = [
-        _cut(song_end=4.0),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade"),
-            look=_PUNCH,
-            look_time_varying=True,
-        ),
-    ]
-    [msg] = _restart_warnings(cuts)
-    assert msg.startswith("cut 1:") and "blends IN from the previous cut" in msg
-
-
-def test_a_cut_between_two_transitions_warns_once():
-    """One thing wrong with one cut, acted on once — not once per side."""
-    cuts = [
-        _cut(song_end=4.0),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade"),
-            look=_PUNCH,
-            look_time_varying=True,
-        ),
-        _cut(
-            song_start=8.0,
-            song_end=12.0,
-            clip_id="A",
-            transition=Transition(0.4, "fade"),
-        ),
-    ]
-    msgs = _restart_warnings(cuts)
-    assert len(msgs) == 1 and "both of its boundaries are blended" in msgs[0]
+def test_the_outgoing_side_counts_from_the_cuts_first_frame_without_a_head():
+    cuts = [_fade(0, 0.0, 3.0, look=_PUNCH, look_time_varying=True), _fade(1, 3.0, 6.0)]
+    solo, blend, _ = _plan(cuts)
+    assert solo.look_from == 0
+    assert blend.prev_look_from == solo.n_frames == 70
 
 
 @pytest.mark.parametrize(
-    "look, flag, transition, why",
+    "kw, why",
     [
-        (_GREY, False, True, "a static look on a transitioned boundary"),
-        (_PUNCH, True, False, "a moving look on a plain cut"),
-        (None, False, True, "no look at all"),
-        # The DOCUMENTED limit of the chosen shape: undeclared means silent.
-        (_PUNCH, False, True, "a moving look the caller did not declare"),
-        # `validate_edl` refuses this pair, but `_part_plan` takes AssemblyCuts
-        # directly and must not warn about a look that is not there — the same
-        # reason it checks BOTH halves rather than trusting the flag alone.
-        (None, True, True, "the flag set with no look to describe"),
+        (dict(look=_GREY), "a static look"),
+        (dict(look=_PUNCH), "a moving look the caller did not declare"),
+        (dict(), "no look at all"),
+        (dict(look_time_varying=True), "the flag with no look to describe"),
+        (dict(crop=CropWindow(0, 0, 0.5, 0.5)), "a fixed crop"),
     ],
 )
-def test_what_stays_silent(look, flag, transition, why):
+def test_what_renders_exactly_as_before(kw, why):
+    """``look_from == 0`` everywhere is the historical plan, byte for byte."""
+    cuts = [_fade(0, 0.0, 4.0, **kw), _fade(1, 4.0, 8.0, **kw), _fade(2, 8.0, 12.0)]
+    plan = _plan(cuts)
+    assert all(p.look_from == 0 and p.prev_look_from == 0 for p in plan), why
+
+
+def test_a_moving_crop_keeps_its_clock_too():
+    """``crop_end`` ramps in ``t`` like a look does, so it restarted the same way."""
+    pan = dict(crop=CropWindow(0, 0, 0.5, 0.5), crop_end=CropWindow(0.5, 0.5, 0.5, 0.5))
+    _, blend, solo = _plan([_fade(0, 0.0, 4.0, **pan), _fade(1, 4.0, 8.0, **pan)])
+    assert blend.prev_look_from == 95 and solo.look_from == 10
+
+
+def test_the_rewind_moves_the_clock_and_nothing_else():
+    """Frame counts and in-points are the declaration-free plan's, exactly."""
+    moving = [_fade(0, 0.0, 4.0, look=_PUNCH, look_time_varying=True)]
+    moving += [_fade(1, 4.0, 8.0, look=_PUNCH, look_time_varying=True)]
+    static = [_fade(0, 0.0, 4.0, look=_PUNCH), _fade(1, 4.0, 8.0, look=_PUNCH)]
+    key = lambda p: (p.kind, p.n_frames, p.clip_in, p.prev_in)  # noqa: E731
+    assert [key(p) for p in _plan(moving)] == [key(p) for p in _plan(static)]
+    assert any(p.look_from or p.prev_look_from for p in _plan(moving))
+
+
+def test_a_transition_that_rounds_away_rewinds_nothing():
+    """Zero blended frames is a hard cut: one part per cut, nothing to carry."""
     cuts = [
-        _cut(song_end=4.0, look=look, look_time_varying=flag),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade") if transition else None,
-        ),
-    ]
-    assert _restart_warnings(cuts) == [], f"{why} must not warn"
-
-
-@pytest.mark.parametrize("moving_side", [0, 1])
-def test_a_transition_that_rounds_away_takes_its_look_warning_with_it(moving_side):
-    """A boundary with zero blended frames is a hard cut, so nothing restarts.
-
-    The condition is the FRAME count, not the presence of a ``Transition``
-    record — the same number the zero-frame warning next door is about. Both
-    warnings fire from one pass, and this pins that they agree.
-
-    Parameterised over WHICH side carries the moving look, because the two sides
-    are read by two different expressions: ``moving_side=1`` is the only case
-    that exercises the incoming term, and with the moving look only on cut 0 a
-    mutation that reads cut 1's ``Transition`` record instead of its frame count
-    survives — measured.
-    """
-    cuts = [
-        _cut(
-            song_end=4.0,
-            look=_PUNCH if moving_side == 0 else None,
-            look_time_varying=moving_side == 0,
-        ),
+        _cut(song_end=4.0, look=_PUNCH, look_time_varying=True),
         _cut(
             song_start=4.0,
             song_end=8.0,
             clip_id="B",
             transition=Transition(0.01, "fade"),
-            look=_PUNCH if moving_side == 1 else None,
-            look_time_varying=moving_side == 1,
+            look=_PUNCH,
+            look_time_varying=True,
         ),
     ]
     msgs = _plan_warnings(cuts, fps=25)
     assert any("rounds to zero frames" in m for m in msgs)
-    assert not any("time-varying look" in m for m in msgs)
+    assert all(p.look_from == 0 for p in _plan(cuts))
 
 
-def test_the_warning_does_not_change_the_plan():
-    """It is a warning, not a refusal — the same parts are rendered either way."""
-    moving = [
-        _cut(song_end=4.0, look=_PUNCH, look_time_varying=True),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade"),
-        ),
-    ]
-    static = [
-        _cut(song_end=4.0, look=_PUNCH, look_time_varying=False),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade"),
-        ),
-    ]
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        a = [(p.kind, p.n_frames, p.clip_in, p.prev_in) for p in _part_plan(moving, 25)]
-        b = [(p.kind, p.n_frames, p.clip_in, p.prev_in) for p in _part_plan(static, 25)]
-    assert a == b
-
-
-# ---------------------------------------------------------------------------
-# ...and the caller has to be able to SEE it
-# ---------------------------------------------------------------------------
-
-
-def test_the_plan_hands_every_finding_to_the_reply_sink_as_well():
+def test_the_plan_hands_its_finding_to_the_reply_sink_as_well():
     """``warnings.warn`` reaches stderr; ``on_note`` reaches the caller.
 
-    Both, never either. The warning is what a developer and ``pytest.warns`` see;
-    the note is the only thing a remote MCP caller can ever see, and until it
-    existed a muvid#73 hitch came back as an ``ok`` render with nothing said
-    about it. The two carry the SAME text, asserted here rather than assumed, so
-    a future edit cannot improve one message and leave the other behind.
-
-    Both kinds of finding are in the corpus -- the zero-frame transition as well
-    as the restarted ramp -- because the sink is one path and a test containing
-    only one of them would pass with the other left on stderr.
+    Both, never either, and with the SAME text. The zero-frame transition is the
+    finding ``_part_plan`` still makes (the moving-look one went with muvid#376),
+    so it is what keeps the sink path guarded: forwarding ``None`` instead of
+    ``note`` must fail here.
     """
     cuts = [
-        _cut(song_end=4.0, look=_PUNCH, look_time_varying=True),
+        _cut(song_end=4.0),
         _cut(
             song_start=4.0,
             song_end=8.0,
             clip_id="B",
-            transition=Transition(0.4, "fade"),
-        ),
-        # 0.02 s at 25 fps rounds to 0 frames: the OTHER finding _part_plan makes
-        _cut(
-            song_start=8.0,
-            song_end=12.0,
-            clip_id="C",
             transition=Transition(0.02, "fade"),
         ),
     ]
@@ -685,37 +624,201 @@ def test_the_plan_hands_every_finding_to_the_reply_sink_as_well():
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
         _part_plan(cuts, 25, notes.append)
-    assert notes == [str(w.message) for w in caught], (
-        "the sink and the warning must carry the same findings, in the same order"
+    assert notes == [str(w.message) for w in caught]
+    assert len(notes) == 1 and "rounds to zero frames" in notes[0]
+
+
+def test_a_path_that_holds_still_is_declared_static():
+    """One window compiles to a constant crop, which never reads the clock; a
+    moving declaration there would buy a re-decode of every blended video cut."""
+    pytest.importorskip("looks")
+    w = CropWindow(0.05, 0.05, 0.9, 0.9)
+    assert not motion([(0.0, w), (3.0, w)], canvas=(640, 360), fps=25).time_varying
+    assert motion(
+        [(0.0, CropWindow(0, 0, 1, 1)), (3.0, w)], canvas=(640, 360), fps=25
+    ).time_varying
+
+
+def test_the_trim_comes_after_the_look_and_only_when_asked():
+    cut = _cut(look=_PUNCH, look_time_varying=True)
+    plain = _part_filter(cut, w=640, h=360, fps=25)
+    assert "trim" not in plain, "look_from=0 must leave the chain as it was"
+    chain_ = _part_filter(
+        cut, w=640, h=360, fps=25, look_from=7, tail=",format=yuv420p"
     )
-    assert any("time-varying look" in n for n in notes)
-    assert any("rounds to zero frames" in n for n in notes)
+    trim = ",trim=start_frame=7,setpts=PTS-STARTPTS,"
+    assert trim in chain_
+    assert chain_.index(_PUNCH) < chain_.index(trim) < chain_.index("setparams")
+    assert chain_.endswith(",format=yuv420p")
 
 
-def test_a_finding_is_an_AssemblyWarning_so_the_reply_half_can_pick_it_out():
-    """And it stays a ``RuntimeWarning``, so every existing catcher keeps working."""
-    from muvid.footage.assemble import AssemblyWarning
-
-    assert issubclass(AssemblyWarning, RuntimeWarning)
+def test_the_plan_no_longer_warns_about_a_moving_look():
+    """The muvid#73 warning described a restart that no longer happens."""
     cuts = [
-        _cut(song_end=4.0, look=_PUNCH, look_time_varying=True),
-        _cut(
-            song_start=4.0,
-            song_end=8.0,
-            clip_id="B",
-            transition=Transition(0.4, "fade"),
-        ),
+        _fade(0, 0.0, 4.0, look=_PUNCH, look_time_varying=True),
+        _fade(1, 4.0, 8.0, look=_PUNCH, look_time_varying=True),
     ]
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        _part_plan(cuts, 25)
-    assert caught and all(w.category is AssemblyWarning for w in caught)
+    assert _plan_warnings(cuts) == []
+
+
+def _decode(video, w, h):
+    import numpy as np
+
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(video), "-f", "rawvideo"]
+        + ["-pix_fmt", "rgb24", "-"],
+        check=True,
+        capture_output=True,
+    ).stdout
+    return np.frombuffer(raw, np.uint8).reshape(-1, h, w, 3).astype(float)
+
+
+def _assemble(tmp_path, name, cuts, w, h, fps):
+    from muvid.footage.assemble import assemble_music_video
+
+    song = tmp_path / "song.m4a"
+    if not song.exists():
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-f", "lavfi", "-i"]
+            + ["anullsrc=r=48000:cl=stereo", "-t", "6", "-c:a", "aac", str(song)],
+            check=True,
+        )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        out = assemble_music_video(
+            cuts, str(song), str(tmp_path / f"{name}.mp4"), canvas=(w, h), fps=fps
+        )
+    return _decode(out, w, h)
+
+
+def _picture(tmp_path, name, source, w, h):
+    out = tmp_path / f"{name}.png"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"{source}=size={w}x{h}:rate=1"]
+        + ["-frames:v", "1", str(out)],
+        check=True,
+    )
+    return out
+
+
+@needs_ffmpeg
+def test_a_photos_move_carries_on_through_the_fade(tmp_path):
+    """muvid#376's acceptance: no snap at the first frame of a fade over a photo.
+
+    A photo with a 1.12x punch over 3 s, then a 0.4 s fade into a second photo.
+    The fade's first frame is still all A (its progress is 0), so it must look
+    like the solo's next frame: one step of the push-in. Rendered with the move
+    UNDECLARED, the same boundary is the bug — the photo snaps back to 1.0 —
+    which is the positive control that this measures a pop and not noise.
+    Measured: 3.8/255 with the fix, 24.5/255 without, and ~2.6/255 between two
+    ordinary frames of the push.
+
+    The boundary is found from the render's own steps rather than computed,
+    because the decoder emits the video's leading frames twice (the stream starts
+    two frames late, muvid#384).
+    """
+    w, h, fps = 320, 180, 25
+    a = _picture(tmp_path, "a", "testsrc2", w, h)
+    b = _picture(tmp_path, "b", "smptebars", w, h)
+    look = punch_in(canvas=(w, h), fps=fps, duration_s=3.0)
+
+    def steps(declared):
+        cuts = [
+            AssemblyCut(
+                0.0, 3.0, "A", 0.0, str(a), look=look, look_time_varying=declared
+            ),
+            AssemblyCut(3.0, 6.0, "B", 0.0, str(b), transition=Transition(0.4, "fade")),
+        ]
+        f = _decode_steps(_assemble(tmp_path, f"photo{declared}", cuts, w, h, fps))
+        return f
+
+    fixed, unfixed = steps(True), steps(False)
+    # Before the blend begins the two renders are identical frame for frame.
+    first_blend = next(i for i, (x, y) in enumerate(zip(fixed, unfixed)) if x != y)
+    assert unfixed[first_blend] > 15, (
+        f"the unfixed render steps {unfixed[first_blend]:.1f}/255 into the fade — "
+        "the snap this test exists for did not happen, so it measures nothing"
+    )
+    push = max(fixed[first_blend - 10 : first_blend])
+    assert fixed[first_blend] < 2 * push + 1, (
+        f"the fade's first frame steps {fixed[first_blend]:.1f}/255 from the solo's "
+        f"last (an ordinary frame of the push steps at most {push:.1f}): the move "
+        "restarted on the blend (muvid#376)"
+    )
+
+
+def _decode_steps(frames):
+    """Mean |diff| between each pair of neighbouring frames, rounded for equality."""
+    return [
+        round(float(abs(frames[i + 1] - frames[i]).mean()), 3)
+        for i in range(len(frames) - 1)
+    ]
+
+
+@needs_ffmpeg
+def test_rewinding_never_moves_the_footage_in_time(tmp_path):
+    """A rewound part shows the SAME source moments as before; only the clock moved.
+
+    A video source (it changes every frame, so a one-frame shift is visible) and a
+    look that is declared moving but draws every frame the same way: the rewind
+    path runs on both sides of both blends, and the render must match the
+    undeclared one frame for frame (to encode noise).
+
+    This holds where source frames sit on the delivery grid (here 25 fps at 25,
+    rate 1). Off the grid (24 -> 30, or ``rate != 1``) the review of muvid#376
+    measured a rewound solo one output frame AHEAD of the unrewound one, because
+    ``fps`` now resamples from the incoming blend's phase; it is the blend's phase
+    that the solo continues, so the junction is smoother, not worse.
+    """
+    w, h, fps = 320, 180, 25
+    src = tmp_path / "v.mp4"
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc2=size={w}x{h}:rate={fps}:d=12",
+        ]
+        + ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "12", str(src)],
+        check=True,
+    )
+
+    def render(declared):
+        kw = dict(look=_GREY, look_time_varying=declared, clip_path=str(src))
+        cuts = [
+            _cut(song_end=2.0, clip_in=1.0, **kw),
+            _cut(
+                song_start=2.0,
+                song_end=4.0,
+                clip_id="B",
+                clip_in=5.0,
+                transition=Transition(0.4, "fade"),
+                **kw,
+            ),
+            _cut(
+                song_start=4.0,
+                song_end=6.0,
+                clip_id="C",
+                clip_in=2.0,
+                transition=Transition(0.4, "wipeleft"),
+                **kw,
+            ),
+        ]
+        return _assemble(tmp_path, f"video{declared}", cuts, w, h, fps)
+
+    rewound, plain = render(True), render(False)
+    assert len(rewound) == len(plain)
+    worst = max(float(abs(x - y).mean()) for x, y in zip(rewound, plain))
+    assert worst < 1.5, f"a rewound part differs by {worst:.2f}/255: it moved in time"
 
 
 def test_the_mcp_reply_carries_the_findings_the_render_plan_made(tmp_path, monkeypatch):
     """End to end through the live tool, with the REAL assembler and no encoding.
 
-    muvid#73's stated purpose is to warn. It did -- into the server process's
+    muvid#73's stated purpose was to warn. It did -- into the server process's
     stderr, which the caller of a per-caller MCP connector has no access to, and
     ``assemble_music_video``'s reply had no key for it at all. So the finding was
     served on the developer path only: a remote caller got ``ok: true`` and a
@@ -723,9 +826,13 @@ def test_the_mcp_reply_carries_the_findings_the_render_plan_made(tmp_path, monke
 
     ``run_ffmpeg`` is stubbed and nothing else is: ``_part_plan`` is the real one,
     so this asserts the whole path from the plan to the reply rather than the
-    plumbing of a fake. The positive control is the second half -- a plain edit
-    returns the key with an EMPTY list, which is what makes "no warnings" and
-    "an older build" different readings.
+    plumbing of a fake. The finding carried is an HDR clip this ffmpeg cannot
+    tone-map (raised by the real ``_with_source_colour`` off a stubbed probe):
+    the moving-look finding is gone since muvid#376 fixed what it warned about,
+    and that is asserted too, and a zero-frame transition cannot reach this tool
+    because ``validate_edl``'s floor refuses it first. The positive control is the second half -- a clean
+    edit returns the key with an EMPTY list, which is what makes "no warnings"
+    and "an older build" different readings.
     """
     pytest.importorskip("fastmcp")
     import muvid.mcp.footage_tools as ft
@@ -785,20 +892,29 @@ def test_the_mcp_reply_carries_the_findings_the_render_plan_made(tmp_path, monke
             },
         ]
 
+    import muvid.footage.assemble as asm
+    from muvid.footage.colour import SourceColour
+
     with use_email("u@x.com"), warnings.catch_warnings():
         warnings.simplefilter("ignore")
         moving = ft.assemble_music_video("warn", edl=_edl(True))
         static = ft.assemble_music_video("warn", edl=_edl(False))
+        monkeypatch.setattr(
+            asm, "read_source_colour", lambda p: SourceColour(hdr_transfer="smpte2084")
+        )
+        monkeypatch.setattr(asm, "can_tonemap", lambda: False)
+        hdr = ft.assemble_music_video("warn", edl=_edl(False))
 
-    assert moving["ok"] is True, "a warning is not a failure -- the render succeeded"
-    assert any("time-varying look" in w for w in moving["warnings"]), moving["warnings"]
+    assert hdr["ok"] is True, "a warning is not a failure -- the render succeeded"
+    assert any("is HDR" in w for w in hdr["warnings"]), hdr["warnings"]
+    assert moving["warnings"] == [], "a moving look on a fade is fixed, not warned"
     assert "warnings" in static, (
         "the key must be PRESENT and empty, never absent -- an absent key makes "
         "'nothing to report' and 'an older build' the same reading"
     )
     assert static["warnings"] == [], (
-        "the positive control: a static look on the same boundary reports nothing, "
-        "so the key is not simply always populated"
+        "the positive control: a clean edit reports nothing, so the key is not "
+        "simply always populated"
     )
 
 

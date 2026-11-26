@@ -55,12 +55,12 @@ to answer, because muvid owns the invocation. muvid runs the bare name ``ffmpeg`
 from ``PATH`` (:func:`muvid.visualize.ffmpeg.run_ffmpeg`), so that is what
 :func:`stylize` probes. Pass ``env=`` to compile against a different one.
 
-**One limitation, measured rather than guessed at, and not fixable here — but no
-longer silent.** A *time-varying* look on a cut that borders a
-:class:`~muvid.footage.edl.Transition` **restarts its ramp on the blended part**.
+**One limitation, measured rather than guessed at, not fixable here, and fixed in
+the assembler instead (muvid#376).** A *time-varying* look on a cut that borders a
+:class:`~muvid.footage.edl.Transition` **restarted its ramp on the blended part**.
 The assembler renders a transitioned boundary as a separate two-input invocation
 whose inputs are input-side-seeked to the blend window, so the filter clock there
-begins at 0 again instead of continuing the cut's.
+began at 0 again instead of continuing the cut's.
 
 Measured on a 3.0 s cut at 25 fps with a 0.4 s fade and a 1.12x punch: the solo
 part's last frame is drawn at zoom 1.109 (mean |diff| 28.1/255 against the same
@@ -77,13 +77,15 @@ is worse than a documented one — it would exit 0 having moved the effect to a
 different second of the clip.
 
 What muvid *can* do, and now does (muvid#73), is **say which kind a look is** so
-the assembler can warn instead of rendering the hitch quietly. Every function
+the assembler can treat a moving one differently: since muvid#376 it runs such a
+look over the cut's whole on-screen run and trims afterwards, so the move carries
+on through a blend without the fragment being rewritten. Every function
 here returns a :class:`LookFragment` — a plain ``str`` that also answers
 ``.time_varying`` — and :func:`punch_in_cuts` copies that answer onto
 :attr:`~muvid.footage.edl.EdlEntry.look_time_varying`, which is what the
 assembler reads. A caller assembling entries by hand should do the same; the flag
-defaults to ``False``, so an *undeclared* moving look is still silent, and that
-limit is stated on the field rather than left to be discovered.
+defaults to ``False``, so an *undeclared* moving look still restarts on a blend,
+and that limit is stated on the field rather than left to be discovered.
 """
 
 from __future__ import annotations
@@ -260,9 +262,11 @@ def motion(keyframes: Sequence, *, canvas, fps: float) -> "LookFragment":
         itself **time-varying** — a camera path is a ramp in the filter's own
         clock (``in_time`` under ``zoompan``, ``t`` under ``crop``), whichever
         filter ``looks`` picks, so it is muvid#73's affected kind. A path whose
-        keyframes happen to hold still is still declared moving: the fragment
-        reads the clock either way, and that is the property the warning is
-        about.
+        keyframes all hold the SAME window is declared static: ``looks`` compiles
+        it to a constant ``crop,scale`` that never reads the clock, and declaring
+        it moving would make the assembler re-decode a video cut on every blended
+        boundary for nothing (muvid#376's review measured a 30 s 4K blend going
+        from 0.8 s to 10 s). That is the named ``punch_in``.
 
     **The windows are fractions of the CANVAS, not of the source.** That follows
     from where the fragment is spliced: after ``scale``/``pad``, so the frame it
@@ -291,7 +295,8 @@ def motion(keyframes: Sequence, *, canvas, fps: float) -> "LookFragment":
         frag = looks.compile_motion(frames, output=looks.Size(w, h), fps=float(fps))
     except looks.MotionError as exc:
         raise LookError(str(exc)) from exc
-    return LookFragment(frag, time_varying=True)
+    windows = {tuple(getattr(k.window, a) for a in "xywh") for k in frames}
+    return LookFragment(frag, time_varying=len(windows) > 1)
 
 
 def punch_in(
@@ -330,8 +335,8 @@ def punch_in(
         One linear ffmpeg filter chain, ready for the ``look`` field, declaring
         itself **time-varying** (it goes through :func:`motion`). Put that on the
         entry as ``look_time_varying`` — :func:`punch_in_cuts` does — or the
-        assembler cannot warn you when the cut borders a transition and the move
-        restarts (muvid#73).
+        assembler renders a blended boundary on a fresh clock and the move
+        restarts there (muvid#73, fixed for declared looks by muvid#376).
 
     A move is a ramp between two windows, and the windows are fractions of the
     canvas (see :func:`motion`). The end window keeps the canvas's aspect ratio,
@@ -476,7 +481,7 @@ def stylize(
         return LookFragment(
             looks.vf(plan),
             # ``None`` (a step whose implementation never declared) reads as
-            # moving: the warning it feeds is cheap, a silent restart is not
+            # moving: a re-decode is cheap, a silent restart is not
             time_varying=plan.time_varying is not False,
         )
     except (
@@ -527,9 +532,8 @@ def punch_in_cuts(
         fragment via :func:`is_time_varying` rather than written as a literal
         ``True`` beside the ``punch_in`` call. The two would agree today and the
         literal is the one that would stop agreeing — this is the same reason
-        ``_edl_json`` is a table rather than four ``if``\\ s. Without it the
-        assembler cannot warn that a punch bordering a transition restarts its
-        ramp (muvid#73).
+        ``_edl_json`` is a table rather than four ``if``\\ s. Without it a punch
+        bordering a transition restarts its ramp on the blend (muvid#73, #376).
     """
     from dataclasses import replace
 

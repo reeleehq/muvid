@@ -7,8 +7,8 @@ each entry a function of a few bounded parameters compiled through
 :mod:`muvid.footage.look` (so every fragment is ``looks``' and passes
 ``validate_edl``'s allowlist):
 
-- camera moves, which read the clock (``look_time_varying``): ``punch_in`` (a steady
-  tighter framing), ``slow_push`` / ``slow_pull`` (zoom in / out across the cut),
+- camera framings: ``punch_in`` (a steady tighter framing, static), and the moves,
+  which read the clock (``look_time_varying``): ``slow_push`` / ``slow_pull`` (zoom in / out across the cut),
   ``pan_left`` / ``pan_right`` (drift sideways at a slight zoom);
 - grades, which do not: ``vivid``, ``black_and_white``, ``posterize`` and ``cartoon``
   (a little colour + flatten + posterize — in the spirit of Que Calor's V2, whose real
@@ -81,6 +81,10 @@ class NamedLook:
     kind: str  # "camera" | "grade"
     build: Callable
     params: Mapping[str, Param] = field(default_factory=dict)
+    #: Whether the compiled look reads the clock. ``None``: every camera look does.
+    #: ``punch_in`` holds one window, compiles to a static crop and says ``False``,
+    #: so the assembler does not re-decode its cuts at a blend (muvid#376).
+    time_varying: "bool | None" = None
 
     def to_dict(self) -> dict:
         return {
@@ -88,7 +92,11 @@ class NamedLook:
             "title": self.title,
             "description": self.description,
             "kind": self.kind,
-            "time_varying": self.kind == "camera",
+            "time_varying": (
+                self.kind == "camera"
+                if self.time_varying is None
+                else self.time_varying
+            ),
             "params_schema": {
                 "type": "object",
                 "additionalProperties": False,
@@ -183,6 +191,7 @@ NAMED_LOOKS: tuple[NamedLook, ...] = (
         "camera",
         _punch_in,
         _MOVE_PARAMS,
+        time_varying=False,
     ),
     NamedLook(
         "slow_push",

@@ -776,11 +776,17 @@ bridge before muvid#37.
   this one got in.
 - **The seam is a bare string, so anything muvid must know about a look has to be its own
   field.** `EdlEntry.look_time_varying` (muvid#73) is the worked example: a moving look
-  restarts its ramp on a transitioned boundary (the blend is a separate input-side-seeked
+  restarted its ramp on a transitioned boundary (the blend is a separate input-side-seeked
   invocation, so the filter clock returns to 0 — a 1.12x punch reaching zoom 1.109 on the
-  solo part is redrawn at 1.000 on the blend), and muvid cannot tell a punch from a grade
-  by looking at the fragment. Rebasing it is refused for `looks`' rule-27 reason. The
-  compilers answer instead — `punch_in`/`motion`/`stylize` return a `LookFragment`, a
+  solo part was redrawn at 1.000 on the blend), and muvid cannot tell a punch from a grade
+  by looking at the fragment. Rebasing it is refused for `looks`' rule-27 reason. The fix
+  (muvid#376) needs no rebasing: every part of a cut the flag (or a moving `crop_end`)
+  marks is fed from the cut's FIRST on-screen frame, runs the look, and is trimmed after
+  it (`_Part.look_from`, `_part_filter`'s `trim`), so one clock runs through the blend.
+  The flag is what keeps static cuts off that path: the outgoing blend of a video cut
+  re-decodes the cut's whole on-screen run, about as much work as its solo part (a
+  photo's is a looped still and free). So a look that holds still must say `False`:
+  `motion()` declares a path with one window static, which is the named `punch_in`. The compilers answer instead — `punch_in`/`motion`/`stylize` return a `LookFragment`, a
   `str` that also carries `.time_varying`, so `punch_in_cuts` *copies* the answer rather
   than hardcoding it. `stylize` derives it from the compiled plan rather than declaring
   itself static: `looks`' `motion` effect and any step with an `at` span both reach the
