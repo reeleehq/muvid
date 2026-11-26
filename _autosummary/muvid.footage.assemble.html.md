@@ -34,7 +34,8 @@ Now three bounded stages, memory O(1) in cut count:
 3. **Mux the clean song** in the same final pass. When the master already IS the delivery
    contract (aac, 48 kHz stereo), its packets are stream-copied bit-identically; anything
    else is encoded to the contract (aac 192k, 48 kHz stereo — verify_video’s audio check
-   must be a property of the renderer, not of which song the user brought: muvid#24 B3).
+   must be a property of the renderer, not of which song the user brought: muvid#24 B3),
+   with the encoder’s priming trimmed so the song stays on its picture (muvid#379).
 
 ffmpeg auto-applies each clip’s rotation metadata on decode (default `-autorotate 1`),
 so a display-matrix portrait clip lands upright and pillarboxed, never stretched.

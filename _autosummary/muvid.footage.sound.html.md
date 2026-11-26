@@ -51,8 +51,9 @@ Research behind the numbers: `misc/docs/research/general/promo_video_editing_and
 
 ### Functions
 
-| [`clip_sound_track`](#muvid.footage.sound.clip_sound_track)(cuts, out_path, \*[, ...])      | Write the production-sound stem of `cuts` (`AssemblyCut`-like: `song_start`, `song_end`, `clip_id`, `clip_in`, `clip_path`, `rate`, `sound_db`) to `out_path` (wav).                                                        |
+| [`aac_priming_filter`](#muvid.footage.sound.aac_priming_filter)(\*[, priming_samples, ...])   | The `-af` links that put an AAC encode's sound back on its picture (muvid#379).                                                                                                                                             |
 |---------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`clip_sound_track`](#muvid.footage.sound.clip_sound_track)(cuts, out_path, \*[, ...])      | Write the production-sound stem of `cuts` (`AssemblyCut`-like: `song_start`, `song_end`, `clip_id`, `clip_in`, `clip_path`, `rate`, `sound_db`) to `out_path` (wav).                                                        |
 | [`is_dialogue`](#muvid.footage.sound.is_dialogue)(cut, level)                          | A cut whose sound is meant to be heard (at or over [`DIALOGUE_MIN_DB`](#muvid.footage.sound.DIALOGUE_MIN_DB)).                                                                                                       |
 | `is_nat`(cut, level)                                                                              |                                                                                                                                                                                                                             |
 | [`mix_params`](#muvid.footage.sound.mix_params)(\*[, default_db])                     | What a `song_and_clips` render records about its mix, so a later change of these defaults is visible against an old render (and a re-render can reproduce it).                                                              |
@@ -67,7 +68,7 @@ Research behind the numbers: `misc/docs/research/general/promo_video_editing_and
 
 Samples the AAC encoder prepends (“priming”). Without an edit list (muvid’s delivery
 contract writes none) a player plays them, so the sound would land 21.3 ms late at
-48 kHz; [`mux_audio()`](#muvid.footage.sound.mux_audio) trims them off the input to compensate.
+48 kHz; [`aac_priming_filter()`](#muvid.footage.sound.aac_priming_filter) trims them off the input to compensate.
 
 ### muvid.footage.sound.DEFAULT_CLIP_SOUND_DB *= 0.0*
 
@@ -128,6 +129,24 @@ enough that the pauses between words do not drag it down.
 Dialogue is raised (never lowered) toward this speech level (dBFS, median RMS of its
 active frames) — a phone held across a room records a voice at -35..-30 dBFS — by at
 most `MAX_DIALOGUE_GAIN_DB`.
+
+### muvid.footage.sound.aac_priming_filter(, priming_samples=1024, sample_rate=48000)
+
+The `-af` links that put an AAC encode’s sound back on its picture (muvid#379).
+
+The encoder prepends `priming_samples` of priming, and a file with no edit list
+(the delivery contract) plays them, so every AAC pass lands the sound 21.3 ms
+late at 48 kHz; measured with a click at 1.000 s, decoded at 1.021 s after one
+pass and 1.043 s after two. Trimming as many samples off the INPUT cancels it,
+and padding them back at the tail keeps the length. `aresample` comes first so
+`start_sample` counts samples at the rate the encoder primes at, whatever rate
+the input has. Append it LAST to a chain whose timeline is the delivered one (a
+fade’s `st` is read before the trim). Every FOOTAGE AAC encode goes through
+it: [`mux_audio()`](#muvid.footage.sound.mux_audio) and `muvid.footage.assemble._audio_args()`. The
+visualizer and the lyric-video renderers do not yet (muvid#385).
+
+* **Return type:**
+  [`str`](https://docs.python.org/3/builtins/stdtypes.html#str)
 
 ### muvid.footage.sound.clip_sound_track(cuts, out_path, , edge_fade_s=0.04, default_db=0.0, sample_rate=48000, keep=None)
 

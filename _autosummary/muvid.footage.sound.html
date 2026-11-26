@@ -210,34 +210,37 @@ Research behind the numbers: <code class="docutils literal notranslate"><span cl
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.clip_sound_track" title="muvid.footage.sound.clip_sound_track"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clip_sound_track</span></code></a>(cuts, out_path, *[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.aac_priming_filter" title="muvid.footage.sound.aac_priming_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aac_priming_filter</span></code></a>(*[, priming_samples, ...])</p></td>
+<td><p>The <code class="docutils literal notranslate"><span class="pre">-af</span></code> links that put an AAC encode's sound back on its picture (muvid#379).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.clip_sound_track" title="muvid.footage.sound.clip_sound_track"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clip_sound_track</span></code></a>(cuts, out_path, *[, ...])</p></td>
 <td><p>Write the production-sound stem of <code class="docutils literal notranslate"><span class="pre">cuts</span></code> (<code class="docutils literal notranslate"><span class="pre">AssemblyCut</span></code>-like: <code class="docutils literal notranslate"><span class="pre">song_start</span></code>, <code class="docutils literal notranslate"><span class="pre">song_end</span></code>, <code class="docutils literal notranslate"><span class="pre">clip_id</span></code>, <code class="docutils literal notranslate"><span class="pre">clip_in</span></code>, <code class="docutils literal notranslate"><span class="pre">clip_path</span></code>, <code class="docutils literal notranslate"><span class="pre">rate</span></code>, <code class="docutils literal notranslate"><span class="pre">sound_db</span></code>) to <code class="docutils literal notranslate"><span class="pre">out_path</span></code> (wav).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.is_dialogue" title="muvid.footage.sound.is_dialogue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_dialogue</span></code></a>(cut, level)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.is_dialogue" title="muvid.footage.sound.is_dialogue"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_dialogue</span></code></a>(cut, level)</p></td>
 <td><p>A cut whose sound is meant to be heard (at or over <a class="reference internal" href="#muvid.footage.sound.DIALOGUE_MIN_DB" title="muvid.footage.sound.DIALOGUE_MIN_DB"><code class="xref py py-data docutils literal notranslate"><span class="pre">DIALOGUE_MIN_DB</span></code></a>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_nat</span></code>(cut, level)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_nat</span></code>(cut, level)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.mix_params" title="muvid.footage.sound.mix_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mix_params</span></code></a>(*[, default_db])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.mix_params" title="muvid.footage.sound.mix_params"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mix_params</span></code></a>(*[, default_db])</p></td>
 <td><p>What a <code class="docutils literal notranslate"><span class="pre">song_and_clips</span></code> render records about its mix, so a later change of these defaults is visible against an old render (and a re-render can reproduce it).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.mix_under" title="muvid.footage.sound.mix_under"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mix_under</span></code></a>(music, dialogue, nat, out_path, *)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.mix_under" title="muvid.footage.sound.mix_under"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mix_under</span></code></a>(music, dialogue, nat, out_path, *)</p></td>
 <td><p>Mix <code class="docutils literal notranslate"><span class="pre">music</span></code> over the clips' sound, split as <code class="docutils literal notranslate"><span class="pre">dialogue</span></code> and <code class="docutils literal notranslate"><span class="pre">nat</span></code> (wav stems of equal length), into <code class="docutils literal notranslate"><span class="pre">out_path</span></code>:</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.mux_audio" title="muvid.footage.sound.mux_audio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mux_audio</span></code></a>(video, audio, out_path, *[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.mux_audio" title="muvid.footage.sound.mux_audio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mux_audio</span></code></a>(video, audio, out_path, *[, ...])</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">video</span></code>'s picture (stream-copied) with <code class="docutils literal notranslate"><span class="pre">audio</span></code> as its one audio track (aac), at the video's length; the encoder's priming is trimmed off the input (and the tail padded back), so the sound is where it was on the picture.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.read_wav" title="muvid.footage.sound.read_wav"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_wav</span></code></a>(path)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.read_wav" title="muvid.footage.sound.read_wav"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_wav</span></code></a>(path)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">(samples,</span> <span class="pre">rate)</span></code> of a PCM wav: float in [-1, 1], shape <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">channels)</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.silent_unless_set" title="muvid.footage.sound.silent_unless_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">silent_unless_set</span></code></a>(cuts, mute, *[, level])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.silent_unless_set" title="muvid.footage.sound.silent_unless_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">silent_unless_set</span></code></a>(cuts, mute, *[, level])</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">cuts</span></code> with every cut of a <code class="docutils literal notranslate"><span class="pre">mute</span></code> clip that names no <code class="docutils literal notranslate"><span class="pre">sound_db</span></code> set to <code class="docutils literal notranslate"><span class="pre">level</span></code> — the clips whose own audio is a recording of the song (a music video's synced footage), which under the master would double it.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.song_stem" title="muvid.footage.sound.song_stem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">song_stem</span></code></a>(song_path, out_path, *, start_s, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.song_stem" title="muvid.footage.sound.song_stem"><code class="xref py py-obj docutils literal notranslate"><span class="pre">song_stem</span></code></a>(song_path, out_path, *, start_s, ...)</p></td>
 <td><p>The music stem: <code class="docutils literal notranslate"><span class="pre">duration_s</span></code> of the song from <code class="docutils literal notranslate"><span class="pre">start_s</span></code> (wav), faded out over its last <code class="docutils literal notranslate"><span class="pre">fade_out_s</span></code> seconds — the same window and fade the render applies.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#muvid.footage.sound.write_wav" title="muvid.footage.sound.write_wav"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_wav</span></code></a>(path, samples, rate)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#muvid.footage.sound.write_wav" title="muvid.footage.sound.write_wav"><code class="xref py py-obj docutils literal notranslate"><span class="pre">write_wav</span></code></a>(path, samples, rate)</p></td>
 <td><p>Write float samples (<code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">channels)</span></code> or <code class="docutils literal notranslate"><span class="pre">(n,)</span></code>, clipped to [-1, 1]) as 16-bit PCM wav.</p></td>
 </tr>
 </tbody>
@@ -247,7 +250,7 @@ Research behind the numbers: <code class="docutils literal notranslate"><span cl
 <span class="sig-prename descclassname"><span class="pre">muvid.footage.sound.</span></span><span class="sig-name descname"><span class="pre">AAC_PRIMING_SAMPLES</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1024</span></span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.sound.AAC_PRIMING_SAMPLES" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.sound.AAC_PRIMING_SAMPLES'">¶</a></dt>
 <dd><p>Samples the AAC encoder prepends (“priming”). Without an edit list (muvid’s delivery
 contract writes none) a player plays them, so the sound would land 21.3 ms late at
-48 kHz; <a class="reference internal" href="#muvid.footage.sound.mux_audio" title="muvid.footage.sound.mux_audio"><code class="xref py py-func docutils literal notranslate"><span class="pre">mux_audio()</span></code></a> trims them off the input to compensate.</p>
+48 kHz; <a class="reference internal" href="#muvid.footage.sound.aac_priming_filter" title="muvid.footage.sound.aac_priming_filter"><code class="xref py py-func docutils literal notranslate"><span class="pre">aac_priming_filter()</span></code></a> trims them off the input to compensate.</p>
 </dd></dl>
 <dl class="py data">
 <dt class="sig sig-object py" id="muvid.footage.sound.DEFAULT_CLIP_SOUND_DB">
@@ -325,6 +328,26 @@ enough that the pauses between words do not drag it down.</p>
 <dd><p>Dialogue is raised (never lowered) toward this speech level (dBFS, median RMS of its
 active frames) — a phone held across a room records a voice at -35..-30 dBFS — by at
 most <code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_DIALOGUE_GAIN_DB</span></code>.</p>
+</dd></dl>
+<dl class="py function">
+<dt class="sig sig-object py" id="muvid.footage.sound.aac_priming_filter">
+<span class="sig-prename descclassname"><span class="pre">muvid.footage.sound.</span></span><span class="sig-name descname"><span class="pre">aac_priming_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">priming_samples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">48000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/muvid/footage/sound.html#aac_priming_filter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#muvid.footage.sound.aac_priming_filter" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#muvid.footage.sound.aac_priming_filter'">¶</a></dt>
+<dd><p>The <code class="docutils literal notranslate"><span class="pre">-af</span></code> links that put an AAC encode’s sound back on its picture (muvid#379).</p>
+<p>The encoder prepends <code class="docutils literal notranslate"><span class="pre">priming_samples</span></code> of priming, and a file with no edit list
+(the delivery contract) plays them, so every AAC pass lands the sound 21.3 ms
+late at 48 kHz; measured with a click at 1.000 s, decoded at 1.021 s after one
+pass and 1.043 s after two. Trimming as many samples off the INPUT cancels it,
+and padding them back at the tail keeps the length. <code class="docutils literal notranslate"><span class="pre">aresample</span></code> comes first so
+<code class="docutils literal notranslate"><span class="pre">start_sample</span></code> counts samples at the rate the encoder primes at, whatever rate
+the input has. Append it LAST to a chain whose timeline is the delivered one (a
+fade’s <code class="docutils literal notranslate"><span class="pre">st</span></code> is read before the trim). Every FOOTAGE AAC encode goes through
+it: <a class="reference internal" href="#muvid.footage.sound.mux_audio" title="muvid.footage.sound.mux_audio"><code class="xref py py-func docutils literal notranslate"><span class="pre">mux_audio()</span></code></a> and <code class="xref py py-func docutils literal notranslate"><span class="pre">muvid.footage.assemble._audio_args()</span></code>. The
+visualizer and the lyric-video renderers do not yet (muvid#385).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" rel="nofollow noopener" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code><svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a></span></p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="muvid.footage.sound.clip_sound_track">
@@ -457,6 +480,7 @@ PCM wav.</p>
 <li><a :data-current="activeSection === '#muvid.footage.sound.SPEECH_OVER_MUSIC_DB'" class="reference internal" href="#muvid.footage.sound.SPEECH_OVER_MUSIC_DB"><code class="docutils literal notranslate"><span class="pre">SPEECH_OVER_MUSIC_DB</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.sound.SPEECH_PERCENTILE'" class="reference internal" href="#muvid.footage.sound.SPEECH_PERCENTILE"><code class="docutils literal notranslate"><span class="pre">SPEECH_PERCENTILE</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.sound.SPEECH_TARGET_DBFS'" class="reference internal" href="#muvid.footage.sound.SPEECH_TARGET_DBFS"><code class="docutils literal notranslate"><span class="pre">SPEECH_TARGET_DBFS</span></code></a></li>
+<li><a :data-current="activeSection === '#muvid.footage.sound.aac_priming_filter'" class="reference internal" href="#muvid.footage.sound.aac_priming_filter"><code class="docutils literal notranslate"><span class="pre">aac_priming_filter()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.sound.clip_sound_track'" class="reference internal" href="#muvid.footage.sound.clip_sound_track"><code class="docutils literal notranslate"><span class="pre">clip_sound_track()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.sound.is_dialogue'" class="reference internal" href="#muvid.footage.sound.is_dialogue"><code class="docutils literal notranslate"><span class="pre">is_dialogue()</span></code></a></li>
 <li><a :data-current="activeSection === '#muvid.footage.sound.mix_params'" class="reference internal" href="#muvid.footage.sound.mix_params"><code class="docutils literal notranslate"><span class="pre">mix_params()</span></code></a></li>
@@ -479,7 +503,7 @@ PCM wav.</p>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=3b8ff75b"></script>
+<script src="../_static/documentation_options.js?v=9ff77342"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>

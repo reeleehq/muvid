@@ -23,6 +23,7 @@ muvid.footage.sound
 
    .. autosummary::
    
+      aac_priming_filter
       clip_sound_track
       is_dialogue
       is_nat

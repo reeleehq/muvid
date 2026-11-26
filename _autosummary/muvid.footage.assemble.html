@@ -172,7 +172,8 @@ the <code class="docutils literal notranslate"><span class="pre">pre</span></cod
 <li><p><strong>Mux the clean song</strong> in the same final pass. When the master already IS the delivery
 contract (aac, 48 kHz stereo), its packets are stream-copied bit-identically; anything
 else is encoded to the contract (aac 192k, 48 kHz stereo — verify_video’s audio check
-must be a property of the renderer, not of which song the user brought: muvid#24 B3).</p></li>
+must be a property of the renderer, not of which song the user brought: muvid#24 B3),
+with the encoder’s priming trimmed so the song stays on its picture (muvid#379).</p></li>
 </ol>
 <p>ffmpeg auto-applies each clip’s rotation metadata on decode (default <code class="docutils literal notranslate"><span class="pre">-autorotate</span> <span class="pre">1</span></code>),
 so a display-matrix portrait clip lands upright and pillarboxed, never stretched.</p>
@@ -340,7 +341,7 @@ muvid#201; an SDR source never reads it.</p></li>
 </div>
 </footer>
 </div>
-<script src="../_static/documentation_options.js?v=3b8ff75b"></script>
+<script src="../_static/documentation_options.js?v=9ff77342"></script>
 <script src="../_static/doctools.js?v=fd6eb6e6"></script>
 <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
 <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
